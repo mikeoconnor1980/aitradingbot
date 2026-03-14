@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project is an experimental algorithmic trading system for cryptocurrency markets.
+This project is an algorithmic trading system for cryptocurrency markets.
 It combines deterministic trading strategies, modular architecture, AI-assisted market context,
 and a reproducible backtesting framework.
 
