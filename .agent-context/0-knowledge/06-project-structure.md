@@ -13,6 +13,9 @@ TradingApp.Persistence
 TradingApp.Api  
 TradingApp.Worker
 
+The Domain, Application, and Persistence layers are tenant-aware.
+All data access is scoped by UserId.
+
 ---
 
 # Strategy Plugins

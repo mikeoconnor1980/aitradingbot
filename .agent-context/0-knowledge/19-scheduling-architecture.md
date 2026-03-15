@@ -64,14 +64,18 @@ This event becomes the canonical trigger for the system.
 # StrategyScheduler
 
 The StrategyScheduler subscribes to CandleClock events and determines
-whether the strategy should run.
+whether strategies should run.
 
 Responsibilities:
 
 • listen for CandleClosedEvent  
 • filter for trigger timeframe (15m for the grid strategy)  
-• build MarketContext  
-• invoke StrategyEngine → RiskEngine → PositionManager → ExecutionEngine  
+• build MarketContext (shared across all subscribers)  
+• fan out execution to all active subscribers  
+• for each subscriber: invoke StrategyEngine → RiskEngine → PositionManager → ExecutionEngine  
+
+Market data and indicator calculation are shared.
+Strategy evaluation and order execution are per-subscriber.
 
 ---
 
@@ -95,7 +99,7 @@ Higher timeframes are inputs to the strategy but do not trigger execution.
 
 Hyperliquid WebSocket  
 ↓  
-MarketStateStore  
+MarketStateStore (shared)  
 ↓  
 CandleBuilder  
 ↓  
@@ -103,16 +107,18 @@ CandleClock
 ↓  
 StrategyScheduler  
 ↓  
-StrategyEngine  
-↓  
-RiskEngine  
-↓  
-PositionManager  
-↓  
-ExecutionEngine  
+For each active subscriber:  
+  StrategyEngine  
+  ↓  
+  RiskEngine  
+  ↓  
+  PositionManager  
+  ↓  
+  ExecutionEngine (using subscriber's keys)  
 
 Websocket updates continuously update the MarketStateStore.
 Strategy evaluation occurs only when a candle closes.
+Market data is shared; execution is per-subscriber.
 
 ---
 
@@ -153,12 +159,14 @@ Example model:
 
 public class StrategyExecutionCheckpoint
 {
+    public string UserId { get; set; }
     public string Symbol { get; set; }
     public string Timeframe { get; set; }
     public long LastProcessedCloseTimeUtc { get; set; }
 }
 
 This checkpoint prevents duplicate runs after restarts.
+Checkpoints are per-subscriber.
 
 ---
 

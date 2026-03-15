@@ -1,6 +1,13 @@
 # Infrastructure Architecture
 
-The system runs on a VPS.
+The system uses a phased deployment model.
+The platform is multi-tenant — multiple subscribers each with their own Hyperliquid keys.
+
+---
+
+# Phase 1 — VPS (POC)
+
+Single-node deployment for proving the trading engine and strategy logic.
 
 Main components:
 
@@ -9,42 +16,55 @@ C# API
 C# Worker  
 SQLite database
 
+Deployment:
+
+Docker containers (api, worker, ui) managed with docker compose.
+
+Data storage:
+
+/data/sqlite/tradingapp.db  
+/data/logs  
+/data/backups  
+/data/snapshots
+
+In POC phase, subscriber count is small (personal use / early testers).
+SQLite is sufficient.
+
+---
+
+# Phase 2 — Azure Cloud (Production)
+
+Once proven on VPS, the system moves to Azure for production multi-tenant operation.
+
+Changes from Phase 1:
+
+SQLite → Azure SQL  
+Docker Compose → Azure Container Apps (or similar)  
+Local disk storage → Azure Blob Storage  
+Environment variables → Azure Key Vault for secrets and user API keys  
+
+Additional production concerns:
+
+Authentication → Azure AD B2C or similar identity provider  
+Subscription billing → Stripe or similar payment integration  
+Worker scaling → must handle N active subscribers concurrently  
+Key security → per-user Hyperliquid keys encrypted at rest (Key Vault)  
+
+The trading pipeline and application architecture remain identical across phases.
+
 ---
 
 # Execution Flow
 
 Browser  
 ↓  
-Angular UI  
+Angular UI (authenticated per-user)  
 ↓  
-API  
+API (tenant-scoped)  
 ↓  
-Trading Worker  
+Trading Worker (executes per-user strategies)  
 ↓  
-Hyperliquid
+Hyperliquid (using subscriber's keys)
 
----
-
-# Data Storage
-
-SQLite database location:
-
-/data/sqlite/tradingapp.db
-
-Other folders:
-
-/data/logs  
-/data/backups  
-/data/snapshots
-
----
-
-# Deployment
-
-Docker containers:
-
-api  
-worker  
-ui
-
-Managed with docker compose.
+This flow is the same in both VPS and cloud deployments.
+The difference is scale and infrastructure services.
