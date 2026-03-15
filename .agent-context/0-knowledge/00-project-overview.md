@@ -2,18 +2,40 @@
 
 ## Overview
 
-This project is an algorithmic trading system for cryptocurrency markets.
+This project is a subscription-based, multi-tenant algorithmic trading platform
+for cryptocurrency markets. Subscribers connect their own Hyperliquid wallet API keys
+and the platform trades on their behalf.
+
 It combines deterministic trading strategies, modular architecture, AI-assisted market context,
 and a reproducible backtesting framework.
 
 The initial focus is on BTC perpetual markets using the Hyperliquid exchange,
 but the architecture is designed to support additional strategies and exchanges in the future.
 
+---
+
+## Business Model
+
+The platform will be offered as a subscription service to paying users.
+
+Two models are being evaluated (see 20-business-model-options.md):
+
+Option A — Self-Hosted: subscribers deploy the full bot on their own VPS and keep their own keys.  
+Option B — Platform-Hosted: subscribers connect their Hyperliquid keys and the platform trades on their behalf.  
+Option C — Split Architecture: platform runs strategy logic in the cloud, subscriber runs a lightweight execution agent on their VPS that holds keys and submits orders.
+
+No decision has been made. The core trading engine is identical in all models.
+
+---
+
+## Core Priorities
+
 Unlike many retail trading bots, the primary focus of this system is:
 - deterministic strategy execution
 - strong architectural separation
 - reproducible backtesting
 - safe automation
+- secure multi-tenant key management
 
 ---
 

@@ -70,19 +70,22 @@ This configuration is interpreted by the strategy plugin.
 
 # ActiveStrategy
 
-At runtime the worker loads the active strategy.
+At runtime the worker loads active strategies for all active subscribers.
 
 Execution flow:
 
 Worker Start  
 ↓  
-Load ActiveStrategy  
+Load all active subscribers  
 ↓  
-Load StrategyConfig JSON  
-↓  
-Instantiate Strategy Plugin  
-↓  
-Execute Strategy Loop
+For each subscriber:  
+  Load ActiveStrategy  
+  ↓  
+  Load StrategyConfig JSON  
+  ↓  
+  Instantiate Strategy Plugin  
+  ↓  
+  Execute Strategy (using subscriber's keys)
 
 ---
 
@@ -92,6 +95,7 @@ Represents one runtime execution period for a strategy.
 
 Fields:
 
+UserId  
 StrategyId  
 StartTime  
 EndTime  
@@ -111,6 +115,7 @@ Stores performance metrics for each strategy.
 
 Fields:
 
+UserId  
 StrategyId  
 TotalTrades  
 WinRate  
@@ -140,21 +145,22 @@ This allows experimentation without losing historical results.
 
 # Runtime Execution Loop
 
-Worker execution loop:
+Worker execution loop (runs per subscriber on candle close):
 
-Update Market Data  
+Update Market Data (shared)  
 ↓  
-Calculate Indicators  
+Calculate Indicators (shared)  
 ↓  
-Load StrategyConfig  
-↓  
-Execute Strategy Plugin  
-↓  
-Generate Signals  
-↓  
-Risk Engine Validation  
-↓  
-Order Execution
+For each active subscriber:  
+  Load StrategyConfig  
+  ↓  
+  Execute Strategy Plugin  
+  ↓  
+  Generate Signals  
+  ↓  
+  Risk Engine Validation  
+  ↓  
+  Order Execution (using subscriber's keys)
 
 ---
 
@@ -169,6 +175,9 @@ Daily loss limits
 Leverage limits
 
 Risk enforcement happens after signals are generated.
+
+Per-user risk limits are applied.
+Platform-level risk limits are applied on top of per-user limits.
 
 ---
 
