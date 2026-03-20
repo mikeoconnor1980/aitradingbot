@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strategy Configuration — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd; --ddx-error-bg: #f3e1e0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-header .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ddx-gray-7); color: var(--ddx-white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .wf-sidebar { width: 220px; min-width: 220px; background: var(--ddx-black); color: var(--ddx-white); font-size: 14px; padding: 0; }
+    .wf-sidebar .nav-item { padding: 10px 16px; border-left: 4px solid var(--ddx-black); cursor: pointer; color: var(--ddx-white); font-weight: 400; }
+    .wf-sidebar .nav-item:hover { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-item.active { background: var(--ddx-primary-green-2); border-left-color: var(--ddx-primary-green-2); font-weight: 700; color: var(--ddx-white); }
+    .wf-body { display: flex; min-height: 700px; }
+    .wf-content { flex: 1; padding: 24px; }
+    .wf-page-header { background: var(--ddx-gray-8); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-page-header .wf-breadcrumb { color: var(--ddx-gray-3); margin-bottom: 8px; font-size: 12px; }
+    .wf-page-header .wf-breadcrumb a { color: var(--ddx-primary-green-2); text-decoration: none; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 0; color: var(--ddx-white); }
+    .wf-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; height: 32px; font-size: 14px; font-weight: 400; font-family: 'Open Sans', sans-serif; border: none; cursor: pointer; margin-right: 8px; color: var(--ddx-white); }
+    .wf-btn-primary { background: var(--ddx-primary-green-2); }
+    .wf-btn-secondary { background: var(--ddx-gray-7); }
+    .wf-btn-danger { background: var(--ddx-red); }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .wf-card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .wf-input { display: block; width: 100%; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; margin-bottom: 16px; }
+    .wf-input:focus { outline-color: var(--ddx-primary-green-2); outline-width: 2px; }
+    .wf-label { display: block; font-size: 12px; font-weight: 400; color: var(--ddx-black); margin-bottom: 4px; }
+    .wf-select { display: block; width: 100%; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; margin-bottom: 16px; appearance: auto; }
+    .wf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--ddx-gray-1); margin-bottom: 16px; }
+    .wf-tab { padding: 8px 12px; font-size: 14px; cursor: pointer; position: relative; color: var(--ddx-black); }
+    .wf-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--ddx-primary-green-2); }
+    .wf-grid { display: grid; gap: 16px; }
+    .wf-grid-2 { grid-template-columns: 1fr 1fr; }
+    .wf-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .wf-badge { display: inline-block; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+    .wf-badge-rounded { border-radius: 4px; }
+    .wf-badge-success { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .wf-badge-warning { background: var(--ddx-warning-bg); color: #896129; border: 0.8px solid var(--ddx-warning-bg); }
+    .wf-badge-info { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+    .wf-banner { padding: 12px 16px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .wf-banner-warning { background: var(--ddx-red); color: var(--ddx-white); border-bottom: 0.8px solid var(--ddx-red); }
+    .field-hint { font-size: 11px; color: var(--ddx-gray-5); margin-top: -12px; margin-bottom: 16px; }
+    .section-label { font-size: 13px; font-weight: 700; color: var(--ddx-gray-7); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; margin-top: 8px; }
+    .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>FEATURE-003 — Strategy Configuration</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <!-- App Header -->
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">AI Trading Platform</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_dashboard.html">Dashboard</a>
+        <a href="mockup_strategy_list.html">Strategies</a>
+        <a href="mockup_settings.html">Settings</a>
+        <a href="mockup_admin_dashboard.html" style="font-size: 11px; color: var(--ddx-gray-4);">Admin</a>
+        <div class="avatar">JD</div>
+      </div>
+    </div>
+
+    <div class="wf-body">
+      <!-- Sidebar -->
+      <div class="wf-sidebar" data-wf-type="ddx-sidebar">
+        <a class="nav-item" href="mockup_dashboard.html">Dashboard</a>
+        <a class="nav-item active" href="mockup_strategy_list.html">Strategies</a>
+        <a class="nav-item" href="mockup_positions.html">Positions</a>
+        <a class="nav-item" href="mockup_order_history.html">Order History</a>
+        <a class="nav-item" href="mockup_signals.html">Signals</a>
+        <a class="nav-item" href="mockup_exchange_connection.html">Exchange Keys</a>
+        <a class="nav-item" href="mockup_subscription.html">Subscription</a>
+        <a class="nav-item" href="mockup_settings.html">Settings</a>
+      </div>
+
+      <div style="flex: 1;">
+        <!-- Page Header -->
+        <div class="wf-page-header">
+          <div class="wf-breadcrumb">
+            <a>Home</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span>
+            <a>Strategies</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span>
+            BTC Grid Alpha
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 class="wf-page-title">Configure Strategy</h1>
+            <div>
+              <span class="wf-badge wf-badge-rounded wf-badge-success" style="font-size: 12px; padding: 3px 10px;">Active</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wf-content">
+          <!-- Tabs -->
+          <div class="wf-tabs" data-wf-type="ddx-tabs">
+            <div class="wf-tab active">Parameters</div>
+            <div class="wf-tab">Backtest</div>
+            <div class="wf-tab">History</div>
+          </div>
+
+          <div class="wf-grid wf-grid-2">
+            <!-- Left Column: Config Form -->
+            <div>
+              <!-- General -->
+              <div class="wf-card" data-wf-type="frame">
+                <div class="wf-card-title">General</div>
+                <label class="wf-label">Strategy Name</label>
+                <input class="wf-input" data-wf-type="ddx-input" value="BTC Grid Alpha" />
+
+                <label class="wf-label">Strategy Type</label>
+                <select class="wf-select" data-wf-type="ddx-select">
+                  <option selected>GridStrategy</option>
+                  <option>TrendBreakoutStrategy</option>
+                  <option>MeanReversionStrategy</option>
+                </select>
+
+                <label class="wf-label">Symbol</label>
+                <select class="wf-select" data-wf-type="ddx-select">
+                  <option selected>BTC-USD</option>
+                  <option>ETH-USD</option>
+                </select>
+              </div>
+
+              <!-- Trend Filter -->
+              <div class="wf-card" data-wf-type="frame">
+                <div class="wf-card-title">Trend Filter (4H)</div>
+                <div class="section-label">EMA Settings</div>
+                <div class="wf-grid wf-grid-3">
+                  <div>
+                    <label class="wf-label">EMA Fast</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="20" />
+                  </div>
+                  <div>
+                    <label class="wf-label">EMA Slow</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="50" />
+                  </div>
+                  <div>
+                    <label class="wf-label">EMA Trend</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="200" />
+                  </div>
+                </div>
+                <div class="field-hint">Trend is bullish when EMA Fast &gt; EMA Slow &gt; EMA Trend and Price &gt; EMA Trend</div>
+              </div>
+
+              <!-- Grid Settings -->
+              <div class="wf-card" data-wf-type="frame">
+                <div class="wf-card-title">Grid Configuration (15m)</div>
+                <div class="wf-grid wf-grid-2">
+                  <div>
+                    <label class="wf-label">Grid Levels</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="4" />
+                  </div>
+                  <div>
+                    <label class="wf-label">Max Exposure</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="2.0" />
+                    <div class="field-hint">Maximum total position size multiplier</div>
+                  </div>
+                </div>
+
+                <div class="section-label">Level Spacing (%)</div>
+                <div class="wf-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+                  <div>
+                    <label class="wf-label">Level 1</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="0.35" />
+                  </div>
+                  <div>
+                    <label class="wf-label">Level 2</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="0.70" />
+                  </div>
+                  <div>
+                    <label class="wf-label">Level 3</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="1.05" />
+                  </div>
+                  <div>
+                    <label class="wf-label">Level 4</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="1.40" />
+                  </div>
+                </div>
+                <div class="field-hint">Percentage distance below entry point for each grid level</div>
+              </div>
+
+              <!-- Risk -->
+              <div class="wf-card" data-wf-type="frame">
+                <div class="wf-card-title">Risk &amp; Exit</div>
+                <div class="wf-grid wf-grid-2">
+                  <div>
+                    <label class="wf-label">Take Profit %</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="0.80" />
+                    <div class="field-hint">TP target above average entry</div>
+                  </div>
+                  <div>
+                    <label class="wf-label">Hedge Trigger %</label>
+                    <input class="wf-input" data-wf-type="ddx-input" value="0.30" />
+                    <div class="field-hint">Short hedge trigger below grid bottom</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button class="wf-btn wf-btn-primary" data-wf-type="ddx-button" data-wf-props='{"variant": "primary", "label": "Save Configuration"}'>Save Configuration</button>
+                <button class="wf-btn wf-btn-secondary" data-wf-type="ddx-button">Cancel</button>
+                <button class="wf-btn wf-btn-danger" data-wf-type="ddx-button" style="margin-left: auto;">Deactivate Strategy</button>
+              </div>
+            </div>
+
+            <!-- Right Column: Config Preview / JSON -->
+            <div>
+              <div class="wf-card" data-wf-type="ddx-card">
+                <div class="wf-card-title">Configuration Preview</div>
+                <pre style="background: var(--ddx-gray-8); color: var(--ddx-primary-green-2); padding: 16px; font-size: 12px; font-family: 'Consolas', monospace; line-height: 1.6; overflow-x: auto;">{
+  "trend": {
+    "emaFast": 20,
+    "emaSlow": 50,
+    "emaTrend": 200
+  },
+  "grid": {
+    "levels": 4,
+    "spacing": [0.35, 0.70, 1.05, 1.40]
+  },
+  "takeProfitPercent": 0.80,
+  "hedgePercent": 0.30,
+  "maxExposure": 2.0
+}</pre>
+              </div>
+
+              <div class="wf-card" data-wf-type="ddx-card" style="background: var(--ddx-info-bg); border-color: var(--ddx-primary-blue);">
+                <div style="font-weight: 600; margin-bottom: 8px;">Grid Visualisation</div>
+                <div style="font-size: 13px; color: var(--ddx-gray-7); margin-bottom: 12px;">
+                  Based on hypothetical entry at $67,650:
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-success-bg); font-size: 13px;">
+                    <span style="font-weight: 600; color: var(--ddx-primary-green-2);">Take Profit</span>
+                    <span>$68,191 (+0.80%)</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-bg-gray-2); font-size: 13px;">
+                    <span style="font-weight: 600;">Entry</span>
+                    <span>$67,650</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-bg-gray-1); font-size: 13px;">
+                    <span>Grid Level 1</span>
+                    <span>$67,413 (-0.35%)</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-bg-gray-1); font-size: 13px;">
+                    <span>Grid Level 2</span>
+                    <span>$67,177 (-0.70%)</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-bg-gray-1); font-size: 13px;">
+                    <span>Grid Level 3</span>
+                    <span>$66,940 (-1.05%)</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-bg-gray-1); font-size: 13px;">
+                    <span>Grid Level 4</span>
+                    <span>$66,704 (-1.40%)</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; background: var(--ddx-error-bg); font-size: 13px;">
+                    <span style="font-weight: 600; color: var(--ddx-red);">Hedge Trigger</span>
+                    <span>$66,504 (-1.70%)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="wf-card" data-wf-type="ddx-card">
+                <div class="wf-card-title">Validation</div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <span style="color: var(--ddx-primary-green-2);">✓</span> Grid levels within allowed range (2-8)
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <span style="color: var(--ddx-primary-green-2);">✓</span> Max exposure within risk limits
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <span style="color: var(--ddx-primary-green-2);">✓</span> Spacing values are monotonically increasing
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <span style="color: var(--ddx-primary-green-2);">✓</span> Hedge trigger below lowest grid level
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                    <span style="color: var(--ddx-primary-green-2);">✓</span> EMA periods are valid
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

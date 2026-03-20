@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd; --ddx-error-bg: #f3e1e0;
+      --ddx-banner-success-bg: #f4f9f3;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-header .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ddx-gray-7); color: var(--ddx-white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .wf-sidebar { width: 220px; min-width: 220px; background: var(--ddx-black); color: var(--ddx-white); font-size: 14px; padding: 0; }
+    .wf-sidebar .nav-item { padding: 10px 16px; border-left: 4px solid var(--ddx-black); cursor: pointer; color: var(--ddx-white); font-weight: 400; }
+    .wf-sidebar .nav-item:hover { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-item.active { background: var(--ddx-primary-green-2); border-left-color: var(--ddx-primary-green-2); font-weight: 700; color: var(--ddx-white); }
+    .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
+    .wf-body { display: flex; min-height: 600px; }
+    .wf-content { flex: 1; padding: 24px; }
+    .wf-page-header { background: var(--ddx-gray-8); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-page-header .wf-breadcrumb { color: var(--ddx-gray-3); margin-bottom: 8px; font-size: 12px; }
+    .wf-page-header .wf-breadcrumb a { color: var(--ddx-primary-green-2); text-decoration: none; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 0; color: var(--ddx-white); }
+    .wf-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; height: 32px; font-size: 14px; font-weight: 400; font-family: 'Open Sans', sans-serif; border: none; cursor: pointer; margin-right: 8px; color: var(--ddx-white); }
+    .wf-btn-primary { background: var(--ddx-primary-green-2); }
+    .wf-btn-secondary { background: var(--ddx-gray-7); }
+    .wf-btn-danger { background: var(--ddx-red); }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .wf-card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .wf-input { display: block; width: 100%; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; margin-bottom: 16px; }
+    .wf-input:focus { outline-color: var(--ddx-primary-green-2); outline-width: 2px; }
+    .wf-label { display: block; font-size: 12px; font-weight: 400; color: var(--ddx-black); margin-bottom: 4px; }
+    .wf-select { display: block; width: 100%; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; margin-bottom: 16px; appearance: auto; }
+    .wf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--ddx-gray-1); margin-bottom: 16px; }
+    .wf-tab { padding: 8px 12px; font-size: 14px; cursor: pointer; position: relative; color: var(--ddx-black); }
+    .wf-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--ddx-primary-green-2); }
+    .wf-badge { display: inline-block; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+    .wf-badge-rounded { border-radius: 4px; }
+    .wf-badge-success { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .wf-badge-info { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+
+    /* Settings-specific styles */
+    .settings-section { max-width: 640px; }
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 14px; }
+    .toggle-label .sub { display: block; font-size: 12px; color: var(--ddx-gray-5); margin-top: 2px; }
+    .toggle-switch { width: 40px; height: 22px; background: var(--ddx-gray-3); border-radius: 11px; position: relative; cursor: pointer; flex-shrink: 0; }
+    .toggle-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: var(--ddx-white); border-radius: 50%; transition: left 0.15s; }
+    .toggle-switch.on { background: var(--ddx-primary-green-2); }
+    .toggle-switch.on::after { left: 20px; }
+    .danger-zone { border: 1px solid var(--ddx-red); padding: 16px; margin-top: 24px; background: var(--ddx-error-bg); }
+    .danger-zone-title { font-size: 16px; font-weight: 600; color: var(--ddx-red); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(218,41,28,0.2); }
+    .field-row { display: flex; gap: 16px; }
+    .field-row > div { flex: 1; }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>FEATURE — Settings</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <!-- App Header -->
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">AI Trading Platform</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_dashboard.html">Dashboard</a>
+        <a href="mockup_strategy_list.html">Strategies</a>
+        <a href="mockup_settings.html">Settings</a>
+        <a href="mockup_admin_dashboard.html" style="font-size: 11px; color: var(--ddx-gray-4);">Admin</a>
+        <div class="avatar">JD</div>
+      </div>
+    </div>
+
+    <div class="wf-body">
+      <!-- Sidebar -->
+      <div class="wf-sidebar" data-wf-type="ddx-sidebar">
+        <a class="nav-item" href="mockup_dashboard.html">Dashboard</a>
+        <a class="nav-item" href="mockup_strategy_list.html">Strategies</a>
+        <a class="nav-item" href="mockup_positions.html">Positions</a>
+        <a class="nav-item" href="mockup_order_history.html">Order History</a>
+        <a class="nav-item" href="mockup_signals.html">Signals</a>
+        <a class="nav-item" href="mockup_exchange_connection.html">Exchange Keys</a>
+        <a class="nav-item" href="mockup_subscription.html">Subscription</a>
+        <a class="nav-item active" href="mockup_settings.html">Settings</a>
+      </div>
+
+      <div style="flex: 1;">
+        <!-- Page Header -->
+        <div class="wf-page-header">
+          <div class="wf-breadcrumb"><a href="mockup_dashboard.html">Home</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span> Settings</div>
+          <h1 class="wf-page-title">Settings</h1>
+        </div>
+
+        <div class="wf-content">
+          <!-- Tabs -->
+          <div class="wf-tabs" data-wf-type="ddx-tabs">
+            <div class="wf-tab active">Profile</div>
+            <div class="wf-tab">Notifications</div>
+            <div class="wf-tab">Display</div>
+            <div class="wf-tab">API Access</div>
+          </div>
+
+          <div class="settings-section">
+            <!-- Profile Section -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">Account Information</div>
+              <div class="field-row">
+                <div>
+                  <label class="wf-label">Display Name</label>
+                  <input class="wf-input" type="text" value="John Doe" data-wf-type="ddx-input" />
+                </div>
+                <div>
+                  <label class="wf-label">Email Address</label>
+                  <input class="wf-input" type="text" value="john.doe@example.com" data-wf-type="ddx-input" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div>
+                  <label class="wf-label">Timezone</label>
+                  <select class="wf-select" data-wf-type="ddx-select">
+                    <option selected>UTC</option>
+                    <option>US/Eastern</option>
+                    <option>US/Pacific</option>
+                    <option>Europe/London</option>
+                    <option>Asia/Tokyo</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="wf-label">Base Currency</label>
+                  <select class="wf-select" data-wf-type="ddx-select">
+                    <option selected>USD</option>
+                    <option>EUR</option>
+                    <option>GBP</option>
+                  </select>
+                </div>
+              </div>
+              <button class="wf-btn wf-btn-primary" data-wf-type="ddx-button">Save Changes</button>
+            </div>
+
+            <!-- Notifications Section -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">Notification Preferences</div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Order Fills
+                  <span class="sub">Get notified when grid orders are filled</span>
+                </div>
+                <div class="toggle-switch on"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Strategy Alerts
+                  <span class="sub">Grid deploy, stop-loss, take-profit events</span>
+                </div>
+                <div class="toggle-switch on"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Risk Warnings
+                  <span class="sub">Margin usage, drawdown limits, exposure breaches</span>
+                </div>
+                <div class="toggle-switch on"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Daily Performance Summary
+                  <span class="sub">End-of-day PnL and trade digest via email</span>
+                </div>
+                <div class="toggle-switch"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  LLM Context Signals
+                  <span class="sub">Sentiment or regime-change alerts from the AI layer</span>
+                </div>
+                <div class="toggle-switch on"></div>
+              </div>
+              <div style="margin-top: 12px;">
+                <label class="wf-label">Notification Channel</label>
+                <select class="wf-select" data-wf-type="ddx-select" style="max-width: 240px;">
+                  <option selected>In-App + Email</option>
+                  <option>In-App Only</option>
+                  <option>Email Only</option>
+                  <option>Telegram</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Display Preferences -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">Display Preferences</div>
+              <div class="field-row">
+                <div>
+                  <label class="wf-label">Chart Theme</label>
+                  <select class="wf-select" data-wf-type="ddx-select">
+                    <option selected>Dark</option>
+                    <option>Light</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="wf-label">Default Timeframe</label>
+                  <select class="wf-select" data-wf-type="ddx-select">
+                    <option>1m</option>
+                    <option>5m</option>
+                    <option>15m</option>
+                    <option selected>1h</option>
+                    <option>4h</option>
+                    <option>1d</option>
+                  </select>
+                </div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Show Grid Levels on Chart
+                  <span class="sub">Display entry/TP/hedge levels as horizontal lines</span>
+                </div>
+                <div class="toggle-switch on"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Show EMA Overlays
+                  <span class="sub">Display EMA(20) and EMA(50) trend lines</span>
+                </div>
+                <div class="toggle-switch on"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-label">
+                  Compact Tables
+                  <span class="sub">Reduce row height in order/position tables</span>
+                </div>
+                <div class="toggle-switch"></div>
+              </div>
+            </div>
+
+            <!-- API Access -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">API Access</div>
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <label class="wf-label" style="margin-bottom: 0;">API Key</label>
+                <span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 11px;">Active</span>
+              </div>
+              <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <input class="wf-input" type="text" value="gt_live_k7f2...a9x3" style="flex: 1; font-family: monospace; margin-bottom: 0; background: var(--ddx-bg-gray-2);" disabled data-wf-type="ddx-input" />
+                <button class="wf-btn wf-btn-secondary" data-wf-type="ddx-button">Copy</button>
+              </div>
+              <div style="font-size: 12px; color: var(--ddx-gray-5); margin-bottom: 12px;">
+                Created: 14 Jan 2026 &nbsp;|&nbsp; Last used: 20 Mar 2026 &nbsp;|&nbsp; Permissions: read-only
+              </div>
+              <button class="wf-btn wf-btn-secondary" data-wf-type="ddx-button">Regenerate Key</button>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="danger-zone">
+              <div class="danger-zone-title">Danger Zone</div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <div>
+                  <div style="font-weight: 600;">Stop All Strategies</div>
+                  <div style="font-size: 12px; color: var(--ddx-gray-6);">Immediately halt all running bots and cancel open orders</div>
+                </div>
+                <button class="wf-btn wf-btn-danger" data-wf-type="ddx-button">Stop All</button>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: 600;">Delete Account</div>
+                  <div style="font-size: 12px; color: var(--ddx-gray-6);">Permanently remove your account and all associated data</div>
+                </div>
+                <button class="wf-btn wf-btn-danger" data-wf-type="ddx-button">Delete Account</button>
+              </div>
+            </div>
+
+          </div><!-- /wf-content -->
+        </div>
+      </div><!-- /wf-body -->
+    </div>
+  </div>
+</body>
+</html>

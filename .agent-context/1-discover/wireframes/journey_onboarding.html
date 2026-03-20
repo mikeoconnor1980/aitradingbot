@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Journey: New Subscriber Onboarding — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 20px; }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>JOURNEY-001 — New Subscriber Onboarding</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <div style="padding: 32px;">
+      <h1 class="wf-page-title">User Journey: New Subscriber Onboarding</h1>
+      <p style="color: var(--ddx-gray-6); margin-bottom: 24px;">
+        Persona: <strong>New Trader</strong> — Goal: Register, subscribe, connect exchange, configure and activate a grid strategy
+      </p>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+        <!-- Step 1 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">1</div>
+          <div style="font-weight: 600; margin: 8px 0;">Register Account</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">User creates an account with email and password. Email verification required.</div>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--ddx-gray-1);">→</div>
+
+        <!-- Step 2 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">2</div>
+          <div style="font-weight: 600; margin: 8px 0;">Choose Plan</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">Select Basic, Pro, or Enterprise plan. Payment via Stripe. Trading is blocked until plan is active.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_subscription.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--ddx-gray-1);">→</div>
+
+        <!-- Step 3 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">3</div>
+          <div style="font-weight: 600; margin: 8px 0;">Connect Exchange</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">Enter Hyperliquid wallet address and private key. System verifies with a read-only balance check.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_exchange_connection.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--ddx-gray-1);">→</div>
+
+        <!-- Step 4 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">4</div>
+          <div style="font-weight: 600; margin: 8px 0;">Create Strategy</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">Create a new GridStrategy instance. Name it and set initial parameters: grid levels, spacing, EMA filters.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_strategy_config.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; margin-top: 16px;">
+        <!-- Step 5 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">5</div>
+          <div style="font-weight: 600; margin: 8px 0;">Review &amp; Activate</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">Review the JSON config preview and grid visualisation. Validation checks pass. Activate the strategy.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_strategy_config.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--ddx-gray-1);">→</div>
+
+        <!-- Step 6 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">6</div>
+          <div style="font-weight: 600; margin: 8px 0;">Monitor Dashboard</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">Bot starts monitoring candle closes. Dashboard shows chart, positions, orders, signals, and bot state in real time.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_dashboard.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--ddx-gray-1);">→</div>
+
+        <!-- Step 7 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">7</div>
+          <div style="font-weight: 600; margin: 8px 0;">Grid Deployed</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">When 4H trend and 1H bias confirm bullish conditions and 15m pullback triggers, grid orders are placed automatically.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_dashboard.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; font-size: 24px; color: var(--ddx-gray-1);">→</div>
+
+        <!-- Step 8 -->
+        <div class="wf-card" style="width: 220px; text-align: center;">
+          <div style="font-size: 28px; color: var(--ddx-primary-green-2); font-weight: 700;">8</div>
+          <div style="font-weight: 600; margin: 8px 0;">Track PnL</div>
+          <div style="font-size: 12px; color: var(--ddx-gray-5);">Positions fill, take profits hit. Unrealised and realised PnL tracked on dashboard. Iterate on strategy config as needed.</div>
+          <div style="margin-top: 8px;">
+            <a href="mockup_dashboard.html" style="font-size: 12px; color: var(--ddx-primary-green-2);">View mockup →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lifecycle notes -->
+      <div style="margin-top: 32px; padding: 16px; background: var(--ddx-info-bg); border: 1px solid var(--ddx-primary-blue);">
+        <div style="font-weight: 700; margin-bottom: 8px;">Key Journey Notes</div>
+        <ul style="margin-left: 20px; font-size: 13px; color: var(--ddx-gray-7); display: flex; flex-direction: column; gap: 4px;">
+          <li>Trading is blocked if subscription is expired or paused</li>
+          <li>Exchange keys are encrypted at rest — never stored in plain text</li>
+          <li>Strategy execution is deterministic — only on confirmed candle closes</li>
+          <li>All orders pass through the RiskEngine before reaching the exchange</li>
+          <li>The LLM provides sentiment context signals but never places trades</li>
+          <li>Users can pause or deactivate strategies at any time from the dashboard</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

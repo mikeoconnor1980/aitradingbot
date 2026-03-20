@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Dashboard — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000;
+      --ddx-white: #ffffff;
+      --ddx-red: #da291c;
+      --ddx-orange: #ed8b00;
+      --ddx-yellow: #ffcd00;
+      --ddx-deloitte-green: #86bc25;
+      --ddx-primary-green-1: #43b02a;
+      --ddx-primary-green-2: #26890d;
+      --ddx-primary-green-3: #046a38;
+      --ddx-primary-teal: #0d8390;
+      --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce;
+      --ddx-gray-2: #bbbcbc;
+      --ddx-gray-3: #a7a8aa;
+      --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b;
+      --ddx-gray-6: #63666a;
+      --ddx-gray-7: #53565a;
+      --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa;
+      --ddx-bg-gray-2: #f5f5f5;
+      --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde;
+      --ddx-info-bg: #d9ebf3;
+      --ddx-warning-bg: #f6ecdd;
+      --ddx-error-bg: #f3e1e0;
+      --ddx-banner-success-bg: #f4f9f3;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Open Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      background: var(--ddx-bg-gray-2);
+      color: var(--ddx-black);
+      padding: 24px;
+    }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-header .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ddx-gray-7); color: var(--ddx-white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .wf-sidebar { width: 220px; min-width: 220px; background: var(--ddx-black); color: var(--ddx-white); font-size: 14px; padding: 0; }
+    .wf-sidebar .nav-item { padding: 10px 16px; border-left: 4px solid var(--ddx-black); cursor: pointer; color: var(--ddx-white); font-weight: 400; }
+    .wf-sidebar .nav-item:hover { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-item.active { background: var(--ddx-primary-green-2); border-left-color: var(--ddx-primary-green-2); font-weight: 700; color: var(--ddx-white); }
+    .wf-body { display: flex; min-height: 700px; }
+    .wf-content { flex: 1; padding: 24px; }
+    .wf-page-header { background: var(--ddx-gray-8); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-page-header .wf-breadcrumb { color: var(--ddx-gray-3); margin-bottom: 8px; font-size: 12px; }
+    .wf-page-header .wf-breadcrumb a { color: var(--ddx-primary-green-2); text-decoration: none; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 0; color: var(--ddx-white); }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .wf-card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .wf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .wf-table th { background: var(--ddx-white); text-align: left; padding: 0 16px; height: 44px; border-bottom: 0.8px solid var(--ddx-gray-1); font-weight: 700; font-size: 13px; color: var(--ddx-gray-7); }
+    .wf-table td { padding: 0 16px; height: 49px; border-bottom: 0.8px solid var(--ddx-gray-1); color: var(--ddx-black); line-height: 49px; }
+    .wf-table tr:hover td { background: var(--ddx-bg-gray-1); }
+    .wf-badge { display: inline-block; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+    .wf-badge-rounded { border-radius: 4px; }
+    .wf-badge-success { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .wf-badge-warning { background: var(--ddx-warning-bg); color: #896129; border: 0.8px solid var(--ddx-warning-bg); }
+    .wf-badge-error { background: var(--ddx-error-bg); color: var(--ddx-red); border: 0.8px solid var(--ddx-error-bg); }
+    .wf-badge-info { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+    .wf-badge-neutral { background: var(--ddx-bg-gray-2); color: var(--ddx-gray-6); border: 0.8px solid var(--ddx-bg-gray-2); }
+    .wf-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+    .wf-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .wf-status-dot.success { background: var(--ddx-primary-green-2); }
+    .wf-status-dot.warning { background: var(--ddx-orange); }
+    .wf-status-dot.error { background: var(--ddx-red); }
+    .wf-status-dot.neutral { background: var(--ddx-gray-4); }
+    .wf-grid { display: grid; gap: 16px; }
+    .wf-grid-2 { grid-template-columns: 1fr 1fr; }
+    .wf-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .wf-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .wf-placeholder { background: var(--ddx-bg-gray-2); border: 2px dashed var(--ddx-gray-1); padding: 24px; text-align: center; color: var(--ddx-gray-4); font-size: 13px; }
+    .wf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--ddx-gray-1); margin-bottom: 16px; }
+    .wf-tab { padding: 8px 12px; font-size: 14px; cursor: pointer; position: relative; color: var(--ddx-black); }
+    .wf-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--ddx-primary-green-2); }
+    .wf-banner { padding: 12px 16px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .wf-banner-success { background: var(--ddx-banner-success-bg); color: var(--ddx-primary-green-2); border-bottom: 0.8px solid var(--ddx-primary-green-2); }
+
+    /* Custom: KPI stat card */
+    .kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
+    .kpi-label { font-size: 12px; color: var(--ddx-gray-5); margin-top: 4px; }
+    .kpi-positive { color: var(--ddx-primary-green-2); }
+    .kpi-negative { color: var(--ddx-red); }
+
+    /* Chart */
+    .chart-container { background: #131722; position: relative; height: 380px; overflow: hidden; }
+    .chart-plot { position: absolute; left: 0; top: 0; right: 60px; bottom: 28px; }
+    .chart-y-axis { position: absolute; right: 0; top: 0; bottom: 28px; width: 60px; display: flex; flex-direction: column; justify-content: space-between; padding: 8px 6px; font-size: 10px; color: #787b86; border-left: 1px solid #2a2e39; background: #131722; }
+    .chart-x-axis { position: absolute; left: 0; right: 60px; bottom: 0; height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 12px; font-size: 10px; color: #787b86; border-top: 1px solid #2a2e39; background: #131722; }
+    /* Grid lines */
+    .chart-hline { position: absolute; left: 0; right: 0; height: 1px; border-bottom: 1px dashed rgba(255,255,255,0.06); }
+    /* Strategy levels */
+    .chart-level { position: absolute; left: 0; right: 0; height: 0; display: flex; align-items: center; }
+    .chart-level .level-line { flex: 1; height: 1px; }
+    .chart-level .level-tag { font-size: 9px; font-weight: 600; padding: 1px 5px; white-space: nowrap; position: absolute; right: 4px; }
+    .level-tp .level-line { background: repeating-linear-gradient(90deg, #26890d 0, #26890d 6px, transparent 6px, transparent 10px); }
+    .level-tp .level-tag { background: #26890d; color: #fff; }
+    .level-grid .level-line { background: repeating-linear-gradient(90deg, #2962ff 0, #2962ff 4px, transparent 4px, transparent 8px); }
+    .level-grid .level-tag { background: #2962ff; color: #fff; }
+    .level-hedge .level-line { background: repeating-linear-gradient(90deg, #da291c 0, #da291c 4px, transparent 4px, transparent 8px); }
+    .level-hedge .level-tag { background: #da291c; color: #fff; }
+    /* Candles — each bar positioned absolutely */
+    .candle { position: absolute; bottom: 0; width: 14px; }
+    .candle .wick { position: absolute; left: 50%; width: 1px; transform: translateX(-50%); }
+    .candle .body { position: absolute; left: 2px; right: 2px; min-height: 2px; }
+    .candle.bull .body { background: #26a69a; } .candle.bull .wick { background: #26a69a; }
+    .candle.bear .body { background: #ef5350; } .candle.bear .wick { background: #ef5350; }
+    /* EMA overlay */
+    .chart-ema { position: absolute; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; }
+    /* Crosshair current price */
+    .chart-price-marker { position: absolute; right: 0; background: #26a69a; color: #fff; font-size: 10px; font-weight: 600; padding: 2px 6px; transform: translateY(-50%); z-index: 5; }
+    /* Volume bars */
+    .vol-bar { position: absolute; bottom: 0; width: 14px; opacity: 0.3; }
+    .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>FEATURE-001 — Trading Dashboard</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <!-- App Header -->
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">AI Trading Platform</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_dashboard.html">Dashboard</a>
+        <a href="mockup_strategy_list.html">Strategies</a>
+        <a href="mockup_settings.html">Settings</a>
+        <a href="mockup_admin_dashboard.html" style="font-size: 11px; color: var(--ddx-gray-4);">Admin</a>
+        <div class="avatar">JD</div>
+      </div>
+    </div>
+
+    <div class="wf-body">
+      <!-- Sidebar -->
+      <div class="wf-sidebar" data-wf-type="ddx-sidebar">
+        <a class="nav-item active" href="mockup_dashboard.html">Dashboard</a>
+        <a class="nav-item" href="mockup_strategy_list.html">Strategies</a>
+        <a class="nav-item" href="mockup_positions.html">Positions</a>
+        <a class="nav-item" href="mockup_order_history.html">Order History</a>
+        <a class="nav-item" href="mockup_signals.html">Signals</a>
+        <a class="nav-item" href="mockup_exchange_connection.html">Exchange Keys</a>
+        <a class="nav-item" href="mockup_subscription.html">Subscription</a>
+        <a class="nav-item" href="mockup_settings.html">Settings</a>
+      </div>
+
+      <div style="flex: 1;">
+        <!-- Page Header -->
+        <div class="wf-page-header">
+          <div class="wf-breadcrumb"><a>Home</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span> Dashboard</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 class="wf-page-title">Trading Dashboard</h1>
+            <div class="wf-status" style="color: var(--ddx-white);">
+              <span class="wf-status-dot success"></span> Bot Running
+            </div>
+          </div>
+        </div>
+
+        <!-- Banner -->
+        <div class="wf-banner wf-banner-success" data-wf-type="ddx-alert">
+          <span>Strategy "BTC Grid Alpha" is active — monitoring 15m candles on BTC-USD</span>
+          <span style="font-size: 12px;">Last signal: 14:45 UTC</span>
+        </div>
+
+        <div class="wf-content">
+          <!-- KPI Row -->
+          <div class="wf-grid wf-grid-4" style="margin-bottom: 24px;">
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value kpi-positive">+$1,247.83</div>
+              <div class="kpi-label">Unrealised PnL</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value kpi-positive">+$4,892.50</div>
+              <div class="kpi-label">Realised PnL (30d)</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value">3 / 4</div>
+              <div class="kpi-label">Grid Levels Filled</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value">1.4x</div>
+              <div class="kpi-label">Current Exposure</div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="wf-card" data-wf-type="ddx-card" style="padding: 0; overflow: hidden;">
+            <div style="padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--ddx-gray-1);">
+              <div>
+                <span style="font-weight: 700;">BTC-USD</span>
+                <span style="color: var(--ddx-gray-5); margin-left: 8px;">$67,423.50</span>
+                <span style="color: var(--ddx-primary-green-2); margin-left: 8px; font-size: 13px;">+2.14%</span>
+              </div>
+              <div class="wf-tabs" style="border: none; margin: 0;">
+                <div class="wf-tab">15m</div>
+                <div class="wf-tab active">1H</div>
+                <div class="wf-tab">4H</div>
+              </div>
+            </div>
+            <div class="chart-container" data-wf-type="placeholder">
+              <div class="chart-plot">
+                <!-- Horizontal grid lines -->
+                <div class="chart-hline" style="top: 5%;"></div>
+                <div class="chart-hline" style="top: 20%;"></div>
+                <div class="chart-hline" style="top: 35%;"></div>
+                <div class="chart-hline" style="top: 50%;"></div>
+                <div class="chart-hline" style="top: 65%;"></div>
+                <div class="chart-hline" style="top: 80%;"></div>
+                <div class="chart-hline" style="top: 95%;"></div>
+
+                <!-- Strategy grid levels (mapped to price range $65,500-$68,500 = 3000 range, bottom=65500) -->
+                <!-- TP $68,100 => (68100-65500)/3000 = 86.7% from bottom => top: 13.3% -->
+                <div class="chart-level level-tp" style="top: 13.3%;">
+                  <div class="level-line"></div>
+                  <span class="level-tag">TP $68,100</span>
+                </div>
+                <!-- Grid L1 $67,650 => (67650-65500)/3000 = 71.7% => top: 28.3% -->
+                <div class="chart-level level-grid" style="top: 28.3%;">
+                  <div class="level-line"></div>
+                  <span class="level-tag">L1 $67,650</span>
+                </div>
+                <!-- Grid L2 $67,180 => (67180-65500)/3000 = 56% => top: 44% -->
+                <div class="chart-level level-grid" style="top: 44%;">
+                  <div class="level-line"></div>
+                  <span class="level-tag">L2 $67,180</span>
+                </div>
+                <!-- Grid L3 $66,710 => (66710-65500)/3000 = 40.3% => top: 59.7% -->
+                <div class="chart-level level-grid" style="top: 59.7%;">
+                  <div class="level-line"></div>
+                  <span class="level-tag">L3 $66,710</span>
+                </div>
+                <!-- Grid L4 $66,240 => (66240-65500)/3000 = 24.7% => top: 75.3% -->
+                <div class="chart-level level-grid" style="top: 75.3%;">
+                  <div class="level-line"></div>
+                  <span class="level-tag">L4 $66,240</span>
+                </div>
+                <!-- Hedge $65,900 => (65900-65500)/3000 = 13.3% => top: 86.7% -->
+                <div class="chart-level level-hedge" style="top: 86.7%;">
+                  <div class="level-line"></div>
+                  <span class="level-tag">Hedge $65,900</span>
+                </div>
+
+                <!-- Volume bars (subtle, at bottom of chart) -->
+                <div class="vol-bar" style="left: 18px; height: 12%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 36px; height: 8%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 54px; height: 15%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 72px; height: 10%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 90px; height: 18%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 108px; height: 22%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 126px; height: 14%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 144px; height: 9%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 162px; height: 11%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 180px; height: 20%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 198px; height: 25%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 216px; height: 30%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 234px; height: 16%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 252px; height: 12%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 270px; height: 19%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 288px; height: 14%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 306px; height: 10%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 324px; height: 8%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 342px; height: 13%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 360px; height: 17%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 378px; height: 21%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 396px; height: 11%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 414px; height: 15%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 432px; height: 9%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 450px; height: 12%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 468px; height: 7%; background: #ef5350;"></div>
+                <div class="vol-bar" style="left: 486px; height: 14%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 504px; height: 10%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 522px; height: 16%; background: #26a69a;"></div>
+                <div class="vol-bar" style="left: 540px; height: 11%; background: #26a69a;"></div>
+
+                <!-- Candlesticks — 30 candles showing a pullback into grid then recovery -->
+                <!-- Price range: $65,500 (bottom 0%) to $68,500 (top 100%). Each 1% = $30 -->
+                <!-- Candle format: bottom offset = (open or close low - 65500)/3000 * 100, body height, wick -->
+
+                <!-- Candles 1-5: uptrend high around $68,200 -->
+                <div class="candle bull" style="left: 18px;">
+                  <div class="wick" style="bottom: 82%; height: 8%;"></div>
+                  <div class="body" style="bottom: 84%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 36px;">
+                  <div class="wick" style="bottom: 84%; height: 7%;"></div>
+                  <div class="body" style="bottom: 85%; height: 4%;"></div>
+                </div>
+                <div class="candle bear" style="left: 54px;">
+                  <div class="wick" style="bottom: 83%; height: 8%;"></div>
+                  <div class="body" style="bottom: 84%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 72px;">
+                  <div class="wick" style="bottom: 85%; height: 6%;"></div>
+                  <div class="body" style="bottom: 86%; height: 3%;"></div>
+                </div>
+                <div class="candle bear" style="left: 90px;">
+                  <div class="wick" style="bottom: 82%; height: 9%;"></div>
+                  <div class="body" style="bottom: 84%; height: 5%;"></div>
+                </div>
+
+                <!-- Candles 6-10: start of pullback -->
+                <div class="candle bear" style="left: 108px;">
+                  <div class="wick" style="bottom: 78%; height: 10%;"></div>
+                  <div class="body" style="bottom: 79%; height: 7%;"></div>
+                </div>
+                <div class="candle bear" style="left: 126px;">
+                  <div class="wick" style="bottom: 72%; height: 10%;"></div>
+                  <div class="body" style="bottom: 74%; height: 6%;"></div>
+                </div>
+                <div class="candle bull" style="left: 144px;">
+                  <div class="wick" style="bottom: 70%; height: 8%;"></div>
+                  <div class="body" style="bottom: 71%; height: 4%;"></div>
+                </div>
+                <div class="candle bear" style="left: 162px;">
+                  <div class="wick" style="bottom: 66%; height: 9%;"></div>
+                  <div class="body" style="bottom: 68%; height: 5%;"></div>
+                </div>
+                <div class="candle bear" style="left: 180px;">
+                  <div class="wick" style="bottom: 58%; height: 12%;"></div>
+                  <div class="body" style="bottom: 60%; height: 8%;"></div>
+                </div>
+
+                <!-- Candles 11-15: deep pullback into grid levels -->
+                <div class="candle bear" style="left: 198px;">
+                  <div class="wick" style="bottom: 48%; height: 14%;"></div>
+                  <div class="body" style="bottom: 50%; height: 10%;"></div>
+                </div>
+                <div class="candle bear" style="left: 216px;">
+                  <div class="wick" style="bottom: 38%; height: 16%;"></div>
+                  <div class="body" style="bottom: 40%; height: 12%;"></div>
+                </div>
+                <div class="candle bull" style="left: 234px;">
+                  <div class="wick" style="bottom: 34%; height: 12%;"></div>
+                  <div class="body" style="bottom: 36%; height: 6%;"></div>
+                </div>
+                <div class="candle bull" style="left: 252px;">
+                  <div class="wick" style="bottom: 37%; height: 10%;"></div>
+                  <div class="body" style="bottom: 38%; height: 6%;"></div>
+                </div>
+                <div class="candle bull" style="left: 270px;">
+                  <div class="wick" style="bottom: 40%; height: 10%;"></div>
+                  <div class="body" style="bottom: 42%; height: 5%;"></div>
+                </div>
+
+                <!-- Candles 16-20: bouncing off grid levels, recovery begins -->
+                <div class="candle bull" style="left: 288px;">
+                  <div class="wick" style="bottom: 43%; height: 9%;"></div>
+                  <div class="body" style="bottom: 44%; height: 6%;"></div>
+                </div>
+                <div class="candle bear" style="left: 306px;">
+                  <div class="wick" style="bottom: 44%; height: 8%;"></div>
+                  <div class="body" style="bottom: 46%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 324px;">
+                  <div class="wick" style="bottom: 46%; height: 9%;"></div>
+                  <div class="body" style="bottom: 48%; height: 5%;"></div>
+                </div>
+                <div class="candle bull" style="left: 342px;">
+                  <div class="wick" style="bottom: 50%; height: 8%;"></div>
+                  <div class="body" style="bottom: 52%; height: 5%;"></div>
+                </div>
+                <div class="candle bull" style="left: 360px;">
+                  <div class="wick" style="bottom: 54%; height: 9%;"></div>
+                  <div class="body" style="bottom: 56%; height: 5%;"></div>
+                </div>
+
+                <!-- Candles 21-25: recovery rally -->
+                <div class="candle bull" style="left: 378px;">
+                  <div class="wick" style="bottom: 57%; height: 9%;"></div>
+                  <div class="body" style="bottom: 58%; height: 6%;"></div>
+                </div>
+                <div class="candle bear" style="left: 396px;">
+                  <div class="wick" style="bottom: 58%; height: 8%;"></div>
+                  <div class="body" style="bottom: 60%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 414px;">
+                  <div class="wick" style="bottom: 60%; height: 8%;"></div>
+                  <div class="body" style="bottom: 62%; height: 5%;"></div>
+                </div>
+                <div class="candle bull" style="left: 432px;">
+                  <div class="wick" style="bottom: 63%; height: 7%;"></div>
+                  <div class="body" style="bottom: 64%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 450px;">
+                  <div class="wick" style="bottom: 64%; height: 8%;"></div>
+                  <div class="body" style="bottom: 66%; height: 4%;"></div>
+                </div>
+
+                <!-- Candles 26-30: current area around $67,400 -->
+                <div class="candle bear" style="left: 468px;">
+                  <div class="wick" style="bottom: 62%; height: 7%;"></div>
+                  <div class="body" style="bottom: 63%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 486px;">
+                  <div class="wick" style="bottom: 62%; height: 8%;"></div>
+                  <div class="body" style="bottom: 63%; height: 5%;"></div>
+                </div>
+                <div class="candle bull" style="left: 504px;">
+                  <div class="wick" style="bottom: 64%; height: 7%;"></div>
+                  <div class="body" style="bottom: 65%; height: 4%;"></div>
+                </div>
+                <div class="candle bull" style="left: 522px;">
+                  <div class="wick" style="bottom: 63%; height: 8%;"></div>
+                  <div class="body" style="bottom: 64%; height: 5%;"></div>
+                </div>
+                <div class="candle bull" style="left: 540px;">
+                  <div class="wick" style="bottom: 62%; height: 9%;"></div>
+                  <div class="body" style="bottom: 64%; height: 5%;"></div>
+                </div>
+
+                <!-- EMA(20) line as SVG polyline -->
+                <svg class="chart-ema" viewBox="0 0 570 352" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                  <polyline fill="none" stroke="#f7a600" stroke-width="1.5" opacity="0.8"
+                    points="25,46 43,42 61,49 79,40 97,53 115,70 133,88 151,98 169,107 187,128 205,158 223,188 241,210 259,204 277,196 295,190 313,185 331,178 349,168 367,155 385,146 403,140 421,134 439,128 457,122 475,130 493,128 511,124 529,126 547,125"/>
+                  <polyline fill="none" stroke="#2962ff" stroke-width="1" opacity="0.5" stroke-dasharray="4 3"
+                    points="25,38 43,36 61,40 79,35 97,42 115,55 133,68 151,78 169,88 187,108 205,132 223,158 241,178 259,178 277,174 295,172 313,170 331,166 349,160 367,152 385,148 403,144 421,140 439,136 457,132 475,136 493,134 511,130 529,132 547,130"/>
+                </svg>
+
+                <!-- Current price marker -->
+                <div class="chart-price-marker" style="top: 33%;">$67,424</div>
+
+              </div>
+
+              <!-- Y-axis price scale -->
+              <div class="chart-y-axis">
+                <span>$68,500</span>
+                <span>$68,000</span>
+                <span>$67,500</span>
+                <span>$67,000</span>
+                <span>$66,500</span>
+                <span>$66,000</span>
+                <span>$65,500</span>
+              </div>
+
+              <!-- X-axis time scale -->
+              <div class="chart-x-axis">
+                <span>07:00</span>
+                <span>08:00</span>
+                <span>09:00</span>
+                <span>10:00</span>
+                <span>11:00</span>
+                <span>12:00</span>
+                <span>13:00</span>
+                <span>14:00</span>
+                <span>14:45</span>
+              </div>
+
+              <!-- Legend -->
+              <div style="position: absolute; top: 8px; left: 12px; display: flex; gap: 16px; font-size: 10px; z-index: 4;">
+                <span style="color: #f7a600;">— EMA(20)</span>
+                <span style="color: #2962ff;">- - EMA(50)</span>
+                <span style="color: #26a69a;">■ Bull</span>
+                <span style="color: #ef5350;">■ Bear</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Positions & Orders -->
+          <div class="wf-grid wf-grid-2">
+            <!-- Open Positions -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">Open Positions</div>
+              <table class="wf-table" data-wf-type="ddx-table">
+                <thead>
+                  <tr><th>Symbol</th><th>Side</th><th>Size</th><th>Entry</th><th>PnL</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>BTC-USD</td>
+                    <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Long</span></td>
+                    <td>0.15 BTC</td>
+                    <td>$67,180</td>
+                    <td style="color: var(--ddx-primary-green-2);">+$36.52</td>
+                  </tr>
+                  <tr>
+                    <td>BTC-USD</td>
+                    <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Long</span></td>
+                    <td>0.15 BTC</td>
+                    <td>$66,710</td>
+                    <td style="color: var(--ddx-primary-green-2);">+$107.03</td>
+                  </tr>
+                  <tr>
+                    <td>BTC-USD</td>
+                    <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Long</span></td>
+                    <td>0.15 BTC</td>
+                    <td>$66,240</td>
+                    <td style="color: var(--ddx-primary-green-2);">+$177.52</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Recent Orders -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">Recent Orders</div>
+              <table class="wf-table" data-wf-type="ddx-table">
+                <thead>
+                  <tr><th>Time</th><th>Type</th><th>Side</th><th>Price</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>14:45</td>
+                    <td>Limit</td>
+                    <td>Buy</td>
+                    <td>$67,650</td>
+                    <td><span class="wf-badge wf-badge-rounded wf-badge-info" style="padding: 2px 8px; font-size: 12px;">Open</span></td>
+                  </tr>
+                  <tr>
+                    <td>14:30</td>
+                    <td>Limit</td>
+                    <td>Buy</td>
+                    <td>$67,180</td>
+                    <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  </tr>
+                  <tr>
+                    <td>13:15</td>
+                    <td>Limit</td>
+                    <td>Buy</td>
+                    <td>$66,710</td>
+                    <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Signals -->
+          <div class="wf-card" data-wf-type="ddx-card">
+            <div class="wf-card-title">Active Signals</div>
+            <table class="wf-table" data-wf-type="ddx-table">
+              <thead>
+                <tr><th>Time</th><th>Signal</th><th>Timeframe</th><th>Direction</th><th>Details</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>14:00</td>
+                  <td>DeployGrid</td>
+                  <td>15m</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Long</span></td>
+                  <td>4 levels @ 0.35% spacing from $67,650</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Active</span></td>
+                </tr>
+                <tr>
+                  <td>12:00</td>
+                  <td>TrendFilter</td>
+                  <td>4H</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Bullish</span></td>
+                  <td>EMA(20) > EMA(50) > EMA(200), Price above all EMAs</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Confirmed</span></td>
+                </tr>
+                <tr>
+                  <td>13:00</td>
+                  <td>BiasFilter</td>
+                  <td>1H</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Bullish</span></td>
+                  <td>RSI: 58.3, Price > VWAP, Momentum positive</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Confirmed</span></td>
+                </tr>
+                <tr>
+                  <td>14:00</td>
+                  <td>OpenHedge</td>
+                  <td>15m</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error" style="padding: 2px 8px; font-size: 12px;">Short</span></td>
+                  <td>Hedge trigger at $65,900 (-0.3% from grid bottom)</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-neutral" style="padding: 2px 8px; font-size: 12px;">Pending</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Bot State -->
+          <div class="wf-card" data-wf-type="ddx-card">
+            <div class="wf-card-title">Bot State</div>
+            <div class="wf-grid wf-grid-3">
+              <div>
+                <div class="kpi-label">Status</div>
+                <div class="wf-status" style="margin-top: 4px;"><span class="wf-status-dot success"></span> Running</div>
+              </div>
+              <div>
+                <div class="kpi-label">Active Strategy</div>
+                <div style="font-weight: 600; margin-top: 4px;">BTC Grid Alpha</div>
+              </div>
+              <div>
+                <div class="kpi-label">Grid State</div>
+                <div style="font-weight: 600; margin-top: 4px;">Deployed — 3/4 filled</div>
+              </div>
+              <div>
+                <div class="kpi-label">Last Candle Processed</div>
+                <div style="font-weight: 600; margin-top: 4px;">15m @ 14:45 UTC</div>
+              </div>
+              <div>
+                <div class="kpi-label">Next Scheduled Check</div>
+                <div style="font-weight: 600; margin-top: 4px;">15:00 UTC</div>
+              </div>
+              <div>
+                <div class="kpi-label">Subscription</div>
+                <div style="margin-top: 4px;"><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Pro — Active</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

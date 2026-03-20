@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order History — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd; --ddx-error-bg: #f3e1e0;
+      --ddx-banner-success-bg: #f4f9f3;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-header .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ddx-gray-7); color: var(--ddx-white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .wf-sidebar { width: 220px; min-width: 220px; background: var(--ddx-black); color: var(--ddx-white); font-size: 14px; padding: 0; }
+    .wf-sidebar .nav-item { padding: 10px 16px; border-left: 4px solid var(--ddx-black); cursor: pointer; color: var(--ddx-white); font-weight: 400; }
+    .wf-sidebar .nav-item:hover { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-item.active { background: var(--ddx-primary-green-2); border-left-color: var(--ddx-primary-green-2); font-weight: 700; color: var(--ddx-white); }
+    .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
+    .wf-body { display: flex; min-height: 600px; }
+    .wf-content { flex: 1; padding: 24px; }
+    .wf-page-header { background: var(--ddx-gray-8); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-page-header .wf-breadcrumb { color: var(--ddx-gray-3); margin-bottom: 8px; font-size: 12px; }
+    .wf-page-header .wf-breadcrumb a { color: var(--ddx-primary-green-2); text-decoration: none; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 0; color: var(--ddx-white); }
+    .wf-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; height: 32px; font-size: 14px; font-weight: 400; font-family: 'Open Sans', sans-serif; border: none; cursor: pointer; margin-right: 8px; color: var(--ddx-white); }
+    .wf-btn-primary { background: var(--ddx-primary-green-2); }
+    .wf-btn-secondary { background: var(--ddx-gray-7); }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .wf-card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .wf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .wf-table th { background: var(--ddx-white); text-align: left; padding: 0 16px; height: 44px; border-bottom: 0.8px solid var(--ddx-gray-1); font-weight: 700; font-size: 13px; color: var(--ddx-gray-7); }
+    .wf-table td { padding: 0 16px; height: 49px; border-bottom: 0.8px solid var(--ddx-gray-1); color: var(--ddx-black); line-height: 49px; }
+    .wf-table tr:hover td { background: var(--ddx-bg-gray-1); }
+    .wf-badge { display: inline-block; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+    .wf-badge-rounded { border-radius: 4px; }
+    .wf-badge-success { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .wf-badge-error { background: var(--ddx-error-bg); color: var(--ddx-red); border: 0.8px solid var(--ddx-red); }
+    .wf-badge-info { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+    .wf-badge-neutral { background: var(--ddx-bg-gray-2); color: var(--ddx-gray-6); border: 0.8px solid var(--ddx-bg-gray-2); }
+    .wf-badge-warning { background: var(--ddx-warning-bg); color: #896129; border: 0.8px solid var(--ddx-warning-bg); }
+    .wf-grid { display: grid; gap: 16px; }
+    .wf-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .wf-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--ddx-gray-1); margin-bottom: 16px; }
+    .wf-tab { padding: 8px 12px; font-size: 14px; cursor: pointer; position: relative; color: var(--ddx-black); }
+    .wf-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--ddx-primary-green-2); }
+    .wf-input { display: block; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; }
+    .wf-select { display: block; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; appearance: auto; }
+    .kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
+    .kpi-label { font-size: 12px; color: var(--ddx-gray-5); margin-top: 4px; }
+    .kpi-positive { color: var(--ddx-primary-green-2); }
+    .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .pagination { display: flex; gap: 4px; align-items: center; justify-content: flex-end; margin-top: 12px; font-size: 13px; }
+    .pagination span { padding: 4px 10px; cursor: pointer; }
+    .pagination span.active { background: var(--ddx-primary-green-2); color: var(--ddx-white); }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>FEATURE — Order History</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">AI Trading Platform</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_dashboard.html">Dashboard</a>
+        <a href="mockup_strategy_list.html">Strategies</a>
+        <a href="mockup_settings.html">Settings</a>
+        <a href="mockup_admin_dashboard.html" style="font-size: 11px; color: var(--ddx-gray-4);">Admin</a>
+        <div class="avatar">JD</div>
+      </div>
+    </div>
+
+    <div class="wf-body">
+      <div class="wf-sidebar" data-wf-type="ddx-sidebar">
+        <a class="nav-item" href="mockup_dashboard.html">Dashboard</a>
+        <a class="nav-item" href="mockup_strategy_list.html">Strategies</a>
+        <a class="nav-item" href="mockup_positions.html">Positions</a>
+        <a class="nav-item active" href="mockup_order_history.html">Order History</a>
+        <a class="nav-item" href="mockup_signals.html">Signals</a>
+        <a class="nav-item" href="mockup_exchange_connection.html">Exchange Keys</a>
+        <a class="nav-item" href="mockup_subscription.html">Subscription</a>
+        <a class="nav-item" href="mockup_settings.html">Settings</a>
+      </div>
+
+      <div style="flex: 1;">
+        <div class="wf-page-header">
+          <div class="wf-breadcrumb"><a href="mockup_dashboard.html">Home</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span> Order History</div>
+          <h1 class="wf-page-title">Order History</h1>
+        </div>
+
+        <div class="wf-content">
+          <!-- KPI Summary -->
+          <div class="wf-grid wf-grid-4" style="margin-bottom: 24px;">
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value">147</div>
+              <div class="kpi-label">Total Orders (30d)</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value kpi-positive">132</div>
+              <div class="kpi-label">Filled</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value" style="color: var(--ddx-primary-blue);">8</div>
+              <div class="kpi-label">Open</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value" style="color: var(--ddx-gray-5);">7</div>
+              <div class="kpi-label">Cancelled</div>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="filter-bar">
+            <select class="wf-select" data-wf-type="ddx-select">
+              <option>All Strategies</option>
+              <option selected>BTC Grid Alpha</option>
+              <option>ETH Conservative</option>
+            </select>
+            <select class="wf-select" data-wf-type="ddx-select">
+              <option selected>All Statuses</option>
+              <option>Filled</option>
+              <option>Open</option>
+              <option>Cancelled</option>
+            </select>
+            <select class="wf-select" data-wf-type="ddx-select">
+              <option>All Sides</option>
+              <option selected>Buy</option>
+              <option>Sell</option>
+            </select>
+            <select class="wf-select" data-wf-type="ddx-select">
+              <option selected>Last 30 days</option>
+              <option>Last 7 days</option>
+              <option>Today</option>
+              <option>Custom...</option>
+            </select>
+            <button class="wf-btn wf-btn-secondary" style="height: 32px; font-size: 13px;">Export CSV</button>
+          </div>
+
+          <!-- Orders Table -->
+          <div class="wf-card" data-wf-type="ddx-card" style="padding: 0;">
+            <table class="wf-table" data-wf-type="ddx-table">
+              <thead>
+                <tr>
+                  <th>Date / Time</th>
+                  <th>Symbol</th>
+                  <th>Strategy</th>
+                  <th>Type</th>
+                  <th>Side</th>
+                  <th>Price</th>
+                  <th>Size</th>
+                  <th>Filled</th>
+                  <th>Status</th>
+                  <th>Grid Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>20 Mar 14:45</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Buy</td>
+                  <td>$67,650</td>
+                  <td>0.15 BTC</td>
+                  <td>0.00</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info" style="padding: 2px 8px; font-size: 12px;">Open</span></td>
+                  <td>L1</td>
+                </tr>
+                <tr>
+                  <td>20 Mar 14:30</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Buy</td>
+                  <td>$67,180</td>
+                  <td>0.15 BTC</td>
+                  <td>0.15</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  <td>L2</td>
+                </tr>
+                <tr>
+                  <td>20 Mar 13:15</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Buy</td>
+                  <td>$66,710</td>
+                  <td>0.15 BTC</td>
+                  <td>0.15</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  <td>L3</td>
+                </tr>
+                <tr>
+                  <td>20 Mar 12:00</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Buy</td>
+                  <td>$66,240</td>
+                  <td>0.15 BTC</td>
+                  <td>0.15</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  <td>L4</td>
+                </tr>
+                <tr>
+                  <td>20 Mar 11:45</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Sell</td>
+                  <td>$68,100</td>
+                  <td>0.60 BTC</td>
+                  <td>0.00</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info" style="padding: 2px 8px; font-size: 12px;">Open</span></td>
+                  <td>TP</td>
+                </tr>
+                <tr>
+                  <td>19 Mar 22:30</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Buy</td>
+                  <td>$65,900</td>
+                  <td>0.30 BTC</td>
+                  <td>0.00</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-neutral" style="padding: 2px 8px; font-size: 12px;">Cancelled</span></td>
+                  <td>Hedge</td>
+                </tr>
+                <tr>
+                  <td>19 Mar 18:15</td>
+                  <td style="font-weight: 600;">ETH-USD</td>
+                  <td>ETH Conservative</td>
+                  <td>Limit</td>
+                  <td>Buy</td>
+                  <td>$3,450</td>
+                  <td>2.0 ETH</td>
+                  <td>2.0</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  <td>L1</td>
+                </tr>
+                <tr>
+                  <td>19 Mar 16:00</td>
+                  <td style="font-weight: 600;">BTC-USD</td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Limit</td>
+                  <td>Sell</td>
+                  <td>$68,500</td>
+                  <td>0.45 BTC</td>
+                  <td>0.45</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success" style="padding: 2px 8px; font-size: 12px;">Filled</span></td>
+                  <td>TP</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="pagination" style="padding: 8px 16px;">
+              <span style="color: var(--ddx-gray-5);">←</span>
+              <span class="active">1</span>
+              <span>2</span>
+              <span>3</span>
+              <span>...</span>
+              <span>12</span>
+              <span style="color: var(--ddx-gray-5);">→</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

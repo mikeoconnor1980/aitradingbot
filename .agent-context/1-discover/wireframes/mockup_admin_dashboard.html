@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd; --ddx-error-bg: #f3e1e0;
+      --ddx-banner-success-bg: #f4f9f3;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-header .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ddx-red); color: var(--ddx-white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .wf-sidebar { width: 220px; min-width: 220px; background: var(--ddx-black); color: var(--ddx-white); font-size: 14px; padding: 0; }
+    .wf-sidebar .nav-item { padding: 10px 16px; border-left: 4px solid var(--ddx-black); cursor: pointer; color: var(--ddx-white); font-weight: 400; }
+    .wf-sidebar .nav-item:hover { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-item.active { background: var(--ddx-primary-green-2); border-left-color: var(--ddx-primary-green-2); font-weight: 700; color: var(--ddx-white); }
+    .wf-sidebar .nav-group { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-group .nav-item { padding-left: 28px; border-left: 4px solid var(--ddx-gray-7); }
+    .wf-body { display: flex; min-height: 700px; }
+    .wf-content { flex: 1; padding: 24px; }
+    .wf-page-header { background: var(--ddx-gray-8); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-page-header .wf-breadcrumb { color: var(--ddx-gray-3); margin-bottom: 8px; font-size: 12px; }
+    .wf-page-header .wf-breadcrumb a { color: var(--ddx-primary-green-2); text-decoration: none; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 0; color: var(--ddx-white); }
+    .wf-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; height: 32px; font-size: 14px; font-weight: 400; font-family: 'Open Sans', sans-serif; border: none; cursor: pointer; margin-right: 8px; color: var(--ddx-white); }
+    .wf-btn-primary { background: var(--ddx-primary-green-2); }
+    .wf-btn-secondary { background: var(--ddx-gray-7); }
+    .wf-btn-danger { background: var(--ddx-red); }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .wf-card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .wf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .wf-table th { background: var(--ddx-white); text-align: left; padding: 0 16px; height: 44px; border-bottom: 0.8px solid var(--ddx-gray-1); font-weight: 700; font-size: 13px; color: var(--ddx-gray-7); }
+    .wf-table td { padding: 0 16px; height: 49px; border-bottom: 0.8px solid var(--ddx-gray-1); color: var(--ddx-black); line-height: 49px; }
+    .wf-table tr:hover td { background: var(--ddx-bg-gray-1); }
+    .wf-badge { display: inline-block; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+    .wf-badge-rounded { border-radius: 4px; }
+    .wf-badge-success { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .wf-badge-warning { background: var(--ddx-warning-bg); color: #896129; border: 0.8px solid var(--ddx-warning-bg); }
+    .wf-badge-error { background: var(--ddx-error-bg); color: var(--ddx-red); border: 0.8px solid var(--ddx-error-bg); }
+    .wf-badge-info { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+    .wf-badge-neutral { background: var(--ddx-bg-gray-2); color: var(--ddx-gray-6); border: 0.8px solid var(--ddx-bg-gray-2); }
+    .wf-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+    .wf-status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .wf-status-dot.success { background: var(--ddx-primary-green-2); }
+    .wf-status-dot.warning { background: var(--ddx-orange); }
+    .wf-status-dot.error { background: var(--ddx-red); }
+    .wf-status-dot.neutral { background: var(--ddx-gray-4); }
+    .wf-grid { display: grid; gap: 16px; }
+    .wf-grid-2 { grid-template-columns: 1fr 1fr; }
+    .wf-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .wf-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .wf-banner { padding: 12px 16px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .wf-banner-warning { background: var(--ddx-red); color: var(--ddx-white); border-bottom: 0.8px solid var(--ddx-red); }
+    .kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
+    .kpi-label { font-size: 12px; color: var(--ddx-gray-5); margin-top: 4px; }
+    .kpi-positive { color: var(--ddx-primary-green-2); }
+    .kpi-negative { color: var(--ddx-red); }
+    .wf-placeholder { background: var(--ddx-bg-gray-2); border: 2px dashed var(--ddx-gray-1); padding: 24px; text-align: center; color: var(--ddx-gray-4); font-size: 13px; }
+    .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>FEATURE-006 — Admin Dashboard</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <!-- App Header (Admin variant — red avatar) -->
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">Admin Console</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_admin_dashboard.html">Overview</a>
+        <a href="mockup_admin_dashboard.html">Subscribers</a>
+        <a href="mockup_admin_dashboard.html">System</a>
+        <a href="mockup_dashboard.html" style="font-size: 11px; color: var(--ddx-gray-4);">User View</a>
+        <div class="avatar">AD</div>
+      </div>
+    </div>
+
+    <div class="wf-body">
+      <!-- Admin Sidebar -->
+      <div class="wf-sidebar" data-wf-type="ddx-sidebar">
+        <a class="nav-item active" href="mockup_admin_dashboard.html">Overview</a>
+        <a class="nav-item" href="mockup_admin_dashboard.html">Subscribers</a>
+        <div class="nav-group">
+          <a class="nav-item" href="mockup_admin_dashboard.html">Active Users</a>
+          <a class="nav-item" href="mockup_admin_dashboard.html">Expired</a>
+        </div>
+        <a class="nav-item" href="mockup_admin_dashboard.html">Bot Status</a>
+        <a class="nav-item" href="mockup_admin_dashboard.html">Revenue</a>
+        <a class="nav-item" href="mockup_admin_dashboard.html">Error Log</a>
+        <a class="nav-item" href="mockup_admin_dashboard.html">System Health</a>
+        <a class="nav-item" href="mockup_settings.html">Settings</a>
+      </div>
+
+      <div style="flex: 1;">
+        <!-- Page Header -->
+        <div class="wf-page-header">
+          <div class="wf-breadcrumb"><a>Admin</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span> Overview</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 class="wf-page-title">Platform Overview</h1>
+            <div style="font-size: 12px; color: var(--ddx-gray-3);">Last updated: Mar 20, 2026, 15:00 UTC</div>
+          </div>
+        </div>
+
+        <!-- Error banner -->
+        <div class="wf-banner wf-banner-warning" data-wf-type="ddx-alert">
+          <span>1 subscriber bot has reported errors in the last hour — see Error Log</span>
+          <button class="wf-btn wf-btn-secondary" style="margin: 0; height: 24px; font-size: 12px; padding: 2px 10px;">View Errors</button>
+        </div>
+
+        <div class="wf-content">
+          <!-- KPI Cards -->
+          <div class="wf-grid wf-grid-4" style="margin-bottom: 24px;">
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value">47</div>
+              <div class="kpi-label">Total Subscribers</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value kpi-positive">38</div>
+              <div class="kpi-label">Active Bots Running</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value kpi-positive">$3,847</div>
+              <div class="kpi-label">MRR (Monthly Revenue)</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value">99.7%</div>
+              <div class="kpi-label">System Uptime (30d)</div>
+            </div>
+          </div>
+
+          <div class="wf-grid wf-grid-2">
+            <!-- Subscriber Breakdown -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">Subscriber Breakdown</div>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Basic Plan</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 120px; height: 8px; background: var(--ddx-bg-gray-3);">
+                      <div style="width: 34%; height: 100%; background: var(--ddx-gray-5);"></div>
+                    </div>
+                    <span style="font-weight: 600; min-width: 30px; text-align: right;">16</span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Pro Plan</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 120px; height: 8px; background: var(--ddx-bg-gray-3);">
+                      <div style="width: 53%; height: 100%; background: var(--ddx-primary-green-2);"></div>
+                    </div>
+                    <span style="font-weight: 600; min-width: 30px; text-align: right;">25</span>
+                  </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Enterprise Plan</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 120px; height: 8px; background: var(--ddx-bg-gray-3);">
+                      <div style="width: 13%; height: 100%; background: var(--ddx-primary-blue);"></div>
+                    </div>
+                    <span style="font-weight: 600; min-width: 30px; text-align: right;">6</span>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ddx-bg-gray-3); font-size: 13px; color: var(--ddx-gray-5);">
+                Churn this month: <span style="color: var(--ddx-red); font-weight: 600;">2</span> &nbsp; | &nbsp;
+                New signups: <span style="color: var(--ddx-primary-green-2); font-weight: 600;">7</span>
+              </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="wf-card-title">System Health</div>
+              <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>API Server</span>
+                  <span class="wf-status"><span class="wf-status-dot success"></span> Healthy</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Strategy Worker</span>
+                  <span class="wf-status"><span class="wf-status-dot success"></span> Running</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>CandleClock Scheduler</span>
+                  <span class="wf-status"><span class="wf-status-dot success"></span> On Schedule</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Hyperliquid WebSocket</span>
+                  <span class="wf-status"><span class="wf-status-dot success"></span> Connected</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>Database</span>
+                  <span class="wf-status"><span class="wf-status-dot success"></span> Healthy</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span>LLM Context Provider</span>
+                  <span class="wf-status"><span class="wf-status-dot warning"></span> Degraded</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Per-User Bot Status -->
+          <div class="wf-card" data-wf-type="ddx-card">
+            <div class="wf-card-title">Per-User Bot Status</div>
+            <table class="wf-table" data-wf-type="ddx-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Plan</th>
+                  <th>Bot Status</th>
+                  <th>Strategy</th>
+                  <th>Grid State</th>
+                  <th>PnL (30d)</th>
+                  <th>Last Activity</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight: 600;">john.doe@email.com</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info" style="padding: 2px 8px; font-size: 12px;">Pro</span></td>
+                  <td><span class="wf-status"><span class="wf-status-dot success"></span> Running</span></td>
+                  <td>BTC Grid Alpha</td>
+                  <td>Deployed — 3/4</td>
+                  <td style="color: var(--ddx-primary-green-2);">+$4,892</td>
+                  <td>2 min ago</td>
+                  <td><button class="wf-btn wf-btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Details</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">sarah.smith@email.com</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info" style="padding: 2px 8px; font-size: 12px;">Pro</span></td>
+                  <td><span class="wf-status"><span class="wf-status-dot success"></span> Running</span></td>
+                  <td>BTC Conservative</td>
+                  <td>Monitoring</td>
+                  <td style="color: var(--ddx-primary-green-2);">+$1,205</td>
+                  <td>5 min ago</td>
+                  <td><button class="wf-btn wf-btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Details</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">mike.jones@email.com</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-neutral" style="padding: 2px 8px; font-size: 12px;">Basic</span></td>
+                  <td><span class="wf-status"><span class="wf-status-dot error"></span> Error</span></td>
+                  <td>BTC Simple Grid</td>
+                  <td>Halted</td>
+                  <td style="color: var(--ddx-red);">-$312</td>
+                  <td>47 min ago</td>
+                  <td><button class="wf-btn wf-btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Details</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">lisa.wang@email.com</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-warning" style="padding: 2px 8px; font-size: 12px;">Enterprise</span></td>
+                  <td><span class="wf-status"><span class="wf-status-dot success"></span> Running</span></td>
+                  <td>BTC Aggressive</td>
+                  <td>Deployed — 5/6</td>
+                  <td style="color: var(--ddx-primary-green-2);">+$12,451</td>
+                  <td>1 min ago</td>
+                  <td><button class="wf-btn wf-btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Details</button></td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">alex.chen@email.com</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-neutral" style="padding: 2px 8px; font-size: 12px;">Basic</span></td>
+                  <td><span class="wf-status"><span class="wf-status-dot neutral"></span> Paused</span></td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td style="color: var(--ddx-gray-5);">—</td>
+                  <td>2 days ago</td>
+                  <td><button class="wf-btn wf-btn-secondary" style="padding: 4px 10px; font-size: 12px; margin: 0;">Details</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Recent Errors -->
+          <div class="wf-card" data-wf-type="ddx-card">
+            <div class="wf-card-title">Recent Errors</div>
+            <table class="wf-table" data-wf-type="ddx-table">
+              <thead>
+                <tr><th>Time</th><th>User</th><th>Component</th><th>Error</th><th>Severity</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>14:13 UTC</td>
+                  <td>mike.jones@email.com</td>
+                  <td>ExecutionEngine</td>
+                  <td style="font-family: 'Consolas', monospace; font-size: 12px;">Order rejected: insufficient margin</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error" style="padding: 2px 8px; font-size: 12px;">Critical</span></td>
+                </tr>
+                <tr>
+                  <td>13:45 UTC</td>
+                  <td>—</td>
+                  <td>LLM Context</td>
+                  <td style="font-family: 'Consolas', monospace; font-size: 12px;">Sentiment API timeout after 30s</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-warning" style="padding: 2px 8px; font-size: 12px;">Warning</span></td>
+                </tr>
+                <tr>
+                  <td>12:00 UTC</td>
+                  <td>—</td>
+                  <td>CandleClock</td>
+                  <td style="font-family: 'Consolas', monospace; font-size: 12px;">4H candle delayed by 3.2s (within tolerance)</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info" style="padding: 2px 8px; font-size: 12px;">Info</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
