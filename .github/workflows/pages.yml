@@ -1,4 +1,4 @@
-name: Deploy Wireframes to GitHub Pages
+name: Deploy Wireframes to Cloudflare Pages
 
 on:
   push:
@@ -9,25 +9,14 @@ on:
 
   workflow_dispatch:
 
-permissions:
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: '.agent-context/1-discover/wireframes'
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ".agent-context/1-discover/wireframes" --project-name aitradingbot-wireframes
