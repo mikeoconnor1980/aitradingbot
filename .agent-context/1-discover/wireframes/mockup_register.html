@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd; --ddx-error-bg: #f3e1e0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; height: 32px; font-size: 14px; font-weight: 400; font-family: 'Open Sans', sans-serif; border: none; cursor: pointer; margin-right: 8px; color: var(--ddx-white); }
+    .wf-btn-primary { background: var(--ddx-primary-green-2); }
+    .wf-btn-secondary { background: var(--ddx-gray-7); }
+    .wf-input { display: block; width: 100%; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; margin-bottom: 16px; }
+    .wf-input:focus { outline-color: var(--ddx-primary-green-2); outline-width: 2px; }
+    .wf-label { display: block; font-size: 12px; font-weight: 400; color: var(--ddx-black); margin-bottom: 4px; }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .field-hint { font-size: 11px; color: var(--ddx-gray-5); margin-top: -12px; margin-bottom: 16px; }
+
+    .auth-container {
+      display: flex;
+      min-height: 600px;
+    }
+    .auth-hero {
+      flex: 1;
+      background: var(--ddx-gray-8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px;
+      color: var(--ddx-white);
+    }
+    .auth-hero h2 { font-size: 28px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.5px; }
+    .auth-hero p { font-size: 14px; color: var(--ddx-gray-3); line-height: 1.7; margin-bottom: 24px; }
+    .auth-hero .feature-list { list-style: none; padding: 0; }
+    .auth-hero .feature-list li { padding: 8px 0; font-size: 13px; color: var(--ddx-gray-3); display: flex; align-items: center; gap: 10px; }
+    .auth-hero .feature-list li::before { content: '✓'; color: var(--ddx-primary-green-2); font-weight: 700; font-size: 16px; }
+    .auth-form {
+      width: 440px;
+      min-width: 440px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px;
+      background: var(--ddx-white);
+    }
+    .auth-form h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+    .auth-form .auth-subtitle { font-size: 13px; color: var(--ddx-gray-5); margin-bottom: 28px; }
+    .auth-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--ddx-gray-1); margin-bottom: 24px; }
+    .auth-tab { padding: 8px 16px; font-size: 14px; cursor: pointer; position: relative; color: var(--ddx-black); font-weight: 400; }
+    .auth-tab.active { font-weight: 600; }
+    .auth-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: var(--ddx-primary-green-2); }
+    .divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; font-size: 12px; color: var(--ddx-gray-4); }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--ddx-gray-1); }
+    .auth-link { font-size: 13px; color: var(--ddx-primary-green-2); text-decoration: none; }
+    .password-strength { margin-top: -12px; margin-bottom: 16px; display: flex; gap: 4px; }
+    .strength-bar { flex: 1; height: 4px; background: var(--ddx-bg-gray-3); }
+    .strength-bar.filled { background: var(--ddx-primary-green-2); }
+    .checkbox-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 20px; font-size: 13px; color: var(--ddx-gray-6); }
+    .checkbox-row input { margin-top: 3px; }
+
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .auth-container { flex-direction: column; }
+      .auth-hero { padding: 24px; min-height: auto; }
+      .auth-form { width: 100%; min-width: auto; padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>FEATURE-007 — Register / Login</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <!-- App Header (minimal — unauthenticated) -->
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">AI Trading Platform</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_register.html" style="font-weight: 600;">Sign Up</a>
+        <a href="mockup_register.html">Log In</a>
+      </div>
+    </div>
+
+    <div class="auth-container">
+      <!-- Left Hero Panel -->
+      <div class="auth-hero">
+        <h2>Automated Grid Trading<br>Powered by AI</h2>
+        <p>Deploy algorithmic grid strategies on Hyperliquid perpetual futures. Set your parameters, let the bot execute on confirmed candle closes. Monitor everything from a real-time dashboard.</p>
+        <ul class="feature-list">
+          <li>Multi-timeframe trend + bias confirmation</li>
+          <li>Automated grid deployment with configurable levels</li>
+          <li>Built-in risk engine — never bypass safety checks</li>
+          <li>LLM-powered sentiment and regime context</li>
+          <li>Full backtesting with simulated execution</li>
+          <li>Plans from $19/mo — start with a free trial</li>
+        </ul>
+      </div>
+
+      <!-- Right Form Panel -->
+      <div class="auth-form" data-wf-type="frame">
+        <div class="auth-tabs">
+          <div class="auth-tab active">Create Account</div>
+          <div class="auth-tab">Log In</div>
+        </div>
+
+        <h1>Create your account</h1>
+        <div class="auth-subtitle">Start trading in minutes. No credit card required for trial.</div>
+
+        <label class="wf-label">Full Name</label>
+        <input class="wf-input" data-wf-type="ddx-input" data-wf-props='{"label": "Full Name"}' placeholder="John Doe" />
+
+        <label class="wf-label">Email Address</label>
+        <input class="wf-input" data-wf-type="ddx-input" data-wf-props='{"label": "Email Address"}' placeholder="john@example.com" />
+
+        <label class="wf-label">Password</label>
+        <input class="wf-input" data-wf-type="ddx-input" data-wf-props='{"label": "Password", "type": "password"}' type="password" placeholder="Create a strong password" />
+        <div class="password-strength">
+          <div class="strength-bar filled"></div>
+          <div class="strength-bar filled"></div>
+          <div class="strength-bar filled"></div>
+          <div class="strength-bar"></div>
+        </div>
+        <div class="field-hint">At least 8 characters with a mix of letters, numbers, and symbols</div>
+
+        <label class="wf-label">Confirm Password</label>
+        <input class="wf-input" data-wf-type="ddx-input" data-wf-props='{"label": "Confirm Password", "type": "password"}' type="password" placeholder="Confirm your password" />
+
+        <div class="checkbox-row">
+          <input type="checkbox" checked />
+          <span>I agree to the <a href="#" class="auth-link">Terms of Service</a> and <a href="#" class="auth-link">Privacy Policy</a></span>
+        </div>
+
+        <button class="wf-btn wf-btn-primary" data-wf-type="ddx-button" data-wf-props='{"variant": "primary", "label": "Create Account"}' style="width: 100%; height: 40px; font-size: 15px; font-weight: 600; margin-bottom: 16px;">Create Account</button>
+
+        <div class="divider">or</div>
+
+        <button class="wf-btn wf-btn-secondary" data-wf-type="ddx-button" data-wf-props='{"variant": "secondary", "label": "Continue with Google"}' style="width: 100%; margin-bottom: 8px;">Continue with Google</button>
+
+        <div style="text-align: center; margin-top: 16px; font-size: 13px; color: var(--ddx-gray-5);">
+          Already have an account? <a href="mockup_register.html" class="auth-link">Log in</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Verification Note -->
+    <div style="padding: 16px 40px; background: var(--ddx-info-bg); border-top: 1px solid var(--ddx-primary-blue);">
+      <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <span style="font-size: 18px;">📧</span>
+        <div>
+          <div style="font-weight: 600; margin-bottom: 4px;">Email Verification Flow</div>
+          <div style="font-size: 13px; color: var(--ddx-gray-7);">
+            After registration, the user receives a verification email with a single-use link. 
+            The account is created in a "pending" state until the email is verified. 
+            Unverified users are redirected to a "Check your email" screen if they try to log in.
+            After verification, they proceed to the subscription plan selection page.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

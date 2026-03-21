@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Error Log — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff; --ddx-red: #da291c; --ddx-orange: #ed8b00;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-3: #a7a8aa; --ddx-gray-4: #97999b;
+      --ddx-gray-5: #75787b; --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-1: #fafafa; --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd; --ddx-error-bg: #f3e1e0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header { background: var(--ddx-black); color: var(--ddx-white); padding: 0 24px; height: 48px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .wf-header .logo { font-weight: 700; font-size: 18px; letter-spacing: -0.5px; }
+    .wf-header .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header .app-name { color: var(--ddx-white); font-size: 14px; font-weight: 400; margin-left: 12px; padding-left: 12px; border-left: 1px solid var(--ddx-gray-7); }
+    .wf-header .nav { display: flex; gap: 16px; align-items: center; }
+    .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+    .wf-header .avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--ddx-gray-7); color: var(--ddx-white); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .wf-sidebar { width: 220px; min-width: 220px; background: var(--ddx-black); color: var(--ddx-white); font-size: 14px; padding: 0; }
+    .wf-sidebar .nav-item { padding: 10px 16px; border-left: 4px solid var(--ddx-black); cursor: pointer; color: var(--ddx-white); font-weight: 400; }
+    .wf-sidebar .nav-item:hover { background: var(--ddx-gray-8); }
+    .wf-sidebar .nav-item.active { background: var(--ddx-primary-green-2); border-left-color: var(--ddx-primary-green-2); font-weight: 700; color: var(--ddx-white); }
+    .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
+    .wf-sidebar .nav-label { padding: 16px 16px 6px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--ddx-gray-5); font-weight: 600; }
+    .wf-body { display: flex; min-height: 700px; }
+    .wf-content { flex: 1; padding: 24px; }
+    .wf-page-header { background: var(--ddx-gray-8); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-page-header .wf-breadcrumb { color: var(--ddx-gray-3); margin-bottom: 8px; font-size: 12px; }
+    .wf-page-header .wf-breadcrumb a { color: var(--ddx-primary-green-2); text-decoration: none; }
+    .wf-page-title { font-size: 32px; font-weight: 600; letter-spacing: -0.5px; line-height: 40px; margin-bottom: 0; color: var(--ddx-white); }
+    .wf-btn { display: inline-flex; align-items: center; justify-content: center; padding: 5px 12px; height: 32px; font-size: 14px; font-weight: 400; font-family: 'Open Sans', sans-serif; border: none; cursor: pointer; margin-right: 8px; color: var(--ddx-white); }
+    .wf-btn-primary { background: var(--ddx-primary-green-2); }
+    .wf-btn-secondary { background: var(--ddx-gray-7); }
+    .wf-btn-sm { height: 26px; padding: 2px 8px; font-size: 12px; }
+    .wf-card { border: 1px solid var(--ddx-gray-1); padding: 16px; margin-bottom: 16px; background: var(--ddx-white); }
+    .wf-card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ddx-bg-gray-3); }
+    .wf-input { display: block; width: 100%; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; }
+    .wf-label { display: block; font-size: 12px; font-weight: 400; color: var(--ddx-black); margin-bottom: 4px; }
+    .wf-select { display: block; padding: 5px 12px; outline: 0.8px solid var(--ddx-gray-1); border: none; font-size: 14px; font-family: 'Open Sans', sans-serif; background: var(--ddx-white); height: 32px; appearance: auto; }
+    .wf-grid { display: grid; gap: 16px; }
+    .wf-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .wf-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .wf-badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+    .wf-badge-rounded { border-radius: 4px; }
+    .wf-badge-success { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .wf-badge-info { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+    .wf-badge-warning { background: var(--ddx-warning-bg); color: #896129; border: 0.8px solid var(--ddx-orange); }
+    .wf-badge-error { background: var(--ddx-error-bg); color: var(--ddx-red); border: 0.8px solid var(--ddx-red); }
+    .wf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .wf-table th { background: var(--ddx-white); text-align: left; padding: 0 16px; height: 44px; border-bottom: 0.8px solid var(--ddx-gray-1); font-weight: 700; font-size: 13px; color: var(--ddx-gray-7); }
+    .wf-table td { padding: 0 16px; height: 49px; border-bottom: 0.8px solid var(--ddx-gray-1); color: var(--ddx-black); vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+    .wf-table tr:hover td { background: var(--ddx-bg-gray-1); }
+    .wf-banner { padding: 12px 16px; font-size: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .wf-banner-error { background: var(--ddx-error-bg); color: var(--ddx-red); border-bottom: 0.8px solid var(--ddx-red); }
+    .wf-banner-warning { background: var(--ddx-warning-bg); color: #896129; border-bottom: 0.8px solid var(--ddx-orange); }
+    .kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; line-height: 1.2; }
+    .kpi-label { font-size: 12px; color: var(--ddx-gray-5); margin-top: 4px; }
+    .kpi-negative { color: var(--ddx-red); }
+
+    /* Severity indicators */
+    .severity-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; }
+    .severity-critical { background: var(--ddx-red); }
+    .severity-error { background: var(--ddx-orange); }
+    .severity-warning { background: #e8c43a; }
+    .severity-info { background: var(--ddx-primary-blue); }
+
+    /* Error detail expandable (CSS-only) */
+    .error-detail { display: none; }
+    .error-toggle:checked + .error-detail { display: block; }
+    .error-toggle { display: none; }
+    .error-toggle-label { cursor: pointer; color: var(--ddx-primary-blue); font-size: 12px; text-decoration: underline; }
+    .stack-trace { background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', 'Courier New', monospace; font-size: 11px; padding: 12px; margin-top: 8px; overflow-x: auto; white-space: pre; line-height: 1.6; }
+
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 0; }
+
+    /* Pagination */
+    .pagination { display: flex; align-items: center; gap: 4px; justify-content: flex-end; padding: 12px 16px; }
+    .page-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; border: 1px solid var(--ddx-gray-1); background: var(--ddx-white); color: var(--ddx-black); }
+    .page-btn.active { background: var(--ddx-primary-green-2); color: var(--ddx-white); border-color: var(--ddx-primary-green-2); font-weight: 700; }
+
+    /* === Sidebar Toggle (CSS-only) === */
+    .nav-toggle-input { display: none; }
+    .nav-toggle-label { display: none; cursor: pointer; }
+
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .nav-toggle-label { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; font-size: 18px; color: var(--ddx-white); }
+      .wf-body { position: relative; }
+      .wf-sidebar { display: none; position: absolute; top: 0; left: 0; bottom: 0; z-index: 100; }
+      #nav-toggle:checked ~ .wf-page .wf-sidebar { display: block; }
+      .wf-header { padding: 0 12px; }
+      .wf-header .app-name { display: none; }
+      .wf-header .nav { gap: 8px; }
+      .wf-header .nav a { font-size: 11px; }
+      .wf-page-header { padding: 16px; }
+      .wf-page-title { font-size: 22px; line-height: 28px; }
+      .wf-content { padding: 12px; }
+      .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-table { display: block; overflow-x: auto; }
+      .wf-card { padding: 12px; }
+      .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .filter-bar { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle-input">
+  <div class="wf-meta">
+    <span>ADMIN-002 — Error Log</span>
+    <span>AI Grid Trader Wireframe</span>
+  </div>
+  <div class="wf-page">
+    <div class="wf-header" data-wf-type="ddx-header">
+      <div style="display: flex; align-items: center;">
+        <label for="nav-toggle" class="nav-toggle-label">☰</label>
+        <span class="logo">Grid<span class="accent">Trader</span></span>
+        <span class="app-name">AI Trading Platform — Admin</span>
+      </div>
+      <div class="nav">
+        <a href="mockup_admin_dashboard.html">Admin Home</a>
+        <a href="mockup_dashboard.html" style="font-size: 11px; color: var(--ddx-gray-4);">User View</a>
+        <div class="avatar" style="background: var(--ddx-red);">A</div>
+      </div>
+    </div>
+
+    <div class="wf-body">
+      <div class="wf-sidebar" data-wf-type="ddx-sidebar">
+        <div class="nav-label">Admin</div>
+        <a class="nav-item" href="mockup_admin_dashboard.html">Dashboard</a>
+        <a class="nav-item active" href="mockup_admin_error_log.html">Error Log</a>
+        <a class="nav-item" href="#">User Management</a>
+        <a class="nav-item" href="#">Strategies (All)</a>
+        <a class="nav-item" href="#">Subscriptions</a>
+        <a class="nav-item" href="#">System Health</a>
+        <div class="nav-label">Operations</div>
+        <a class="nav-item" href="#">Exchange Status</a>
+        <a class="nav-item" href="#">Risk Overrides</a>
+        <a class="nav-item" href="#">Audit Trail</a>
+      </div>
+
+      <div style="flex: 1;">
+        <div class="wf-page-header">
+          <div class="wf-breadcrumb">
+            <a>Admin</a> <span style="margin: 0 6px; color: var(--ddx-gray-5);">/</span>
+            Error Log
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 class="wf-page-title">Error Log</h1>
+            <div>
+              <button class="wf-btn wf-btn-secondary" data-wf-type="ddx-button" data-wf-props='{"variant": "secondary", "label": "Export CSV"}'>Export CSV</button>
+              <button class="wf-btn wf-btn-primary" data-wf-type="ddx-button" data-wf-props='{"variant": "primary", "label": "Clear Resolved"}'>Clear Resolved</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active alert banner -->
+        <div class="wf-banner wf-banner-error" data-wf-type="ddx-alert">
+          <span><strong>3 critical errors</strong> unresolved in the last 24 hours — review required</span>
+          <a style="color: var(--ddx-red); font-size: 12px; cursor: pointer;">Jump to Critical ↓</a>
+        </div>
+
+        <div class="wf-content">
+          <!-- Error KPIs -->
+          <div class="wf-grid wf-grid-4" style="margin-bottom: 16px;">
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value kpi-negative">3</div>
+              <div class="kpi-label">Critical (Unresolved)</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value" style="color: var(--ddx-orange);">7</div>
+              <div class="kpi-label">Errors (24h)</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value" style="color: #896129;">12</div>
+              <div class="kpi-label">Warnings (24h)</div>
+            </div>
+            <div class="wf-card" data-wf-type="ddx-card">
+              <div class="kpi-value" style="color: var(--ddx-primary-green-2);">89%</div>
+              <div class="kpi-label">Resolution Rate (7d)</div>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="wf-card" data-wf-type="frame">
+            <div class="filter-bar">
+              <div>
+                <label class="wf-label">Severity</label>
+                <select class="wf-select" data-wf-type="ddx-select" data-wf-props='{"label": "Severity"}'>
+                  <option selected>All Severities</option>
+                  <option>Critical</option>
+                  <option>Error</option>
+                  <option>Warning</option>
+                  <option>Info</option>
+                </select>
+              </div>
+              <div>
+                <label class="wf-label">Component</label>
+                <select class="wf-select" data-wf-type="ddx-select" data-wf-props='{"label": "Component"}'>
+                  <option selected>All Components</option>
+                  <option>StrategyEngine</option>
+                  <option>GridController</option>
+                  <option>RiskEngine</option>
+                  <option>HyperliquidConnector</option>
+                  <option>CandleClock</option>
+                  <option>OrderRouter</option>
+                  <option>LlmContextProvider</option>
+                </select>
+              </div>
+              <div>
+                <label class="wf-label">Status</label>
+                <select class="wf-select" data-wf-type="ddx-select" data-wf-props='{"label": "Status"}'>
+                  <option selected>All Statuses</option>
+                  <option>New</option>
+                  <option>Investigating</option>
+                  <option>Resolved</option>
+                  <option>Ignored</option>
+                </select>
+              </div>
+              <div>
+                <label class="wf-label">User</label>
+                <input class="wf-input" data-wf-type="ddx-input" data-wf-props='{"label": "User"}' placeholder="Filter by user ID / email" style="min-width: 180px;" />
+              </div>
+              <div style="align-self: flex-end;">
+                <button class="wf-btn wf-btn-primary" data-wf-type="ddx-button" data-wf-props='{"variant": "primary", "label": "Apply"}'>Apply</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error table -->
+          <div class="wf-card" data-wf-type="ddx-card" style="padding: 0;">
+            <table class="wf-table" data-wf-type="ddx-table">
+              <thead>
+                <tr>
+                  <th style="width: 30px;"></th>
+                  <th>Timestamp</th>
+                  <th>Severity</th>
+                  <th>Component</th>
+                  <th>User</th>
+                  <th>Message</th>
+                  <th>Status</th>
+                  <th style="width: 80px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Row 1: Critical, expanded -->
+                <tr style="background: #fdf5f5;">
+                  <td><span class="severity-dot severity-critical"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 14:32:18</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error">Critical</span></td>
+                  <td>HyperliquidConnector</td>
+                  <td style="font-size: 12px;">user_042<br><span style="color: var(--ddx-gray-5);">j.doe@…</span></td>
+                  <td>
+                    <div style="font-weight: 600; margin-bottom: 2px;">Order placement timeout after 30s</div>
+                    <label for="err-1" class="error-toggle-label">Show stack trace</label>
+                    <input type="checkbox" id="err-1" class="error-toggle">
+                    <div class="error-detail">
+                      <div class="stack-trace">System.TimeoutException: Order placement timed out after 30000ms
+  at GridTrader.Exchange.HyperliquidConnector.PlaceOrderAsync() in /src/Exchange/HyperliquidConnector.cs:line 142
+  at GridTrader.Engine.OrderRouter.RouteAsync() in /src/Engine/OrderRouter.cs:line 88
+  at GridTrader.Engine.GridController.ExecuteGridLevel() in /src/Engine/GridController.cs:line 234
+  at GridTrader.Engine.StrategyEngine.ProcessSignal() in /src/Engine/StrategyEngine.cs:line 167</div>
+                    </div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-warning">Investigating</span></td>
+                  <td>
+                    <button class="wf-btn wf-btn-sm wf-btn-secondary" data-wf-type="ddx-button" data-wf-props='{"variant": "secondary", "label": "Resolve"}'>Resolve</button>
+                  </td>
+                </tr>
+
+                <!-- Row 2: Critical -->
+                <tr style="background: #fdf5f5;">
+                  <td><span class="severity-dot severity-critical"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 14:18:05</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error">Critical</span></td>
+                  <td>RiskEngine</td>
+                  <td style="font-size: 12px;">user_017<br><span style="color: var(--ddx-gray-5);">a.smith@…</span></td>
+                  <td>
+                    <div style="font-weight: 600; margin-bottom: 2px;">Max drawdown threshold breached — strategy halted</div>
+                    <label for="err-2" class="error-toggle-label">Show stack trace</label>
+                    <input type="checkbox" id="err-2" class="error-toggle">
+                    <div class="error-detail">
+                      <div class="stack-trace">GridTrader.Risk.DrawdownBreachException: Drawdown -12.4% exceeds max allowed -10.0%
+  at GridTrader.Risk.RiskEngine.ValidatePosition() in /src/Risk/RiskEngine.cs:line 95
+  at GridTrader.Engine.StrategyEngine.ProcessSignal() in /src/Engine/StrategyEngine.cs:line 172</div>
+                    </div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error">New</span></td>
+                  <td>
+                    <button class="wf-btn wf-btn-sm wf-btn-secondary" data-wf-type="ddx-button" data-wf-props='{"variant": "secondary", "label": "Resolve"}'>Resolve</button>
+                  </td>
+                </tr>
+
+                <!-- Row 3: Critical -->
+                <tr style="background: #fdf5f5;">
+                  <td><span class="severity-dot severity-critical"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 13:45:22</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error">Critical</span></td>
+                  <td>CandleClock</td>
+                  <td style="font-size: 12px;">—<br><span style="color: var(--ddx-gray-5);">system</span></td>
+                  <td>
+                    <div style="font-weight: 600; margin-bottom: 2px;">Candle feed disconnected — reconnect failed 3x</div>
+                    <label for="err-3" class="error-toggle-label">Show stack trace</label>
+                    <input type="checkbox" id="err-3" class="error-toggle">
+                    <div class="error-detail">
+                      <div class="stack-trace">System.Net.WebSockets.WebSocketException: Connection reset by remote host
+  at GridTrader.Data.CandleClock.ReconnectAsync() in /src/Data/CandleClock.cs:line 78
+  at GridTrader.Data.CandleClock.StartAsync() in /src/Data/CandleClock.cs:line 45</div>
+                    </div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-error">New</span></td>
+                  <td>
+                    <button class="wf-btn wf-btn-sm wf-btn-secondary" data-wf-type="ddx-button" data-wf-props='{"variant": "secondary", "label": "Resolve"}'>Resolve</button>
+                  </td>
+                </tr>
+
+                <!-- Row 4: Error -->
+                <tr>
+                  <td><span class="severity-dot severity-error"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 12:10:44</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-warning">Error</span></td>
+                  <td>GridController</td>
+                  <td style="font-size: 12px;">user_023<br><span style="color: var(--ddx-gray-5);">m.jones@…</span></td>
+                  <td>
+                    <div style="font-weight: 600;">Grid deployment failed — insufficient margin on Hyperliquid</div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-warning">Investigating</span></td>
+                  <td>
+                    <button class="wf-btn wf-btn-sm wf-btn-secondary" data-wf-type="ddx-button" data-wf-props='{"variant": "secondary", "label": "Resolve"}'>Resolve</button>
+                  </td>
+                </tr>
+
+                <!-- Row 5: Error -->
+                <tr>
+                  <td><span class="severity-dot severity-error"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 11:55:20</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-warning">Error</span></td>
+                  <td>LlmContextProvider</td>
+                  <td style="font-size: 12px;">—<br><span style="color: var(--ddx-gray-5);">system</span></td>
+                  <td>
+                    <div style="font-weight: 600;">OpenAI API rate limit exceeded — sentiment signal delayed 45s</div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success">Resolved</span></td>
+                  <td>
+                    <span style="font-size: 11px; color: var(--ddx-gray-4);">Auto</span>
+                  </td>
+                </tr>
+
+                <!-- Row 6: Warning -->
+                <tr>
+                  <td><span class="severity-dot severity-warning"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 10:22:03</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info">Warning</span></td>
+                  <td>StrategyEngine</td>
+                  <td style="font-size: 12px;">user_008<br><span style="color: var(--ddx-gray-5);">r.patel@…</span></td>
+                  <td>
+                    <div style="font-weight: 600;">Strategy skipped candle — execution took &gt;500ms (789ms)</div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success">Resolved</span></td>
+                  <td>
+                    <span style="font-size: 11px; color: var(--ddx-gray-4);">Manual</span>
+                  </td>
+                </tr>
+
+                <!-- Row 7: Warning -->
+                <tr>
+                  <td><span class="severity-dot severity-warning"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 09:15:47</td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-info">Warning</span></td>
+                  <td>OrderRouter</td>
+                  <td style="font-size: 12px;">user_042<br><span style="color: var(--ddx-gray-5);">j.doe@…</span></td>
+                  <td>
+                    <div style="font-weight: 600;">Order fill slippage 0.12% exceeds expected 0.05%</div>
+                  </td>
+                  <td><span class="wf-badge wf-badge-rounded wf-badge-success">Resolved</span></td>
+                  <td>
+                    <span style="font-size: 11px; color: var(--ddx-gray-4);">Auto</span>
+                  </td>
+                </tr>
+
+                <!-- Row 8: Info -->
+                <tr>
+                  <td><span class="severity-dot severity-info"></span></td>
+                  <td style="white-space: nowrap; font-size: 12px;">Mar 20, 08:00:01</td>
+                  <td><span class="wf-badge wf-badge-rounded" style="background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue);">Info</span></td>
+                  <td>CandleClock</td>
+                  <td style="font-size: 12px;">—<br><span style="color: var(--ddx-gray-5);">system</span></td>
+                  <td>
+                    <div style="font-weight: 600;">Daily candle close processed — 14 strategies triggered fan-out</div>
+                  </td>
+                  <td><span style="color: var(--ddx-gray-4); font-size: 12px;">—</span></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div class="pagination">
+              <span style="font-size: 12px; color: var(--ddx-gray-5); margin-right: auto;">Showing 1–8 of 47 entries</span>
+              <div class="page-btn">←</div>
+              <div class="page-btn active">1</div>
+              <div class="page-btn">2</div>
+              <div class="page-btn">3</div>
+              <div class="page-btn">…</div>
+              <div class="page-btn">6</div>
+              <div class="page-btn">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

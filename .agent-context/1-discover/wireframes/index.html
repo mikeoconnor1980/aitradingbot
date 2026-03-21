@@ -1,11 +1,164 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=mockup_dashboard.html">
-    <title>Redirecting...</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Grid Trader — Wireframe Index</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ddx-black: #000000; --ddx-white: #ffffff;
+      --ddx-primary-green-2: #26890d; --ddx-primary-blue: #007cb0;
+      --ddx-gray-1: #d0d0ce; --ddx-gray-4: #97999b; --ddx-gray-5: #75787b;
+      --ddx-gray-6: #63666a; --ddx-gray-7: #53565a; --ddx-gray-8: #27282a;
+      --ddx-bg-gray-2: #f5f5f5; --ddx-bg-gray-3: #ebebeb;
+      --ddx-success-bg: #e1ebde; --ddx-info-bg: #d9ebf3; --ddx-warning-bg: #f6ecdd;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; font-size: 14px; line-height: 1.5; background: var(--ddx-bg-gray-2); color: var(--ddx-black); padding: 24px; }
+    .wf-page { max-width: 1200px; margin: 0 auto; background: var(--ddx-white); border: 1px solid var(--ddx-gray-1); overflow: hidden; }
+    .wf-meta { background: var(--ddx-bg-gray-3); padding: 8px 16px; font-size: 11px; color: var(--ddx-gray-6); border-bottom: 1px solid var(--ddx-gray-1); display: flex; justify-content: space-between; }
+    .wf-header-bar { background: var(--ddx-black); color: var(--ddx-white); padding: 24px 40px; }
+    .wf-header-bar .logo { font-weight: 700; font-size: 24px; letter-spacing: -0.5px; margin-bottom: 4px; }
+    .wf-header-bar .logo .accent { color: var(--ddx-primary-green-2); }
+    .wf-header-bar .subtitle { font-size: 14px; color: var(--ddx-gray-4); }
+    .page-content { padding: 32px 40px; }
+    h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--ddx-primary-green-2); display: inline-block; }
+    .section { margin-bottom: 40px; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
+    .screen-card { border: 1px solid var(--ddx-gray-1); padding: 16px; background: var(--ddx-white); text-decoration: none; color: var(--ddx-black); display: block; transition: border-color 0.15s, box-shadow 0.15s; }
+    .screen-card:hover { border-color: var(--ddx-primary-green-2); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .screen-card .card-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .screen-card .card-ref { font-size: 11px; color: var(--ddx-gray-5); margin-bottom: 8px; }
+    .screen-card .card-desc { font-size: 13px; color: var(--ddx-gray-6); line-height: 1.5; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+    .badge-user { background: var(--ddx-success-bg); color: var(--ddx-primary-green-2); border: 0.8px solid var(--ddx-primary-green-2); }
+    .badge-admin { background: var(--ddx-warning-bg); color: #896129; border: 0.8px solid #896129; }
+    .badge-journey { background: var(--ddx-info-bg); color: var(--ddx-primary-blue); border: 0.8px solid var(--ddx-primary-blue); }
+    .badge-empty { background: var(--ddx-bg-gray-3); color: var(--ddx-gray-6); border: 0.8px solid var(--ddx-gray-6); }
+    .stats { display: flex; gap: 32px; margin: 16px 0 8px; font-size: 13px; color: var(--ddx-gray-5); }
+    .stats strong { color: var(--ddx-black); }
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .page-content { padding: 16px; }
+      .wf-header-bar { padding: 16px; }
+      .card-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-    <p>Redirecting to <a href="mockup_dashboard.html">Dashboard</a>...</p>
+  <div class="wf-meta">
+    <span>AI Grid Trader — Wireframe Index</span>
+    <span>Last updated: Mar 21, 2026</span>
+  </div>
+  <div class="wf-page">
+    <div class="wf-header-bar">
+      <div class="logo">Grid<span class="accent">Trader</span></div>
+      <div class="subtitle">AI Trading Platform — Wireframe &amp; Mockup Index</div>
+    </div>
+    <div class="page-content">
+      <div class="stats">
+        <span><strong>15</strong> screens</span>
+        <span><strong>1</strong> user journey</span>
+        <span><strong>3</strong> roles: User, Admin, Visitor</span>
+      </div>
+
+      <!-- User Screens -->
+      <div class="section">
+        <h2>User Screens</h2>
+        <div class="card-grid">
+          <a href="mockup_register.html" class="screen-card">
+            <div class="card-title">Register / Login <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-007</div>
+            <div class="card-desc">Account registration with email + password, email verification, and login form. Entry point for new subscribers.</div>
+          </a>
+          <a href="mockup_dashboard.html" class="screen-card">
+            <div class="card-title">Trading Dashboard <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-001</div>
+            <div class="card-desc">Main dashboard with KPI cards, TradingView-style chart with grid levels, open positions, and recent orders.</div>
+          </a>
+          <a href="mockup_dashboard_empty.html" class="screen-card">
+            <div class="card-title">Dashboard — Empty State <span class="badge badge-empty">Empty</span></div>
+            <div class="card-ref">FEATURE-001</div>
+            <div class="card-desc">First-login experience for new users with no strategy configured. Guided onboarding steps.</div>
+          </a>
+          <a href="mockup_strategy_list.html" class="screen-card">
+            <div class="card-title">Strategy List <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-002</div>
+            <div class="card-desc">List of all user strategies with status, PnL, grid levels. Create new or configure existing strategies.</div>
+          </a>
+          <a href="mockup_strategy_config.html" class="screen-card">
+            <div class="card-title">Strategy Configuration <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-003</div>
+            <div class="card-desc">Full strategy editor with trend filter, grid spacing, risk params, JSON preview, and grid visualisation.</div>
+          </a>
+          <a href="mockup_strategy_backtest.html" class="screen-card">
+            <div class="card-title">Strategy Backtest <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-003</div>
+            <div class="card-desc">Backtest tab showing parameter setup, equity curve, trade log, and performance metrics for strategy replay.</div>
+          </a>
+          <a href="mockup_positions.html" class="screen-card">
+            <div class="card-title">Positions <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE</div>
+            <div class="card-desc">Open and closed positions with entry/mark/liq prices, PnL, ROE%, close actions, and exposure breakdown.</div>
+          </a>
+          <a href="mockup_order_history.html" class="screen-card">
+            <div class="card-title">Order History <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE</div>
+            <div class="card-desc">Full order ledger with filters by strategy, status, side, and date range. CSV export and pagination.</div>
+          </a>
+          <a href="mockup_signals.html" class="screen-card">
+            <div class="card-title">Signals <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE</div>
+            <div class="card-desc">Signal lifecycle timeline, active/pending signals table, LLM context signals, and signal detail drill-down.</div>
+          </a>
+          <a href="mockup_exchange_connection.html" class="screen-card">
+            <div class="card-title">Exchange Connection <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-004</div>
+            <div class="card-desc">Hyperliquid wallet connection with step-by-step setup, security info panel, and connection status.</div>
+          </a>
+          <a href="mockup_subscription.html" class="screen-card">
+            <div class="card-title">Subscription <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE-005</div>
+            <div class="card-desc">Plan comparison (Basic/Pro/Enterprise), current plan status, billing history, and cancel flow.</div>
+          </a>
+          <a href="mockup_settings.html" class="screen-card">
+            <div class="card-title">Settings <span class="badge badge-user">User</span></div>
+            <div class="card-ref">FEATURE</div>
+            <div class="card-desc">Profile, notification preferences, display/chart settings, API key management, and danger zone.</div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Admin Screens -->
+      <div class="section">
+        <h2>Admin Screens</h2>
+        <div class="card-grid">
+          <a href="mockup_admin_dashboard.html" class="screen-card">
+            <div class="card-title">Admin Overview <span class="badge badge-admin">Admin</span></div>
+            <div class="card-ref">FEATURE-006</div>
+            <div class="card-desc">Platform KPIs, subscriber breakdown, system health, per-user bot status table, and recent activity.</div>
+          </a>
+          <a href="mockup_admin_error_log.html" class="screen-card">
+            <div class="card-title">Admin Error Log <span class="badge badge-admin">Admin</span></div>
+            <div class="card-ref">FEATURE-006</div>
+            <div class="card-desc">Error log with severity levels, affected users, stack traces, and resolution status.</div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Journeys -->
+      <div class="section">
+        <h2>User Journeys</h2>
+        <div class="card-grid">
+          <a href="journey_onboarding.html" class="screen-card">
+            <div class="card-title">New Subscriber Onboarding <span class="badge badge-journey">Journey</span></div>
+            <div class="card-ref">JOURNEY-001</div>
+            <div class="card-desc">8-step flow: Register → Choose Plan → Connect Exchange → Create Strategy → Review → Monitor → Deploy → Track PnL.</div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
