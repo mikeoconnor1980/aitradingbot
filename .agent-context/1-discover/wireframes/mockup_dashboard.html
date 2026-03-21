@@ -131,11 +131,22 @@
     .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
     .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
 
+    /* === Sidebar Toggle (CSS-only) === */
+    .nav-toggle-input { display: none; }
+    .nav-toggle-label { display: none; cursor: pointer; }
+
     /* === Responsive Mobile === */
     @media (max-width: 768px) {
       body { padding: 8px; }
-      .wf-sidebar { display: none; }
-      .wf-body { flex-direction: column; }
+      .nav-toggle-label {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; font-size: 18px; color: var(--ddx-white);
+      }
+      .wf-body { position: relative; }
+      .wf-sidebar {
+        display: none; position: absolute; top: 0; left: 0; bottom: 0; z-index: 100;
+      }
+      #nav-toggle:checked ~ .wf-page .wf-sidebar { display: block; }
       .wf-header { padding: 0 12px; }
       .wf-header .app-name { display: none; }
       .wf-header .nav { gap: 8px; }
@@ -144,6 +155,7 @@
       .wf-page-title { font-size: 22px; line-height: 28px; }
       .wf-content { padding: 12px; }
       .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-grid[style] { grid-template-columns: 1fr !important; }
       .wf-table { display: block; overflow-x: auto; }
       .wf-card { padding: 12px; }
       .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -152,6 +164,7 @@
   </style>
 </head>
 <body>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle-input">
   <div class="wf-meta">
     <span>FEATURE-001 — Trading Dashboard</span>
     <span>AI Grid Trader Wireframe</span>
@@ -160,6 +173,7 @@
     <!-- App Header -->
     <div class="wf-header" data-wf-type="ddx-header">
       <div style="display: flex; align-items: center;">
+        <label for="nav-toggle" class="nav-toggle-label">☰</label>
         <span class="logo">Grid<span class="accent">Trader</span></span>
         <span class="app-name">AI Trading Platform</span>
       </div>

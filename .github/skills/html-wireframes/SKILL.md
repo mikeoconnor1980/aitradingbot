@@ -512,11 +512,22 @@ Every wireframe is a **single self-contained HTML file** with inline CSS. No ext
     /* data-wf-type: component type for canvas import */
     /* data-wf-props: JSON properties for canvas import */
 
+    /* === Sidebar Toggle (CSS-only) === */
+    .nav-toggle-input { display: none; }
+    .nav-toggle-label { display: none; cursor: pointer; }
+
     /* === Responsive Mobile === */
     @media (max-width: 768px) {
       body { padding: 8px; }
-      .wf-sidebar { display: none; }
-      .wf-body { flex-direction: column; }
+      .nav-toggle-label {
+        display: flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; font-size: 18px; color: var(--ddx-white);
+      }
+      .wf-body { position: relative; }
+      .wf-sidebar {
+        display: none; position: absolute; top: 0; left: 0; bottom: 0; z-index: 100;
+      }
+      #nav-toggle:checked ~ .wf-page .wf-sidebar { display: block; }
       .wf-header { padding: 0 12px; }
       .wf-header .app-name { display: none; }
       .wf-header .nav { gap: 8px; }
@@ -525,6 +536,7 @@ Every wireframe is a **single self-contained HTML file** with inline CSS. No ext
       .wf-page-title { font-size: 22px; line-height: 28px; }
       .wf-content { padding: 12px; }
       .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-grid[style] { grid-template-columns: 1fr !important; }
       .wf-table { display: block; overflow-x: auto; }
       .wf-card { padding: 12px; }
       .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -533,6 +545,7 @@ Every wireframe is a **single self-contained HTML file** with inline CSS. No ext
   </style>
 </head>
 <body>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle-input">
   <div class="wf-meta">
     <span>{{PBI_REF}} — {{SCREEN_NAME}}</span>
     <span>DTS.Design Wireframe</span>
@@ -599,7 +612,7 @@ Quick reference for the design tokens and patterns used in the wireframe stylesh
 3. **Open Sans** — The only font. Never use system fonts or other web fonts in wireframes.
 4. **Black surfaces** — Header and sidebar are pure `#000000`, not dark gray.
 5. **Outline not border** — DDS inputs use `outline` for their visible border, not `border`.
-6. **Mobile responsive** — Every wireframe must include the `@media (max-width: 768px)` block from the base template. On mobile: sidebar is hidden, grids stack to single column, tables scroll horizontally, header app-name is hidden, and padding is reduced.
+6. **Mobile responsive** — Every wireframe must include the `@media (max-width: 768px)` block and the CSS-only sidebar toggle from the base template. On mobile: sidebar is hidden behind a hamburger toggle (`<input type="checkbox" id="nav-toggle">` + `<label>` in header), grids stack to single column (including inline `style` grids via `!important`), tables scroll horizontally, header app-name is hidden, and padding is reduced.
 
 ## Generation Rules
 
@@ -706,8 +719,11 @@ When generating a journey overview (multi-step), produce a single `.html` file w
 
 ```html
 <div class="wf-header">
-  <span class="logo">Deloitte</span>
-  <span class="app-name">DTS.Design</span>
+  <div style="display: flex; align-items: center;">
+    <label for="nav-toggle" class="nav-toggle-label">&#9776;</label>
+    <span class="logo">Deloitte</span>
+    <span class="app-name">DTS.Design</span>
+  </div>
   <div class="nav"><a>Projects</a> <a>Components</a></div>
   <div class="avatar">PC</div>
 </div>
