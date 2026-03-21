@@ -67,6 +67,26 @@
     .pagination { display: flex; gap: 4px; align-items: center; justify-content: flex-end; margin-top: 12px; font-size: 13px; }
     .pagination span { padding: 4px 10px; cursor: pointer; }
     .pagination span.active { background: var(--ddx-primary-green-2); color: var(--ddx-white); }
+
+    /* === Responsive Mobile === */
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .wf-sidebar { display: none; }
+      .wf-body { flex-direction: column; }
+      .wf-header { padding: 0 12px; }
+      .wf-header .app-name { display: none; }
+      .wf-header .nav { gap: 8px; }
+      .wf-header .nav a { font-size: 11px; }
+      .wf-page-header { padding: 16px; }
+      .wf-page-title { font-size: 22px; line-height: 28px; }
+      .wf-content { padding: 12px; }
+      .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-table { display: block; overflow-x: auto; }
+      .wf-card { padding: 12px; }
+      .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .wf-tabs { flex-wrap: wrap; }
+      .filter-bar { flex-direction: column; align-items: stretch; }
+    }
   </style>
 </head>
 <body>

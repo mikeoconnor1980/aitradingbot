@@ -511,6 +511,25 @@ Every wireframe is a **single self-contained HTML file** with inline CSS. No ext
     /* === DTS.Design Import Hints === */
     /* data-wf-type: component type for canvas import */
     /* data-wf-props: JSON properties for canvas import */
+
+    /* === Responsive Mobile === */
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .wf-sidebar { display: none; }
+      .wf-body { flex-direction: column; }
+      .wf-header { padding: 0 12px; }
+      .wf-header .app-name { display: none; }
+      .wf-header .nav { gap: 8px; }
+      .wf-header .nav a { font-size: 11px; }
+      .wf-page-header { padding: 16px; }
+      .wf-page-title { font-size: 22px; line-height: 28px; }
+      .wf-content { padding: 12px; }
+      .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-table { display: block; overflow-x: auto; }
+      .wf-card { padding: 12px; }
+      .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .wf-tabs { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
@@ -580,6 +599,7 @@ Quick reference for the design tokens and patterns used in the wireframe stylesh
 3. **Open Sans** — The only font. Never use system fonts or other web fonts in wireframes.
 4. **Black surfaces** — Header and sidebar are pure `#000000`, not dark gray.
 5. **Outline not border** — DDS inputs use `outline` for their visible border, not `border`.
+6. **Mobile responsive** — Every wireframe must include the `@media (max-width: 768px)` block from the base template. On mobile: sidebar is hidden, grids stack to single column, tables scroll horizontally, header app-name is hidden, and padding is reduced.
 
 ## Generation Rules
 

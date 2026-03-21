@@ -130,6 +130,25 @@
     .vol-bar { position: absolute; bottom: 0; width: 14px; opacity: 0.3; }
     .wf-sidebar a.nav-item { display: block; text-decoration: none; color: var(--ddx-white); }
     .wf-header .nav a { color: var(--ddx-white); text-decoration: none; font-size: 13px; }
+
+    /* === Responsive Mobile === */
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .wf-sidebar { display: none; }
+      .wf-body { flex-direction: column; }
+      .wf-header { padding: 0 12px; }
+      .wf-header .app-name { display: none; }
+      .wf-header .nav { gap: 8px; }
+      .wf-header .nav a { font-size: 11px; }
+      .wf-page-header { padding: 16px; }
+      .wf-page-title { font-size: 22px; line-height: 28px; }
+      .wf-content { padding: 12px; }
+      .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-table { display: block; overflow-x: auto; }
+      .wf-card { padding: 12px; }
+      .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .wf-tabs { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>

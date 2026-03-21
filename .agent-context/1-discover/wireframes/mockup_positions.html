@@ -64,6 +64,25 @@
     .kpi-label { font-size: 12px; color: var(--ddx-gray-5); margin-top: 4px; }
     .kpi-positive { color: var(--ddx-primary-green-2); }
     .kpi-negative { color: var(--ddx-red); }
+
+    /* === Responsive Mobile === */
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .wf-sidebar { display: none; }
+      .wf-body { flex-direction: column; }
+      .wf-header { padding: 0 12px; }
+      .wf-header .app-name { display: none; }
+      .wf-header .nav { gap: 8px; }
+      .wf-header .nav a { font-size: 11px; }
+      .wf-page-header { padding: 16px; }
+      .wf-page-title { font-size: 22px; line-height: 28px; }
+      .wf-content { padding: 12px; }
+      .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-table { display: block; overflow-x: auto; }
+      .wf-card { padding: 12px; }
+      .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .wf-tabs { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>

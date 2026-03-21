@@ -75,6 +75,25 @@
     .signal-timeline .step .dot.pending { background: var(--ddx-orange); }
     .signal-timeline .step .label { font-size: 11px; color: var(--ddx-gray-5); margin-top: 6px; text-align: center; }
     .signal-timeline .connector { flex: 1; height: 2px; background: var(--ddx-gray-1); margin: 0 -8px; position: relative; top: -20px; z-index: 0; }
+
+    /* === Responsive Mobile === */
+    @media (max-width: 768px) {
+      body { padding: 8px; }
+      .wf-sidebar { display: none; }
+      .wf-body { flex-direction: column; }
+      .wf-header { padding: 0 12px; }
+      .wf-header .app-name { display: none; }
+      .wf-header .nav { gap: 8px; }
+      .wf-header .nav a { font-size: 11px; }
+      .wf-page-header { padding: 16px; }
+      .wf-page-title { font-size: 22px; line-height: 28px; }
+      .wf-content { padding: 12px; }
+      .wf-grid-2, .wf-grid-3, .wf-grid-4 { grid-template-columns: 1fr; }
+      .wf-table { display: block; overflow-x: auto; }
+      .wf-card { padding: 12px; }
+      .wf-banner { flex-direction: column; gap: 8px; align-items: flex-start; }
+      .wf-tabs { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
