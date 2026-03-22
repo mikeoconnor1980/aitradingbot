@@ -19,6 +19,18 @@ It is still not yet a credible live trading system.
 
 The remaining weakness is alignment, not awareness. The knowledge base, roadmap, and wireframes do not fully point in the same direction yet.
 
+## Post-Review Update
+
+After this review was written, the development plan in [08-development-plan.md](../../0-knowledge/08-development-plan.md) was rewritten into a safety-first sequence with explicit promotion gates and a lean v1 track.
+
+That resolves the roadmap recommendation made in this review.
+
+The main unresolved alignment issues are now:
+
+- default deployment model
+- product flow still leaning too quickly toward live activation
+- intervention tooling still needing stronger product visibility
+
 ---
 
 ## What Improved Since The Earlier Review
@@ -113,6 +125,8 @@ If Option B is the real preference, then the project should stop treating the ho
 Right now the architecture and the product UX are partially misaligned.
 
 ### 2. High: the development plan is now behind the architecture
+
+Status update: resolved after this review. The original prototype-first plan has since been replaced with a safety-first development sequence.
 
 The biggest documentation inconsistency is the roadmap.
 

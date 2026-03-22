@@ -16,6 +16,12 @@ It is still not yet a credible live trading system.
 
 The main issue is no longer that the hard parts are missing from the design. The issue is that the roadmap, deployment model, and product flow are not yet fully aligned with the stronger architecture now documented.
 
+## Post-Review Update
+
+The roadmap concern raised in this summary has since been addressed by rewriting [08-development-plan.md](../../0-knowledge/08-development-plan.md) into a safety-first build sequence with a lean v1 track.
+
+The main remaining issues are deployment-model clarity, live-activation flow, and stronger visibility for intervention tooling.
+
 ---
 
 ## What Improved
@@ -36,6 +42,8 @@ The docs keep multiple business models open, but the current UX is already desig
 That creates a real mismatch between business strategy and product design.
 
 ### 2. The roadmap is outdated
+
+Status update: resolved after this review. The development plan has since been rewritten around safety-first delivery.
 
 The existing development plan still prioritizes setup, CRUD, and UI sequencing more like an early prototype.
 
