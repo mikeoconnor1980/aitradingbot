@@ -52,6 +52,12 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 | 20 | [Business Model Options](20-business-model-options.md) | Options A/B/C for subscription delivery model |
 | 21 | [Business Model — Legal](21-business-model-options-legal.md) | Legal considerations (placeholder) |
 
+## Operations
+
+| # | Document | Description |
+|---|---|---|
+| 22 | [Pre-Launch Checklist](22-prelaunch-checklist.md) | Required audit checks before launching as a paid SaaS product |
+
 ---
 
 ## Subfolders
