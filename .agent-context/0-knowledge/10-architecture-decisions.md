@@ -71,3 +71,28 @@ The worker must execute strategies for all active subscribers on each candle clo
 
 POC phase: single worker iterates over all active users.
 Production phase: worker scales horizontally or partitions users across instances.
+
+ADR 11 — CQRS Bus
+
+MediatR chosen as the in-process CQRS pipeline.
+
+Commands and queries are dispatched via `IMediator.Send()`.
+Base types (`Command`, `Command<T>`, `CreateCommand`, `Query<T>`) and handler base classes
+are defined in `TradingApp.Application.Abstractions`.
+MediatR scans the Application assembly for all handler registrations.
+
+ADR 12 — Ethereum Key Library
+
+Nethereum chosen for wallet key derivation.
+
+`HyperliquidSigner` uses Nethereum's `EthECKey` to derive the wallet public address
+from a raw Ethereum-compatible private key. Hyperliquid uses EVM wallet addresses
+for order authentication.
+
+ADR 13 — Identity Stub
+
+Real authentication (JWT/OIDC) is deferred until a later phase.
+
+`IdentityService` in the Api layer returns a hardcoded dev `AppIdentity` during
+development. All handlers receive identity as an `AppIdentity` parameter,
+so the auth source can be swapped without changing handler code.

@@ -1,0 +1,36 @@
+@if (health$ | async; as health) {
+  <section class="status-card" aria-label="Hyperliquid connection status">
+    <header class="status-card__header">
+      <span
+        class="status-card__indicator"
+        [class.status-card__indicator--connected]="health.status === 'connected'"
+        [class.status-card__indicator--disconnected]="health.status === 'disconnected'"
+        aria-hidden="true">
+      </span>
+      <span class="status-card__status-text">{{ connectionStatusText(health) }}</span>
+    </header>
+
+    <div class="status-card__details">
+      <div class="status-card__row">
+        <span class="status-card__label">Wallet</span>
+        <span class="status-card__value status-card__value--mono">{{ truncateWalletAddress(health.walletAddress) }}</span>
+      </div>
+      <div class="status-card__row">
+        <span class="status-card__label">Network</span>
+        <span class="status-card__value">{{ health.network || 'N/A' }}</span>
+      </div>
+    </div>
+
+    @if (health.error) {
+      <p class="status-card__error">{{ health.error }}</p>
+    }
+
+    <button type="button" class="status-card__refresh" (click)="onRefresh()">
+      Refresh
+    </button>
+  </section>
+} @else {
+  <section class="status-card status-card--loading">
+    <span>Checking connection...</span>
+  </section>
+}
