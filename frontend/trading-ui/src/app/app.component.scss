@@ -1,14 +1,130 @@
 .app-shell {
   min-height: 100vh;
-  padding: 2rem 1rem;
-  display: grid;
-  place-items: start center;
-  gap: 1rem;
-  background: linear-gradient(180deg, #f6fbf8 0%, #edf4ff 100%);
+  padding: 1rem;
+
+  &__header {
+    max-width: 1200px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--colour-border-light);
+    border-radius: 0.75rem;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+  }
 
   &__title {
     margin: 0;
-    color: #0f172a;
+    color: #f8fafc;
     font-size: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  &__nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  &__status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: auto;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--colour-border-subtle);
+    background: var(--colour-surface-dark);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+  }
+
+  &__status-label {
+    color: var(--colour-muted);
+  }
+
+  &__link {
+    color: #bfdbfe;
+    text-decoration: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(147, 197, 253, 0.35);
+    transition: background-color 0.2s ease, color 0.2s ease;
+
+    &:hover {
+      color: #f8fafc;
+      background-color: rgba(59, 130, 246, 0.22);
+    }
+
+    &--active {
+      color: #0b1324;
+      border-color: #86efac;
+      background-color: #86efac;
+    }
+  }
+}
+
+.status--connected {
+  .app-shell__status-dot {
+    background-color: var(--colour-profit);
+  }
+
+  .app-shell__status-label {
+    color: var(--colour-profit);
+  }
+}
+
+.status--reconnecting {
+  .app-shell__status-dot {
+    background-color: #f59e0b;
+    animation: pulse 1.5s infinite;
+  }
+
+  .app-shell__status-label {
+    color: #f59e0b;
+  }
+}
+
+.status--disconnected {
+  .app-shell__status-dot {
+    background-color: var(--colour-loss);
+  }
+
+  .app-shell__status-label {
+    color: var(--colour-loss);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    &__header {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    &__status {
+      margin-left: 0;
+    }
   }
 }

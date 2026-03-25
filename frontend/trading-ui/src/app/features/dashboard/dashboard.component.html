@@ -1,0 +1,39 @@
+<section class="dashboard" [class.dashboard--stale]="isStale">
+  @if (showErrorBanner) {
+    <div class="dashboard__error-banner" role="alert">
+      <mat-icon>error</mat-icon>
+      <span>{{ errorMessage }}</span>
+    </div>
+  }
+
+  <header class="dashboard__header">
+    <h1 class="dashboard__title">Account Dashboard</h1>
+    <div class="dashboard__controls">
+      @if (lastUpdated) {
+        <span class="dashboard__timestamp">Last updated: {{ secondsAgo }}s ago</span>
+      }
+      <button mat-icon-button type="button" [disabled]="isLoading" aria-label="Refresh dashboard" (click)="onManualRefresh()">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  @if (isLoading && !accountSummary) {
+    <div class="dashboard__loading">
+      <mat-spinner diameter="44" aria-label="Loading dashboard"></mat-spinner>
+    </div>
+  }
+
+  @if (accountSummary) {
+    <app-account-summary [summary]="accountSummary"></app-account-summary>
+  }
+
+  <mat-tab-group class="dashboard__tabs">
+    <mat-tab label="Positions">
+      <app-positions-table [positions]="positions"></app-positions-table>
+    </mat-tab>
+    <mat-tab label="Orders">
+      <app-orders-table [orders]="orders"></app-orders-table>
+    </mat-tab>
+  </mat-tab-group>
+</section>

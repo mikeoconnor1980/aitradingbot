@@ -1,0 +1,13 @@
+namespace TradingApp.Api.Models;
+
+public sealed class PositionDto
+{
+    public string Asset { get; set; } = string.Empty;
+    public decimal Size { get; set; }
+    public string Side { get; set; } = string.Empty;
+    public decimal EntryPrice { get; set; }
+    public decimal MarkPrice { get; set; }
+    public decimal UnrealisedPnl { get; set; }
+    public decimal UnrealisedPnlPercent { get; set; }
+    public decimal LiquidationPrice { get; set; }
+}

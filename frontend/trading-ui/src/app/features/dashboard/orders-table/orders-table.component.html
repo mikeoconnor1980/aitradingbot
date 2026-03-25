@@ -1,0 +1,30 @@
+@if (orders.length === 0) {
+  <div class="orders-table__empty">No open orders</div>
+} @else {
+  <div class="orders-table__wrapper">
+    <table class="orders-table" aria-label="Open orders">
+      <thead>
+        <tr>
+          <th>Asset</th>
+          <th>Side</th>
+          <th>Price</th>
+          <th>Size</th>
+          <th>Order Type</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (order of orders; track order.orderId) {
+          <tr>
+            <td>{{ order.asset }}</td>
+            <td [ngClass]="getSideClass(order.side)">{{ order.side }}</td>
+            <td>{{ order.price | number: "1.2-2" }}</td>
+            <td>{{ order.size | number: "1.4-4" }}</td>
+            <td>{{ order.orderType }}</td>
+            <td>{{ order.status }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

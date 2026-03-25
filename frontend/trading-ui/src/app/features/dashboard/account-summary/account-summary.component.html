@@ -1,0 +1,29 @@
+<mat-card class="account-summary">
+  <mat-card-header>
+    <mat-card-title>Account Summary</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="account-summary__metrics">
+      <div class="account-summary__metric">
+        <span class="account-summary__label">Equity</span>
+        <span class="account-summary__value">{{ summary.equity | number: "1.2-2" }}</span>
+      </div>
+      <div class="account-summary__metric">
+        <span class="account-summary__label">Available Margin</span>
+        <span class="account-summary__value">{{ summary.availableMargin | number: "1.2-2" }}</span>
+      </div>
+      <div class="account-summary__metric">
+        <span class="account-summary__label">Cross Margin Ratio</span>
+        <span class="account-summary__value">{{ summary.crossMarginRatio | number: "1.4-4" }}</span>
+      </div>
+      <div class="account-summary__metric">
+        <span class="account-summary__label">Maintenance Margin</span>
+        <span class="account-summary__value">{{ summary.maintenanceMargin | number: "1.2-2" }}</span>
+      </div>
+      <div class="account-summary__metric">
+        <span class="account-summary__label">Unrealised PnL</span>
+        <span class="account-summary__value" [ngClass]="pnlClass">{{ summary.unrealisedPnl | number: "1.2-2" }}</span>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

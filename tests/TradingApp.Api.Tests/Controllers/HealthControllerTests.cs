@@ -56,7 +56,7 @@ public sealed class HealthControllerTests : BaseControllerTests
 
         var health = await response.ReadAndAssertSuccessAsync<HealthDto>();
         health.Status.Should().Be("disconnected");
-        health.Error.Should().Contain("Failed to reach Hyperliquid testnet");
+        health.Error.Should().Contain("did not respond successfully");
     }
 
     [TestCleanup]

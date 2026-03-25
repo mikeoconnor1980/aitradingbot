@@ -1,0 +1,153 @@
+<section class="market-data-page">
+  <header class="page-header">
+    <div>
+      <h2>Market Data</h2>
+      <p class="subtitle">Live market snapshot and recent candles</p>
+    </div>
+
+    <div class="controls">
+      <mat-form-field appearance="outline">
+        <mat-label>Asset</mat-label>
+        <mat-select [value]="selectedAsset" (selectionChange)="onAssetChanged($event.value)">
+          @for (asset of assets; track asset) {
+            <mat-option [value]="asset">{{ asset }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" type="button" (click)="onManualRefresh()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <section class="market-data__realtime">
+    <app-price-ticker [seedMarketInfo]="marketInfo" [selectedAsset]="selectedAsset" />
+    <app-price-chart [seedCandles]="candles" [selectedAsset]="selectedAsset" [selectedTimeframe]="selectedTimeframe" />
+  </section>
+
+  <mat-card class="market-info-card">
+    <mat-card-header>
+      <mat-card-title>{{ selectedAsset }} market info</mat-card-title>
+    </mat-card-header>
+
+    @if (isLoadingMarketInfo && !marketInfo) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (marketInfoError) {
+      <mat-card-content>
+        <p class="error-banner">{{ marketInfoError }}</p>
+      </mat-card-content>
+    }
+
+    @if (marketInfo) {
+      <mat-card-content>
+        <dl class="info-grid">
+          <div class="info-item">
+            <dt>Mid Price</dt>
+            <dd>{{ marketInfo.midPrice | number: "1.2-2" }}</dd>
+          </div>
+          <div class="info-item">
+            <dt>Mark Price</dt>
+            <dd>{{ marketInfo.markPrice | number: "1.2-2" }}</dd>
+          </div>
+          <div class="info-item">
+            <dt>Index Price</dt>
+            <dd>{{ marketInfo.indexPrice | number: "1.2-2" }}</dd>
+          </div>
+          <div class="info-item">
+            <dt>Funding Rate</dt>
+            <dd>{{ marketInfo.fundingRate | number: "1.6-6" }}</dd>
+          </div>
+          <div class="info-item">
+            <dt>24h Volume</dt>
+            <dd>{{ marketInfo.volume24h | number: "1.0-0" }}</dd>
+          </div>
+          <div class="info-item">
+            <dt>Open Interest</dt>
+            <dd>{{ marketInfo.openInterest | number: "1.0-0" }}</dd>
+          </div>
+          <div class="info-item">
+            <dt>24h Change</dt>
+            <dd [class.positive]="marketInfo.priceChange24hPercent > 0" [class.negative]="marketInfo.priceChange24hPercent < 0">
+              {{ marketInfo.priceChange24hPercent | number: "1.2-2" }}%
+            </dd>
+          </div>
+        </dl>
+      </mat-card-content>
+    }
+
+    @if (!marketInfo && !marketInfoError && !isLoadingMarketInfo) {
+      <mat-card-content>
+        <p class="empty-state">Asset not available</p>
+      </mat-card-content>
+    }
+  </mat-card>
+
+  <section class="candle-section">
+    <div class="candle-header">
+      <h3>Recent candles</h3>
+      <mat-form-field appearance="outline">
+        <mat-label>Timeframe</mat-label>
+        <mat-select [value]="selectedTimeframe" (selectionChange)="onTimeframeChanged($event.value)">
+          @for (timeframe of timeframes; track timeframe) {
+            <mat-option [value]="timeframe">{{ timeframe }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (isLoadingCandles) {
+      <mat-progress-bar mode="indeterminate" />
+    }
+
+    @if (candleError) {
+      <p class="error-banner">{{ candleError }}</p>
+    }
+
+    @if (candles.length > 0) {
+      <div class="table-container">
+        <table mat-table [dataSource]="candles" class="candle-table">
+          <ng-container matColumnDef="timestamp">
+            <th mat-header-cell *matHeaderCellDef>Timestamp</th>
+            <td mat-cell *matCellDef="let candle">{{ candle.timestamp | date: "short" }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="open">
+            <th mat-header-cell *matHeaderCellDef>Open</th>
+            <td mat-cell *matCellDef="let candle">{{ candle.open | number: "1.2-2" }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="high">
+            <th mat-header-cell *matHeaderCellDef>High</th>
+            <td mat-cell *matCellDef="let candle">{{ candle.high | number: "1.2-2" }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="low">
+            <th mat-header-cell *matHeaderCellDef>Low</th>
+            <td mat-cell *matCellDef="let candle">{{ candle.low | number: "1.2-2" }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="close">
+            <th mat-header-cell *matHeaderCellDef>Close</th>
+            <td mat-cell *matCellDef="let candle">{{ candle.close | number: "1.2-2" }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="volume">
+            <th mat-header-cell *matHeaderCellDef>Volume</th>
+            <td mat-cell *matCellDef="let candle">{{ candle.volume | number: "1.0-0" }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="candleColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: candleColumns"></tr>
+        </table>
+      </div>
+    }
+
+    @if (candles.length === 0 && !candleError && !isLoadingCandles) {
+      <p class="empty-state">No candle data available</p>
+    }
+  </section>
+</section>

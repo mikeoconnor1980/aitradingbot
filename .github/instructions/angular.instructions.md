@@ -20,9 +20,9 @@ src/DTS.UKCT.Efiling/ClientApp/
 <!-- DOT-CUSTOM-END:angular-layout -->
 
 ## Component Generation
-Generate components with SCSS and non-standalone:
+Generate components with SCSS and standalone:
 ```bash
-ng generate component <feature>/<component-name> --style=scss --standalone=false --project=web-app
+ng generate component features/<feature>/<component-name> --style=scss --standalone=true
 ```
 
 ## Component Structure
@@ -31,21 +31,19 @@ ng generate component <feature>/<component-name> --style=scss --standalone=false
 public and private members are grouped separately, in the following order:
 
 ```typescript
-import { Component, ChangeDetectionStrategy, Input, Output, EventEmitter } from "@angular/core";
+import { Component, DestroyRef, Input, Output, EventEmitter, inject } from "@angular/core";
 
 @Component({
     selector: "app-my-component",
+    standalone: true,
+    imports: [],
     templateUrl: "./my-component.component.html",
-    styleUrls: ["./my-component.component.scss"],
-    standalone: false
+    styleUrl: "./my-component.component.scss"
 })
 export class MyComponentComponent {
 
-    private readonly _service: MyService;
-
-    public constructor(service: MyService) {
-        this._service = service;
-    }
+    private readonly _service = inject(MyService);
+    private readonly _destroyRef = inject(DestroyRef);
 
     @Input() 
     public data: MyModel;
@@ -71,7 +69,8 @@ export class MyComponentComponent {
 
 ## Key Conventions
 
-- **Standalone**: Components are NOT standalone (`standalone: false`)
+- **Standalone**: Components ARE standalone (`standalone: true`)
+- **DI**: Use `inject()` function — never constructor injection
 - **Constructors**: Always `public`
 - **Member Accessibility**: Explicit (`public`, `private`, `protected`)
 - **Return Types**: Explicit function return types required
@@ -97,10 +96,8 @@ import { Router } from "@angular/router";
 
 ...
 
-public constructor(
-  private readonly _destroyRef: DestroyRef,
-  private readonly _router: Router) {
-}
+private readonly _destroyRef = inject(DestroyRef);
+private readonly _router = inject(Router);
 
 public ngOnInit(): void {
   this._router.events.pipe(takeUntilDestroyed(this._destroyRef)).subscribe(event => {
@@ -194,17 +191,13 @@ $bright-blue: #33F0FF;
 <!-- DOT-CUSTOM-START:angular-services -->
 
 ```typescript
-import { Injectable } from "@angular/core";
+import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
 import { ApiRestClient } from "./rest-clients/api-rest-client.service";
 
 @Injectable({ providedIn: "root" })
 export class MyService {
-    private readonly _apiClient: ApiRestClient;
-
-    public constructor(apiClient: ApiRestClient) {
-        this._apiClient = apiClient;
-    }
+    private readonly _apiClient = inject(ApiRestClient);
 
     public getItems(workAreaId: string): Observable<MyItem[]> {
         return this._apiClient.get<MyItem[]>(`my-feature/${workAreaId}/items`);

@@ -1,1 +1,32 @@
-/* You can add global styles to this file, and also import other style files */
+@use "@angular/material" as mat;
+
+$dashboard-theme: mat.define-theme((
+	color: (
+		theme-type: dark,
+		primary: mat.$green-palette,
+		tertiary: mat.$red-palette,
+	),
+));
+
+html {
+	@include mat.all-component-themes($dashboard-theme);
+}
+
+body {
+	margin: 0;
+	font-family: "Roboto", "Helvetica Neue", sans-serif;
+	background: radial-gradient(circle at top left, #1f2a44 0%, #0f172a 60%, #090f1d 100%);
+	color: #e6edf7;
+
+	--colour-profit: #4ade80;
+	--colour-loss: #f87171;
+	--colour-label: #93c5fd;
+	--colour-muted: #94a3b8;
+	--colour-border-subtle: rgba(148, 163, 184, 0.22);
+	--colour-border-light: rgba(148, 163, 184, 0.25);
+	--colour-surface-dark: rgba(15, 23, 42, 0.82);
+	--colour-surface-alt: rgba(30, 41, 59, 0.82);
+	--colour-error-bg: rgba(153, 27, 27, 0.4);
+	--colour-error-text: #fecaca;
+	--colour-text-primary: #e2e8f0;
+}

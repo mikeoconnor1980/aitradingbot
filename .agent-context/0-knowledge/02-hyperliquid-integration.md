@@ -95,6 +95,51 @@ Market data streams are shared and do not multiply with user count.
 | `IHyperliquidRestClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` |
 | `HyperliquidSigner` | `src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs` |
 | `HyperliquidRestClient` | `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` |
+| `HyperliquidAssetMapper` | `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` |
+| `IHyperliquidAccountService` | `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` |
+| `HyperliquidAccountService` | `src/TradingApp.Api/Services/HyperliquidAccountService.cs` |
+| `IHyperliquidWebSocketClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` |
+| `HyperliquidWebSocketClient` | `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` |
+| `WebSocketConnectionState` | `src/TradingApp.Application/Abstractions/Services/WebSocketConnectionState.cs` |
+
+`HyperliquidAssetMapper` is a static helper that maps display asset names (e.g., `BTC-PERP`) to Hyperliquid coin symbols (`BTC`) and resolves timeframe strings (e.g., `15m`, `1h`, `4h`) to interval milliseconds. It throws `NotFoundException` for unknown assets and `DomainException` for invalid timeframes.
+
+Hyperliquid API request/response shapes live in `src/TradingApp.Infrastructure/Hyperliquid/Models/`.
+
+## REST Info API
+
+Hyperliquid read operations use a single POST `/info` endpoint with a `type` field discriminator.
+`IHyperliquidRestClient.PostInfoAsync<TResponse>(request)` handles all typed info reads.
+
+## WebSocket Client
+
+`IHyperliquidWebSocketClient` manages a persistent WebSocket connection to Hyperliquid. Key operations:
+
+| Method | Description |
+|--------|-------------|
+| `ConnectAsync` | Opens the `ClientWebSocket` and notifies state callbacks |
+| `SubscribeToTradesAsync(coin)` | Sends the Hyperliquid trades subscription JSON frame |
+| `ReceiveLoopAsync` | Reads messages in a loop and dispatches to the registered trade handler |
+| `OnTradeReceived(handler)` | Registers a callback invoked per trade tick |
+| `OnConnectionStateChanged(handler)` | Registers a callback invoked on state transitions |
+
+`WebSocketConnectionState` enum: `Disconnected` → `Connecting` → `Connected` → `Reconnecting`
+
+Registered as a **singleton** — one shared connection for all market data streams, since streams are not per-user authenticated.
+
+Reconnection with exponential backoff (1 s–60 s, 20 retries max) is managed by the consuming `BackgroundService`, not the client itself.
+
+Established request types:
+
+| Request Type | Description | Auth Required |
+|---|---|---|
+| `clearinghouseState` | Account equity, margin, positions | Yes (wallet address) |
+| `openOrders` | Active open orders | Yes (wallet address) |
+| `meta` | Exchange metadata (used for connectivity check) | No |
+| `metaAndAssetCtxs` | Full universe metadata + per-asset market context (price, funding rate, OI, 24h volume) | No |
+| `candleSnapshot` | OHLCV candle data for a given coin, interval, and time range | No |
+
+Requests requiring user identity include `"user": signerWalletAddress` in the body.
 
 ## Configuration
 
@@ -103,6 +148,7 @@ Config section: `Hyperliquid`
 | Key | Description |
 |-----|-------------|
 | `Hyperliquid:BaseUrl` | REST API base URL (default: `https://api.hyperliquid-testnet.xyz`) |
+| `Hyperliquid:WsBaseUrl` | WebSocket endpoint (default: `wss://api.hyperliquid-testnet.xyz/ws`) |
 | `Hyperliquid:Network` | Network label — `"testnet"` or `"mainnet"` |
 | `Hyperliquid:PrivateKey` | Wallet private key — set via `appsettings.Development.json` or env var `Hyperliquid__PrivateKey` |
 
@@ -116,7 +162,7 @@ Config section: `Hyperliquid`
 
 ## Extending
 
-To add a new Hyperliquid REST endpoint:
-1. Add method to `IHyperliquidRestClient`
-2. Implement in `HyperliquidRestClient`
-3. Inject `IHyperliquidRestClient` into the relevant query/command handler
+To add a new Hyperliquid read:
+1. **Simple raw reads with no domain logic** (e.g., POC account state) — use `PostInfoAsync<TResponse>` directly inside an Api-layer service (see `IHyperliquidAccountService` and ADR 14). No new `IHyperliquidRestClient` method needed.
+2. **Application-layer features with mapping/transformation** (e.g., asset name resolution, response parsing, candle batching) — add a typed method to `IHyperliquidRestClient` (e.g., `GetMarketInfoAsync`, `GetCandlesAsync`) and implement it in `HyperliquidRestClient` using `PostInfoAsync` internally. Consume via a MediatR query handler in `TradingApp.Application/{Feature}/Queries/`.
+3. **New non-info endpoints** (e.g., WebSocket subscriptions, exchange order actions) — add a method to `IHyperliquidRestClient` and implement in `HyperliquidRestClient`.

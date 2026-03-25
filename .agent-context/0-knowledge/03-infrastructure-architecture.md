@@ -68,3 +68,23 @@ Hyperliquid (using subscriber's keys)
 
 This flow is the same in both VPS and cloud deployments.
 The difference is scale and infrastructure services.
+
+---
+
+# Real-Time Market Data Streaming
+
+Market data is streamed from Hyperliquid via a persistent WebSocket and relayed to browser clients via SignalR:
+
+```
+Hyperliquid WebSocket
+↓ trades stream (shared, unauthenticated)
+MarketDataStreamService  (BackgroundService co-located in TradingApp.Api)
+↓ 500ms aggregation, exponential-backoff reconnect
+IHubContext<MarketDataHub>  (SignalR, mapped at /hubs/marketdata)
+↓
+Angular SignalRService  (browser)
+```
+
+**POC note:** `MarketDataStreamService` is hosted inside `TradingApp.Api` for simplicity. In production it should migrate to `TradingApp.Worker` with a Redis backplane for cross-process SignalR.
+
+**CORS requirement:** SignalR requires `AllowCredentials()` on the CORS policy. The allowed origins are configured via `Cors:AllowedOrigins` in `appsettings.json`.

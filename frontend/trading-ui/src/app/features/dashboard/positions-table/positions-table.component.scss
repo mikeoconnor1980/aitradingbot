@@ -1,0 +1,40 @@
+.positions-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.8rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--colour-border-subtle);
+  }
+
+  th {
+    color: var(--colour-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+  }
+
+  &__wrapper {
+    overflow-x: auto;
+    padding: 1rem 0;
+  }
+
+  &__empty {
+    display: grid;
+    place-items: center;
+    min-height: 10rem;
+    color: var(--colour-muted);
+  }
+}
+
+.pnl--profit,
+.side--long {
+  color: var(--colour-profit);
+}
+
+.pnl--loss,
+.side--short {
+  color: var(--colour-loss);
+}

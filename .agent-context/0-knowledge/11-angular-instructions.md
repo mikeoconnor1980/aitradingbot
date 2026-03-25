@@ -43,6 +43,59 @@ export class MyComponent {
 }
 ```
 
+## Multi-Endpoint Polling Pattern
+
+When a component polls multiple endpoints in parallel, use `forkJoin` inside a `switchMap`:
+
+```typescript
+interval(POLL_INTERVAL_MS).pipe(
+  startWith(0),
+  switchMap(() => forkJoin({
+    summary: this._api.getAccountSummary().pipe(catchError(() => of(null))),
+    positions: this._api.getPositions().pipe(catchError(() => of([]))),
+  })),
+  takeUntilDestroyed(this._destroyRef)
+).subscribe(({ summary, positions }) => { ... });
+```
+
+Use `catchError` per-request inside `forkJoin` so a partial failure returns partial data rather than killing the stream.
+
+Reference: `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts`
+
+## Routing
+
+Routes use lazy `loadComponent` for all feature components. No eager loading of feature modules.
+
+```typescript
+{ path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) }
+```
+
+Default route redirects to `dashboard`. Wildcard also redirects to `dashboard`.
+
+## CSS Theming Tokens
+
+Shared colour tokens are defined as CSS custom properties on `body` in `styles.scss` and referenced via `var(--colour-*)` in component stylesheets.
+
+| Token | Purpose |
+|---|---|
+| `--colour-profit` | Positive PnL / green values |
+| `--colour-loss` | Negative PnL / red values |
+| `--colour-label` | Field labels and secondary text |
+| `--colour-muted` | Placeholder/disabled text |
+| `--colour-border-subtle` | Subtle dividers |
+| `--colour-surface-dark` | Dark panel backgrounds |
+| `--colour-error-bg` / `--colour-error-text` | Error state surfaces |
+
+Always use tokens from this list in component styles; do not hardcode colour values in component `.scss` files.
+
+## Angular Material
+
+Angular Material (dark theme, green primary) is configured in `styles.scss`. Import specific Material modules per component — never import a blanket `MaterialModule`. Do not mix Material components with non-Material components without token alignment.
+
+## Standalone Component Imports
+
+Import only what a component uses. Prefer specific pipes (`DecimalPipe`, `CurrencyPipe`) over `CommonModule` for standalone components; `CommonModule` is a large NgModule barrel and is unnecessary in the standalone model.
+
 ## Charts
 
 Use TradingView Lightweight Charts only.

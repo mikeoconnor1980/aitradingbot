@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +24,7 @@ public abstract class BaseControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                ConfigureWebHost(builder);
                 builder.ConfigureServices(services =>
                 {
                     ConfigureTestServices(services);
@@ -30,6 +32,10 @@ public abstract class BaseControllerTests
             });
 
         return _factory.CreateClient();
+    }
+
+    protected virtual void ConfigureWebHost(IWebHostBuilder builder)
+    {
     }
 
     protected virtual void ConfigureTestServices(IServiceCollection services)
@@ -55,9 +61,8 @@ public static class HttpResponseExtensions
         return content!;
     }
 
-    public static Task AssertStatusCodeAsync(this HttpResponseMessage response, HttpStatusCode expected)
+    public static void AssertStatusCode(this HttpResponseMessage response, HttpStatusCode expected)
     {
         response.StatusCode.Should().Be(expected);
-        return Task.CompletedTask;
     }
 }

@@ -1,0 +1,41 @@
+<mat-card class="price-ticker">
+  <mat-card-header>
+    <mat-card-title>{{ selectedAsset }} Live Price</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (priceUpdate) {
+      <div class="price-ticker__grid">
+        <div class="price-ticker__item">
+          <span class="price-ticker__label">Last Price</span>
+          <span class="price-ticker__value price-ticker__value--large">
+            {{ priceUpdate.lastPrice | number: "1.2-2" }}
+          </span>
+        </div>
+
+        <div class="price-ticker__item">
+          <span class="price-ticker__label">24h High</span>
+          <span class="price-ticker__value price-ticker__value--high">
+            {{ priceUpdate.high24h | number: "1.2-2" }}
+          </span>
+        </div>
+
+        <div class="price-ticker__item">
+          <span class="price-ticker__label">24h Low</span>
+          <span class="price-ticker__value price-ticker__value--low">
+            {{ priceUpdate.low24h | number: "1.2-2" }}
+          </span>
+        </div>
+
+        <div class="price-ticker__item">
+          <span class="price-ticker__label">24h Volume</span>
+          <span class="price-ticker__value">
+            {{ priceUpdate.volume24h | number: "1.0-0" }}
+          </span>
+        </div>
+      </div>
+    } @else {
+      <div class="price-ticker__loading">Waiting for price data...</div>
+    }
+  </mat-card-content>
+</mat-card>

@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260324-f2-account-dashboard-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-03-24T19:42:45Z"
-status: "plan-reviewed"
-lastUpdated: "2026-03-24T19:48:48Z"
+currentAgent: "3-Develop: 3 Reviewer"
+agentStartedAt: "2026-03-24T21:52:07Z"
+status: "complete"
+lastUpdated: "2026-03-24T22:14:44Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -74,57 +74,57 @@ Display the testnet account state — balance, open positions, and open orders �
 - `.github/instructions/api-controllers.instructions.md` — API controller route conventions
 - `.github/instructions/testing.instructions.md` — MSTest + Moq + FluentAssertions testing standards
 
-### [ ] Phase 1: Backend — DTOs, Service Layer, and API Endpoints
+### [x] Phase 1: Backend — DTOs, Service Layer, and API Endpoints
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [ ] Task 1.1: Create account data DTOs
+- [x] Task 1.1: Create account data DTOs
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-01-details.md#task-11-create-account-data-dtos
 
-- [ ] Task 1.2: Create Hyperliquid account service interface and implementation
+- [x] Task 1.2: Create Hyperliquid account service interface and implementation
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-01-details.md#task-12-create-hyperliquid-account-service
 
-- [ ] Task 1.3: Create AccountController with three GET endpoints
+- [x] Task 1.3: Create AccountController with three GET endpoints
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-01-details.md#task-13-create-account-controller
 
-- [ ] Task 1.4: Register new services in DI
+- [x] Task 1.4: Register new services in DI
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-01-details.md#task-14-register-services-in-di
 
-- [ ] Task 1.5: Add backend integration tests for AccountController
+- [x] Task 1.5: Add backend integration tests for AccountController
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-01-details.md#task-15-add-backend-integration-tests
 
-- [ ] Task 1.6: Build and run tests
+- [x] Task 1.6: Build and run tests
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-01-details.md#task-16-build-and-run-tests
 
-### [ ] Phase 2: Frontend — Angular Material Dashboard with Polling
+### [x] Phase 2: Frontend — Angular Material Dashboard with Polling
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Install Angular Material and configure theming
+- [x] Task 2.1: Install Angular Material and configure theming
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-21-install-angular-material
 
-- [ ] Task 2.2: Create TypeScript models and DTOs
+- [x] Task 2.2: Create TypeScript models and DTOs
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-22-create-typescript-models-and-dtos
 
-- [ ] Task 2.3: Extend hyperliquid-api.service.ts with account endpoints
+- [x] Task 2.3: Extend hyperliquid-api.service.ts with account endpoints
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-23-extend-api-service
 
-- [ ] Task 2.4: Create DashboardComponent with polling and staleness logic
+- [x] Task 2.4: Create DashboardComponent with polling and staleness logic
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-24-create-dashboard-component
 
-- [ ] Task 2.5: Create AccountSummaryComponent
+- [x] Task 2.5: Create AccountSummaryComponent
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-25-create-account-summary-component
 
-- [ ] Task 2.6: Create PositionsTableComponent
+- [x] Task 2.6: Create PositionsTableComponent
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-26-create-positions-table-component
 
-- [ ] Task 2.7: Create OrdersTableComponent
+- [x] Task 2.7: Create OrdersTableComponent
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-27-create-orders-table-component
 
-- [ ] Task 2.8: Add dashboard route and navigation
+- [x] Task 2.8: Add dashboard route and navigation
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-28-add-dashboard-route-and-navigation
 
-- [ ] Task 2.9: Build and lint the frontend
+- [x] Task 2.9: Build and lint the frontend
   - Details: .agent-context/3-develop/build/plans/details/20260324-f2-account-dashboard-phase-02-details.md#task-29-build-and-lint-frontend
 
 ## Scoping Summary
@@ -167,3 +167,5 @@ Display the testnet account state — balance, open positions, and open orders �
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-24T19:16:09Z | 2026-03-24T19:42:01Z |
 | Plan Reviewer | plan-reviewed | 2026-03-24T19:42:45Z | 2026-03-24T19:48:48Z |
+| 3-Develop: 2 Implementer | implemented | 2026-03-24T19:50:00Z | 2026-03-24T20:10:00Z |
+| 3-Develop: 3 Reviewer | complete | 2026-03-24T21:52:07Z | 2026-03-24T22:14:44Z |

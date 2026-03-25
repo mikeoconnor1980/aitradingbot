@@ -1,0 +1,249 @@
+using System.Globalization;
+using System.Text.Json;
+using TradingApp.Api.Models;
+using TradingApp.Application.Abstractions.Services;
+
+namespace TradingApp.Api.Services;
+
+public sealed class HyperliquidAccountService : IHyperliquidAccountService
+{
+    private readonly IHyperliquidRestClient _restClient;
+    private readonly IHyperliquidSigner _signer;
+    private readonly ILogger<HyperliquidAccountService> _logger;
+
+    public HyperliquidAccountService(
+        IHyperliquidRestClient restClient,
+        IHyperliquidSigner signer,
+        ILogger<HyperliquidAccountService> logger)
+    {
+        _restClient = restClient;
+        _signer = signer;
+        _logger = logger;
+    }
+
+    public async Task<AccountSummaryDto> GetAccountSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await GetClearinghouseStateAsync(cancellationToken);
+        return MapToAccountSummary(response);
+    }
+
+    public async Task<IReadOnlyList<PositionDto>> GetPositionsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await GetClearinghouseStateAsync(cancellationToken);
+        return MapToPositions(response);
+    }
+
+    public async Task<IReadOnlyList<OpenOrderDto>> GetOpenOrdersAsync(CancellationToken cancellationToken = default)
+    {
+        var request = new { type = "openOrders", user = _signer.WalletAddress };
+        var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
+        return MapToOpenOrders(response);
+    }
+
+    private async Task<JsonElement> GetClearinghouseStateAsync(CancellationToken cancellationToken)
+    {
+        var request = new { type = "clearinghouseState", user = _signer.WalletAddress };
+        var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
+
+        if (response.ValueKind != JsonValueKind.Object)
+        {
+            _logger.LogWarning("Unexpected clearinghouseState response shape: {Kind}", response.ValueKind);
+        }
+
+        return response;
+    }
+
+    private static AccountSummaryDto MapToAccountSummary(JsonElement response)
+    {
+        var equity = ParseDecimal(GetPropertyOrDefault(
+            GetPropertyOrDefault(response, "marginSummary"),
+            "accountValue"));
+
+        var availableMargin = ParseDecimal(GetPropertyOrDefault(response, "withdrawable"));
+        var maintenanceMargin = ParseDecimal(GetPropertyOrDefault(response, "crossMaintenanceMarginUsed"));
+
+        var unrealisedPnl = 0m;
+        if (TryGetProperty(response, "assetPositions", out var assetPositions) &&
+            assetPositions.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var assetPosition in assetPositions.EnumerateArray())
+            {
+                var position = UnwrapPosition(assetPosition);
+                unrealisedPnl += ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl"));
+            }
+        }
+
+        var crossMarginRatio = equity > 0m
+            ? maintenanceMargin / equity
+            : 0m;
+
+        return new AccountSummaryDto
+        {
+            Equity = equity,
+            AvailableMargin = availableMargin,
+            CrossMarginRatio = crossMarginRatio,
+            MaintenanceMargin = maintenanceMargin,
+            UnrealisedPnl = unrealisedPnl,
+        };
+    }
+
+    private static IReadOnlyList<PositionDto> MapToPositions(JsonElement response)
+    {
+        var results = new List<PositionDto>();
+
+        if (!TryGetProperty(response, "assetPositions", out var assetPositions) ||
+            assetPositions.ValueKind != JsonValueKind.Array)
+        {
+            return results;
+        }
+
+        foreach (var assetPosition in assetPositions.EnumerateArray())
+        {
+            var position = UnwrapPosition(assetPosition);
+
+            var size = ParseDecimal(GetPropertyOrDefault(position, "szi"));
+            var entryPrice = ParseDecimal(GetPropertyOrDefault(position, "entryPx"));
+            var markPrice = ParseDecimal(GetPropertyOrDefault(position, "markPx"));
+            var pnlPercent = ParseDecimal(GetPropertyOrDefault(position, "returnOnEquity"));
+
+            pnlPercent *= 100m;
+
+            results.Add(new PositionDto
+            {
+                Asset = GetString(GetPropertyOrDefault(position, "coin")),
+                Size = size,
+                Side = size >= 0m ? "Long" : "Short",
+                EntryPrice = entryPrice,
+                MarkPrice = markPrice,
+                UnrealisedPnl = ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl")),
+                UnrealisedPnlPercent = pnlPercent,
+                LiquidationPrice = ParseDecimal(GetPropertyOrDefault(position, "liquidationPx")),
+            });
+        }
+
+        return results;
+    }
+
+    private static IReadOnlyList<OpenOrderDto> MapToOpenOrders(JsonElement response)
+    {
+        var results = new List<OpenOrderDto>();
+
+        if (response.ValueKind != JsonValueKind.Array)
+        {
+            return results;
+        }
+
+        foreach (var order in response.EnumerateArray())
+        {
+            if (order.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var size = ParseDecimal(GetPropertyOrDefault(order, "sz"));
+
+            results.Add(new OpenOrderDto
+            {
+                OrderId = GetString(GetPropertyOrDefault(order, "oid")),
+                Asset = GetString(GetPropertyOrDefault(order, "coin")),
+                Side = MapOrderSide(GetString(GetPropertyOrDefault(order, "side"))),
+                Price = ParseDecimal(GetPropertyOrDefault(order, "limitPx")),
+                Size = size,
+                OrderType = GetOrderType(order),
+                Status = GetString(GetPropertyOrDefault(order, "status")),
+            });
+        }
+
+        return results;
+    }
+
+    private static JsonElement UnwrapPosition(JsonElement assetPosition)
+    {
+        if (TryGetProperty(assetPosition, "position", out var position))
+        {
+            return position;
+        }
+
+        return assetPosition;
+    }
+
+    private static string GetOrderType(JsonElement order)
+    {
+        if (!TryGetProperty(order, "orderType", out var orderType))
+        {
+            return string.Empty;
+        }
+
+        if (orderType.ValueKind == JsonValueKind.String)
+        {
+            return orderType.GetString() ?? string.Empty;
+        }
+
+        if (orderType.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in orderType.EnumerateObject())
+            {
+                return property.Name;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string MapOrderSide(string side)
+    {
+        return side.ToUpperInvariant() switch
+        {
+            "B" => "Buy",
+            "A" => "Sell",
+            _ => side,
+        };
+    }
+
+    private static JsonElement GetPropertyOrDefault(JsonElement element, string propertyName)
+    {
+        return TryGetProperty(element, propertyName, out var value)
+            ? value
+            : default;
+    }
+
+    private static bool TryGetProperty(JsonElement element, string propertyName, out JsonElement value)
+    {
+        if (element.ValueKind == JsonValueKind.Object && element.TryGetProperty(propertyName, out value))
+        {
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static decimal ParseDecimal(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Number)
+        {
+            return element.GetDecimal();
+        }
+
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var text = element.GetString();
+            if (decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            {
+                return value;
+            }
+        }
+
+        return 0m;
+    }
+
+    private static string GetString(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString() ?? string.Empty,
+            JsonValueKind.Number => element.GetRawText(),
+            _ => string.Empty,
+        };
+    }
+}

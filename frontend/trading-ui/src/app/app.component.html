@@ -1,4 +1,17 @@
 <main class="app-shell">
-  <h1 class="app-shell__title">{{ title }}</h1>
-  <app-status-card />
+  <header class="app-shell__header">
+    <h1 class="app-shell__title">{{ title }}</h1>
+    <nav class="app-shell__nav" aria-label="Primary navigation">
+      <a routerLink="/dashboard" routerLinkActive="app-shell__link--active" [routerLinkActiveOptions]="{ exact: true }" class="app-shell__link">Dashboard</a>
+      <a routerLink="/connection" routerLinkActive="app-shell__link--active" class="app-shell__link">Connection</a>
+      <a routerLink="/market-data" routerLinkActive="app-shell__link--active" class="app-shell__link">Market Data</a>
+    </nav>
+
+    <div class="app-shell__status" [ngClass]="statusClass" [attr.aria-label]="'Connection status: ' + connectionStatus.status">
+      <span class="app-shell__status-dot"></span>
+      <span class="app-shell__status-label">{{ connectionStatus.status }}</span>
+    </div>
+  </header>
+
+  <router-outlet />
 </main>

@@ -96,3 +96,15 @@ Real authentication (JWT/OIDC) is deferred until a later phase.
 `IdentityService` in the Api layer returns a hardcoded dev `AppIdentity` during
 development. All handlers receive identity as an `AppIdentity` parameter,
 so the auth source can be swapped without changing handler code.
+
+ADR 14 — Direct Service Injection in Api Layer (POC)
+
+For POC-phase controllers that read raw exchange state (account, positions, orders),
+the MediatR pipeline is bypassed. Controllers inject Api-layer services directly,
+and those services use `IHyperliquidRestClient` to call Hyperliquid.
+
+This avoids Application-layer ceremony for operations with no domain logic.
+When business rules or domain entities are involved, use the standard MediatR path (ADR 11).
+
+Api-layer services live in `TradingApp.Api/Services/`, not `TradingApp.Infrastructure`.
+DTOs for these responses live in `TradingApp.Api/Models/`.

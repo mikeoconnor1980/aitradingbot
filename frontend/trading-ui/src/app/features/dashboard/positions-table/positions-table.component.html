@@ -1,0 +1,35 @@
+@if (positions.length === 0) {
+  <div class="positions-table__empty">No open positions</div>
+} @else {
+  <div class="positions-table__wrapper">
+    <table class="positions-table" aria-label="Open positions">
+      <thead>
+        <tr>
+          <th>Asset</th>
+          <th>Size</th>
+          <th>Entry Price</th>
+          <th>Unrealised PnL</th>
+          <th>Liquidation Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (position of positions; track position.asset + position.side) {
+          <tr>
+            <td>{{ position.asset }}</td>
+            <td>
+              <span [class]="position.side === 'Long' ? 'side--long' : 'side--short'">
+                {{ position.size | number: "1.4-4" }} ({{ position.side }})
+              </span>
+            </td>
+            <td>{{ position.entryPrice | number: "1.2-2" }}</td>
+            <td [ngClass]="getPnlClass(position.unrealisedPnl)">
+              {{ position.unrealisedPnl | number: "1.2-2" }}
+              ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
+            </td>
+            <td>{{ position.liquidationPrice | number: "1.2-2" }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

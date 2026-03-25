@@ -1,5 +1,6 @@
 import { of } from "rxjs";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
+import { provideRouter } from "@angular/router";
 import { AppComponent } from "./app.component";
 import { HealthService } from "./core/services/health.service";
 
@@ -15,7 +16,7 @@ describe("AppComponent", () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
-      providers: [{ provide: HealthService, useValue: healthServiceMock }]
+      providers: [provideRouter([]), { provide: HealthService, useValue: healthServiceMock }]
     }).compileComponents();
 
     fixture = TestBed.createComponent(AppComponent);
@@ -27,12 +28,12 @@ describe("AppComponent", () => {
   });
 
   it("should have the expected title", () => {
-    expect(app.title).toEqual("Hyperliquid POC");
+    expect(app.title).toEqual("Trading Dashboard");
   });
 
   it("should render title", () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector("h1")?.textContent).toContain("Hyperliquid POC");
+    expect(compiled.querySelector("h1")?.textContent).toContain("Trading Dashboard");
   });
 });
