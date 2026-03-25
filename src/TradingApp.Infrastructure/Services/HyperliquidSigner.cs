@@ -1,14 +1,19 @@
+using Nethereum.ABI.EIP712;
 using Nethereum.Signer;
+using Nethereum.Util;
 using TradingApp.Application.Abstractions.Services;
 
 namespace TradingApp.Infrastructure.Services;
 
 public sealed class HyperliquidSigner : IHyperliquidSigner
 {
+    private readonly EthECKey _ecKey;
+
     public string WalletAddress { get; }
 
-    private HyperliquidSigner(string walletAddress)
+    private HyperliquidSigner(EthECKey ecKey, string walletAddress)
     {
+        _ecKey = ecKey;
         WalletAddress = walletAddress;
     }
 
@@ -36,7 +41,7 @@ public sealed class HyperliquidSigner : IHyperliquidSigner
         {
             var ecKey = new EthECKey(privateKey);
             var address = ecKey.GetPublicAddress();
-            return new HyperliquidSigner(address);
+            return new HyperliquidSigner(ecKey, address);
         }
         catch (Exception ex)
         {
@@ -58,5 +63,20 @@ public sealed class HyperliquidSigner : IHyperliquidSigner
         }
 
         return true;
+    }
+
+    public (string R, string S, int V) SignTypedData<TDomain>(TypedData<TDomain> typedData) where TDomain : IDomain
+    {
+        var encoder = new Eip712TypedDataEncoder();
+        var hash = encoder.EncodeAndHashTypedData(typedData);
+        var signature = _ecKey.SignAndCalculateV(hash);
+
+        var r = "0x" + Convert.ToHexString(signature.R).ToLowerInvariant();
+        var s = "0x" + Convert.ToHexString(signature.S).ToLowerInvariant();
+        var v = signature.V.Length > 0
+            ? signature.V[0]
+            : throw new InvalidOperationException("EIP-712 signature produced an empty V component.");
+
+        return (r, s, v);
     }
 }

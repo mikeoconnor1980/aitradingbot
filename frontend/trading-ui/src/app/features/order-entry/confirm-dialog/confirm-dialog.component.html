@@ -1,0 +1,37 @@
+<h2 mat-dialog-title>Confirm Order</h2>
+
+<mat-dialog-content>
+  <div class="confirm-dialog__summary">
+    <div class="confirm-dialog__row">
+      <span class="confirm-dialog__label">Side</span>
+      <span class="confirm-dialog__value" [class]="getSideClass()">{{ data.side | uppercase }}</span>
+    </div>
+
+    <div class="confirm-dialog__row">
+      <span class="confirm-dialog__label">Type</span>
+      <span class="confirm-dialog__value">{{ data.orderType | titlecase }}</span>
+    </div>
+
+    <div class="confirm-dialog__row">
+      <span class="confirm-dialog__label">Asset</span>
+      <span class="confirm-dialog__value">{{ data.asset }}</span>
+    </div>
+
+    @if (data.orderType === "limit" && data.price !== null) {
+      <div class="confirm-dialog__row">
+        <span class="confirm-dialog__label">Price</span>
+        <span class="confirm-dialog__value">{{ data.price | number: "1.2-2" }}</span>
+      </div>
+    }
+
+    <div class="confirm-dialog__row">
+      <span class="confirm-dialog__label">Size</span>
+      <span class="confirm-dialog__value">{{ data.size }}</span>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="onConfirm()">Confirm Order</button>
+</mat-dialog-actions>

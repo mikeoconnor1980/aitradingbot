@@ -18,7 +18,7 @@ export class PriceTickerComponent implements OnInit, OnChanges {
   private readonly _destroyRef = inject(DestroyRef);
 
   @Input() public seedMarketInfo: MarketInfo | null = null;
-  @Input() public selectedAsset: string = 'BTC-PERP';
+  @Input() public selectedAsset = "BTC-PERP";
 
   public priceUpdate: PriceUpdate | null = null;
 

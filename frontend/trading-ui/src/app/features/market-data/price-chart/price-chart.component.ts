@@ -40,8 +40,8 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   };
 
   @Input() public seedCandles: Candle[] = [];
-  @Input() public selectedAsset: string = 'BTC-PERP';
-  @Input() public selectedTimeframe: string = '15m';
+  @Input() public selectedAsset = "BTC-PERP";
+  @Input() public selectedTimeframe = "15m";
 
   public get timeWindowLabel(): string {
     if (!this.seedCandles.length) return '';

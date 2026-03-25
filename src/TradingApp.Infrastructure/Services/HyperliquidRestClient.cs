@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 using TradingApp.Infrastructure.Hyperliquid;
@@ -71,6 +70,46 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
         }
 
         return payload;
+    }
+
+    public async Task<TResponse> PostExchangeAsync<TResponse>(
+        object signedPayload,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsJsonAsync(
+            "/exchange",
+            signedPayload,
+            cancellationToken);
+
+        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"Hyperliquid exchange returned {response.StatusCode}: {responseBody}",
+                null,
+                response.StatusCode);
+        }
+
+        _logger.LogInformation("Hyperliquid exchange raw response: {ResponseBody}", responseBody);
+
+        TResponse? result;
+        try
+        {
+            result = JsonSerializer.Deserialize<TResponse>(responseBody, CaseSensitiveOptions);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize Hyperliquid exchange response. Body: {ResponseBody}", responseBody);
+            throw;
+        }
+
+        if (result is null)
+        {
+            throw new InvalidOperationException($"Failed to deserialize exchange response: {responseBody}");
+        }
+
+        return result;
     }
 
     public async Task<MarketInfoDto?> GetMarketInfoAsync(
@@ -181,8 +220,11 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
 
     private static decimal ParseDecimal(string value)
     {
-        return decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
-            ? parsed
-            : 0m;
+        if (decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new FormatException($"Unable to parse Hyperliquid decimal value: '{value}'");
     }
 }

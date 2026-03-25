@@ -6,6 +6,10 @@ public interface IHyperliquidRestClient
 {
     Task<bool> CheckConnectivityAsync(CancellationToken cancellationToken = default);
 
+    Task<TResponse> PostExchangeAsync<TResponse>(
+        object signedPayload,
+        CancellationToken cancellationToken = default);
+
     Task<TResponse> PostInfoAsync<TResponse>(
         object request,
         CancellationToken cancellationToken = default);

@@ -1,3 +1,4 @@
+using TradingApp.Infrastructure.Hyperliquid;
 using TradingApp.Infrastructure.Services;
 
 namespace TradingApp.Infrastructure.Tests.Services;
@@ -61,5 +62,32 @@ public sealed class HyperliquidSignerTests
 
         act.Should().Throw<ArgumentException>()
             .WithMessage("*malformed*");
+    }
+
+    [TestMethod]
+    public void GivenValidTypedData_WhenSignTypedData_ThenReturnsSignatureComponents()
+    {
+        var signer = HyperliquidSigner.Create(ValidPrivateKey);
+        var connectionId = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
+        var typedData = HyperliquidEip712.BuildPhantomAgentTypedData(connectionId, isMainnet: false);
+
+        var (r, s, v) = signer.SignTypedData(typedData);
+
+        r.Should().StartWith("0x").And.HaveLength(66);
+        s.Should().StartWith("0x").And.HaveLength(66);
+        v.Should().BeOneOf(27, 28);
+    }
+
+    [TestMethod]
+    public void GivenSameTypedData_WhenSignTypedDataTwice_ThenProducesDeterministicSignature()
+    {
+        var signer = HyperliquidSigner.Create(ValidPrivateKey);
+        var connectionId = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
+        var typedData = HyperliquidEip712.BuildPhantomAgentTypedData(connectionId, isMainnet: false);
+
+        var signatureOne = signer.SignTypedData(typedData);
+        var signatureTwo = signer.SignTypedData(typedData);
+
+        signatureOne.Should().Be(signatureTwo);
     }
 }

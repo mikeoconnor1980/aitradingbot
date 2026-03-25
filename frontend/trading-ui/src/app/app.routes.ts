@@ -14,6 +14,11 @@ export const routes: Routes = [
     path: "connection",
     loadComponent: () => import("./features/connection/status-card.component").then((m) => m.StatusCardComponent)
   },
+  {
+    path: "order-entry",
+    loadComponent: () => import("./features/order-entry/order-entry.component").then((m) => m.OrderEntryComponent),
+    title: "Order Entry"
+  },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },
   { path: "**", redirectTo: "dashboard" }
 ];

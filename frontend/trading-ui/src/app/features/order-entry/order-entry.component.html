@@ -1,0 +1,55 @@
+<div class="order-entry">
+  <mat-card class="order-entry__card">
+    <mat-card-header>
+      <mat-card-title>Place Order - BTC-PERP</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="orderForm" (ngSubmit)="onSubmit()" class="order-entry__form">
+        <div class="order-entry__field">
+          <span class="order-entry__label" id="side-label">Side</span>
+          <mat-button-toggle-group formControlName="side" class="order-entry__side-toggle" aria-labelledby="side-label">
+            <mat-button-toggle value="buy" class="order-entry__side-toggle--buy">Buy</mat-button-toggle>
+            <mat-button-toggle value="sell" class="order-entry__side-toggle--sell">Sell</mat-button-toggle>
+          </mat-button-toggle-group>
+        </div>
+
+        <div class="order-entry__field">
+          <mat-form-field appearance="outline" class="order-entry__input">
+            <mat-label>Order Type</mat-label>
+            <mat-select formControlName="orderType">
+              <mat-option value="limit">Limit</mat-option>
+              <mat-option value="market">Market</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        @if (isLimitOrder()) {
+          <div class="order-entry__field">
+            <mat-form-field appearance="outline" class="order-entry__input">
+              <mat-label>Price (USD)</mat-label>
+              <input matInput type="number" formControlName="price" step="0.01" />
+            </mat-form-field>
+          </div>
+        }
+
+        <div class="order-entry__field">
+          <mat-form-field appearance="outline" class="order-entry__input">
+            <mat-label>Size (BTC)</mat-label>
+            <input matInput type="number" formControlName="size" step="0.001" />
+          </mat-form-field>
+        </div>
+
+        <div class="order-entry__actions">
+          @if (isSubmitting) {
+            <mat-spinner diameter="36" />
+          } @else {
+            <button mat-flat-button color="primary" type="submit" [disabled]="orderForm.invalid">
+              Submit Order
+            </button>
+          }
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
