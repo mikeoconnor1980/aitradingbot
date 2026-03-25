@@ -1,0 +1,64 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start API",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": {
+        "cwd": "${workspaceFolder}/src/TradingApp.Api"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dotnet",
+        "pattern": [
+          {
+            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.",
+          "endsPattern": "Now listening on"
+        }
+      }
+    },
+    {
+      "label": "Start UI",
+      "type": "shell",
+      "command": "$info = netstat -ano | Select-String ':4200 ' | Select-String 'LISTENING'; if ($info) { $p = ([int]($info.ToString().Trim() -split '\\s+')[-1]); try { [System.Diagnostics.Process]::GetProcessById($p).Kill(); Start-Sleep -Seconds 1 } catch {} }; npx ng serve",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend/trading-ui"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "(.*?)",
+          "endsPattern": "bundle generation complete"
+        }
+      }
+    },
+    {
+      "label": "Start Dev",
+      "dependsOn": ["Start API", "Start UI"],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+        "reevaluateOnRerun": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
