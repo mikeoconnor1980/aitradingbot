@@ -45,6 +45,21 @@ export class AccountStateService {
     this._addEvent(event);
   }
 
+  public seedFillEvents(fills: FillEvent[]): void {
+    const current = this._events$.getValue();
+    if (current.length > 0) {
+      return; // Already have events from WebSocket, don't overwrite
+    }
+
+    const events: UserEvent[] = fills.map(fill => ({
+      type: "Fill" as const,
+      timestamp: new Date(fill.timestamp),
+      data: fill
+    }));
+
+    this._events$.next(events.slice(0, AccountStateService.MAX_EVENTS));
+  }
+
   private _addEvent(event: UserEvent): void {
     const current = this._events$.getValue();
     const updated = [event, ...current].slice(0, AccountStateService.MAX_EVENTS);

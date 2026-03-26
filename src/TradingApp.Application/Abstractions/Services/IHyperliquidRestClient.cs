@@ -23,4 +23,9 @@ public interface IHyperliquidRestClient
         string timeframe,
         long? endTime = null,
         CancellationToken cancellationToken = default);
+
+    Task<List<FillEventDto>> GetUserFillsAsync(
+        string walletAddress,
+        long? startTimeMs = null,
+        CancellationToken cancellationToken = default);
 }

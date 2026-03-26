@@ -14,6 +14,12 @@
             }
           </mat-select>
         </mat-form-field>
+        @if (livePrice !== null) {
+          <div class="order-entry__live-price">
+            <span class="order-entry__live-price-label">Live Price</span>
+            <span class="order-entry__live-price-value">\${{ livePrice | number:'1.2-6' }}</span>
+          </div>
+        }
       </div>
 
       <div class="order-entry__leverage-section">
@@ -54,6 +60,11 @@
               <mat-option value="market">Market</mat-option>
             </mat-select>
           </mat-form-field>
+          <span class="order-entry__order-type-badge"
+                [class.order-entry__order-type-badge--market]="!isLimitOrder()"
+                [class.order-entry__order-type-badge--limit]="isLimitOrder()">
+            {{ isLimitOrder() ? 'LIMIT — you set the price' : 'MARKET — fills at current price' }}
+          </span>
         </div>
 
         @if (isLimitOrder()) {

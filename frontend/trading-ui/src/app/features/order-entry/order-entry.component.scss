@@ -65,6 +65,30 @@
     padding-top: 16px;
   }
 
+  &__live-price {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-top: -8px;
+  }
+
+  &__live-price-label {
+    font-size: 12px;
+    color: var(--colour-label, #aaa);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__live-price-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--colour-profit, #4caf50);
+    font-variant-numeric: tabular-nums;
+  }
+
   &__label {
     color: var(--colour-label);
     font-size: 14px;
@@ -73,6 +97,26 @@
 
   &__input {
     width: 100%;
+  }
+
+  &__order-type-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-top: -12px;
+
+    &--limit {
+      color: #2196f3;
+      background: rgba(33, 150, 243, 0.12);
+    }
+
+    &--market {
+      color: #ff9800;
+      background: rgba(255, 152, 0, 0.12);
+    }
   }
 
   &__side-toggle {

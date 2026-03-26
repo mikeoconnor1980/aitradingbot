@@ -1,5 +1,6 @@
 import { HttpContext, HttpErrorResponse } from "@angular/common/http";
 import { Component, DestroyRef, OnInit, inject } from "@angular/core";
+import { CommonModule } from "@angular/common";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -17,6 +18,7 @@ import { TradableAsset } from "../../core/models/tradable-asset.model";
 import { MarketDataService } from "../../core/services/market-data.service";
 import { NotificationService } from "../../core/services/notification.service";
 import { OrderService } from "../../core/services/order.service";
+import { SignalRService } from "../../core/services/signalr.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { ConfirmDialogComponent, ConfirmDialogData } from "./confirm-dialog/confirm-dialog.component";
@@ -32,6 +34,7 @@ interface OrderEntryForm {
   selector: "app-order-entry",
   standalone: true,
   imports: [
+    CommonModule,
     ReactiveFormsModule,
     MatButtonToggleModule,
     MatFormFieldModule,
@@ -51,6 +54,7 @@ export class OrderEntryComponent implements OnInit {
   private readonly _fb = inject(FormBuilder);
   private readonly _orderService = inject(OrderService);
   private readonly _marketDataService = inject(MarketDataService);
+  private readonly _signalRService = inject(SignalRService);
   private readonly _dialog = inject(MatDialog);
   private readonly _notifications = inject(NotificationService);
   private readonly _destroyRef = inject(DestroyRef);
@@ -58,6 +62,7 @@ export class OrderEntryComponent implements OnInit {
   public orderForm!: FormGroup<OrderEntryForm>;
   public isSubmitting = false;
   public midPrice: number | null = null;
+  public livePrice: number | null = null;
   public leverage = 5;
   public maxLeverage = 40;
   public marginMode: "cross" | "isolated" = "cross";
@@ -101,6 +106,7 @@ export class OrderEntryComponent implements OnInit {
       });
 
     this._loadMidPrice();
+    this._subscribeToPriceUpdates();
 
     this._orderService.getAvailableAssets().subscribe({
       next: (assets) => {
@@ -116,6 +122,7 @@ export class OrderEntryComponent implements OnInit {
   public onAssetChange(asset: string): void {
     this.selectedAsset = asset;
     this.midPrice = null;
+    this.livePrice = null;
     this.leverageStatus = null;
     this.orderForm.controls.price.setValue(null);
 
@@ -136,12 +143,25 @@ export class OrderEntryComponent implements OnInit {
       .subscribe({
         next: (marketInfo) => {
           this.midPrice = marketInfo.midPrice;
+          this.livePrice = marketInfo.midPrice;
           if (this.orderForm.controls.orderType.value === "limit") {
             this.orderForm.controls.price.setValue(this.midPrice);
           }
         },
         error: () => {
           // Market data load error is handled by the HTTP interceptor
+        }
+      });
+  }
+
+  private _subscribeToPriceUpdates(): void {
+    this._signalRService.priceUpdate$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((update) => {
+        const coin = this.selectedAsset.replace("-PERP", "");
+        const updateCoin = update.asset.replace("-PERP", "");
+        if (coin.toUpperCase() === updateCoin.toUpperCase()) {
+          this.livePrice = update.lastPrice;
         }
       });
   }

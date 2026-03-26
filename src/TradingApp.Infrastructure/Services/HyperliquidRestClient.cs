@@ -264,6 +264,33 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             .ToList();
     }
 
+    public async Task<List<FillEventDto>> GetUserFillsAsync(
+        string walletAddress,
+        long? startTimeMs = null,
+        CancellationToken cancellationToken = default)
+    {
+        object request = startTimeMs.HasValue
+            ? new { type = "userFillsByTime", user = walletAddress, startTime = startTimeMs.Value }
+            : new { type = "userFills", user = walletAddress };
+
+        var fills = await PostInfoAsync<List<HyperliquidUserFill>>(request, cancellationToken);
+
+        return fills
+            .Select(f => new FillEventDto
+            {
+                Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(f.TimestampMs).UtcDateTime,
+                Asset = f.Coin,
+                Side = f.Side,
+                Size = ParseDecimal(f.Size),
+                Price = ParseDecimal(f.Price),
+                Fee = ParseDecimal(f.Fee),
+                OrderId = f.OrderId.ToString()
+            })
+            .OrderByDescending(f => f.Timestamp)
+            .Take(50)
+            .ToList();
+    }
+
     private static decimal ParseDecimal(string value)
     {
         if (decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
