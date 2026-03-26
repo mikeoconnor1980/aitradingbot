@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 using TradingApp.Infrastructure.Hyperliquid;
@@ -57,10 +58,32 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            throw new HttpRequestException(
-                $"Hyperliquid API error {(int)response.StatusCode}: {errorBody}",
-                inner: null,
-                response.StatusCode);
+            var statusCode = (int)response.StatusCode;
+
+            _logger.LogWarning(
+                "Hyperliquid API error. StatusCode={StatusCode}, Endpoint=/info, Body={ErrorBody}",
+                statusCode,
+                errorBody);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                int? retryAfter = response.Headers.RetryAfter?.Delta is { } delta
+                    ? (int)delta.TotalSeconds
+                    : null;
+
+                throw new RateLimitException(
+                    $"Hyperliquid rate limit exceeded: {errorBody}",
+                    retryAfter);
+            }
+
+            var clientMessage = statusCode >= 500
+                ? "Hyperliquid exchange returned a server error"
+                : $"Hyperliquid API error: {errorBody}";
+
+            throw new HyperliquidApiException(
+                clientMessage,
+                statusCode,
+                statusCode >= 500 ? "exchange_error" : "validation_error");
         }
 
         var payload = await response.Content.ReadFromJsonAsync<TResponse>(CaseSensitiveOptions, cancellationToken);
@@ -85,13 +108,35 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                $"Hyperliquid exchange returned {response.StatusCode}: {responseBody}",
-                null,
-                response.StatusCode);
+            var statusCode = (int)response.StatusCode;
+
+            _logger.LogWarning(
+                "Hyperliquid exchange error. StatusCode={StatusCode}, Endpoint=/exchange, Body={ResponseBody}",
+                statusCode,
+                responseBody);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                int? retryAfter = response.Headers.RetryAfter?.Delta is { } delta
+                    ? (int)delta.TotalSeconds
+                    : null;
+
+                throw new RateLimitException(
+                    $"Hyperliquid rate limit exceeded: {responseBody}",
+                    retryAfter);
+            }
+
+            var clientMessage = statusCode >= 500
+                ? "Hyperliquid exchange returned a server error"
+                : $"Hyperliquid exchange error: {responseBody}";
+
+            throw new HyperliquidApiException(
+                clientMessage,
+                statusCode,
+                statusCode >= 500 ? "exchange_error" : "validation_error");
         }
 
-        _logger.LogInformation("Hyperliquid exchange raw response: {ResponseBody}", responseBody);
+        _logger.LogDebug("Hyperliquid exchange raw response: {ResponseBody}", responseBody);
 
         TResponse? result;
         try

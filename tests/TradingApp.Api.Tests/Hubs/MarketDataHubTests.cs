@@ -19,6 +19,7 @@ public sealed class MarketDataHubTests
     {
         var wsClientMock = new Mock<IHyperliquidWebSocketClient>();
         var restClientMock = new Mock<IHyperliquidRestClient>();
+        var userEventClientMock = new Mock<IHyperliquidUserEventClient>();
 
         restClientMock
             .Setup(r => r.GetMarketInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -31,6 +32,16 @@ public sealed class MarketDataHubTests
             .Setup(w => w.SubscribeToTradesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         wsClientMock
+            .Setup(w => w.ReceiveLoopAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct => Task.Delay(Timeout.Infinite, ct));
+
+        userEventClientMock
+            .Setup(w => w.ConnectAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        userEventClientMock
+            .Setup(w => w.SubscribeToUserEventsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        userEventClientMock
             .Setup(w => w.ReceiveLoopAsync(It.IsAny<CancellationToken>()))
             .Returns<CancellationToken>(ct => Task.Delay(Timeout.Infinite, ct));
 
@@ -48,6 +59,84 @@ public sealed class MarketDataHubTests
 
                     services.RemoveAll<IHyperliquidRestClient>();
                     services.AddSingleton(restClientMock.Object);
+
+                    services.RemoveAll<IHyperliquidUserEventClient>();
+                    services.AddSingleton(userEventClientMock.Object);
+                });
+            });
+
+        var server = factory.Server;
+        var hubConnection = new HubConnectionBuilder()
+            .WithUrl(
+                $"{server.BaseAddress}hubs/marketdata",
+                options =>
+                {
+                    options.HttpMessageHandlerFactory = _ => server.CreateHandler();
+                    options.Transports = HttpTransportType.LongPolling;
+                })
+            .Build();
+
+        await hubConnection.StartAsync();
+
+        try
+        {
+            hubConnection.State.Should().Be(HubConnectionState.Connected);
+        }
+        finally
+        {
+            await hubConnection.StopAsync();
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    [TestMethod]
+    public async Task GivenSignalRHub_WhenUserEventStreamRegistered_ThenConnectionStillSucceeds()
+    {
+        var wsClientMock = new Mock<IHyperliquidWebSocketClient>();
+        var restClientMock = new Mock<IHyperliquidRestClient>();
+        var userEventClientMock = new Mock<IHyperliquidUserEventClient>();
+
+        restClientMock
+            .Setup(r => r.GetMarketInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MarketInfoDto?)null);
+
+        wsClientMock
+            .Setup(w => w.ConnectAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        wsClientMock
+            .Setup(w => w.SubscribeToTradesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        wsClientMock
+            .Setup(w => w.ReceiveLoopAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct => Task.Delay(Timeout.Infinite, ct));
+
+        userEventClientMock
+            .Setup(w => w.ConnectAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        userEventClientMock
+            .Setup(w => w.SubscribeToUserEventsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        userEventClientMock
+            .Setup(w => w.ReceiveLoopAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct => Task.Delay(Timeout.Infinite, ct));
+
+        await using var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
+                builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
+                builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");
+                builder.UseSetting("Hyperliquid:Network", "testnet");
+                builder.ConfigureServices(services =>
+                {
+                    services.RemoveAll<IHyperliquidWebSocketClient>();
+                    services.AddSingleton(wsClientMock.Object);
+
+                    services.RemoveAll<IHyperliquidRestClient>();
+                    services.AddSingleton(restClientMock.Object);
+
+                    services.RemoveAll<IHyperliquidUserEventClient>();
+                    services.AddSingleton(userEventClientMock.Object);
                 });
             });
 
@@ -75,3 +164,4 @@ public sealed class MarketDataHubTests
         }
     }
 }
+

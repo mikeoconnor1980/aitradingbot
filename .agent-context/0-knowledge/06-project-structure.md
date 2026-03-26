@@ -50,7 +50,7 @@ src/TradingApp.Api/
 │   └── Filters/
 │       └── HttpGlobalExceptionFilter.cs  # Global IExceptionFilter: DomainException→400, NotFoundException→404, HttpRequestException→503, unhandled→500
 ├── Models/                # DTOs for responses served directly by the Api layer (no Application-layer handler)
-├── Services/              # Api-layer services; includes MarketDataStreamService (BackgroundService — WebSocket aggregation + SignalR broadcast)
+├── Services/              # Api-layer services; includes MarketDataStreamService and UserEventStreamService (both BackgroundService — WebSocket → SignalR relay with exponential-backoff reconnect)
 └── Program.cs             # DI composition root and startup configuration
 ```
 
@@ -66,7 +66,8 @@ src/TradingApp.Infrastructure/
 └── Services/
     ├── HyperliquidSigner.cs           # Derives wallet address from private key (Nethereum)
     ├── HyperliquidRestClient.cs       # Typed HttpClient targeting Hyperliquid REST API
-    └── HyperliquidWebSocketClient.cs  # Persistent WebSocket client; implements IHyperliquidWebSocketClient (singleton)
+    ├── HyperliquidWebSocketClient.cs  # Persistent WebSocket client; implements IHyperliquidWebSocketClient (singleton); shared market data stream
+    └── HyperliquidUserEventClient.cs  # Per-wallet WebSocket client; implements IHyperliquidUserEventClient (singleton); user fills and order updates
 ```
 
 ---
@@ -110,9 +111,10 @@ frontend/trading-ui/           # Angular 19 standalone application
         #                   api-rest-client.service.ts — generic HTTP wrapper (get/post/put/delete) over Angular HttpClient
         #                   {feature}.service.ts — domain-specific service using ApiRestClient (e.g., market-data.service.ts, health.service.ts)
         #                   hyperliquid-api.service.ts — legacy direct-call service (Account/positions/orders; pre-ApiRestClient pattern)
-        #                   signalr.service.ts — SignalR hub connection; exposes priceUpdate$ and connectionStatus$; merges SignalR + backend connection states
+        #                   signalr.service.ts — SignalR hub connection; exposes priceUpdate$ and connectionStatus$; merges SignalR + market data stream + user event stream statuses; routes fill/order events to AccountStateService
+        #                   account-state.service.ts — shared reactive state layer; BehaviorSubject for positions$, orders$, events$; 100-event cap for activity feed
     ├── features/               # Feature components grouped by domain area
-    │   ├── dashboard/          # Main dashboard; contains sub-component folders (account-summary/, positions-table/, orders-table/)
+    │   ├── dashboard/          # Main dashboard; contains sub-component folders (account-summary/, positions-table/, orders-table/, activity-feed/)
     │   ├── connection/         # Exchange connectivity / health check view
     └── market-data/        # Market info (10s polling), candle table, live price ticker (SignalR), and 15-min rolling chart
     │   ├── price-ticker/   # PriceTickerComponent — live BTC-PERP price fed from SignalRService.priceUpdate$

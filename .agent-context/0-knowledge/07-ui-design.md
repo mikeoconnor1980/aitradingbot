@@ -3,8 +3,9 @@
 Main dashboard shows:
 
 chart  
-positions  
-orders  
+positions (Actions column: Close button per row)  
+orders (Actions column: Cancel, Cancel All, Modify per row)  
+activity feed (live fill and order update events; 100-event cap; third tab alongside Positions and Orders)  
 signals  
 bot state
 

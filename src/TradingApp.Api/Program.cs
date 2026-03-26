@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
+using Polly;
 using TradingApp.Api.Hubs;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Infrastructure.Filters;
@@ -40,7 +42,28 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 {
     var options = sp.GetRequiredService<IOptions<HyperliquidOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(5);
+    client.Timeout = TimeSpan.FromSeconds(30); // Outer timeout caps total retry duration
+})
+.AddResilienceHandler("hyperliquid-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 5,
+        BackoffType = DelayBackoffType.Exponential,
+        Delay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        UseJitter = true,
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+        OnRetry = args =>
+        {
+            // Retry logging is handled by the Polly telemetry pipeline
+            return ValueTask.CompletedTask;
+        },
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5)); // Per-attempt timeout
 });
 
 builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService>();
@@ -56,6 +79,10 @@ builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketC
 
 // Background service for market data streaming
 builder.Services.AddHostedService<MarketDataStreamService>();
+
+// User event WebSocket — separate connection for per-wallet subscriptions
+builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
+builder.Services.AddHostedService<UserEventStreamService>();
 
 // CORS
 var allowedOrigins = builder.Configuration
@@ -84,6 +111,7 @@ app.Logger.LogInformation(
     "Hyperliquid wallet configured: {WalletAddress}",
     signer.WalletAddress);
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseCors();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");

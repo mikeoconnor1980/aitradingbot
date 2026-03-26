@@ -1,5 +1,6 @@
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
+import { HttpContext } from "@angular/common/http";
 import { ModifyOrderDto } from "../models/modify-order.model";
 import { PlaceOrderRequest, PlaceOrderResponse, TestSignResponse } from "../models/place-order.model";
 import { SetLeverageRequest } from "../models/set-leverage.model";
@@ -34,7 +35,7 @@ export class OrderService {
     return this._apiClient.put<void>(`orders/${orderId}`, dto);
   }
 
-  public setLeverage(request: SetLeverageRequest): Observable<void> {
-    return this._apiClient.put<void>("orders/leverage", request);
+  public setLeverage(request: SetLeverageRequest, context?: HttpContext): Observable<void> {
+    return this._apiClient.put<void>("orders/leverage", request, context);
   }
 }

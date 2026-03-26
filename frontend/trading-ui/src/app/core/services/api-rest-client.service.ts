@@ -1,4 +1,4 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
@@ -16,8 +16,8 @@ export class ApiRestClient {
     return this._http.post<T>(this.buildUrl(path), body);
   }
 
-  public put<T>(path: string, body: unknown): Observable<T> {
-    return this._http.put<T>(this.buildUrl(path), body);
+  public put<T>(path: string, body: unknown, context?: HttpContext): Observable<T> {
+    return this._http.put<T>(this.buildUrl(path), body, context ? { context } : undefined);
   }
 
   public delete<T>(path: string): Observable<T> {

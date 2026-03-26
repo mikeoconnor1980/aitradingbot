@@ -29,7 +29,7 @@
               </span>
             </td>
             <td>{{ position.entryPrice | number: "1.2-2" }}</td>
-            <td [ngClass]="getPnlClass(position.unrealisedPnl)">
+            <td [class]="getPnlClass(position.unrealisedPnl)">
               {{ position.unrealisedPnl | number: "1.2-2" }}
               ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
             </td>
@@ -42,7 +42,6 @@
                   mat-stroked-button
                   type="button"
                   color="warn"
-                  [disabled]="isLoading(position)"
                   aria-label="Close position"
                   (click)="onCloseClick(position)">
                   Close

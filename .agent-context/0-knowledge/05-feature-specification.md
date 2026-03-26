@@ -60,8 +60,8 @@ Per-user dashboard displays:
 
 bot state  
 PnL  
-open orders  
-positions  
+open orders (with cancel, cancel-all, and modify actions)  
+positions (with close action)  
 signals  
 subscription status
 

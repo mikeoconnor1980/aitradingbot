@@ -1,26 +1,29 @@
-import { HttpErrorResponse } from "@angular/common/http";
 import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTabsModule } from "@angular/material/tabs";
 import { ModifyOrderDto } from "../../core/models/modify-order.model";
 import { PlaceOrderRequest } from "../../core/models/place-order.model";
 import { Observable, Subject, forkJoin, interval, of, timer } from "rxjs";
 import { catchError, startWith, switchMap, tap } from "rxjs/operators";
+import { HttpContext } from "@angular/common/http";
+import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { AccountSummary } from "../../core/models/account-summary.model";
 import { OpenOrder } from "../../core/models/open-order.model";
 import { Position } from "../../core/models/position.model";
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
+import { NotificationService } from "../../core/services/notification.service";
 import { OrderService } from "../../core/services/order.service";
+import { AccountStateService } from "../../core/services/account-state.service";
 import { ConfirmDialogComponent } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AccountSummaryComponent } from "./account-summary/account-summary.component";
 import { OrdersTableComponent } from "./orders-table/orders-table.component";
 import { ModifyOrderDialogData, ModifyOrderModalComponent } from "./orders-table/modify-order-modal/modify-order.modal.component";
 import { PositionsTableComponent } from "./positions-table/positions-table.component";
+import { ActivityFeedComponent } from "./activity-feed/activity-feed.component";
 
 @Component({
   selector: "app-dashboard",
@@ -29,11 +32,11 @@ import { PositionsTableComponent } from "./positions-table/positions-table.compo
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
-    MatSnackBarModule,
     MatProgressSpinnerModule,
     AccountSummaryComponent,
     PositionsTableComponent,
-    OrdersTableComponent
+    OrdersTableComponent,
+    ActivityFeedComponent
   ],
   templateUrl: "./dashboard.component.html",
   styleUrl: "./dashboard.component.scss"
@@ -43,7 +46,8 @@ export class DashboardComponent implements OnInit {
   private readonly _dialog = inject(MatDialog);
   private readonly _apiService = inject(HyperliquidApiService);
   private readonly _orderService = inject(OrderService);
-  private readonly _snackBar = inject(MatSnackBar);
+  private readonly _notifications = inject(NotificationService);
+  private readonly _accountState = inject(AccountStateService);
   private readonly _refresh$ = new Subject<void>();
   private readonly _pendingOrderIds = new Set<string>();
   private readonly _pendingPositionKeys = new Set<string>();
@@ -68,6 +72,12 @@ export class DashboardComponent implements OnInit {
   public ngOnInit(): void {
     this._startPolling();
     this._startStalenessTimer();
+    this._accountState.positions$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((positions) => { this.positions = positions; });
+    this._accountState.orders$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((orders) => { this.orders = orders; });
   }
 
   public onManualRefresh(): void {
@@ -106,10 +116,10 @@ export class DashboardComponent implements OnInit {
         next: () => {
           this._pendingOrderIds.delete(order.orderId);
           this.ordersTable?.setLoading(order.orderId, false);
-          this._snackBar.open("Order cancelled successfully", "Dismiss", { duration: 3000 });
+          this._notifications.success('Order cancelled successfully');
           this._refresh$.next();
         },
-        error: (errorResponse: HttpErrorResponse) => {
+        error: () => {
           this.orders = [
             ...this.orders.slice(0, orderIndex),
             removedOrder,
@@ -117,9 +127,6 @@ export class DashboardComponent implements OnInit {
           ];
           this._pendingOrderIds.delete(order.orderId);
           this.ordersTable?.setLoading(order.orderId, false);
-          this._snackBar.open(`Failed to cancel order: ${this._formatErrorPayload(errorResponse)}`, "Dismiss", {
-            duration: 5000
-          });
         }
       });
     });
@@ -145,21 +152,19 @@ export class DashboardComponent implements OnInit {
       }
 
       const previousOrders = [...this.orders];
+      const asset = previousOrders[0]?.asset ?? "BTC";
       this.ordersTable?.setGlobalLoading(true);
       this.orders = [];
 
-      this._orderService.cancelAllOrders(this.orders[0]?.asset ?? "BTC").subscribe({
+      this._orderService.cancelAllOrders(asset).subscribe({
         next: () => {
           this.ordersTable?.setGlobalLoading(false);
-          this._snackBar.open(`Cancelled ${orderCount} orders`, "Dismiss", { duration: 3000 });
+          this._notifications.success(`Cancelled ${orderCount} orders`);
           this._refresh$.next();
         },
-        error: (errorResponse: HttpErrorResponse) => {
+        error: () => {
           this.orders = previousOrders;
           this.ordersTable?.setGlobalLoading(false);
-          this._snackBar.open(`Failed to cancel orders: ${this._formatErrorPayload(errorResponse)}`, "Dismiss", {
-            duration: 5000
-          });
         }
       });
     });
@@ -197,16 +202,13 @@ export class DashboardComponent implements OnInit {
         next: () => {
           this._pendingOrderIds.delete(order.orderId);
           this.ordersTable?.setLoading(order.orderId, false);
-          this._snackBar.open("Order modified successfully", "Dismiss", { duration: 3000 });
+          this._notifications.success('Order modified successfully');
           this._refresh$.next();
         },
-        error: (errorResponse: HttpErrorResponse) => {
+        error: () => {
           this.orders = this.orders.map((item) => item.orderId === order.orderId ? originalOrder : item);
           this._pendingOrderIds.delete(order.orderId);
           this.ordersTable?.setLoading(order.orderId, false);
-          this._snackBar.open(`Failed to modify order: ${this._formatErrorPayload(errorResponse)}`, "Dismiss", {
-            duration: 5000
-          });
         }
       });
     });
@@ -264,20 +266,13 @@ export class DashboardComponent implements OnInit {
         next: () => {
           this._pendingPositionKeys.delete(positionKey);
           this.positionsTable?.setLoading(positionKey, false);
-          this._snackBar.open("Position close order submitted", "Dismiss", { duration: 3000 });
+          this._notifications.success('Position close order submitted');
           this._refresh$.next();
         },
-        error: (errorResponse: HttpErrorResponse) => {
-          this.positions = [
-            ...this.positions.slice(0, positionIndex),
-            removedPosition,
-            ...this.positions.slice(positionIndex)
-          ];
+        error: () => {
+          this.positions = [...this.positions, removedPosition];
           this._pendingPositionKeys.delete(positionKey);
           this.positionsTable?.setLoading(positionKey, false);
-          this._snackBar.open(`Failed to close position: ${this._formatErrorPayload(errorResponse)}`, "Dismiss", {
-            duration: 5000
-          });
         }
       });
     });
@@ -313,15 +308,16 @@ export class DashboardComponent implements OnInit {
   }
 
   private _fetchAllData(): Observable<unknown> {
+    const skipCtx = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
     return forkJoin({
-      account: this._apiService.getAccountSummary().pipe(
-        catchError((err) => { console.error("Account fetch failed:", err); return of(null); })
+      account: this._apiService.getAccountSummary(skipCtx).pipe(
+        catchError(() => of(null))
       ),
-      positions: this._apiService.getPositions().pipe(
-        catchError((err) => { console.error("Positions fetch failed:", err); return of(null); })
+      positions: this._apiService.getPositions(skipCtx).pipe(
+        catchError(() => of(null))
       ),
-      orders: this._apiService.getOpenOrders().pipe(
-        catchError((err) => { console.error("Orders fetch failed:", err); return of(null); })
+      orders: this._apiService.getOpenOrders(skipCtx).pipe(
+        catchError(() => of(null))
       )
     }).pipe(
       tap((results) => {
@@ -333,11 +329,11 @@ export class DashboardComponent implements OnInit {
             this.showErrorBanner = true;
             this.errorMessage = "Unable to reach Hyperliquid API. Retrying...";
           } else {
-            this._snackBar.open("Failed to refresh dashboard data", "Dismiss", { duration: 3000 });
+            this._notifications.warning('Failed to refresh dashboard data');
           }
         } else {
           if (failedCount > 0) {
-            this._snackBar.open("Some dashboard data failed to load", "Dismiss", { duration: 3000 });
+            this._notifications.warning('Some dashboard data failed to load');
           } else {
             this._consecutiveErrors = 0;
             this.showErrorBanner = false;
@@ -345,14 +341,16 @@ export class DashboardComponent implements OnInit {
 
           if (results.account !== null) { this.accountSummary = results.account; }
           if (results.positions !== null) {
-            this.positions = this._pendingPositionKeys.size === 0
+            const newPositions = this._pendingPositionKeys.size === 0
               ? results.positions
               : results.positions.filter((position) => !this._pendingPositionKeys.has(position.asset + position.side));
+            this._accountState.updatePositions(newPositions);
           }
           if (results.orders !== null) {
-            this.orders = this._pendingOrderIds.size === 0
+            const newOrders = this._pendingOrderIds.size === 0
               ? results.orders
               : results.orders.filter(o => !this._pendingOrderIds.has(o.orderId));
+            this._accountState.updateOrders(newOrders);
           }
           this.lastUpdated = new Date();
           this.isStale = false;
@@ -363,27 +361,4 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  private _formatErrorPayload(errorResponse: HttpErrorResponse): string {
-    if (typeof errorResponse.error === "string" && errorResponse.error.length > 0) {
-      return errorResponse.error;
-    }
-
-    if (errorResponse.error !== null && errorResponse.error !== undefined) {
-      if (typeof errorResponse.error === "object" && errorResponse.error.errorMessage) {
-        return String(errorResponse.error.errorMessage);
-      }
-
-      if (typeof errorResponse.error === "object" && errorResponse.error.detail) {
-        return String(errorResponse.error.detail);
-      }
-
-      if (typeof errorResponse.error === "object" && errorResponse.error.title) {
-        return String(errorResponse.error.title);
-      }
-
-      return "An unexpected error occurred";
-    }
-
-    return errorResponse.message || "Unknown error";
-  }
 }

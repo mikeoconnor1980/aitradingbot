@@ -4,9 +4,6 @@ $color-text-light: #cbd5e1;
 $color-text-bright: #f8fafc;
 $color-positive: #22c55e;
 $color-negative: #ef4444;
-$color-error-bg: rgba(127, 29, 29, 0.35);
-$color-error-border: rgba(248, 113, 113, 0.45);
-$color-error-text: #fecaca;
 $color-border: rgba(148, 163, 184, 0.28);
 $color-border-dashed: rgba(148, 163, 184, 0.45);
 $color-table-bg: rgba(15, 23, 42, 0.55);
@@ -114,9 +111,9 @@ $color-table-bg: rgba(15, 23, 42, 0.55);
 
 .error-banner {
   margin: 0;
-  border: 1px solid $color-error-border;
-  background: $color-error-bg;
-  color: $color-error-text;
+  border: 1px solid var(--colour-error-border, rgba(248, 113, 113, 0.45));
+  background: var(--colour-error-bg);
+  color: var(--colour-error-text);
   border-radius: 0.5rem;
   padding: 0.65rem 0.8rem;
 }

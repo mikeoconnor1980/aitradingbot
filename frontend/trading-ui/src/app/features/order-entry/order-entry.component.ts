@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from "@angular/common/http";
+import { HttpContext, HttpErrorResponse } from "@angular/common/http";
 import { Component, DestroyRef, OnInit, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
@@ -12,11 +12,13 @@ import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSelectModule } from "@angular/material/select";
 import { MatSliderModule } from "@angular/material/slider";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { PlaceOrderRequest, PlaceOrderResponse } from "../../core/models/place-order.model";
 import { TradableAsset } from "../../core/models/tradable-asset.model";
 import { MarketDataService } from "../../core/services/market-data.service";
+import { NotificationService } from "../../core/services/notification.service";
 import { OrderService } from "../../core/services/order.service";
+import { formatErrorPayload } from "../../core/utils/error-utils";
+import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { ConfirmDialogComponent, ConfirmDialogData } from "./confirm-dialog/confirm-dialog.component";
 
 interface OrderEntryForm {
@@ -40,7 +42,6 @@ interface OrderEntryForm {
     MatDialogModule,
     MatDividerModule,
     MatSliderModule,
-    MatSnackBarModule,
     MatProgressSpinnerModule
   ],
   templateUrl: "./order-entry.component.html",
@@ -51,7 +52,7 @@ export class OrderEntryComponent implements OnInit {
   private readonly _orderService = inject(OrderService);
   private readonly _marketDataService = inject(MarketDataService);
   private readonly _dialog = inject(MatDialog);
-  private readonly _snackBar = inject(MatSnackBar);
+  private readonly _notifications = inject(NotificationService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public orderForm!: FormGroup<OrderEntryForm>;
@@ -140,7 +141,7 @@ export class OrderEntryComponent implements OnInit {
           }
         },
         error: () => {
-          this._snackBar.open("Failed to load market data. Enter price manually.", "Dismiss", { duration: 5000 });
+          // Market data load error is handled by the HTTP interceptor
         }
       });
   }
@@ -168,14 +169,14 @@ export class OrderEntryComponent implements OnInit {
         asset: this.selectedAsset,
         leverage: this.leverage,
         isCross: this.marginMode === "cross"
-      })
+      }, new HttpContext().set(SKIP_ERROR_NOTIFICATION, true))
       .subscribe({
         next: () => {
           this.leverageStatus = `${this.leverage}x ${this.marginMode} set`;
           this.leverageError = false;
         },
         error: (err: HttpErrorResponse) => {
-          this.leverageStatus = `Failed: ${this._formatErrorPayload(err)}`;
+          this.leverageStatus = `Failed: ${formatErrorPayload(err)}`;
           this.leverageError = true;
         }
       });
@@ -223,46 +224,17 @@ export class OrderEntryComponent implements OnInit {
           this.isSubmitting = false;
 
           if (response.success) {
-            this._snackBar.open(
-              `Order placed (ID: ${response.orderId}, Status: ${response.status})`,
-              "Dismiss",
-              { duration: 5000 }
-            );
+            this._notifications.success(`Order placed (ID: ${response.orderId}, Status: ${response.status})`);
             return;
           }
 
-          this._snackBar.open(`Order rejected: ${response.detail}`, "Dismiss", { duration: 8000 });
+          this._notifications.warning(`Order rejected: ${response.detail}`);
         },
-        error: (errorResponse: HttpErrorResponse) => {
+        error: () => {
           this.isSubmitting = false;
-          this._snackBar.open(`Order submission failed: ${this._formatErrorPayload(errorResponse)}`, "Dismiss", {
-            duration: 10000
-          });
+          // HTTP error handled by the global interceptor
         }
       });
   }
 
-  private _formatErrorPayload(errorResponse: HttpErrorResponse): string {
-    if (typeof errorResponse.error === "string" && errorResponse.error.length > 0) {
-      return errorResponse.error;
-    }
-
-    if (errorResponse.error !== null && errorResponse.error !== undefined) {
-      if (typeof errorResponse.error === "object" && errorResponse.error.errorMessage) {
-        return String(errorResponse.error.errorMessage);
-      }
-
-      if (typeof errorResponse.error === "object" && errorResponse.error.detail) {
-        return String(errorResponse.error.detail);
-      }
-
-      if (typeof errorResponse.error === "object" && errorResponse.error.title) {
-        return String(errorResponse.error.title);
-      }
-
-      return "An unexpected error occurred";
-    }
-
-    return errorResponse.message || "Unknown error";
-  }
 }

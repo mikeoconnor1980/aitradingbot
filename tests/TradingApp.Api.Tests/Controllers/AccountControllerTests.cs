@@ -139,7 +139,8 @@ public sealed class AccountControllerTests
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("error").GetString().Should().Be("Hyperliquid API is unavailable");
+        body.GetProperty("errorMessage").GetString().Should().Be("External service unavailable");
+        body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
     }
 
     [TestMethod]
@@ -156,7 +157,8 @@ public sealed class AccountControllerTests
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("error").GetString().Should().Be("Hyperliquid API is unavailable");
+        body.GetProperty("errorMessage").GetString().Should().Be("External service unavailable");
+        body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
     }
 
     [TestMethod]
@@ -173,6 +175,7 @@ public sealed class AccountControllerTests
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("error").GetString().Should().Be("Hyperliquid API is unavailable");
+        body.GetProperty("errorMessage").GetString().Should().Be("External service unavailable");
+        body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
     }
 }

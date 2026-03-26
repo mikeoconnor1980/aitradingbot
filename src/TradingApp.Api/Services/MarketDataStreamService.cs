@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using TradingApp.Api.Hubs;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
@@ -21,10 +22,12 @@ public sealed class MarketDataStreamService : BackgroundService
     private readonly IHyperliquidWebSocketClient _wsClient;
     private readonly IHubContext<MarketDataHub> _hubContext;
     private readonly IHyperliquidRestClient _restClient;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<MarketDataStreamService> _logger;
 
     private readonly ConcurrentQueue<TradeTickDto> _tradeBuffer = new();
     private readonly TimeSpan _aggregationInterval = TimeSpan.FromMilliseconds(500);
+    private readonly object _statsLock = new();
 
     private decimal _lastPrice;
     private decimal _high24h;
@@ -36,11 +39,13 @@ public sealed class MarketDataStreamService : BackgroundService
         IHyperliquidWebSocketClient wsClient,
         IHubContext<MarketDataHub> hubContext,
         IHyperliquidRestClient restClient,
+        IServiceScopeFactory scopeFactory,
         ILogger<MarketDataStreamService> logger)
     {
         _wsClient = wsClient;
         _hubContext = hubContext;
         _restClient = restClient;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -85,6 +90,11 @@ public sealed class MarketDataStreamService : BackgroundService
                 await _wsClient.ConnectAsync(stoppingToken);
                 await _wsClient.SubscribeToTradesAsync(TargetCoin, stoppingToken);
 
+                if (_retryCount > 0)
+                {
+                    await ResyncStateFromRestAsync(stoppingToken);
+                }
+
                 _retryCount = 0;
 
                 await _wsClient.ReceiveLoopAsync(stoppingToken);
@@ -128,8 +138,19 @@ public sealed class MarketDataStreamService : BackgroundService
                 InitialBackoffMs * (int)Math.Pow(2, _retryCount - 1),
                 MaxBackoffMs);
 
+            await _hubContext.Clients.All.SendAsync(
+                "ReceiveConnectionStatus",
+                new ConnectionStatusDto
+                {
+                    Source = "Hyperliquid",
+                    Status = "Reconnecting",
+                    Detail = $"Reconnecting in {backoffMs / 1000}s (attempt {_retryCount}/{MaxRetryAttempts})",
+                    RetryCount = _retryCount,
+                },
+                stoppingToken);
+
             _logger.LogWarning(
-                "Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
+                "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
                 backoffMs,
                 _retryCount,
                 MaxRetryAttempts);
@@ -138,6 +159,46 @@ public sealed class MarketDataStreamService : BackgroundService
         }
 
         await aggregationTask;
+    }
+
+    private async Task ResyncStateFromRestAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Starting REST state resync after WebSocket reconnection");
+
+            await SeedStatsFromRestAsync(cancellationToken);
+
+            using var scope = _scopeFactory.CreateScope();
+            var accountService = scope.ServiceProvider.GetRequiredService<IHyperliquidAccountService>();
+
+            var ordersTask = accountService.GetOpenOrdersAsync(cancellationToken);
+            var positionsTask = accountService.GetPositionsAsync(cancellationToken);
+
+            await Task.WhenAll(ordersTask, positionsTask);
+
+            var orders = await ordersTask;
+            var positions = await positionsTask;
+
+            await _hubContext.Clients.All.SendAsync(
+                "ReceiveOrdersResync",
+                orders,
+                cancellationToken);
+
+            await _hubContext.Clients.All.SendAsync(
+                "ReceivePositionsResync",
+                positions,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "REST state resync completed. Orders={OrderCount}, Positions={PositionCount}",
+                orders.Count,
+                positions.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "REST state resync failed after WebSocket reconnection — UI state may be stale");
+        }
     }
 
     private async Task SeedStatsFromRestAsync(CancellationToken cancellationToken)
@@ -150,10 +211,13 @@ public sealed class MarketDataStreamService : BackgroundService
                 return;
             }
 
-            _lastPrice = marketInfo.MidPrice;
-            _high24h = marketInfo.MidPrice;
-            _low24h = marketInfo.MidPrice;
-            _volume24h = marketInfo.Volume24h;
+            lock (_statsLock)
+            {
+                _lastPrice = marketInfo.MidPrice;
+                _high24h = marketInfo.MidPrice;
+                _low24h = marketInfo.MidPrice;
+                _volume24h = marketInfo.Volume24h;
+            }
 
             _logger.LogInformation(
                 "Seeded 24h stats from REST: Price={Price}, Volume={Volume}",
@@ -173,39 +237,46 @@ public sealed class MarketDataStreamService : BackgroundService
         while (await timer.WaitForNextTickAsync(cancellationToken))
         {
             var tradesProcessed = 0;
+            PriceUpdateDto? update = null;
 
-            while (_tradeBuffer.TryDequeue(out var trade))
+            lock (_statsLock)
             {
-                _lastPrice = trade.Price;
-                _volume24h += trade.Price * trade.Size;
-
-                if (trade.Price > _high24h)
+                while (_tradeBuffer.TryDequeue(out var trade))
                 {
-                    _high24h = trade.Price;
+                    _lastPrice = trade.Price;
+                    _volume24h += trade.Price * trade.Size;
+
+                    if (trade.Price > _high24h)
+                    {
+                        _high24h = trade.Price;
+                    }
+
+                    if (trade.Price < _low24h || _low24h == 0)
+                    {
+                        _low24h = trade.Price;
+                    }
+
+                    tradesProcessed++;
                 }
 
-                if (trade.Price < _low24h || _low24h == 0)
+                if (tradesProcessed > 0)
                 {
-                    _low24h = trade.Price;
+                    update = new PriceUpdateDto
+                    {
+                        Asset = TargetAsset,
+                        LastPrice = _lastPrice,
+                        High24h = _high24h,
+                        Low24h = _low24h,
+                        Volume24h = _volume24h,
+                        Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                    };
                 }
-
-                tradesProcessed++;
             }
 
-            if (tradesProcessed == 0)
+            if (update is null)
             {
                 continue;
             }
-
-            var update = new PriceUpdateDto
-            {
-                Asset = TargetAsset,
-                LastPrice = _lastPrice,
-                High24h = _high24h,
-                Low24h = _low24h,
-                Volume24h = _volume24h,
-                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            };
 
             await _hubContext.Clients.All.SendAsync("ReceivePriceUpdate", update, cancellationToken);
         }

@@ -88,3 +88,25 @@ Angular SignalRService  (browser)
 **POC note:** `MarketDataStreamService` is hosted inside `TradingApp.Api` for simplicity. In production it should migrate to `TradingApp.Worker` with a Redis backplane for cross-process SignalR.
 
 **CORS requirement:** SignalR requires `AllowCredentials()` on the CORS policy. The allowed origins are configured via `Cors:AllowedOrigins` in `appsettings.json`.
+
+---
+
+# Real-Time User Event Streaming
+
+Per-wallet user events (fills and order updates) are streamed via a dedicated WebSocket separate from market data:
+
+```
+Hyperliquid WebSocket (per-wallet, requires wallet address)
+↓ userEvents subscription — dual channel routing: "user" or "userEvents" (to be verified against live API)
+UserEventStreamService  (BackgroundService co-located in TradingApp.Api)
+↓ zero-latency relay, same exponential-backoff reconnect (1s/60s/20 retries)
+IHubContext<MarketDataHub>  (SignalR — same hub; methods: ReceiveFillEvent, ReceiveOrderUpdate, ReceiveUserConnectionStatus)
+↓
+Angular SignalRService → AccountStateService → positions$, orders$, events$
+```
+
+`UserEventStreamService` derives the wallet address from `IHyperliquidSigner.WalletAddress` (configured via F1). On SignalR disconnect and reconnect, the backend automatically resubscribes to `userEvents`.
+
+The `AccountStateService` is a shared Angular state layer (BehaviorSubject) that decouples SignalR events from UI components. The dashboard subscribes to `positions$` and `orders$` reactively; the `ActivityFeedComponent` subscribes to `events$` (capped at 100, newest first).
+
+The connection status indicator in the navbar aggregates three sources: SignalR transport + market data stream + user event stream, showing the most severe state.

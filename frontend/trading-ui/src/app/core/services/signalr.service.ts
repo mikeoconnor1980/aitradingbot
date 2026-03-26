@@ -1,12 +1,17 @@
-import { Injectable, OnDestroy } from "@angular/core";
+import { Injectable, OnDestroy, inject } from "@angular/core";
 import * as signalR from "@microsoft/signalr";
 import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { ConnectionState, ConnectionStatus } from "../models/connection-status.model";
 import { PriceUpdate } from "../models/price-update.model";
+import { AccountStateService } from "./account-state.service";
+import { FillEvent } from "../models/fill-event.model";
+import { OrderUpdate } from "../models/order-update.model";
 
 @Injectable({ providedIn: "root" })
 export class SignalRService implements OnDestroy {
+  private readonly _accountState = inject(AccountStateService);
+
   private readonly _priceUpdate$ = new Subject<PriceUpdate>();
   private readonly _connectionStatus$ = new BehaviorSubject<ConnectionStatus>({
     source: "SignalR",
@@ -22,6 +27,7 @@ export class SignalRService implements OnDestroy {
     retryCount: 0
   };
   private _backendStatus: ConnectionStatus | null = null;
+  private _userEventStatus: ConnectionStatus | null = null;
   private _signalRRetryCount = 0;
   private readonly _hubConnection: signalR.HubConnection;
 
@@ -52,6 +58,19 @@ export class SignalRService implements OnDestroy {
 
     this._hubConnection.on("ReceiveConnectionStatus", (status: ConnectionStatus) => {
       this._backendStatus = status;
+      this._emitConnectionStatus();
+    });
+
+    this._hubConnection.on("ReceiveFillEvent", (fill: FillEvent) => {
+      this._accountState.addFillEvent(fill);
+    });
+
+    this._hubConnection.on("ReceiveOrderUpdate", (orderUpdate: OrderUpdate) => {
+      this._accountState.addOrderUpdateEvent(orderUpdate);
+    });
+
+    this._hubConnection.on("ReceiveUserConnectionStatus", (status: ConnectionStatus) => {
+      this._userEventStatus = status;
       this._emitConnectionStatus();
     });
 
@@ -108,8 +127,9 @@ export class SignalRService implements OnDestroy {
   }
 
   private _emitConnectionStatus(): void {
-    const effectiveStatus = this._resolveMostSevereStatus(this._signalRStatus, this._backendStatus);
-    this._connectionStatus$.next(effectiveStatus);
+    const afterBackend = this._resolveMostSevereStatus(this._signalRStatus, this._backendStatus);
+    const afterUserEvents = this._resolveMostSevereStatus(afterBackend, this._userEventStatus);
+    this._connectionStatus$.next(afterUserEvents);
   }
 
   private _resolveMostSevereStatus(primary: ConnectionStatus, secondary: ConnectionStatus | null): ConnectionStatus {

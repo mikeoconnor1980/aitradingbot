@@ -1,4 +1,4 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
 import { AccountSummary } from "../models/account-summary.model";
@@ -15,15 +15,15 @@ export class HyperliquidApiService {
     return this._http.get<HealthResponse>(`${this._baseUrl}/api/health`);
   }
 
-  public getAccountSummary(): Observable<AccountSummary> {
-    return this._http.get<AccountSummary>(`${this._baseUrl}/api/account`);
+  public getAccountSummary(context?: HttpContext): Observable<AccountSummary> {
+    return this._http.get<AccountSummary>(`${this._baseUrl}/api/account`, context ? { context } : undefined);
   }
 
-  public getPositions(): Observable<Position[]> {
-    return this._http.get<Position[]>(`${this._baseUrl}/api/account/positions`);
+  public getPositions(context?: HttpContext): Observable<Position[]> {
+    return this._http.get<Position[]>(`${this._baseUrl}/api/account/positions`, context ? { context } : undefined);
   }
 
-  public getOpenOrders(): Observable<OpenOrder[]> {
-    return this._http.get<OpenOrder[]>(`${this._baseUrl}/api/account/orders`);
+  public getOpenOrders(context?: HttpContext): Observable<OpenOrder[]> {
+    return this._http.get<OpenOrder[]>(`${this._baseUrl}/api/account/orders`, context ? { context } : undefined);
   }
 }

@@ -40,3 +40,28 @@ body {
 		line-height: 1.4;
 	}
 }
+
+// Snackbar severity styles
+.snackbar--error {
+	--mdc-snackbar-container-color: var(--colour-error-bg);
+	--mdc-snackbar-supporting-text-color: var(--colour-error-text);
+	--mat-snack-bar-button-color: var(--colour-error-text);
+}
+
+.snackbar--success {
+	--mdc-snackbar-container-color: #1b3a2a;
+	--mdc-snackbar-supporting-text-color: #4ade80;
+	--mat-snack-bar-button-color: #4ade80;
+}
+
+.snackbar--warning {
+	--mdc-snackbar-container-color: #3a2e1b;
+	--mdc-snackbar-supporting-text-color: #fbbf24;
+	--mat-snack-bar-button-color: #fbbf24;
+}
+
+.snackbar--info {
+	--mdc-snackbar-container-color: #1b2e3a;
+	--mdc-snackbar-supporting-text-color: #60a5fa;
+	--mat-snack-bar-button-color: #60a5fa;
+}

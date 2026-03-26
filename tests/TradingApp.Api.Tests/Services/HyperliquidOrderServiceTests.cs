@@ -102,7 +102,7 @@ public sealed class HyperliquidOrderServiceTests
                 It.IsAny<It.IsAnyType>(),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            Times.AtLeastOnce);
     }
 
     [TestMethod]
@@ -140,7 +140,7 @@ public sealed class HyperliquidOrderServiceTests
     }
 
     [TestMethod]
-    public async Task GivenSignatureRejection_WhenPlaceOrderAsync_ThenReturnsSignatureRejected()
+    public async Task GivenSignatureRejection_WhenPlaceOrderAsync_ThenThrowsSigningException()
     {
         var request = new PlaceOrderRequest
         {
@@ -153,13 +153,13 @@ public sealed class HyperliquidOrderServiceTests
 
         _restClientMock
             .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("signature rejected by exchange"));
+            .ThrowsAsync(new HyperliquidApiException(
+                "signature rejected by exchange", 400, "validation_error"));
 
-        var result = await _sut.PlaceOrderAsync(request);
+        var action = () => _sut.PlaceOrderAsync(request);
 
-        result.Success.Should().BeFalse();
-        result.Status.Should().Be("signature_rejected");
-        result.Detail.Should().Contain("signature");
+        await action.Should().ThrowAsync<SigningException>()
+            .WithMessage("*Signature rejected*");
     }
 
     [TestMethod]

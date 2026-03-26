@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260325-user-event-stream-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-03-25T12:07:35Z"
-status: "planned"
-lastUpdated: "2026-03-25T13:00:00Z"
+currentAgent: "Implementation Reviewer"
+agentStartedAt: "2026-03-26T16:00:00Z"
+status: "complete"
+lastUpdated: "2026-03-26T16:30:00Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -26,16 +26,16 @@ Subscribe to per-wallet WebSocket events from Hyperliquid to receive real-time f
 
 ### Acceptance Criteria
 
-- [ ] Given the backend starts with a valid wallet address from F1 configuration, When the worker initialises, Then it subscribes to the Hyperliquid `userEvents` WebSocket stream for that wallet address
-- [ ] Given a market order is placed via F5 and fills on the exchange, When Hyperliquid sends a fill event, Then the event appears in the activity feed within 2 seconds showing timestamp, "Fill", asset, side, size, and price
-- [ ] Given a limit order is placed and partially fills, When Hyperliquid sends an order update event, Then the event appears in the activity feed showing timestamp, order ID, asset, new status, filled size, and remaining size
-- [ ] Given a fill event is received via SignalR, When the shared state service processes it, Then the positions table in the F2 dashboard updates automatically without manual refresh
-- [ ] Given an order update event is received via SignalR, When the shared state service processes it, Then the orders table in the F2 dashboard reflects the new status and sizes without manual refresh
-- [ ] Given the activity feed contains 100 events, When a new event arrives, Then the oldest event is discarded and the new event appears at the top
-- [ ] Given the user event WebSocket disconnects, When the reconnection process starts, Then the global connection status indicator shows a degraded state and the backend retries with exponential backoff (1s initial, 60s max)
-- [ ] Given the user event WebSocket reconnects successfully, When the connection is re-established, Then the backend automatically resubscribes to `userEvents` and the global status indicator returns to "Connected"
-- [ ] Given reconnection retries are exhausted (20 attempts), When the final retry fails, Then the global status indicator shows "Disconnected" with an error detail message
-- [ ] Given the backend receives an event with an unexpected format, When deserialization fails, Then the event is skipped, a warning is logged via Serilog, and the activity feed remains unaffected
+- [x] Given the backend starts with a valid wallet address from F1 configuration, When the worker initialises, Then it subscribes to the Hyperliquid `userEvents` WebSocket stream for that wallet address
+- [x] Given a market order is placed via F5 and fills on the exchange, When Hyperliquid sends a fill event, Then the event appears in the activity feed within 2 seconds showing timestamp, "Fill", asset, side, size, and price
+- [x] Given a limit order is placed and partially fills, When Hyperliquid sends an order update event, Then the event appears in the activity feed showing timestamp, order ID, asset, new status, filled size, and remaining size
+- [x] Given a fill event is received via SignalR, When the shared state service processes it, Then the positions table in the F2 dashboard updates automatically without manual refresh
+- [x] Given an order update event is received via SignalR, When the shared state service processes it, Then the orders table in the F2 dashboard reflects the new status and sizes without manual refresh
+- [x] Given the activity feed contains 100 events, When a new event arrives, Then the oldest event is discarded and the new event appears at the top
+- [x] Given the user event WebSocket disconnects, When the reconnection process starts, Then the global connection status indicator shows a degraded state and the backend retries with exponential backoff (1s initial, 60s max)
+- [x] Given the user event WebSocket reconnects successfully, When the connection is re-established, Then the backend automatically resubscribes to `userEvents` and the global status indicator returns to "Connected"
+- [x] Given reconnection retries are exhausted (20 attempts), When the final retry fails, Then the global status indicator shows "Disconnected" with an error detail message
+- [x] Given the backend receives an event with an unexpected format, When deserialization fails, Then the event is skipped, a warning is logged via Serilog, and the activity feed remains unaffected
 
 ## Objectives
 
@@ -86,77 +86,77 @@ Subscribe to per-wallet WebSocket events from Hyperliquid to receive real-time f
 - `tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs` - Hub integration test pattern (WebApplicationFactory, LongPolling)
 - `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidWebSocketClientTests.cs` - WebSocket client unit test pattern
 
-### [ ] Phase 1: Backend — User Event WebSocket Client & Models
+### [x] Phase 1: Backend — User Event WebSocket Client & Models
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [ ] Task 1.1: Create Hyperliquid user event infrastructure models
+- [x] Task 1.1: Create Hyperliquid user event infrastructure models
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-01-details.md#task-11-create-hyperliquid-user-event-infrastructure-models
 
-- [ ] Task 1.2: Create application-layer DTOs for SignalR payloads
+- [x] Task 1.2: Create application-layer DTOs for SignalR payloads
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-01-details.md#task-12-create-application-layer-dtos-for-signalr-payloads
 
-- [ ] Task 1.3: Create IHyperliquidUserEventClient interface
+- [x] Task 1.3: Create IHyperliquidUserEventClient interface
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-01-details.md#task-13-create-ihyperliquidusereventclient-interface
 
-- [ ] Task 1.4: Implement HyperliquidUserEventClient
+- [x] Task 1.4: Implement HyperliquidUserEventClient
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-01-details.md#task-14-implement-hyperliquidusereventclient
 
-- [ ] Task 1.5: Add unit tests for HyperliquidUserEventClient
+- [x] Task 1.5: Add unit tests for HyperliquidUserEventClient
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-01-details.md#task-15-add-unit-tests-for-hyperliquidusereventclient
 
-- [ ] Task 1.6: Run all backend tests and verify no regressions
+- [x] Task 1.6: Run all backend tests and verify no regressions
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-01-details.md#task-16-run-all-backend-tests-and-verify-no-regressions
 
-### [ ] Phase 2: Backend — Stream Service & SignalR Relay
+### [x] Phase 2: Backend — Stream Service & SignalR Relay
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Create UserEventStreamService (BackgroundService)
+- [x] Task 2.1: Create UserEventStreamService (BackgroundService)
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-02-details.md#task-21-create-usereventstreamservice
 
-- [ ] Task 2.2: Register DI and configuration in Program.cs
+- [x] Task 2.2: Register DI and configuration in Program.cs
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-02-details.md#task-22-register-di-and-configuration
 
-- [ ] Task 2.3: Add unit tests for UserEventStreamService
+- [x] Task 2.3: Add unit tests for UserEventStreamService
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-02-details.md#task-23-add-unit-tests-for-usereventstreamservice
 
-- [ ] Task 2.4: Add SignalR hub integration test for user events
+- [x] Task 2.4: Add SignalR hub integration test for user events
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-02-details.md#task-24-add-signalr-hub-integration-test
 
-- [ ] Task 2.5: Run all backend tests and verify no regressions
+- [x] Task 2.5: Run all backend tests and verify no regressions
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-02-details.md#task-25-run-all-backend-tests
 
-### [ ] Phase 3: Frontend — Shared State Service & SignalR Integration
+### [x] Phase 3: Frontend — Shared State Service & SignalR Integration
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 3.1: Create Angular models and DTOs for user events
+- [x] Task 3.1: Create Angular models and DTOs for user events
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-03-details.md#task-31-create-angular-models-and-dtos
 
-- [ ] Task 3.2: Create AccountStateService with BehaviorSubject state
+- [x] Task 3.2: Create AccountStateService with BehaviorSubject state
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-03-details.md#task-32-create-accountstateservice
 
-- [ ] Task 3.3: Extend SignalRService with user event handlers
+- [x] Task 3.3: Extend SignalRService with user event handlers
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-03-details.md#task-33-extend-signalrservice-with-user-event-handlers
 
-- [ ] Task 3.4: Update connection status aggregation
+- [x] Task 3.4: Update connection status aggregation
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-03-details.md#task-34-update-connection-status-aggregation
 
-- [ ] Task 3.5: Run frontend build and lint
+- [x] Task 3.5: Run frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-03-details.md#task-35-run-frontend-build-and-lint
 
-### [ ] Phase 4: Frontend — Activity Feed & Dashboard Integration
+### [x] Phase 4: Frontend — Activity Feed & Dashboard Integration
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 4.1: Create ActivityFeedComponent
+- [x] Task 4.1: Create ActivityFeedComponent
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-04-details.md#task-41-create-activityfeedcomponent
 
-- [ ] Task 4.2: Integrate activity feed and shared state into dashboard
+- [x] Task 4.2: Integrate activity feed and shared state into dashboard
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-04-details.md#task-42-integrate-activity-feed-and-shared-state-into-dashboard
 
-- [ ] Task 4.3: Run frontend build and lint
+- [x] Task 4.3: Run frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260325-user-event-stream-phase-04-details.md#task-43-run-frontend-build-and-lint
 
 ## Scoping Summary
@@ -204,4 +204,8 @@ Subscribe to per-wallet WebSocket events from Hyperliquid to receive real-time f
 | Agent | Status | Started | Completed |
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-25T12:07:35Z | 2026-03-25T12:35:20Z |
+| Implementation Planner (Review) | planned | 2026-03-26T13:24:55Z | 2026-03-26T14:02:54Z |
 | Plan Reviewer | complete | 2026-03-25T12:36:07Z | 2026-03-25T13:00:00Z |
+| Plan Reviewer | plan-reviewed | 2026-03-26T14:04:34Z | 2026-03-26T14:11:40Z |
+| Plan Implementer | in-progress | 2026-03-26T14:20:00Z | 2026-03-26T15:15:00Z |
+| Implementation Reviewer | reviewing | 2026-03-26T16:00:00Z | 2026-03-26T16:30:00Z |

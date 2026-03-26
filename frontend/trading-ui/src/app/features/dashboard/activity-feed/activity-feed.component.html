@@ -1,0 +1,37 @@
+<div class="activity-feed">
+  @if (events.length === 0) {
+    <div class="activity-feed__empty">
+      No events yet. Events will appear here as orders fill and update.
+    </div>
+  } @else {
+    <table class="activity-feed__table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Type</th>
+          <th>Asset</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (event of events; track event.timestamp.getTime() + event.type) {
+          <tr class="activity-feed__row">
+            <td class="activity-feed__time">{{ event.timestamp | date:'HH:mm:ss' }}</td>
+            <td>
+              <span class="activity-feed__badge"
+                    [class.activity-feed__badge--fill]="isFill(event)"
+                    [class.activity-feed__badge--order]="isOrderUpdate(event)">
+                {{ event.type === 'Fill' ? 'Fill' : 'Order Update' }}
+              </span>
+            </td>
+            <td class="activity-feed__asset">
+              @if (isFill(event)) { {{ event.data.asset }} }
+              @if (isOrderUpdate(event)) { {{ event.data.asset }} }
+            </td>
+            <td class="activity-feed__details">{{ getEventDescription(event) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

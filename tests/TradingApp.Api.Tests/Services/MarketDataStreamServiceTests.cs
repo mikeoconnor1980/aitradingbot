@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TradingApp.Api.Hubs;
+using TradingApp.Api.Models;
 using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
@@ -13,6 +15,10 @@ public sealed class MarketDataStreamServiceTests
     private readonly Mock<IHyperliquidWebSocketClient> _wsClientMock = new();
     private readonly Mock<IHubContext<MarketDataHub>> _hubContextMock = new();
     private readonly Mock<IHyperliquidRestClient> _restClientMock = new();
+    private readonly Mock<IServiceScopeFactory> _scopeFactoryMock = new();
+    private readonly Mock<IServiceScope> _scopeMock = new();
+    private readonly Mock<IServiceProvider> _scopeProviderMock = new();
+    private readonly Mock<IHyperliquidAccountService> _accountServiceMock = new();
     private readonly Mock<ILogger<MarketDataStreamService>> _loggerMock = new();
     private readonly Mock<IHubClients> _hubClientsMock = new();
     private readonly Mock<IClientProxy> _clientProxyMock = new();
@@ -25,6 +31,19 @@ public sealed class MarketDataStreamServiceTests
         _clientProxyMock
             .Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+
+        _scopeMock.Setup(s => s.ServiceProvider).Returns(_scopeProviderMock.Object);
+        _scopeFactoryMock.Setup(f => f.CreateScope()).Returns(_scopeMock.Object);
+        _scopeProviderMock
+            .Setup(sp => sp.GetService(typeof(IHyperliquidAccountService)))
+            .Returns(_accountServiceMock.Object);
+
+        _accountServiceMock
+            .Setup(a => a.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<OpenOrderDto>)new List<OpenOrderDto>());
+        _accountServiceMock
+            .Setup(a => a.GetPositionsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<PositionDto>)new List<PositionDto>());
     }
 
     [TestMethod]
@@ -155,7 +174,7 @@ public sealed class MarketDataStreamServiceTests
                 TimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             });
 
-            await Task.Delay(700, cts.Token);
+            await Task.Delay(1500, cts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -189,12 +208,12 @@ public sealed class MarketDataStreamServiceTests
             .ThrowsAsync(new InvalidOperationException("connection failed"));
 
         var service = CreateService();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(2300));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         try
         {
             await service.StartAsync(cts.Token);
-            await Task.Delay(2200, cts.Token);
+            await Task.Delay(4000, cts.Token);
         }
         catch (OperationCanceledException)
         {
@@ -209,12 +228,60 @@ public sealed class MarketDataStreamServiceTests
             Times.AtLeast(2));
     }
 
+    [TestMethod]
+    public async Task GivenStreamService_WhenWebSocketReconnects_ThenResyncsOrdersAndPositions()
+    {
+        var connectionCount = 0;
+
+        _restClientMock
+            .Setup(r => r.GetMarketInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((MarketInfoDto?)null);
+
+        _wsClientMock
+            .Setup(w => w.ConnectAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _wsClientMock
+            .Setup(w => w.SubscribeToTradesAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _wsClientMock
+            .Setup(w => w.ReceiveLoopAsync(It.IsAny<CancellationToken>()))
+            .Returns<CancellationToken>(ct =>
+            {
+                connectionCount++;
+                if (connectionCount == 1)
+                    throw new InvalidOperationException("Connection lost");
+                return Task.Delay(Timeout.Infinite, ct);
+            });
+
+        var service = CreateService();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+        try
+        {
+            await service.StartAsync(cts.Token);
+            await Task.Delay(3000, cts.Token);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            await service.StopAsync(CancellationToken.None);
+        }
+
+        _accountServiceMock.Verify(
+            a => a.GetOpenOrdersAsync(It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+        _accountServiceMock.Verify(
+            a => a.GetPositionsAsync(It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce);
+    }
+
     private MarketDataStreamService CreateService()
     {
         return new MarketDataStreamService(
             _wsClientMock.Object,
             _hubContextMock.Object,
             _restClientMock.Object,
+            _scopeFactoryMock.Object,
             _loggerMock.Object);
     }
 

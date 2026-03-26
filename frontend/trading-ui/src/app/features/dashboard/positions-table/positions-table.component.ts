@@ -1,4 +1,4 @@
-import { DecimalPipe, NgClass } from "@angular/common";
+import { DecimalPipe } from "@angular/common";
 import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
@@ -7,7 +7,7 @@ import { Position } from "../../../core/models/position.model";
 @Component({
   selector: "app-positions-table",
   standalone: true,
-  imports: [DecimalPipe, NgClass, MatButtonModule, MatProgressSpinnerModule],
+  imports: [DecimalPipe, MatButtonModule, MatProgressSpinnerModule],
   templateUrl: "./positions-table.component.html",
   styleUrl: "./positions-table.component.scss"
 })

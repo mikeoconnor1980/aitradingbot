@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Models;
 using TradingApp.Api.Services;
 
@@ -11,79 +11,39 @@ namespace TradingApp.Api.Controllers;
 public sealed class AccountController : ControllerBase
 {
     private readonly IHyperliquidAccountService _accountService;
-    private readonly ILogger<AccountController> _logger;
 
-    public AccountController(
-        IHyperliquidAccountService accountService,
-        ILogger<AccountController> logger)
+    public AccountController(IHyperliquidAccountService accountService)
     {
         _accountService = accountService;
-        _logger = logger;
     }
 
     [HttpGet]
     [ProducesResponseType(typeof(AccountSummaryDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> GetAccountSummaryAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var summary = await _accountService.GetAccountSummaryAsync(cancellationToken);
-            return Ok(summary);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Failed to fetch account summary from Hyperliquid");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Hyperliquid API is unavailable" });
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Invalid response from Hyperliquid API");
-            return StatusCode(StatusCodes.Status502BadGateway, new { error = "Unexpected response from Hyperliquid API" });
-        }
+        var summary = await _accountService.GetAccountSummaryAsync(cancellationToken);
+        return Ok(summary);
     }
 
     [HttpGet("positions")]
     [ProducesResponseType(typeof(IReadOnlyList<PositionDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> GetPositionsAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var positions = await _accountService.GetPositionsAsync(cancellationToken);
-            return Ok(positions);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Failed to fetch positions from Hyperliquid");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Hyperliquid API is unavailable" });
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Invalid response from Hyperliquid API");
-            return StatusCode(StatusCodes.Status502BadGateway, new { error = "Unexpected response from Hyperliquid API" });
-        }
+        var positions = await _accountService.GetPositionsAsync(cancellationToken);
+        return Ok(positions);
     }
 
     [HttpGet("orders")]
     [ProducesResponseType(typeof(IReadOnlyList<OpenOrderDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> GetOpenOrdersAsync(CancellationToken cancellationToken)
     {
-        try
-        {
-            var orders = await _accountService.GetOpenOrdersAsync(cancellationToken);
-            return Ok(orders);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Failed to fetch open orders from Hyperliquid");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Hyperliquid API is unavailable" });
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogError(ex, "Invalid response from Hyperliquid API");
-            return StatusCode(StatusCodes.Status502BadGateway, new { error = "Unexpected response from Hyperliquid API" });
-        }
+        var orders = await _accountService.GetOpenOrdersAsync(cancellationToken);
+        return Ok(orders);
     }
 }

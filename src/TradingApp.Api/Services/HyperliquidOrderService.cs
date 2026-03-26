@@ -108,21 +108,19 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
 
             return MapExchangeResponse(exchangeResponse);
         }
-        catch (HttpRequestException ex) when (ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase))
+        catch (HyperliquidApiException ex) when (
+            ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("INVALID_SIGNATURE", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
-                "EIP-712 signature rejected by Hyperliquid. WalletAddress={WalletAddress}, Nonce={Nonce}, V={V}",
+                "EIP-712 signature rejected by Hyperliquid. WalletAddress={WalletAddress}, Nonce={Nonce}",
                 _signer.WalletAddress,
-                nonce,
-                v);
+                nonce);
 
-            return new PlaceOrderResponse
-            {
-                Success = false,
-                Status = "signature_rejected",
-                Detail = "The order signature was rejected by the exchange.",
-            };
+            throw new SigningException(
+                "Signature rejected — check signing configuration",
+                ex);
         }
         catch (HttpRequestException ex)
         {
@@ -130,7 +128,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
 
             _logger.LogWarning(
                 ex,
-                "Order submission failed. SubmitTimestampUtc={SubmitTimestampUtc}, LatencyMs={LatencyMs}",
+                "Order submission failed (network error). SubmitTimestampUtc={SubmitTimestampUtc}, LatencyMs={LatencyMs}",
                 submitTimestamp,
                 stopwatch.ElapsedMilliseconds);
 
@@ -429,9 +427,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         var request = new { type = "allMids" };
         var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
 
-        _logger.LogInformation("allMids response type: {Kind}, raw: {Raw}",
-            response.ValueKind,
-            response.ToString()?[..Math.Min(response.ToString()?.Length ?? 0, 500)]);
+        _logger.LogDebug("allMids response type: {Kind}", response.ValueKind);
 
         if (response.TryGetProperty(coin, out var midElement))
         {
