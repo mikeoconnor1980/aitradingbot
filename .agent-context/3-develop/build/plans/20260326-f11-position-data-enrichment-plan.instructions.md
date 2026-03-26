@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260326-f11-position-data-enrichment-changes.md"
 currentAgent: "None"
-agentStartedAt: "2026-03-26T17:07:47Z"
-status: "plan-reviewed"
-lastUpdated: "2026-03-26T17:25:52Z"
+agentStartedAt: "2026-03-26T19:48:07Z"
+status: "implemented"
+lastUpdated: "2026-03-26T19:54:39Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -28,16 +28,16 @@ Enrich the positions table and position detail view with mark price display, not
 
 ### Acceptance Criteria
 
-- [ ] **Given** I have open positions, **When** the positions table loads, **Then** I see Mark Price, Notional, Margin, and Funding columns for each position
-- [ ] **Given** a Long BTC position with entry 71,464 and mark 72,000, **When** the table renders, **Then** Mark Price shows 72,000 with a green indicator (price moving in favour)
-- [ ] **Given** a Short BTC position with entry 71,464 and mark 72,000, **When** the table renders, **Then** Mark Price shows 72,000 with a red indicator (price moving against)
-- [ ] **Given** a position with size 0.0276 and mark price 71,200, **When** the Notional column renders, **Then** it displays "$1,969.12"
-- [ ] **Given** a 5× leveraged position with notional $1,969.12, **When** the Margin column renders, **Then** it shows approximately "$393.82"
-- [ ] **Given** I hover over the Margin value, **When** the tooltip appears, **Then** it shows the margin as a percentage of total equity
-- [ ] **Given** the current funding rate is negative and I hold a Short position, **When** the Funding column renders, **Then** it shows the rate in green (receiving funding)
-- [ ] **Given** I hover over the Funding indicator, **When** the tooltip appears, **Then** it shows the hourly rate and estimated daily USD cost/income
-- [ ] **Given** mark price data is unavailable from the API, **When** the table renders, **Then** Mark Price shows "—" and Notional shows "—"
-- [ ] **Given** data refreshes every 2 seconds, **When** mark price changes, **Then** the Mark Price, Notional, and Margin columns update accordingly
+- [x] **Given** I have open positions, **When** the positions table loads, **Then** I see Mark Price, Notional, Margin, and Funding columns for each position
+- [x] **Given** a Long BTC position with entry 71,464 and mark 72,000, **When** the table renders, **Then** Mark Price shows 72,000 with a green indicator (price moving in favour)
+- [x] **Given** a Short BTC position with entry 71,464 and mark 72,000, **When** the table renders, **Then** Mark Price shows 72,000 with a red indicator (price moving against)
+- [x] **Given** a position with size 0.0276 and mark price 71,200, **When** the Notional column renders, **Then** it displays "$1,969.12"
+- [x] **Given** a 5× leveraged position with notional $1,969.12, **When** the Margin column renders, **Then** it shows approximately "$393.82"
+- [x] **Given** I hover over the Margin value, **When** the tooltip appears, **Then** it shows the margin as a percentage of total equity
+- [x] **Given** the current funding rate is negative and I hold a Short position, **When** the Funding column renders, **Then** it shows the rate in green (receiving funding)
+- [x] **Given** I hover over the Funding indicator, **When** the tooltip appears, **Then** it shows the hourly rate and estimated daily USD cost/income
+- [x] **Given** mark price data is unavailable from the API, **When** the table renders, **Then** Mark Price shows "—" and Notional shows "—"
+- [x] **Given** data refreshes every 2 seconds, **When** mark price changes, **Then** the Mark Price, Notional, and Margin columns update accordingly
 
 ## Objectives
 
@@ -77,63 +77,63 @@ Enrich the positions table and position detail view with mark price display, not
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [ ] Task 1.1: Add MarginUsed and FundingRate properties to PositionDto
+- [x] Task 1.1: Add MarginUsed and FundingRate properties to PositionDto
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-11-add-marginused-and-fundingrate-to-positiondto
 
-- [ ] Task 1.2: Extract marginUsed from clearinghouseState in MapToPositions
+- [x] Task 1.2: Extract marginUsed from clearinghouseState in MapToPositions
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-12-extract-marginused-from-clearinghousestate
 
-- [ ] Task 1.3: Add GetFundingRatesAsync method to HyperliquidAccountService
+- [x] Task 1.3: Add GetFundingRatesAsync method to HyperliquidAccountService
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-13-add-getfundingratesasync-to-account-service
 
-- [ ] Task 1.4: Enrich GetPositionsAsync to join funding rates with positions
+- [x] Task 1.4: Enrich GetPositionsAsync to join funding rates with positions
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-14-enrich-getpositionsasync-with-funding-rates
 
-- [ ] Task 1.5: Add HyperliquidAccountService unit tests for enriched mapping
+- [x] Task 1.5: Add HyperliquidAccountService unit tests for enriched mapping
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-15-add-unit-tests-for-enriched-mapping
 
-- [ ] Task 1.6: Update AccountControllerTests for enriched PositionDto
+- [x] Task 1.6: Update AccountControllerTests for enriched PositionDto
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-16-update-accountcontrollertests-for-enriched-dto
 
-- [ ] Task 1.7: Run all backend tests and verify
+- [x] Task 1.7: Run all backend tests and verify
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-01-details.md#task-17-run-all-backend-tests
 
 ### [ ] Phase 2: Frontend — Display Enriched Position Data in Positions Table
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Extend Position TypeScript interface with new fields
+- [x] Task 2.1: Extend Position TypeScript interface with new fields
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-02-details.md#task-21-extend-position-interface
 
-- [ ] Task 2.2: Add Mark Price column to positions table
+- [x] Task 2.2: Add Mark Price column to positions table
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-02-details.md#task-22-add-mark-price-column
 
-- [ ] Task 2.3: Add Notional column to positions table
+- [x] Task 2.3: Add Notional column to positions table
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-02-details.md#task-23-add-notional-column
 
-- [ ] Task 2.4: Add Margin column with equity percentage tooltip
+- [x] Task 2.4: Add Margin column with equity percentage tooltip
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-02-details.md#task-24-add-margin-column-with-tooltip
 
-- [ ] Task 2.5: Pass equity from DashboardComponent to PositionsTableComponent
+- [x] Task 2.5: Pass equity from DashboardComponent to PositionsTableComponent
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-02-details.md#task-25-pass-equity-to-positions-table
 
-- [ ] Task 2.6: Run frontend build and lint
+- [x] Task 2.6: Run frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-02-details.md#task-26-run-frontend-build-and-lint
 
 ### [ ] Phase 3: Frontend — Funding Rate Indicator Component
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 3.1: Create FundingIndicatorComponent
+- [x] Task 3.1: Create FundingIndicatorComponent
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-03-details.md#task-31-create-fundingindicatorcomponent
 
-- [ ] Task 3.2: Add Funding column to positions table using FundingIndicatorComponent
+- [x] Task 3.2: Add Funding column to positions table using FundingIndicatorComponent
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-03-details.md#task-32-add-funding-column-to-positions-table
 
-- [ ] Task 3.3: Add responsive column handling for new columns
+- [x] Task 3.3: Add responsive column handling for new columns
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-03-details.md#task-33-add-responsive-column-handling
 
-- [ ] Task 3.4: Run frontend build and lint
+- [x] Task 3.4: Run frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260326-f11-position-data-enrichment-phase-03-details.md#task-34-run-frontend-build-and-lint
 
 ## Scoping Summary
@@ -177,3 +177,4 @@ Enrich the positions table and position detail view with mark price display, not
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-26T16:17:45Z | 2026-03-26T17:05:57Z |
 | Plan Reviewer | plan-reviewed | 2026-03-26T17:07:47Z | 2026-03-26T17:25:52Z |
+| Plan Implementer | implemented | 2026-03-26T19:48:07Z | 2026-03-26T19:54:39Z |

@@ -43,6 +43,7 @@
       <table class="positions-table" aria-label="Open positions">
         <thead>
           <tr>
+            <th class="positions-table__details-col"></th>
             <th class="positions-table__header positions-table__header--sortable" (click)="onSort('asset')">
               Asset
               @if (sortColumn === "asset" && sortDirection) {
@@ -55,7 +56,6 @@
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
-            <th>Leverage</th>
             <th class="positions-table__header positions-table__header--sortable" (click)="onSort('entryPrice')">
               Entry Price
               @if (sortColumn === "entryPrice" && sortDirection) {
@@ -74,44 +74,45 @@
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
-            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('liquidationPrice')">
-              Liquidation Price
-              @if (sortColumn === "liquidationPrice" && sortDirection) {
-                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
-              }
-            </th>
-            <th>Funding</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           @for (position of sortedFilteredPositions; track position.asset + position.side) {
             <tr [class.positions-table__row--loading]="isLoading(position)">
+              <td class="positions-table__details-col">
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="positions-table__details-toggle"
+                  [attr.aria-expanded]="isDetailsExpanded(position)"
+                  [attr.aria-label]="isDetailsExpanded(position) ? 'Hide position details' : 'Show position details'"
+                  (click)="toggleDetails(position)">
+                  <mat-icon>{{ isDetailsExpanded(position) ? "expand_less" : "expand_more" }}</mat-icon>
+                </button>
+              </td>
               <td>{{ position.asset }}</td>
-              <td [matTooltip]="getNotionalTooltip(position)">
+              <td>
                 <span [class]="position.side === 'Long' ? 'side--long' : 'side--short'">
                   {{ position.size | number: "1.4-4" }} ({{ position.side }})
                 </span>
               </td>
-              <td [matTooltip]="getMarginTooltip(position, equity)">
-                <span class="leverage-badge">
-                  {{ position.leverage }}x {{ position.marginMode }}
-                </span>
-              </td>
               <td>{{ position.entryPrice | number: "1.2-2" }}</td>
-              <td [class]="getMarkPriceClass(position)">
-                {{ position.markPrice | number: "1.2-2" }}
-                <mat-icon class="positions-table__direction-icon" [class]="getMarkPriceClass(position)">
-                  {{ getMarkPriceClass(position) === "mark-price--favorable" ? "arrow_upward" : "arrow_downward" }}
-                </mat-icon>
+              <td>
+                @if (!hasMarkPrice(position)) {
+                  <span class="positions-table__na">—</span>
+                } @else {
+                  <span class="positions-table__mark-price" [class]="getMarkPriceClass(position)">
+                    {{ position.markPrice | number: "1.2-2" }}
+                    @if (getMarkPriceIcon(position)) {
+                      <mat-icon class="positions-table__direction-icon">{{ getMarkPriceIcon(position) }}</mat-icon>
+                    }
+                  </span>
+                }
               </td>
               <td [class]="getPnlClass(position.unrealisedPnl)">
                 {{ position.unrealisedPnl | number: "1.2-2" }}
                 ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
-              </td>
-              <td>{{ position.liquidationPrice | number: "1.2-2" }}</td>
-              <td [matTooltip]="getFundingTooltip(position)" [class]="getFundingClass(position)">
-                {{ position.fundingRate * 100 | number: "1.4-4" }}%
               </td>
               <td class="positions-table__actions">
                 @if (isLoading(position)) {
@@ -128,6 +129,45 @@
                 }
               </td>
             </tr>
+            @if (isDetailsExpanded(position)) {
+              <tr class="positions-table__details-row">
+                <td colspan="7" class="positions-table__details-cell">
+                  <div class="positions-table__details-grid">
+                    <div class="positions-table__detail-item">
+                      <span class="positions-table__detail-label">Leverage</span>
+                      <span class="leverage-badge">{{ position.leverage }}x {{ position.marginMode }}</span>
+                    </div>
+                    <div class="positions-table__detail-item">
+                      <span class="positions-table__detail-label">Position Value</span>
+                      <span>{{ getNotionalLabel(position) }}</span>
+                    </div>
+                    <div class="positions-table__detail-item">
+                      <span class="positions-table__detail-label">Margin Used</span>
+                      @if (hasMarginUsed(position)) {
+                        <span [matTooltip]="getMarginTooltip(position)">{{ getMarginLabel(position) }}</span>
+                      } @else {
+                        <span class="positions-table__na">{{ getMarginLabel(position) }}</span>
+                      }
+                    </div>
+                    <div class="positions-table__detail-item">
+                      <span class="positions-table__detail-label">Margin Share</span>
+                      <span>{{ getMarginPercentLabel(position) }}</span>
+                    </div>
+                    <div class="positions-table__detail-item">
+                      <span class="positions-table__detail-label">Liquidation Price</span>
+                      <span>{{ getLiquidationLabel(position) }}</span>
+                    </div>
+                    <div class="positions-table__detail-item">
+                      <span class="positions-table__detail-label">Funding</span>
+                      <app-funding-indicator
+                        [fundingRate]="position.fundingRate"
+                        [side]="position.side"
+                        [notional]="getNotional(position)"></app-funding-indicator>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
         </tbody>
       </table>

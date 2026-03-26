@@ -188,4 +188,26 @@ describe("PositionsTableComponent", () => {
       expect(component.closeAllPositions.emit).toHaveBeenCalled();
     });
   });
+
+  describe("details", () => {
+    it("should toggle details for a position", () => {
+      const position = mockPositions[0];
+
+      expect(component.isDetailsExpanded(position)).toBeFalse();
+
+      component.toggleDetails(position);
+      expect(component.isDetailsExpanded(position)).toBeTrue();
+
+      component.toggleDetails(position);
+      expect(component.isDetailsExpanded(position)).toBeFalse();
+    });
+
+    it("should format position value and margin labels", () => {
+      component.equity = 1000;
+
+      expect(component.getNotionalLabel(mockPositions[0])).toBe("$51.00");
+      expect(component.getMarginLabel(mockPositions[0])).toBe("$5.10");
+      expect(component.getMarginPercentLabel(mockPositions[0])).toBe("0.5% of equity");
+    });
+  });
 });

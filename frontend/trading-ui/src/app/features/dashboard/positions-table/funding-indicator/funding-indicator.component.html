@@ -1,0 +1,7 @@
+@if (fundingRate === 0) {
+  <span class="funding-indicator__na">—</span>
+} @else {
+  <span class="funding-indicator" [class]="fundingClass" [matTooltip]="tooltipText">
+    {{ ratePercent | number: "1.4-4" }}%
+  </span>
+}

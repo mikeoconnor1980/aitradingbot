@@ -1,0 +1,15 @@
+:host {
+  display: inline-flex;
+}
+
+.funding-indicator--receiving {
+  color: var(--colour-profit);
+}
+
+.funding-indicator--paying {
+  color: var(--colour-loss);
+}
+
+.funding-indicator__na {
+  color: var(--colour-muted);
+}

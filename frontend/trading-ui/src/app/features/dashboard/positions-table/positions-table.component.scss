@@ -71,6 +71,54 @@
     margin-left: 2px;
   }
 
+  &__mark-price {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  &__details-col {
+    width: 1%;
+    white-space: nowrap;
+    padding-right: 0.25rem;
+  }
+
+  &__details-toggle {
+    color: var(--colour-label);
+  }
+
+  &__na {
+    color: var(--colour-muted);
+  }
+
+  &__details-row td {
+    border-bottom: 1px solid var(--colour-border-subtle);
+  }
+
+  &__details-cell {
+    padding-top: 0;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  &__details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
+  }
+
+  &__detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  &__detail-label {
+    color: var(--colour-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   &__empty {
     display: grid;
     place-items: center;
@@ -104,14 +152,6 @@
   color: var(--colour-loss);
 }
 
-.funding--receiving {
-  color: var(--colour-profit);
-}
-
-.funding--paying {
-  color: var(--colour-loss);
-}
-
 .leverage-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -134,4 +174,17 @@
 .positions-table__row--loading {
   opacity: 0.6;
   pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .positions-table {
+    th,
+    td {
+      padding: 0.7rem 0.75rem;
+    }
+  }
+
+  .positions-table__details-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

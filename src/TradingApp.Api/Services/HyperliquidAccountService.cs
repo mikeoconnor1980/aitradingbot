@@ -97,7 +97,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to fetch asset contexts; positions will have zero mark price and funding rate");
+            _logger.LogWarning(ex, "Failed to fetch asset contexts; positions will default mark price and funding rate where unavailable");
         }
 
         return result;
@@ -143,7 +143,9 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         };
     }
 
-    private static IReadOnlyList<PositionDto> MapToPositions(JsonElement response, AssetContextLookup contexts)
+    private static IReadOnlyList<PositionDto> MapToPositions(
+        JsonElement response,
+        AssetContextLookup contexts)
     {
         var results = new List<PositionDto>();
 
@@ -157,17 +159,27 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         {
             var position = UnwrapPosition(assetPosition);
 
+            var coin = GetString(GetPropertyOrDefault(position, "coin"));
             var size = ParseDecimal(GetPropertyOrDefault(position, "szi"));
             var entryPrice = ParseDecimal(GetPropertyOrDefault(position, "entryPx"));
+            var markPrice = ParseDecimal(GetPropertyOrDefault(position, "markPx"));
             var pnlPercent = ParseDecimal(GetPropertyOrDefault(position, "returnOnEquity"));
             var marginUsed = ParseDecimal(GetPropertyOrDefault(position, "marginUsed"));
 
             pnlPercent *= 100m;
 
             var (leverage, marginMode) = ExtractLeverage(position);
-            var coin = GetString(GetPropertyOrDefault(position, "coin"));
 
-            contexts.MarkPrices.TryGetValue(coin, out var markPrice);
+            if (markPrice == 0m)
+            {
+                contexts.MarkPrices.TryGetValue(coin, out markPrice);
+            }
+
+            if (marginUsed == 0m && markPrice > 0m && leverage > 0)
+            {
+                marginUsed = Math.Abs(size) * markPrice / leverage;
+            }
+
             contexts.FundingRates.TryGetValue(coin, out var fundingRate);
 
             results.Add(new PositionDto
