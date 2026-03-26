@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Nethereum.ABI.EIP712;
+using System.Text.Json;
 using TradingApp.Api.Models;
 using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Configuration;
@@ -16,6 +16,8 @@ public sealed class HyperliquidOrderServiceTests
     private Mock<IHyperliquidRestClient> _restClientMock = default!;
     private Mock<IHyperliquidSigner> _signerMock = default!;
     private Mock<INonceProvider> _nonceProviderMock = default!;
+    private Mock<IHyperliquidAccountService> _accountServiceMock = default!;
+    private Mock<IHyperliquidAssetMetadataCache> _metadataCacheMock = default!;
     private Mock<ILogger<HyperliquidOrderService>> _loggerMock = default!;
     private IOptions<HyperliquidOptions> _options = default!;
     private HyperliquidOrderService _sut = default!;
@@ -26,6 +28,8 @@ public sealed class HyperliquidOrderServiceTests
         _restClientMock = new Mock<IHyperliquidRestClient>();
         _signerMock = new Mock<IHyperliquidSigner>();
         _nonceProviderMock = new Mock<INonceProvider>();
+        _accountServiceMock = new Mock<IHyperliquidAccountService>();
+        _metadataCacheMock = new Mock<IHyperliquidAssetMetadataCache>();
         _loggerMock = new Mock<ILogger<HyperliquidOrderService>>();
         _options = Options.Create(new HyperliquidOptions
         {
@@ -36,16 +40,22 @@ public sealed class HyperliquidOrderServiceTests
 
         _signerMock.Setup(s => s.WalletAddress).Returns("0xTestAddress");
         _signerMock
-            .Setup(s => s.SignTypedData(It.IsAny<TypedData<Domain>>()))
+            .Setup(s => s.SignHash(It.IsAny<byte[]>()))
             .Returns(("0x" + new string('a', 64), "0x" + new string('b', 64), 27));
         _nonceProviderMock
             .Setup(n => n.GetNextNonce())
             .Returns(1716499200000L);
 
+        _metadataCacheMock
+            .Setup(m => m.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AssetMetadata(3, 5, 40));
+
         _sut = new HyperliquidOrderService(
             _restClientMock.Object,
             _signerMock.Object,
             _nonceProviderMock.Object,
+                _accountServiceMock.Object,
+            _metadataCacheMock.Object,
             _options,
             _loggerMock.Object);
     }
@@ -185,5 +195,92 @@ public sealed class HyperliquidOrderServiceTests
         _restClientMock.Verify(
             r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenValidOrderId_WhenCancelOrderAsync_ThenSubmitsCancelAction()
+    {
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse { Status = "ok" });
+
+        await _sut.CancelOrderAsync("12345", "BTC", CancellationToken.None);
+
+        _restClientMock.Verify(
+            r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.Is<object>(payload =>
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("\"type\":\"cancel\"", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("12345", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenInvalidOrderId_WhenCancelOrderAsync_ThenThrowsDomainException()
+    {
+        var action = () => _sut.CancelOrderAsync("not-a-number", "BTC", CancellationToken.None);
+
+        await action.Should().ThrowAsync<DomainException>();
+    }
+
+    [TestMethod]
+    public async Task GivenOpenOrders_WhenCancelAllOrdersAsync_ThenCancelsMatchingAssetOrders()
+    {
+        _accountServiceMock
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new OpenOrderDto { OrderId = "111", Asset = "BTC", Side = "Buy", Price = 60000m, Size = 0.01m },
+                new OpenOrderDto { OrderId = "222", Asset = "BTC", Side = "Sell", Price = 70000m, Size = 0.02m },
+                new OpenOrderDto { OrderId = "333", Asset = "ETH", Side = "Buy", Price = 3000m, Size = 1m },
+            ]);
+
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse { Status = "ok" });
+
+        await _sut.CancelAllOrdersAsync("BTC", CancellationToken.None);
+
+        _restClientMock.Verify(
+            r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.Is<object>(payload =>
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("111", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("222", StringComparison.OrdinalIgnoreCase) &&
+                    !JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("333", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenNoOpenOrders_WhenCancelAllOrdersAsync_ThenDoesNotSubmitRequest()
+    {
+        _accountServiceMock
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        await _sut.CancelAllOrdersAsync("BTC", CancellationToken.None);
+
+        _restClientMock.Verify(
+            r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenValidModifyParameters_WhenModifyOrderAsync_ThenSubmitsModifyActionWithWireDecimals()
+    {
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse { Status = "ok" });
+
+        await _sut.ModifyOrderAsync("12345", "BTC", "Buy", 64500m, 0.002m, CancellationToken.None);
+
+        _restClientMock.Verify(
+            r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.Is<object>(payload =>
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("batchModifyOrders", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("64500", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("0.002", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

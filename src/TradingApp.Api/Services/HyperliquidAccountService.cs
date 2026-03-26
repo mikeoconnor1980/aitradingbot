@@ -108,6 +108,8 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
 
             pnlPercent *= 100m;
 
+            var (leverage, marginMode) = ExtractLeverage(position);
+
             results.Add(new PositionDto
             {
                 Asset = GetString(GetPropertyOrDefault(position, "coin")),
@@ -118,6 +120,8 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
                 UnrealisedPnl = ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl")),
                 UnrealisedPnlPercent = pnlPercent,
                 LiquidationPrice = ParseDecimal(GetPropertyOrDefault(position, "liquidationPx")),
+                Leverage = leverage,
+                MarginMode = marginMode,
             });
         }
 
@@ -155,6 +159,19 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         }
 
         return results;
+    }
+
+    private static (int Leverage, string MarginMode) ExtractLeverage(JsonElement assetPosition)
+    {
+        if (TryGetProperty(assetPosition, "leverage", out var leverageObj) &&
+            leverageObj.ValueKind == JsonValueKind.Object)
+        {
+            var value = (int)ParseDecimal(GetPropertyOrDefault(leverageObj, "value"));
+            var type = GetString(GetPropertyOrDefault(leverageObj, "type"));
+            return (value, type);
+        }
+
+        return (0, string.Empty);
     }
 
     private static JsonElement UnwrapPosition(JsonElement assetPosition)

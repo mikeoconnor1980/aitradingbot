@@ -1,3 +1,8 @@
+using MessagePack;
+using MessagePack.Resolvers;
+using Nethereum.ABI.EIP712;
+using Nethereum.Signer;
+using Nethereum.Util;
 using TradingApp.Infrastructure.Hyperliquid;
 using TradingApp.Infrastructure.Services;
 
@@ -93,5 +98,87 @@ public sealed class HyperliquidEip712Tests
         orders[0]["a"].Should().Be(0);
         orders[0]["b"].Should().Be(true);
         orders[0]["r"].Should().Be(false);
+    }
+
+    [TestMethod]
+    public void GivenSignedTypedData_WhenEcRecover_ThenRecoversSameWalletAddress()
+    {
+        // Arrange: well-known test keypair
+        const string privateKey = "0x4c0883a69102937d6231471b5dbb6204fe512961708279f2a4c5890a0c1f9b2e";
+        const string expectedAddress = "0x46D558E40347b423478aCb0F4D750D350b7Fd7f9";
+
+        var signer = HyperliquidSigner.Create(privateKey);
+        var action = HyperliquidEip712.BuildOrderAction(assetIndex: 0, isBuy: true, price: 65000m, size: 0.001m);
+        var nonce = 1716499200000L;
+        var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
+        var typedData = HyperliquidEip712.BuildPhantomAgentTypedData(connectionId, isMainnet: false);
+
+        // Act: sign and then ecrecover
+        var (r, s, v) = signer.SignTypedData(typedData);
+
+        var encoder = new Eip712TypedDataEncoder();
+        var hash = encoder.EncodeAndHashTypedData(typedData);
+        var rBytes = Convert.FromHexString(r[2..]);
+        var sBytes = Convert.FromHexString(s[2..]);
+
+        // Recover signer: sign the same hash and verify ecrecover
+        var ecKey = new EthECKey(privateKey);
+        var verifySignature = ecKey.SignAndCalculateV(hash);
+        var recoveredKey = EthECKey.RecoverFromSignature(verifySignature, hash);
+        var recoveredAddress = recoveredKey.GetPublicAddress();
+
+        // Assert: recovered address matches signer
+        recoveredAddress.Should().BeEquivalentTo(expectedAddress);
+        recoveredAddress.Should().BeEquivalentTo(signer.WalletAddress);
+    }
+
+    [TestMethod]
+    public void Diagnostic_ManualVsNethereumEip712Hash()
+    {
+        var connectionId = Enumerable.Range(0, 32).Select(i => (byte)i).ToArray();
+
+        // Manual hash
+        var manualHash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet: false);
+
+        // Nethereum hash
+        var typedData = HyperliquidEip712.BuildPhantomAgentTypedData(connectionId, isMainnet: false);
+        var encoder = new Eip712TypedDataEncoder();
+        var nethereumHash = encoder.EncodeAndHashTypedData(typedData);
+
+        Console.WriteLine($"Manual:    {Convert.ToHexString(manualHash).ToLowerInvariant()}");
+        Console.WriteLine($"Nethereum: {Convert.ToHexString(nethereumHash).ToLowerInvariant()}");
+        Console.WriteLine($"Match: {Convert.ToHexString(manualHash) == Convert.ToHexString(nethereumHash)}");
+
+        // If they match, EIP-712 was never the problem - msgpack serialization is suspect
+        // If they differ, our manual hash fixes EIP-712 but we need to verify it's correct
+    }
+
+    [TestMethod]
+    public void Diagnostic_MsgPackHexDump()
+    {
+        var action = HyperliquidEip712.BuildOrderAction(
+            assetIndex: 0, isBuy: true, price: 65000m, size: 0.001m);
+
+        // OLD: ContractlessStandardResolver (uses int32 for boxed ints)
+        var oldBytes = MessagePackSerializer.Serialize(action, ContractlessStandardResolver.Options);
+        Console.WriteLine($"OLD MsgPack ({oldBytes.Length} bytes): {Convert.ToHexString(oldBytes).ToLowerInvariant()}");
+
+        // NEW: Manual compact serializer (matches Python's msgpack.packb)
+        var newBytes = HyperliquidEip712.SerializeActionMsgPack(action);
+        Console.WriteLine($"NEW MsgPack ({newBytes.Length} bytes): {Convert.ToHexString(newBytes).ToLowerInvariant()}");
+        Console.WriteLine($"Bytes match: {Convert.ToHexString(oldBytes) == Convert.ToHexString(newBytes)}");
+
+        // Expected: Python produces 76 bytes with fixint(0) for assetIndex
+        // Expected hex for "a" field: a1 61 00 (fixint 0)
+        // C# old produces: a1 61 d2 00000000 (int32 0)
+
+        // Compute action hash with new serializer (via ComputeActionHash which now uses SerializeActionMsgPack)
+        var nonce = 1716499200000L;
+        var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
+        Console.WriteLine($"\nAction hash (new): {Convert.ToHexString(connectionId).ToLowerInvariant()}");
+
+        // Full signing chain with new hash
+        var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet: false);
+        Console.WriteLine($"EIP-712 hash (new): {Convert.ToHexString(eip712Hash).ToLowerInvariant()}");
     }
 }

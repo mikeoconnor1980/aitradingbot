@@ -181,13 +181,14 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
     public async Task<List<CandleDto>> GetCandlesAsync(
         string asset,
         string timeframe,
+        long? endTime = null,
         CancellationToken cancellationToken = default)
     {
         var normalizedTimeframe = timeframe.ToLowerInvariant();
         var intervalMs = HyperliquidAssetMapper.GetIntervalMs(normalizedTimeframe);
 
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var startTime = now - (96L * intervalMs);
+        var end = endTime ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var startTime = end - (500L * intervalMs);
         var coin = HyperliquidAssetMapper.ToCoin(asset);
 
         var request = new HyperliquidCandleSnapshotRequest
@@ -197,7 +198,7 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
                 Coin = coin,
                 Interval = normalizedTimeframe,
                 StartTime = startTime,
-                EndTime = now,
+                EndTime = end,
             },
         };
 
@@ -214,7 +215,7 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
                 Volume = ParseDecimal(c.Volume),
             })
             .OrderByDescending(c => c.Timestamp)
-            .Take(96)
+            .Take(500)
             .ToList();
     }
 

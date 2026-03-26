@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260325-f6-order-management-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-03-25T12:27:11Z"
-status: "plan-reviewed"
-lastUpdated: "2026-03-25T12:32:28Z"
+currentAgent: "Implementation Reviewer"
+agentStartedAt: "2026-03-25T20:12:28Z"
+status: "reviewing"
+lastUpdated: "2026-03-25T20:12:28Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -83,85 +83,85 @@ Cancel and modify existing orders on Hyperliquid testnet via the Angular UI, ext
 - `frontend/trading-ui/src/app/features/dashboard/orders-table/orders-table.component.ts` — Read-only orders table (to be extended)
 - `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts` — Dashboard with polling + MatSnackBar
 
-### [ ] Phase 1: Backend — Cancel & Modify Endpoints + Tests
+### [x] Phase 1: Backend — Cancel & Modify Endpoints + Tests
 
 **Complexity**: Medium | **Risk**: Medium
 
 Extends F5's `IHyperliquidOrderService` and `OrdersController` with cancel (single + all) and modify operations. The signing flow from F5 is reused as-is — only the action payload shapes differ. Backend validation is added for modify requests.
 
-- [ ] Task 1.1: Create cancel and modify action payload models
+- [x] Task 1.1: Create cancel and modify action payload models
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-11-create-action-payload-models
 
-- [ ] Task 1.2: Create ModifyOrderDto request model with validation
+- [x] Task 1.2: Create ModifyOrderDto request model with validation
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-12-create-modifyorderdto-request-model
 
-- [ ] Task 1.3: Add CancelOrderAsync and CancelAllOrdersAsync to IHyperliquidOrderService
+- [x] Task 1.3: Add CancelOrderAsync and CancelAllOrdersAsync to IHyperliquidOrderService
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-13-add-cancel-methods-to-order-service
 
-- [ ] Task 1.4: Add ModifyOrderAsync to IHyperliquidOrderService
+- [x] Task 1.4: Add ModifyOrderAsync to IHyperliquidOrderService
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-14-add-modify-method-to-order-service
 
-- [ ] Task 1.5: Add DELETE and PUT endpoints to OrdersController
+- [x] Task 1.5: Add DELETE and PUT endpoints to OrdersController
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-15-add-controller-endpoints
 
-- [ ] Task 1.6: Unit tests for HyperliquidOrderService cancel and modify
+- [x] Task 1.6: Unit tests for HyperliquidOrderService cancel and modify
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-16-unit-tests-for-order-service
 
-- [ ] Task 1.7: Integration tests for OrdersController cancel and modify endpoints
+- [x] Task 1.7: Integration tests for OrdersController cancel and modify endpoints
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-17-integration-tests-for-controller
 
-- [ ] Task 1.8: Run all tests to verify no regressions
+- [x] Task 1.8: Run all tests to verify no regressions
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-01-details.md#task-18-run-all-tests
 
-### [ ] Phase 2: Frontend — Order Management Service + Modify Modal
+### [x] Phase 2: Frontend — Order Management Service + Modify Modal
 
 **Complexity**: Medium | **Risk**: Low
 
 Extends the Angular `OrderService` from F5 with cancel/modify methods and creates the `ModifyOrderModalComponent` with reactive form validation. Reuses `ConfirmDialogComponent` and `MatDialog` from F5.
 
-- [ ] Task 2.1: Create ModifyOrderDto TypeScript interface
+- [x] Task 2.1: Create ModifyOrderDto TypeScript interface
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-02-details.md#task-21-create-modifyorderdto-interface
 
-- [ ] Task 2.2: Add cancel and modify methods to OrderService
+- [x] Task 2.2: Add cancel and modify methods to OrderService
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-02-details.md#task-22-add-cancel-modify-to-orderservice
 
-- [ ] Task 2.3: Create ModifyOrderModalComponent with reactive form
+- [x] Task 2.3: Create ModifyOrderModalComponent with reactive form
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-02-details.md#task-23-create-modify-order-modal
 
-- [ ] Task 2.4: Frontend build and lint verification
+- [x] Task 2.4: Frontend build and lint verification
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-02-details.md#task-24-frontend-build-and-lint
 
-### [ ] Phase 3: Frontend — Orders Table Actions + Optimistic UI
+### [x] Phase 3: Frontend — Orders Table Actions + Optimistic UI
 
 **Complexity**: High | **Risk**: Medium
 
 The core UI phase — adds cancel/modify action buttons, Cancel All button, row-level loading states, context menu, optimistic update with revert, toast notifications, and dashboard refresh integration.
 
-- [ ] Task 3.1: Add Cancel and Modify action buttons to order table rows
+- [x] Task 3.1: Add Cancel and Modify action buttons to order table rows
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-31-add-action-buttons-to-rows
 
-- [ ] Task 3.2: Add Cancel All button above orders table (extends Task 3.1 template)
+- [x] Task 3.2: Add Cancel All button above orders table (extends Task 3.1 template)
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-32-add-cancel-all-button
 
-- [ ] Task 3.3: Implement row-level loading state (extends Task 3.1 component)
+- [x] Task 3.3: Implement row-level loading state (extends Task 3.1 component)
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-33-implement-row-loading-state
 
-- [ ] Task 3.4: Add context menu with cancel and modify options
+- [x] Task 3.4: Add context menu with cancel and modify options
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-34-add-context-menu
 
-- [ ] Task 3.5: Wire cancel single order flow with optimistic UI
+- [x] Task 3.5: Wire cancel single order flow with optimistic UI
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-35-wire-cancel-single-order
 
-- [ ] Task 3.6: Wire cancel all orders flow with optimistic UI
+- [x] Task 3.6: Wire cancel all orders flow with optimistic UI
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-36-wire-cancel-all-orders
 
-- [ ] Task 3.7: Wire modify order flow with optimistic UI
+- [x] Task 3.7: Wire modify order flow with optimistic UI
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-37-wire-modify-order
 
-- [ ] Task 3.8: Wire refresh trigger from orders-table to dashboard
+- [x] Task 3.8: Wire refresh trigger from orders-table to dashboard
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-38-wire-refresh-trigger
 
-- [ ] Task 3.9: Frontend build and lint verification
+- [x] Task 3.9: Frontend build and lint verification
   - Details: .agent-context/3-develop/build/plans/details/20260325-f6-order-management-phase-03-details.md#task-39-frontend-build-and-lint
 
 ## Scoping Summary
@@ -212,3 +212,5 @@ The core UI phase — adds cancel/modify action buttons, Cancel All button, row-
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-25T12:04:26Z | 2026-03-25T12:26:27Z |
 | Plan Reviewer | plan-reviewed | 2026-03-25T12:27:11Z | 2026-03-25T12:32:28Z |
+| Plan Implementer | implemented | 2026-03-25T16:17:25Z | 2026-03-25T18:28:25Z |
+| Implementation Reviewer | reviewing | 2026-03-25T20:12:28Z | |

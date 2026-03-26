@@ -69,6 +69,11 @@ public sealed class HyperliquidSigner : IHyperliquidSigner
     {
         var encoder = new Eip712TypedDataEncoder();
         var hash = encoder.EncodeAndHashTypedData(typedData);
+        return SignHash(hash);
+    }
+
+    public (string R, string S, int V) SignHash(byte[] hash)
+    {
         var signature = _ecKey.SignAndCalculateV(hash);
 
         var r = "0x" + Convert.ToHexString(signature.R).ToLowerInvariant();

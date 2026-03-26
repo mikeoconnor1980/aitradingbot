@@ -45,6 +45,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 
 builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
+builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
 
 // SignalR

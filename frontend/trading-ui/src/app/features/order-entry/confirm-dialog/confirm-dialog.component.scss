@@ -1,4 +1,10 @@
 .confirm-dialog {
+  &__message {
+    margin: 0;
+    padding: 8px 0;
+    color: var(--colour-text-primary);
+  }
+
   &__summary {
     display: flex;
     flex-direction: column;

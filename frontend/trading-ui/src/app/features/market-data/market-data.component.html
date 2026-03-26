@@ -8,9 +8,9 @@
     <div class="controls">
       <mat-form-field appearance="outline">
         <mat-label>Asset</mat-label>
-        <mat-select [value]="selectedAsset" (selectionChange)="onAssetChanged($event.value)">
-          @for (asset of assets; track asset) {
-            <mat-option [value]="asset">{{ asset }}</mat-option>
+        <mat-select [value]="selectedAsset" (selectionChange)="onAssetChanged($event.value)" panelClass="asset-select-panel">
+          @for (asset of assets; track asset.symbol) {
+            <mat-option [value]="asset.symbol">{{ asset.symbol }} — {{ asset.name }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -24,7 +24,7 @@
 
   <section class="market-data__realtime">
     <app-price-ticker [seedMarketInfo]="marketInfo" [selectedAsset]="selectedAsset" />
-    <app-price-chart [seedCandles]="candles" [selectedAsset]="selectedAsset" [selectedTimeframe]="selectedTimeframe" />
+    <app-price-chart [seedCandles]="candles" [selectedAsset]="selectedAsset" [selectedTimeframe]="selectedTimeframe" (loadMoreCandles)="onLoadMoreCandles($event)" />
   </section>
 
   <mat-card class="market-info-card">

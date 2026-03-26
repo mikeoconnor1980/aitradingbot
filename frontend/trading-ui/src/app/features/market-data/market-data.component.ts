@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, DestroyRef, OnInit, inject } from "@angular/core";
+import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
@@ -12,7 +12,9 @@ import { BehaviorSubject, Subject, interval, merge, of, EMPTY } from "rxjs";
 import { catchError, startWith, switchMap } from "rxjs/operators";
 import { Candle } from "../../core/models/candle.model";
 import { MarketInfo } from "../../core/models/market-info.model";
+import { TradableAsset } from "../../core/models/tradable-asset.model";
 import { MarketDataService } from "../../core/services/market-data.service";
+import { OrderService } from "../../core/services/order.service";
 import { PriceChartComponent } from "./price-chart/price-chart.component";
 import { PriceTickerComponent } from "./price-ticker/price-ticker.component";
 
@@ -39,22 +41,16 @@ export class MarketDataComponent implements OnInit {
 
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _marketDataService = inject(MarketDataService);
+  private readonly _orderService = inject(OrderService);
   private readonly _selectedAsset$ = new BehaviorSubject<string>("BTC-PERP");
   private readonly _manualRefresh$ = new Subject<void>();
   private readonly _candleTrigger$ = new Subject<void>();
 
-  public readonly assets: string[] = [
-    "BTC-PERP",
-    "ETH-PERP",
-    "SOL-PERP",
-    "DOGE-PERP",
-    "AVAX-PERP",
-    "ARB-PERP",
-    "LINK-PERP",
-    "OP-PERP"
-  ];
+  public assets: TradableAsset[] = [{ symbol: "BTC-PERP", name: "Bitcoin", maxLeverage: 40, szDecimals: 5 }];
   public readonly timeframes: string[] = ["5m", "15m", "1h", "4h"];
   public readonly candleColumns: string[] = ["timestamp", "open", "high", "low", "close", "volume"];
+
+  @ViewChild(PriceChartComponent) private readonly _priceChart?: PriceChartComponent;
 
   public selectedAsset = "BTC-PERP";
   public selectedTimeframe = "15m";
@@ -69,6 +65,12 @@ export class MarketDataComponent implements OnInit {
     this._startMarketInfoPolling();
     this._startCandleLoading();
     this._candleTrigger$.next();
+
+    this._orderService.getAvailableAssets().subscribe({
+      next: (assets) => {
+        this.assets = assets;
+      }
+    });
   }
 
   public onAssetChanged(asset: string): void {
@@ -89,6 +91,13 @@ export class MarketDataComponent implements OnInit {
   public onManualRefresh(): void {
     this._manualRefresh$.next();
     this._candleTrigger$.next();
+  }
+
+  public onLoadMoreCandles(endTimeMs: number): void {
+    this._marketDataService.getCandles(this.selectedAsset, this.selectedTimeframe, endTimeMs).subscribe({
+      next: (candles) => this._priceChart?.prependCandles(candles),
+      error: () => this._priceChart?.prependCandles([]),
+    });
   }
 
   private _startMarketInfoPolling(): void {

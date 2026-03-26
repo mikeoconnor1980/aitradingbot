@@ -33,9 +33,10 @@ public sealed class MarketDataController : ApiController
     public async Task<IActionResult> GetCandlesAsync(
         [FromQuery][Required] string asset,
         [FromQuery][Required] string timeframe,
+        [FromQuery] long? endTime,
         CancellationToken cancellationToken)
     {
-        var result = await Mediator.Send(new GetCandlesQuery(asset, timeframe), cancellationToken);
+        var result = await Mediator.Send(new GetCandlesQuery(asset, timeframe, endTime), cancellationToken);
         return Ok(result);
     }
 }

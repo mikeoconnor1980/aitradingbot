@@ -3,9 +3,11 @@ import {
   Component,
   DestroyRef,
   ElementRef,
+  EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
+  Output,
   SimpleChanges,
   ViewChild,
   inject
@@ -18,6 +20,7 @@ import {
   CrosshairMode,
   IChartApi,
   ISeriesApi,
+  LogicalRange,
   UTCTimestamp
 } from "lightweight-charts";
 import { PriceUpdate } from "../../../core/models/price-update.model";
@@ -32,8 +35,6 @@ import { SignalRService } from "../../../core/services/signalr.service";
   styleUrl: "./price-chart.component.scss"
 })
 export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy {
-  private static readonly ROLLING_WINDOW_SECONDS = 24 * 60 * 60;
-
   private static readonly TIMEFRAME_SECONDS: Record<string, number> = {
     '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
     '1h': 3600, '4h': 14400, '1d': 86400
@@ -43,11 +44,13 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   @Input() public selectedAsset = "BTC-PERP";
   @Input() public selectedTimeframe = "15m";
 
+  @Output() public loadMoreCandles = new EventEmitter<number>();
+
   public get timeWindowLabel(): string {
-    if (!this.seedCandles.length) return '';
-    const timestamps = this.seedCandles.map(c => c.timestamp);
-    const diffMs = Math.max(...timestamps) - Math.min(...timestamps);
-    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+    if (!this._candles.length) return '';
+    const first = this._candles[0].time as number;
+    const last = this._candles[this._candles.length - 1].time as number;
+    const diffHours = Math.round((last - first) / 3600);
     if (diffHours < 48) return `${diffHours}H`;
     return `${Math.round(diffHours / 24)}D`;
   }
@@ -66,18 +69,22 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   private _candleSeries: ISeriesApi<"Candlestick"> | null = null;
   private _resizeObserver: ResizeObserver | null = null;
   private _candles: CandlestickData<UTCTimestamp>[] = [];
-  // Forming live candle — built up from 500ms ticks
   private _liveCandle: CandlestickData<UTCTimestamp> | null = null;
+  private _isLoadingHistory = false;
+  private _oldestTimestamp: number | null = null;
 
   public ngAfterViewInit(): void {
     this._initChart();
     this._seedFromCandles();
     this._subscribeToUpdates();
+    this._subscribeToVisibleRangeChange();
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
     if ((changes['seedCandles'] || changes['selectedTimeframe'] || changes['selectedAsset']) && this._candleSeries) {
       this._liveCandle = null;
+      this._isLoadingHistory = false;
+      this._oldestTimestamp = null;
       this._seedFromCandles();
     }
   }
@@ -85,6 +92,35 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   public ngOnDestroy(): void {
     this._resizeObserver?.disconnect();
     this._chart?.remove();
+  }
+
+  public prependCandles(candles: Candle[]): void {
+    if (!candles.length) {
+      this._isLoadingHistory = false;
+      return;
+    }
+
+    const newData = candles
+      .map((c) => ({
+        time: Math.floor(c.timestamp / 1000) as UTCTimestamp,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }))
+      .sort((a, b) => (a.time as number) - (b.time as number));
+
+    // Deduplicate: only keep candles older than our current oldest
+    const currentOldest = this._candles.length ? (this._candles[0].time as number) : Infinity;
+    const unique = newData.filter(c => (c.time as number) < currentOldest);
+
+    if (unique.length) {
+      this._candles = [...unique, ...this._candles];
+      this._oldestTimestamp = this._candles[0].time as number;
+      this._candleSeries?.setData(this._candles);
+    }
+
+    this._isLoadingHistory = false;
   }
 
   private _initChart(): void {
@@ -148,6 +184,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       low: c.low,
       close: c.close,
     }));
+    this._oldestTimestamp = this._candles.length ? (this._candles[0].time as number) : null;
     this._candleSeries?.setData(this._candles);
     this._chart?.timeScale().fitContent();
   }
@@ -160,6 +197,21 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       });
   }
 
+  private _subscribeToVisibleRangeChange(): void {
+    if (!this._chart) return;
+
+    this._chart.timeScale().subscribeVisibleLogicalRangeChange((range: LogicalRange | null) => {
+      if (!range || this._isLoadingHistory || !this._candles.length) return;
+
+      // When user scrolls to the left edge (first ~10 candles visible), load more
+      if (range.from < 10) {
+        this._isLoadingHistory = true;
+        const oldestMs = (this._candles[0].time as number) * 1000;
+        this.loadMoreCandles.emit(oldestMs);
+      }
+    });
+  }
+
   private _updateLiveCandle(update: PriceUpdate): void {
     if (update.asset !== this.selectedAsset) return;
     const timeSeconds = Math.floor(update.timestamp / 1000);
@@ -167,17 +219,12 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     const price = update.lastPrice;
 
     if (this._liveCandle && this._liveCandle.time === candleTime) {
-      // Update the forming candle in-place
       this._liveCandle.high = Math.max(this._liveCandle.high, price);
       this._liveCandle.low = Math.min(this._liveCandle.low, price);
       this._liveCandle.close = price;
     } else {
-      // New candle boundary — commit previous live candle and start fresh
       if (this._liveCandle) {
         this._candles.push({ ...this._liveCandle });
-        // Trim candles outside rolling window
-        const cutoff = (candleTime - PriceChartComponent.ROLLING_WINDOW_SECONDS) as UTCTimestamp;
-        this._candles = this._candles.filter(c => c.time >= cutoff);
         this._candleSeries?.setData(this._candles);
       }
       this._liveCandle = { time: candleTime, open: price, high: price, low: price, close: price };

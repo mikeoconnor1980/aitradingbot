@@ -33,7 +33,11 @@
       <app-positions-table [positions]="positions"></app-positions-table>
     </mat-tab>
     <mat-tab label="Orders">
-      <app-orders-table [orders]="orders"></app-orders-table>
+      <app-orders-table
+        [orders]="orders"
+        (cancelOrder)="onCancelOrder($event)"
+        (cancelAllOrders)="onCancelAllOrders()"
+        (modifyOrder)="onModifyOrder($event)"></app-orders-table>
     </mat-tab>
   </mat-tab-group>
 </section>

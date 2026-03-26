@@ -1,10 +1,42 @@
 <div class="order-entry">
   <mat-card class="order-entry__card">
     <mat-card-header>
-      <mat-card-title>Place Order - BTC-PERP</mat-card-title>
+      <mat-card-title>Place Order</mat-card-title>
     </mat-card-header>
 
     <mat-card-content>
+      <div class="order-entry__field order-entry__asset-field">
+        <mat-form-field appearance="outline" class="order-entry__input">
+          <mat-label>Asset</mat-label>
+          <mat-select [value]="selectedAsset" (selectionChange)="onAssetChange($event.value)" panelClass="asset-select-panel">
+            @for (asset of assets; track asset.symbol) {
+              <mat-option [value]="asset.symbol">{{ asset.symbol }} — {{ asset.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="order-entry__leverage-section">
+        <div class="order-entry__leverage-header">
+          <span class="order-entry__label">Leverage</span>
+          <span class="order-entry__leverage-value">{{ leverage }}x</span>
+        </div>
+        <mat-slider min="1" [max]="maxLeverage" step="1" discrete class="order-entry__leverage-slider">
+          <input matSliderThumb [value]="leverage" (valueChange)="onLeverageChange($event)" />
+        </mat-slider>
+        <mat-button-toggle-group [value]="marginMode" (change)="onMarginModeChange($event.value)" class="order-entry__margin-toggle" aria-label="Margin Mode">
+          <mat-button-toggle value="cross">Cross</mat-button-toggle>
+          <mat-button-toggle value="isolated">Isolated</mat-button-toggle>
+        </mat-button-toggle-group>
+        @if (leverageStatus) {
+          <span class="order-entry__leverage-status" [class.order-entry__leverage-status--error]="leverageError">
+            {{ leverageStatus }}
+          </span>
+        }
+      </div>
+
+      <mat-divider />
+
       <form [formGroup]="orderForm" (ngSubmit)="onSubmit()" class="order-entry__form">
         <div class="order-entry__field">
           <span class="order-entry__label" id="side-label">Side</span>
@@ -35,7 +67,7 @@
 
         <div class="order-entry__field">
           <mat-form-field appearance="outline" class="order-entry__input">
-            <mat-label>Size (BTC)</mat-label>
+            <mat-label>Size ({{ selectedCoin }})</mat-label>
             <input matInput type="number" formControlName="size" step="0.001" />
           </mat-form-field>
         </div>

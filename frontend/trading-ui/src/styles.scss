@@ -30,3 +30,13 @@ body {
 	--colour-error-text: #fecaca;
 	--colour-text-primary: #e2e8f0;
 }
+
+// Asset selector dropdown panel — wider with comfortable spacing
+.asset-select-panel {
+	min-width: 320px !important;
+
+	.mat-mdc-option {
+		padding: 12px 16px;
+		line-height: 1.4;
+	}
+}

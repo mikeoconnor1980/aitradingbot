@@ -7,4 +7,6 @@ export interface Position {
   unrealisedPnl: number;
   unrealisedPnlPercent: number;
   liquidationPrice: number;
+  leverage: number;
+  marginMode: string;
 }

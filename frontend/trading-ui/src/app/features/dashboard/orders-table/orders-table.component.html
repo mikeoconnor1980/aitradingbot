@@ -1,7 +1,22 @@
-@if (orders.length === 0) {
-  <div class="orders-table__empty">No open orders</div>
-} @else {
-  <div class="orders-table__wrapper">
+<div class="orders-table__header">
+  <h3 class="orders-table__title">Open Orders</h3>
+  @if (orders.length > 0) {
+    <button
+      mat-stroked-button
+      type="button"
+      color="warn"
+      class="orders-table__cancel-all"
+      (click)="onCancelAllClick()"
+      [disabled]="globalLoading || loadingOrderIds.size > 0">
+      Cancel All ({{ orders.length }})
+    </button>
+  }
+</div>
+
+<div class="orders-table__wrapper">
+  @if (orders.length === 0) {
+    <div class="orders-table__empty">No open orders</div>
+  } @else {
     <table class="orders-table" aria-label="Open orders">
       <thead>
         <tr>
@@ -11,20 +26,71 @@
           <th>Size</th>
           <th>Order Type</th>
           <th>Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         @for (order of orders; track order.orderId) {
-          <tr>
+          <tr [class.orders-table__row--loading]="isLoading(order.orderId)" (contextmenu)="onContextMenu($event, order)">
             <td>{{ order.asset }}</td>
             <td [ngClass]="getSideClass(order.side)">{{ order.side }}</td>
             <td>{{ order.price | number: "1.2-2" }}</td>
             <td>{{ order.size | number: "1.4-4" }}</td>
             <td>{{ order.orderType }}</td>
             <td>{{ order.status }}</td>
+            <td class="orders-table__actions">
+              @if (isLoading(order.orderId)) {
+                <mat-spinner diameter="20" aria-label="Order action in progress"></mat-spinner>
+              } @else {
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Modify order"
+                  aria-label="Modify order"
+                  (click)="onModifyClick(order)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  color="warn"
+                  matTooltip="Cancel order"
+                  aria-label="Cancel order"
+                  (click)="onCancelClick(order)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </td>
           </tr>
         }
       </tbody>
     </table>
-  </div>
-}
+  }
+</div>
+
+<div
+  class="orders-table__context-trigger"
+  [style.left]="contextMenuPosition.x"
+  [style.top]="contextMenuPosition.y"
+  [matMenuTriggerFor]="contextMenu"></div>
+
+<mat-menu #contextMenu="matMenu" (closed)="clearContextMenu()">
+  @if (contextMenuOrder) {
+    <button
+      mat-menu-item
+      type="button"
+      [disabled]="isLoading(contextMenuOrder.orderId)"
+      (click)="onModifyClick(contextMenuOrder)">
+      <mat-icon>edit</mat-icon>
+      <span>Modify Order</span>
+    </button>
+    <button
+      mat-menu-item
+      type="button"
+      [disabled]="isLoading(contextMenuOrder.orderId)"
+      (click)="onCancelClick(contextMenuOrder)">
+      <mat-icon>close</mat-icon>
+      <span>Cancel Order</span>
+    </button>
+  }
+</mat-menu>

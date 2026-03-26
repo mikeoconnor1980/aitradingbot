@@ -4,7 +4,7 @@ using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Application.MarketData.Queries;
 
-public sealed record GetCandlesQuery(string Asset, string Timeframe) : Query<List<CandleDto>>;
+public sealed record GetCandlesQuery(string Asset, string Timeframe, long? EndTime = null) : Query<List<CandleDto>>;
 
 public sealed class GetCandlesQueryHandler : QueryHandler<GetCandlesQuery, List<CandleDto>>
 {
@@ -20,6 +20,6 @@ public sealed class GetCandlesQueryHandler : QueryHandler<GetCandlesQuery, List<
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Asset);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Timeframe);
 
-        return await _restClient.GetCandlesAsync(request.Asset, request.Timeframe, cancellationToken);
+        return await _restClient.GetCandlesAsync(request.Asset, request.Timeframe, request.EndTime, cancellationToken);
     }
 }

@@ -29,9 +29,12 @@ public static class HyperliquidAssetMapper
 
     public static string ToCoin(string displayName)
     {
-        return DisplayToCoin.TryGetValue(displayName, out var coin)
-            ? coin
-            : throw new NotFoundException("Asset", displayName);
+        if (displayName.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase))
+        {
+            return displayName[..^5];
+        }
+
+        return displayName;
     }
 
     public static bool IsValidTimeframe(string timeframe)

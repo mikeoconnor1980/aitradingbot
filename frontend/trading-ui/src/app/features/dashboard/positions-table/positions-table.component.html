@@ -7,6 +7,7 @@
         <tr>
           <th>Asset</th>
           <th>Size</th>
+          <th>Leverage</th>
           <th>Entry Price</th>
           <th>Unrealised PnL</th>
           <th>Liquidation Price</th>
@@ -19,6 +20,11 @@
             <td>
               <span [class]="position.side === 'Long' ? 'side--long' : 'side--short'">
                 {{ position.size | number: "1.4-4" }} ({{ position.side }})
+              </span>
+            </td>
+            <td>
+              <span class="leverage-badge">
+                {{ position.leverage }}x {{ position.marginMode }}
               </span>
             </td>
             <td>{{ position.entryPrice | number: "1.2-2" }}</td>

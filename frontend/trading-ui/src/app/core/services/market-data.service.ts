@@ -12,9 +12,11 @@ export class MarketDataService {
     return this._apiClient.get<MarketInfo>(`market/info?asset=${encodeURIComponent(asset)}`);
   }
 
-  public getCandles(asset: string, timeframe: string): Observable<Candle[]> {
-    return this._apiClient.get<Candle[]>(
-      `market/candles?asset=${encodeURIComponent(asset)}&timeframe=${encodeURIComponent(timeframe)}`
-    );
+  public getCandles(asset: string, timeframe: string, endTime?: number): Observable<Candle[]> {
+    let url = `market/candles?asset=${encodeURIComponent(asset)}&timeframe=${encodeURIComponent(timeframe)}`;
+    if (endTime != null) {
+      url += `&endTime=${endTime}`;
+    }
+    return this._apiClient.get<Candle[]>(url);
   }
 }

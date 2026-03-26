@@ -81,7 +81,7 @@ public sealed class MarketDataControllerTests : BaseControllerTests
         };
 
         _restClientMock
-            .Setup(c => c.GetCandlesAsync("BTC-PERP", "15m", It.IsAny<CancellationToken>()))
+            .Setup(c => c.GetCandlesAsync("BTC-PERP", "15m", null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         var client = GetTestClient();
@@ -96,7 +96,7 @@ public sealed class MarketDataControllerTests : BaseControllerTests
     public async Task GivenController_WhenGetCandlesWithInvalidTimeframe_ThenReturnsBadRequest()
     {
         _restClientMock
-            .Setup(c => c.GetCandlesAsync("BTC-PERP", "invalid", It.IsAny<CancellationToken>()))
+            .Setup(c => c.GetCandlesAsync("BTC-PERP", "invalid", null, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new DomainException("Invalid timeframe 'invalid'. Supported: 15m, 1h, 4h"));
 
         var client = GetTestClient();

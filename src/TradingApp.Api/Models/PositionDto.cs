@@ -10,4 +10,6 @@ public sealed class PositionDto
     public decimal UnrealisedPnl { get; set; }
     public decimal UnrealisedPnlPercent { get; set; }
     public decimal LiquidationPrice { get; set; }
+    public int Leverage { get; set; }
+    public string MarginMode { get; set; } = string.Empty;
 }

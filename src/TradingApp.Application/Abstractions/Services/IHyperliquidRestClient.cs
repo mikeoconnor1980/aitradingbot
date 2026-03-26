@@ -21,5 +21,6 @@ public interface IHyperliquidRestClient
     Task<List<CandleDto>> GetCandlesAsync(
         string asset,
         string timeframe,
+        long? endTime = null,
         CancellationToken cancellationToken = default);
 }
