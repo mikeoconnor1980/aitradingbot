@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatTabsModule } from "@angular/material/tabs";
 import { ModifyOrderDto } from "../../core/models/modify-order.model";
+import { PlaceOrderRequest } from "../../core/models/place-order.model";
 import { Observable, Subject, forkJoin, interval, of, timer } from "rxjs";
 import { catchError, startWith, switchMap, tap } from "rxjs/operators";
 import { AccountSummary } from "../../core/models/account-summary.model";
@@ -45,10 +46,14 @@ export class DashboardComponent implements OnInit {
   private readonly _snackBar = inject(MatSnackBar);
   private readonly _refresh$ = new Subject<void>();
   private readonly _pendingOrderIds = new Set<string>();
+  private readonly _pendingPositionKeys = new Set<string>();
   private _consecutiveErrors = 0;
 
   @ViewChild(OrdersTableComponent)
   public ordersTable?: OrdersTableComponent;
+
+  @ViewChild(PositionsTableComponent)
+  public positionsTable?: PositionsTableComponent;
 
   public accountSummary: AccountSummary | null = null;
   public positions: Position[] = [];
@@ -207,6 +212,77 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  public onClosePosition(position: Position): void {
+    const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
+
+    if (this.positionsTable?.loadingPositionKeys.has(positionKey)) {
+      return;
+    }
+
+    const closeSide: "buy" | "sell" = position.side === "Long" ? "sell" : "buy";
+
+    this._dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: "Close Position",
+        message: `Close ${position.side} ${position.asset}-PERP position?`,
+        side: closeSide,
+        orderType: "market" as const,
+        asset: position.asset + "-PERP",
+        size: Math.abs(position.size),
+        confirmText: "Close Position",
+        cancelText: "Keep Position"
+      },
+      width: "400px"
+    }).afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) {
+        return;
+      }
+
+      const positionIndex = this.positions.findIndex(
+        (item) => item.asset === position.asset && item.side === position.side
+      );
+      if (positionIndex < 0) {
+        return;
+      }
+
+      const removedPosition = this.positions[positionIndex];
+      this.positionsTable?.setLoading(positionKey, true);
+      this._pendingPositionKeys.add(positionKey);
+      this.positions = this.positions.filter(
+        (item) => !(item.asset === position.asset && item.side === position.side)
+      );
+
+      const closeRequest: PlaceOrderRequest = {
+        asset: position.asset,
+        side: closeSide,
+        orderType: "market",
+        price: null,
+        size: Math.abs(position.size)
+      };
+
+      this._orderService.placeOrder(closeRequest).subscribe({
+        next: () => {
+          this._pendingPositionKeys.delete(positionKey);
+          this.positionsTable?.setLoading(positionKey, false);
+          this._snackBar.open("Position close order submitted", "Dismiss", { duration: 3000 });
+          this._refresh$.next();
+        },
+        error: (errorResponse: HttpErrorResponse) => {
+          this.positions = [
+            ...this.positions.slice(0, positionIndex),
+            removedPosition,
+            ...this.positions.slice(positionIndex)
+          ];
+          this._pendingPositionKeys.delete(positionKey);
+          this.positionsTable?.setLoading(positionKey, false);
+          this._snackBar.open(`Failed to close position: ${this._formatErrorPayload(errorResponse)}`, "Dismiss", {
+            duration: 5000
+          });
+        }
+      });
+    });
+  }
+
   private _startPolling(): void {
     const poll$ = this._refresh$.pipe(
       startWith(void 0),
@@ -268,7 +344,11 @@ export class DashboardComponent implements OnInit {
           }
 
           if (results.account !== null) { this.accountSummary = results.account; }
-          if (results.positions !== null) { this.positions = results.positions; }
+          if (results.positions !== null) {
+            this.positions = this._pendingPositionKeys.size === 0
+              ? results.positions
+              : results.positions.filter((position) => !this._pendingPositionKeys.has(position.asset + position.side));
+          }
           if (results.orders !== null) {
             this.orders = this._pendingOrderIds.size === 0
               ? results.orders

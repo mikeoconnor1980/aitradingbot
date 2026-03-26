@@ -30,7 +30,9 @@
 
   <mat-tab-group class="dashboard__tabs">
     <mat-tab label="Positions">
-      <app-positions-table [positions]="positions"></app-positions-table>
+      <app-positions-table
+        [positions]="positions"
+        (closePosition)="onClosePosition($event)"></app-positions-table>
     </mat-tab>
     <mat-tab label="Orders">
       <app-orders-table

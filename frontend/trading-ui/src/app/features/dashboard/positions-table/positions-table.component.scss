@@ -48,3 +48,17 @@
   font-weight: 600;
   text-transform: capitalize;
 }
+
+.positions-table__actions {
+  text-align: right;
+  white-space: nowrap;
+
+  mat-spinner {
+    margin: 0 0 0 auto;
+  }
+}
+
+.positions-table__row--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}

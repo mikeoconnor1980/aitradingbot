@@ -11,11 +11,12 @@
           <th>Entry Price</th>
           <th>Unrealised PnL</th>
           <th>Liquidation Price</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         @for (position of positions; track position.asset + position.side) {
-          <tr>
+          <tr [class.positions-table__row--loading]="isLoading(position)">
             <td>{{ position.asset }}</td>
             <td>
               <span [class]="position.side === 'Long' ? 'side--long' : 'side--short'">
@@ -33,6 +34,21 @@
               ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
             </td>
             <td>{{ position.liquidationPrice | number: "1.2-2" }}</td>
+            <td class="positions-table__actions">
+              @if (isLoading(position)) {
+                <mat-spinner diameter="20" aria-label="Closing position"></mat-spinner>
+              } @else {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  color="warn"
+                  [disabled]="isLoading(position)"
+                  aria-label="Close position"
+                  (click)="onCloseClick(position)">
+                  Close
+                </button>
+              }
+            </td>
           </tr>
         }
       </tbody>
