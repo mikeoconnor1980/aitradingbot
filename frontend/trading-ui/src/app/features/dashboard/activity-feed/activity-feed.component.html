@@ -7,29 +7,90 @@
     <table class="activity-feed__table">
       <thead>
         <tr>
-          <th>Time</th>
+          <th class="activity-feed__details-col"></th>
+          <th>Date / Time</th>
           <th>Type</th>
           <th>Asset</th>
           <th>Details</th>
+          <th>Realized P&amp;L</th>
         </tr>
       </thead>
       <tbody>
-        @for (event of events; track event.timestamp.getTime() + event.type) {
+        @for (event of displayEvents; track event.key) {
           <tr class="activity-feed__row">
-            <td class="activity-feed__time">{{ event.timestamp | date:'HH:mm:ss' }}</td>
+            <td class="activity-feed__details-col">
+              <button
+                type="button"
+                class="activity-feed__details-toggle"
+                [attr.aria-expanded]="isDetailsExpanded(event)"
+                [attr.aria-label]="isDetailsExpanded(event) ? 'Hide event details' : 'Show event details'"
+                (click)="toggleDetails(event)">
+                <mat-icon>{{ isDetailsExpanded(event) ? "expand_less" : "expand_more" }}</mat-icon>
+              </button>
+            </td>
+            <td class="activity-feed__time">{{ event.timestamp | date:'dd MMM yyyy HH:mm:ss' }}</td>
             <td>
-              <span class="activity-feed__badge"
-                    [class.activity-feed__badge--fill]="isFill(event)"
-                    [class.activity-feed__badge--order]="isOrderUpdate(event)">
-                {{ event.type === 'Fill' ? 'Fill' : 'Order Update' }}
+              <span class="activity-feed__badge" [ngClass]="event.badgeClasses">
+                {{ event.typeLabel }}
               </span>
             </td>
-            <td class="activity-feed__asset">
-              @if (isFill(event)) { {{ event.data.asset }} }
-              @if (isOrderUpdate(event)) { {{ event.data.asset }} }
+            <td class="activity-feed__asset">{{ event.asset }}</td>
+            <td class="activity-feed__details">{{ event.description }}</td>
+            <td class="activity-feed__pnl"
+                [class.activity-feed__pnl--positive]="event.isPositivePnl"
+                [class.activity-feed__pnl--negative]="event.isNegativePnl">
+              {{ event.realizedPnlLabel }}
             </td>
-            <td class="activity-feed__details">{{ getEventDescription(event) }}</td>
           </tr>
+          @if (isDetailsExpanded(event)) {
+            <tr class="activity-feed__details-row">
+              <td colspan="6" class="activity-feed__details-cell">
+                <div class="activity-feed__details-grid">
+                  <div class="activity-feed__detail-item">
+                    <span class="activity-feed__detail-label">Order ID</span>
+                    <span class="activity-feed__detail-value">{{ event.orderId }}</span>
+                  </div>
+                  <div class="activity-feed__detail-item">
+                    <span class="activity-feed__detail-label">Recorded</span>
+                    <span class="activity-feed__detail-value">{{ event.recordedLabel }}</span>
+                  </div>
+                  <div class="activity-feed__detail-item">
+                    <span class="activity-feed__detail-label">Fee</span>
+                    <span class="activity-feed__detail-value">{{ event.feeLabel }}</span>
+                  </div>
+                </div>
+                @if (event.itemizedFills.length > 0) {
+                  <div class="activity-feed__items-header">
+                    {{ hasMultipleItems(event) ? 'Itemized fills' : 'Itemized fill' }}
+                  </div>
+                  <table class="activity-feed__items-table">
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Side</th>
+                        <th>Size</th>
+                        <th>Price</th>
+                        <th>Fee</th>
+                        <th>Realized P&amp;L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (fill of event.itemizedFills; track fill.timestamp.getTime() + fill.size) {
+                        <tr>
+                          <td>{{ fill.timestamp | date:'HH:mm:ss' }}</td>
+                          <td>{{ fill.side }}</td>
+                          <td>{{ getFillSizeLabel(fill) }}</td>
+                          <td>{{ getFillPriceLabel(fill) }}</td>
+                          <td>{{ '$' + fill.fee.toFixed(4) }}</td>
+                          <td>{{ getItemizedRealizedPnlLabel(fill) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                }
+              </td>
+            </tr>
+          }
         }
       </tbody>
     </table>

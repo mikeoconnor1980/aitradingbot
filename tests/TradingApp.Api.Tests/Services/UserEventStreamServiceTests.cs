@@ -99,9 +99,11 @@ public sealed class UserEventStreamServiceTests
                 Timestamp = DateTime.UtcNow,
                 Asset = "BTC",
                 Side = "Buy",
+                Direction = "Open Long",
                 Size = 0.1m,
                 Price = 50000m,
                 Fee = 0.5m,
+                ClosedPnl = 0m,
                 OrderId = "12345"
             });
         }

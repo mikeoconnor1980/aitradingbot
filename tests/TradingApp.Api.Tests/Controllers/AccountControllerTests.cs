@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TradingApp.Api.Models;
 using TradingApp.Api.Services;
+using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Api.Tests.Controllers;
 
@@ -127,6 +128,52 @@ public sealed class AccountControllerTests
         var result = await response.Content.ReadFromJsonAsync<List<OpenOrderDto>>();
         result.Should().NotBeNull();
         result.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenRecentFills_WhenGetFills_ThenReturnsSemanticFillFields()
+    {
+        // Arrange
+        IReadOnlyList<FillEventDto> fills = new List<FillEventDto>
+        {
+            new()
+            {
+                Timestamp = new DateTime(2026, 3, 26, 20, 17, 19, DateTimeKind.Utc),
+                Asset = "SUI",
+                Side = "Buy",
+                Direction = "Open Long",
+                Size = 100m,
+                Price = 0.92845m,
+                Fee = 0.01m,
+                ClosedPnl = 0m,
+                OrderId = "12345"
+            },
+            new()
+            {
+                Timestamp = new DateTime(2026, 3, 26, 20, 16, 53, DateTimeKind.Utc),
+                Asset = "ADA",
+                Side = "Sell",
+                Direction = "Close Long",
+                Size = 50m,
+                Price = 0.25537m,
+                Fee = 0.01m,
+                ClosedPnl = 12.34m,
+                OrderId = "67890"
+            }
+        };
+
+        _accountServiceMock
+            .Setup(s => s.GetRecentFillsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fills);
+
+        // Act
+        var response = await _client.GetAsync("api/account/fills");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<FillEventDto>>();
+        result.Should().NotBeNull();
+        result.Should().BeEquivalentTo(fills);
     }
 
     [TestMethod]

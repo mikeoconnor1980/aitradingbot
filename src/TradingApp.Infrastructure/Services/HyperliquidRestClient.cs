@@ -280,15 +280,27 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             {
                 Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(f.TimestampMs).UtcDateTime,
                 Asset = f.Coin,
-                Side = f.Side,
+                Side = MapOrderSide(f.Side),
+                Direction = f.Direction,
                 Size = ParseDecimal(f.Size),
                 Price = ParseDecimal(f.Price),
                 Fee = ParseDecimal(f.Fee),
+                ClosedPnl = ParseDecimal(f.ClosedPnl),
                 OrderId = f.OrderId.ToString()
             })
             .OrderByDescending(f => f.Timestamp)
             .Take(50)
             .ToList();
+    }
+
+    private static string MapOrderSide(string side)
+    {
+        return side.ToUpperInvariant() switch
+        {
+            "B" => "Buy",
+            "A" => "Sell",
+            _ => side,
+        };
     }
 
     private static decimal ParseDecimal(string value)

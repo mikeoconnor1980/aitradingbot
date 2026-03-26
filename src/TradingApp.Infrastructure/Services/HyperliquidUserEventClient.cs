@@ -220,15 +220,28 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         {
             Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(fill.TimestampMs).UtcDateTime,
             Asset = fill.Coin,
-            Side = fill.Side,
+            Side = MapOrderSide(fill.Side),
+            Direction = fill.Direction,
             Size = decimal.TryParse(fill.Size, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var sz) ? sz : 0m,
             Price = decimal.TryParse(fill.Price, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var px) ? px : 0m,
             Fee = decimal.TryParse(fill.Fee, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var fee) ? fee : 0m,
+            ClosedPnl = decimal.TryParse(fill.ClosedPnl, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var closedPnl) ? closedPnl : 0m,
             OrderId = fill.OrderId.ToString()
         };
+
+    private static string MapOrderSide(string side)
+    {
+        return side.ToUpperInvariant() switch
+        {
+            "B" => "Buy",
+            "A" => "Sell",
+            _ => side,
+        };
+    }
 
     private static OrderUpdateDto MapOrderUpdateToDto(HyperliquidOrderUpdate update)
     {
