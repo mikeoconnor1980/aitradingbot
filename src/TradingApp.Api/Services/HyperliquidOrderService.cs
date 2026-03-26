@@ -67,6 +67,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         else
         {
             price = request.Price ?? throw new DomainException("Price is required for limit orders.");
+            price = RoundToSignificantFigures(price, 5);
             tif = "Gtc";
         }
 
@@ -106,7 +107,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                 responseTimestamp,
                 stopwatch.ElapsedMilliseconds);
 
-            return MapExchangeResponse(exchangeResponse);
+            return MapExchangeResponse(exchangeResponse, request.Asset);
         }
         catch (HttpRequestException ex) when (ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase))
         {
@@ -368,7 +369,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             : formatted;
     }
 
-    private static PlaceOrderResponse MapExchangeResponse(HyperliquidExchangeResponse exchangeResponse)
+    private static PlaceOrderResponse MapExchangeResponse(HyperliquidExchangeResponse exchangeResponse, string asset)
     {
         if (exchangeResponse.Status == "err")
         {
@@ -376,7 +377,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             {
                 Success = false,
                 Status = "rejected",
-                Detail = exchangeResponse.Response?.ErrorMessage ?? "Unknown exchange error",
+                Detail = HumanizeExchangeError(exchangeResponse.Response?.ErrorMessage ?? "Unknown exchange error", asset),
             };
         }
 
@@ -411,7 +412,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                 {
                     Success = false,
                     Status = "rejected",
-                    Detail = first.Error,
+                    Detail = HumanizeExchangeError(first.Error, asset),
                 };
             }
         }
@@ -420,8 +421,17 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         {
             Success = false,
             Status = "rejected",
-            Detail = $"Unexpected response: {exchangeResponse.Status}",
+            Detail = HumanizeExchangeError($"Unexpected response: {exchangeResponse.Status}", asset),
         };
+    }
+
+    private static string HumanizeExchangeError(string error, string asset)
+    {
+        // Replace raw "asset=N" index references with the friendly asset name
+        return System.Text.RegularExpressions.Regex.Replace(
+            error,
+            @"asset=\d+",
+            $"asset={asset}");
     }
 
     private async Task<decimal> GetMidPriceAsync(string coin, CancellationToken cancellationToken)

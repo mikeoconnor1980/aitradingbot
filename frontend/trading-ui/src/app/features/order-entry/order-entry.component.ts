@@ -127,6 +127,7 @@ export class OrderEntryComponent implements OnInit {
     }
 
     this._loadMidPrice();
+    this._applyLeverage();
   }
 
   private _loadMidPrice(): void {
