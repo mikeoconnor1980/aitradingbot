@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using TradingApp.Api.Models;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Api.Services;
 
@@ -42,6 +43,12 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         var request = new { type = "openOrders", user = _signer.WalletAddress };
         var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
         return MapToOpenOrders(response);
+    }
+
+    public async Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(CancellationToken cancellationToken = default)
+    {
+        var startTime = DateTimeOffset.UtcNow.AddHours(-24).ToUnixTimeMilliseconds();
+        return await _restClient.GetUserFillsAsync(_signer.WalletAddress, startTime, cancellationToken);
     }
 
     private async Task<JsonElement> GetClearinghouseStateAsync(CancellationToken cancellationToken)

@@ -2,6 +2,7 @@ import { Component, DestroyRef, inject, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { AccountStateService } from "../../../core/services/account-state.service";
+import { HyperliquidApiService } from "../../../core/services/hyperliquid-api.service";
 import { UserEvent } from "../../../core/models/user-event.model";
 import { FillEvent } from "../../../core/models/fill-event.model";
 import { OrderUpdate } from "../../../core/models/order-update.model";
@@ -16,6 +17,7 @@ import { OrderUpdate } from "../../../core/models/order-update.model";
 export class ActivityFeedComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _accountState = inject(AccountStateService);
+  private readonly _apiService = inject(HyperliquidApiService);
 
   public events: UserEvent[] = [];
 
@@ -25,6 +27,19 @@ export class ActivityFeedComponent implements OnInit {
       .subscribe((events: UserEvent[]) => {
         this.events = events;
       });
+
+    this._loadRecentFills();
+  }
+
+  private _loadRecentFills(): void {
+    this._apiService.getRecentFills().subscribe({
+      next: (fills) => {
+        this._accountState.seedFillEvents(fills);
+      },
+      error: () => {
+        // Silently fail — WebSocket events will still work
+      }
+    });
   }
 
   public isFill(event: UserEvent): event is UserEvent & { data: FillEvent } {

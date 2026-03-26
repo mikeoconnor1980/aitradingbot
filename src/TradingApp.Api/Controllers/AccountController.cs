@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Models;
 using TradingApp.Api.Services;
+using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Api.Controllers;
 
@@ -45,5 +46,15 @@ public sealed class AccountController : ControllerBase
     {
         var orders = await _accountService.GetOpenOrdersAsync(cancellationToken);
         return Ok(orders);
+    }
+
+    [HttpGet("fills")]
+    [ProducesResponseType(typeof(IReadOnlyList<FillEventDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> GetRecentFillsAsync(CancellationToken cancellationToken)
+    {
+        var fills = await _accountService.GetRecentFillsAsync(cancellationToken);
+        return Ok(fills);
     }
 }

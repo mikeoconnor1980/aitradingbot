@@ -2,6 +2,7 @@ import { HttpClient, HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
 import { AccountSummary } from "../models/account-summary.model";
+import { FillEvent } from "../models/fill-event.model";
 import { HealthResponse } from "../models/health-response.model";
 import { OpenOrder } from "../models/open-order.model";
 import { Position } from "../models/position.model";
@@ -25,5 +26,9 @@ export class HyperliquidApiService {
 
   public getOpenOrders(context?: HttpContext): Observable<OpenOrder[]> {
     return this._http.get<OpenOrder[]>(`${this._baseUrl}/api/account/orders`, context ? { context } : undefined);
+  }
+
+  public getRecentFills(): Observable<FillEvent[]> {
+    return this._http.get<FillEvent[]>(`${this._baseUrl}/api/account/fills`);
   }
 }
