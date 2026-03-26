@@ -166,28 +166,3 @@ To add a new Hyperliquid read:
 1. **Simple raw reads with no domain logic** (e.g., POC account state) — use `PostInfoAsync<TResponse>` directly inside an Api-layer service (see `IHyperliquidAccountService` and ADR 14). No new `IHyperliquidRestClient` method needed.
 2. **Application-layer features with mapping/transformation** (e.g., asset name resolution, response parsing, candle batching) — add a typed method to `IHyperliquidRestClient` (e.g., `GetMarketInfoAsync`, `GetCandlesAsync`) and implement it in `HyperliquidRestClient` using `PostInfoAsync` internally. Consume via a MediatR query handler in `TradingApp.Application/{Feature}/Queries/`.
 3. **New non-info endpoints** (e.g., WebSocket subscriptions, exchange order actions) — add a method to `IHyperliquidRestClient` and implement in `HyperliquidRestClient`.
-
----
-
-# Testnet Characteristics
-
-The Hyperliquid testnet (`https://api.hyperliquid-testnet.xyz`) behaves differently from mainnet in several important ways:
-
-## Thin Order Book / Low Liquidity
-
-- Testnet has very few real participants, so order books are thin with wide bid-ask spreads.
-- Price swings on 15-minute candles can be 5–10x larger than mainnet (e.g., $1,500–$3,000 BTC range per 15m vs $50–$200 on mainnet).
-- Consecutive candles sometimes show a uniform ~$1,600 range, caused by market-maker bots oscillating within a fixed band.
-
-## Candle Data Anomalies
-
-- Some candles have a range of exactly $0 during inactive periods (no trades).
-- Large wicks and tall candle bodies are normal testnet artifacts, not indicative of data corruption.
-- OHLC data integrity is correct (low never exceeds high, timestamps are contiguous with no gaps).
-
-## Implications for Development
-
-- Do not tune strategy parameters (e.g., grid spacing, stop-loss thresholds) against testnet price action — the volatility profile is unrealistic.
-- Candle chart visualisations will show exaggerated candle heights compared to real markets. This is expected.
-- Backtesting against testnet historical data will produce unreliable results. Use mainnet historical data or synthetic data for strategy validation.
-- Slippage and fill behaviour on testnet do not represent mainnet conditions.

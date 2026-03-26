@@ -1,0 +1,60 @@
+@keyframes pulse-warning {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.margin-ratio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &__bar-container {
+    flex: 1;
+    min-width: 5rem;
+  }
+
+  &__bar {
+    &--low {
+      --mdc-linear-progress-active-indicator-color: var(--colour-profit);
+    }
+
+    &--moderate {
+      --mdc-linear-progress-active-indicator-color: var(--colour-warning);
+    }
+
+    &--elevated {
+      --mdc-linear-progress-active-indicator-color: var(--colour-warning-elevated);
+    }
+
+    &--critical {
+      --mdc-linear-progress-active-indicator-color: var(--colour-loss);
+    }
+  }
+
+  &__value {
+    white-space: nowrap;
+    color: var(--colour-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  &__warning-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--colour-loss);
+    font-size: 1.125rem;
+  }
+
+  &--critical {
+    .margin-ratio__bar-container,
+    .margin-ratio__warning-icon {
+      animation: pulse-warning 1.5s ease-in-out infinite;
+    }
+  }
+}

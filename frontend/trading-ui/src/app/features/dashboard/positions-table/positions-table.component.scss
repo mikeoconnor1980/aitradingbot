@@ -21,11 +21,68 @@
     padding: 1rem 0;
   }
 
+  &__toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  &__close-all-btn {
+    min-width: 160px;
+
+    mat-spinner {
+      margin: 0 auto;
+    }
+  }
+
+  &__filter {
+    max-width: 240px;
+  }
+
+  &__filter-count {
+    font-size: 0.85rem;
+    color: var(--colour-muted);
+  }
+
+  &__header--sortable {
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      color: var(--colour-label);
+    }
+  }
+
+  &__sort-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  &__direction-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    vertical-align: middle;
+    margin-left: 2px;
+  }
+
   &__empty {
     display: grid;
     place-items: center;
     min-height: 10rem;
     color: var(--colour-muted);
+  }
+
+  &__empty-filter {
+    text-align: center;
+    padding: 24px;
+    color: var(--colour-muted);
+    font-style: italic;
   }
 }
 
@@ -36,6 +93,22 @@
 
 .pnl--loss,
 .side--short {
+  color: var(--colour-loss);
+}
+
+.mark-price--favorable {
+  color: var(--colour-profit);
+}
+
+.mark-price--adverse {
+  color: var(--colour-loss);
+}
+
+.funding--receiving {
+  color: var(--colour-profit);
+}
+
+.funding--paying {
   color: var(--colour-loss);
 }
 

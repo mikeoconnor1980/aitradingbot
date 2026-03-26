@@ -12,4 +12,6 @@ public sealed class PositionDto
     public decimal LiquidationPrice { get; set; }
     public int Leverage { get; set; }
     public string MarginMode { get; set; } = string.Empty;
+    public decimal MarginUsed { get; set; }
+    public decimal FundingRate { get; set; }
 }

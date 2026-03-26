@@ -25,3 +25,10 @@ export interface TestSignResponse {
   messageHash: string;
   signature: SignatureInfo;
 }
+
+export interface CloseAllProgress {
+  readonly completed: number;
+  readonly succeeded: number;
+  readonly failed: number;
+  readonly total: number;
+}

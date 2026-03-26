@@ -90,6 +90,8 @@ public sealed class AccountControllerTests
                 UnrealisedPnl = 100m,
                 UnrealisedPnlPercent = 1.67m,
                 LiquidationPrice = 55000m,
+                MarginUsed = 1220m,
+                FundingRate = -0.0001m,
             },
         };
 

@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>Close All Positions</h2>
+
+<mat-dialog-content>
+  <p>Are you sure you want to close all {{ total }} position{{ total !== 1 ? "s" : "" }}?</p>
+
+  <div class="close-all-dialog__positions-list">
+    @for (position of positions; track position.asset + position.side) {
+      <div class="close-all-dialog__position-row">
+        <span class="close-all-dialog__asset">{{ position.asset }}</span>
+        <span
+          class="close-all-dialog__side"
+          [class.side--long]="position.side === 'Long'"
+          [class.side--short]="position.side === 'Short'">
+          {{ position.side }}
+        </span>
+        <span class="close-all-dialog__size">{{ position.size | number }}</span>
+      </div>
+    }
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()">Keep Positions</button>
+  <button mat-flat-button type="button" color="warn" (click)="onConfirm()">Close All</button>
+</mat-dialog-actions>

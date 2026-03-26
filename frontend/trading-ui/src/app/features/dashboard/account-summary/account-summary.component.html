@@ -14,7 +14,7 @@
       </div>
       <div class="account-summary__metric">
         <span class="account-summary__label">Cross Margin Ratio</span>
-        <span class="account-summary__value">{{ summary.crossMarginRatio | number: "1.4-4" }}</span>
+        <app-margin-ratio-indicator [ratio]="summary.crossMarginRatio" />
       </div>
       <div class="account-summary__metric">
         <span class="account-summary__label">Maintenance Margin</span>

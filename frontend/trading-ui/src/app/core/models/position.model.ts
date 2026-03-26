@@ -9,4 +9,6 @@ export interface Position {
   liquidationPrice: number;
   leverage: number;
   marginMode: string;
+  marginUsed: number;
+  fundingRate: number;
 }

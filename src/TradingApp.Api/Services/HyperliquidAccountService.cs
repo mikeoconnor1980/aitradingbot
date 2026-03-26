@@ -29,8 +29,12 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
 
     public async Task<IReadOnlyList<PositionDto>> GetPositionsAsync(CancellationToken cancellationToken = default)
     {
-        var response = await GetClearinghouseStateAsync(cancellationToken);
-        return MapToPositions(response);
+        var stateTask = GetClearinghouseStateAsync(cancellationToken);
+        var contextsTask = GetAssetContextsAsync(cancellationToken);
+
+        await Task.WhenAll(stateTask, contextsTask);
+
+        return MapToPositions(await stateTask, await contextsTask);
     }
 
     public async Task<IReadOnlyList<OpenOrderDto>> GetOpenOrdersAsync(CancellationToken cancellationToken = default)
@@ -51,6 +55,58 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         }
 
         return response;
+    }
+
+    private async Task<AssetContextLookup> GetAssetContextsAsync(CancellationToken cancellationToken)
+    {
+        var result = new AssetContextLookup();
+
+        try
+        {
+            var request = new { type = "metaAndAssetCtxs" };
+            var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
+
+            if (response.ValueKind != JsonValueKind.Array || response.GetArrayLength() < 2)
+            {
+                return result;
+            }
+
+            var meta = response[0];
+            var assetCtxs = response[1];
+
+            if (!TryGetProperty(meta, "universe", out var universe) ||
+                universe.ValueKind != JsonValueKind.Array ||
+                assetCtxs.ValueKind != JsonValueKind.Array)
+            {
+                return result;
+            }
+
+            var universeArray = universe.EnumerateArray().ToArray();
+            var ctxsArray = assetCtxs.EnumerateArray().ToArray();
+
+            for (var i = 0; i < Math.Min(universeArray.Length, ctxsArray.Length); i++)
+            {
+                var coin = GetString(GetPropertyOrDefault(universeArray[i], "name"));
+
+                if (!string.IsNullOrEmpty(coin))
+                {
+                    result.MarkPrices[coin] = ParseDecimal(GetPropertyOrDefault(ctxsArray[i], "markPx"));
+                    result.FundingRates[coin] = ParseDecimal(GetPropertyOrDefault(ctxsArray[i], "funding"));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch asset contexts; positions will have zero mark price and funding rate");
+        }
+
+        return result;
+    }
+
+    private sealed class AssetContextLookup
+    {
+        public Dictionary<string, decimal> MarkPrices { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public Dictionary<string, decimal> FundingRates { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     private static AccountSummaryDto MapToAccountSummary(JsonElement response)
@@ -87,7 +143,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         };
     }
 
-    private static IReadOnlyList<PositionDto> MapToPositions(JsonElement response)
+    private static IReadOnlyList<PositionDto> MapToPositions(JsonElement response, AssetContextLookup contexts)
     {
         var results = new List<PositionDto>();
 
@@ -103,16 +159,20 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
 
             var size = ParseDecimal(GetPropertyOrDefault(position, "szi"));
             var entryPrice = ParseDecimal(GetPropertyOrDefault(position, "entryPx"));
-            var markPrice = ParseDecimal(GetPropertyOrDefault(position, "markPx"));
             var pnlPercent = ParseDecimal(GetPropertyOrDefault(position, "returnOnEquity"));
+            var marginUsed = ParseDecimal(GetPropertyOrDefault(position, "marginUsed"));
 
             pnlPercent *= 100m;
 
             var (leverage, marginMode) = ExtractLeverage(position);
+            var coin = GetString(GetPropertyOrDefault(position, "coin"));
+
+            contexts.MarkPrices.TryGetValue(coin, out var markPrice);
+            contexts.FundingRates.TryGetValue(coin, out var fundingRate);
 
             results.Add(new PositionDto
             {
-                Asset = GetString(GetPropertyOrDefault(position, "coin")),
+                Asset = coin,
                 Size = size,
                 Side = size >= 0m ? "Long" : "Short",
                 EntryPrice = entryPrice,
@@ -122,6 +182,8 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
                 LiquidationPrice = ParseDecimal(GetPropertyOrDefault(position, "liquidationPx")),
                 Leverage = leverage,
                 MarginMode = marginMode,
+                MarginUsed = marginUsed,
+                FundingRate = fundingRate,
             });
         }
 

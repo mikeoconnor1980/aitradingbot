@@ -1,56 +1,136 @@
 @if (positions.length === 0) {
   <div class="positions-table__empty">No open positions</div>
 } @else {
-  <div class="positions-table__wrapper">
-    <table class="positions-table" aria-label="Open positions">
-      <thead>
-        <tr>
-          <th>Asset</th>
-          <th>Size</th>
-          <th>Leverage</th>
-          <th>Entry Price</th>
-          <th>Unrealised PnL</th>
-          <th>Liquidation Price</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (position of positions; track position.asset + position.side) {
-          <tr [class.positions-table__row--loading]="isLoading(position)">
-            <td>{{ position.asset }}</td>
-            <td>
-              <span [class]="position.side === 'Long' ? 'side--long' : 'side--short'">
-                {{ position.size | number: "1.4-4" }} ({{ position.side }})
-              </span>
-            </td>
-            <td>
-              <span class="leverage-badge">
-                {{ position.leverage }}x {{ position.marginMode }}
-              </span>
-            </td>
-            <td>{{ position.entryPrice | number: "1.2-2" }}</td>
-            <td [class]="getPnlClass(position.unrealisedPnl)">
-              {{ position.unrealisedPnl | number: "1.2-2" }}
-              ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
-            </td>
-            <td>{{ position.liquidationPrice | number: "1.2-2" }}</td>
-            <td class="positions-table__actions">
-              @if (isLoading(position)) {
-                <mat-spinner diameter="20" aria-label="Closing position"></mat-spinner>
-              } @else {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  color="warn"
-                  aria-label="Close position"
-                  (click)="onCloseClick(position)">
-                  Close
-                </button>
-              }
-            </td>
-          </tr>
+  <div class="positions-table__toolbar">
+    @if (positions.length > 0) {
+      <button
+        mat-flat-button
+        type="button"
+        color="warn"
+        class="positions-table__close-all-btn"
+        [disabled]="globalLoading"
+        (click)="closeAllPositions.emit()">
+        @if (globalLoading) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          Close All Positions
         }
-      </tbody>
-    </table>
+      </button>
+    }
+
+    <mat-form-field class="positions-table__filter" appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Filter by asset</mat-label>
+      <input
+        matInput
+        [value]="filterText"
+        (input)="onFilterChange($event)"
+        placeholder="e.g. BTC" />
+      @if (isFiltered) {
+        <button matSuffix mat-icon-button type="button" aria-label="Clear filter" (click)="clearFilter()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+    @if (isFiltered) {
+      <span class="positions-table__filter-count">{{ filteredCount }} result{{ filteredCount !== 1 ? "s" : "" }}</span>
+    }
   </div>
+
+  @if (isFiltered && filteredCount === 0) {
+    <div class="positions-table__empty-filter">No positions matching '{{ filterText }}'</div>
+  } @else {
+    <div class="positions-table__wrapper">
+      <table class="positions-table" aria-label="Open positions">
+        <thead>
+          <tr>
+            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('asset')">
+              Asset
+              @if (sortColumn === "asset" && sortDirection) {
+                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
+              }
+            </th>
+            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('size')">
+              Size
+              @if (sortColumn === "size" && sortDirection) {
+                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
+              }
+            </th>
+            <th>Leverage</th>
+            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('entryPrice')">
+              Entry Price
+              @if (sortColumn === "entryPrice" && sortDirection) {
+                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
+              }
+            </th>
+            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('markPrice')">
+              Mark Price
+              @if (sortColumn === "markPrice" && sortDirection) {
+                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
+              }
+            </th>
+            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('unrealisedPnl')">
+              Unrealised PnL
+              @if (sortColumn === "unrealisedPnl" && sortDirection) {
+                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
+              }
+            </th>
+            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('liquidationPrice')">
+              Liquidation Price
+              @if (sortColumn === "liquidationPrice" && sortDirection) {
+                <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
+              }
+            </th>
+            <th>Funding</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (position of sortedFilteredPositions; track position.asset + position.side) {
+            <tr [class.positions-table__row--loading]="isLoading(position)">
+              <td>{{ position.asset }}</td>
+              <td [matTooltip]="getNotionalTooltip(position)">
+                <span [class]="position.side === 'Long' ? 'side--long' : 'side--short'">
+                  {{ position.size | number: "1.4-4" }} ({{ position.side }})
+                </span>
+              </td>
+              <td [matTooltip]="getMarginTooltip(position, equity)">
+                <span class="leverage-badge">
+                  {{ position.leverage }}x {{ position.marginMode }}
+                </span>
+              </td>
+              <td>{{ position.entryPrice | number: "1.2-2" }}</td>
+              <td [class]="getMarkPriceClass(position)">
+                {{ position.markPrice | number: "1.2-2" }}
+                <mat-icon class="positions-table__direction-icon" [class]="getMarkPriceClass(position)">
+                  {{ getMarkPriceClass(position) === "mark-price--favorable" ? "arrow_upward" : "arrow_downward" }}
+                </mat-icon>
+              </td>
+              <td [class]="getPnlClass(position.unrealisedPnl)">
+                {{ position.unrealisedPnl | number: "1.2-2" }}
+                ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
+              </td>
+              <td>{{ position.liquidationPrice | number: "1.2-2" }}</td>
+              <td [matTooltip]="getFundingTooltip(position)" [class]="getFundingClass(position)">
+                {{ position.fundingRate * 100 | number: "1.4-4" }}%
+              </td>
+              <td class="positions-table__actions">
+                @if (isLoading(position)) {
+                  <mat-spinner diameter="20" aria-label="Closing position"></mat-spinner>
+                } @else {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    color="warn"
+                    aria-label="Close position"
+                    (click)="onCloseClick(position)">
+                    Close
+                  </button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 }

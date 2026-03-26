@@ -1,0 +1,10 @@
+<div class="margin-ratio" [class.margin-ratio--critical]="isCritical" [matTooltip]="threshold.label">
+  <div class="margin-ratio__bar-container">
+    <mat-progress-bar mode="determinate" [value]="percentage" [class]="'margin-ratio__bar margin-ratio__bar--' + threshold.cssClass">
+    </mat-progress-bar>
+  </div>
+  <span class="margin-ratio__value">{{ ratio | number: "1.4-4" }}</span>
+  @if (isCritical) {
+    <mat-icon class="margin-ratio__warning-icon">warning</mat-icon>
+  }
+</div>

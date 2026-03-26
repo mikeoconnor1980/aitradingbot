@@ -6,9 +6,9 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTabsModule } from "@angular/material/tabs";
 import { ModifyOrderDto } from "../../core/models/modify-order.model";
-import { PlaceOrderRequest } from "../../core/models/place-order.model";
+import { CloseAllProgress, PlaceOrderRequest } from "../../core/models/place-order.model";
 import { Observable, Subject, forkJoin, interval, of, timer } from "rxjs";
-import { catchError, startWith, switchMap, tap } from "rxjs/operators";
+import { catchError, last, startWith, switchMap, tap } from "rxjs/operators";
 import { HttpContext } from "@angular/common/http";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { AccountSummary } from "../../core/models/account-summary.model";
@@ -20,6 +20,7 @@ import { OrderService } from "../../core/services/order.service";
 import { AccountStateService } from "../../core/services/account-state.service";
 import { ConfirmDialogComponent } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AccountSummaryComponent } from "./account-summary/account-summary.component";
+import { CloseAllDialogComponent, CloseAllResult } from "./positions-table/close-all-dialog/close-all-dialog.component";
 import { OrdersTableComponent } from "./orders-table/orders-table.component";
 import { ModifyOrderDialogData, ModifyOrderModalComponent } from "./orders-table/modify-order-modal/modify-order.modal.component";
 import { PositionsTableComponent } from "./positions-table/positions-table.component";
@@ -273,6 +274,52 @@ export class DashboardComponent implements OnInit {
           this.positions = [...this.positions, removedPosition];
           this._pendingPositionKeys.delete(positionKey);
           this.positionsTable?.setLoading(positionKey, false);
+        }
+      });
+    });
+  }
+
+  public onCloseAllPositions(): void {
+    const currentPositions = [...this.positions];
+    if (currentPositions.length === 0 || this.positionsTable?.globalLoading) {
+      return;
+    }
+
+    this._dialog.open(CloseAllDialogComponent, {
+      data: { positions: currentPositions },
+      width: "450px"
+    }).afterClosed().subscribe((result: CloseAllResult | undefined) => {
+      if (!result?.confirmed) {
+        return;
+      }
+
+      const savedPositions = [...this.positions];
+      this.positionsTable?.setGlobalLoading(true);
+      currentPositions.forEach((position) => this._pendingPositionKeys.add(position.asset + position.side));
+      this.positions = [];
+
+      this._orderService.closeAllPositions(currentPositions).pipe(last()).subscribe({
+        next: (progress: CloseAllProgress) => {
+          currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
+          this.positionsTable?.setGlobalLoading(false);
+
+          if (progress.failed === 0) {
+            this._notifications.success(`Closed ${progress.succeeded} positions`);
+          } else if (progress.succeeded === 0) {
+            this._notifications.error("Failed to close positions");
+            this.positions = savedPositions;
+          } else {
+            this._notifications.warning(`Closed ${progress.succeeded}/${progress.total} positions (${progress.failed} failed)`);
+          }
+
+          this._refresh$.next();
+        },
+        error: () => {
+          currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
+          this.positionsTable?.setGlobalLoading(false);
+          this._notifications.error("Failed to close positions");
+          this.positions = savedPositions;
+          this._refresh$.next();
         }
       });
     });

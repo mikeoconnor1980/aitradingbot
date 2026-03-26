@@ -99,23 +99,3 @@ Import only what a component uses. Prefer specific pipes (`DecimalPipe`, `Curren
 ## Charts
 
 Use TradingView Lightweight Charts only.
-
-## Row-Level Loading and Optimistic UI Pattern
-
-When a table row has an action (cancel, modify, close), the parent/child architecture is:
-
-**Child component** (`PositionsTableComponent`, `OrdersTableComponent`):
-- Holds `loadingKeys = new Set<string>()` — keyed by a composite string identity (e.g., `asset + side`)
-- Exposes `isLoading(item)`, `setLoading(key, bool)`, and a `@Output()` event emitter for the action
-- Disables the button and shows a spinner while the key is in the set
-
-**Parent component** (`DashboardComponent`):
-- Uses `@ViewChild` to access the child's loading state and call `setLoading()`
-- Tracks in-flight keys in a `_pendingXKeys = new Set<string>()` field
-- Applies optimistic removal: removes the item from the list immediately, restores it on error
-- Guards the polling update: skips overwriting items whose keys are still in `_pendingXKeys`
-
-Reference implementations:
-- `frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.ts` (Close Position)
-- `frontend/trading-ui/src/app/features/dashboard/orders-table/orders-table.component.ts` (Cancel, Modify)
-- `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts` (orchestrates both)

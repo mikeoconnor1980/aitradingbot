@@ -32,6 +32,8 @@
     <mat-tab label="Positions">
       <app-positions-table
         [positions]="positions"
+        [equity]="accountSummary?.equity ?? 0"
+        (closeAllPositions)="onCloseAllPositions()"
         (closePosition)="onClosePosition($event)"></app-positions-table>
     </mat-tab>
     <mat-tab label="Orders">
