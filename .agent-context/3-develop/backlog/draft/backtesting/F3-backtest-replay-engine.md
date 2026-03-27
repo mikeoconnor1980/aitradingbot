@@ -40,8 +40,16 @@ There is no mechanism to replay historical candle data through the trading pipel
 - [ ] A `CandleReplayEngine` reads candles from the database (via `ICandleRepository`) in ascending time order for a given symbol, interval(s), and date range
 - [ ] The replay engine feeds candles sequentially into the `CandleClock` to drive the strategy pipeline
 - [ ] Multi-timeframe data is provided: 15m candles drive execution ticks; 1h and 4h candles provide trend/bias context via `MarketContext`
+- [ ] All three timeframes (15m, 1h, 4h) must be present in the database for the requested date range; the runner fails fast with a descriptive error if any timeframe is missing
 - [ ] Candle alignment across timeframes is handled — a 4h candle at time T covers 15m candles from T to T+3h45m; the replay engine provides the latest closed higher-timeframe candle at each 15m tick
 - [ ] The replay engine emits candles one at a time (no lookahead bias — the strategy only sees data up to the current replay tick)
+
+#### Indicator Warmup Period
+
+- [ ] The replay engine supports a configurable warmup period at the start of the date range (e.g., 200 candles for EMA-200)
+- [ ] During warmup, candles are fed into the `MarketContextBuilder` to populate indicator buffers, but no strategy signals are generated
+- [ ] The backtest date range specified by the user is the evaluation range; the runner automatically loads additional candles preceding the start date to satisfy the warmup requirement
+- [ ] If insufficient candle data exists before the start date to satisfy the warmup, the runner fails fast with a descriptive error
 
 #### SimulatedExecutionEngine
 
@@ -49,10 +57,12 @@ There is no mechanism to replay historical candle data through the trading pipel
 - [ ] The simulated engine maintains an in-memory order book and position state
 - [ ] Limit buy orders fill when the candle low ≤ order price
 - [ ] Take profit (limit sell) orders fill when the candle high ≥ take profit price
-- [ ] Hedge triggers activate when the candle close falls below the breakdown threshold
-- [ ] Configurable maker fee (default: 0.01%), taker fee (default: 0.035%), and optional slippage (default: 0%)
+- [ ] Hedge triggers activate when the candle close falls below the breakdown threshold; hedge fills at the candle close price (± slippage), matching live trigger semantics
+- [ ] Configurable maker fee (default: 0.01%), taker fee (default: 0.035%) per Hyperliquid standard tier, and optional slippage (default: 0%)
 - [ ] Fees are deducted from PnL on each simulated fill
 - [ ] Slippage adjusts fill price away from the order price by the configured percentage
+- [ ] All fills are all-or-nothing — partial fills are not supported in v1
+- [ ] When multiple orders could fill on the same candle, buy orders fill first, then take-profit orders (conservative ordering to avoid phantom same-candle round-trips)
 - [ ] The simulated engine tracks all fills with: fill time, fill price, side, size, fee paid
 - [ ] Order cancellation is supported (e.g., when the grid is redeployed)
 
@@ -61,16 +71,28 @@ There is no mechanism to replay historical candle data through the trading pipel
 - [ ] A `BacktestRunner` (or `IBacktestRunner`) orchestrates a complete backtest run
 - [ ] The runner creates fresh instances of CandleReplayEngine, SimulatedExecutionEngine, and all pipeline components for each run (stateless — no shared state between runs)
 - [ ] The runner wires the pipeline: CandleReplayEngine → CandleClock → StrategyScheduler → StrategyEngine → GridController → RiskEngine → PositionManager → SimulatedExecutionEngine
-- [ ] The runner accepts: symbol, interval(s), start date, end date, and strategy configuration parameters
+- [ ] The runner accepts: symbol, interval(s), start date, end date, initial capital, and strategy configuration parameters
 - [ ] The runner replays all candles in the date range and collects execution results
+- [ ] The strategy can deploy, complete, and re-deploy grids as many times as conditions warrant during a single backtest run (multi-cycle)
 - [ ] The `MarketContextBuilder` constructs the same `MarketContext` as in live trading, using historical candles for indicator calculation (moving averages, ATR, etc.)
 
 #### BacktestMetricsCalculator
 
 - [ ] A `BacktestMetricsCalculator` computes summary metrics from the list of simulated trades
-- [ ] Metrics include: total trades, winning trades, losing trades, win rate (%), total PnL, max drawdown, average trade PnL, average hold time, number of hedges opened, total fees paid
-- [ ] Max drawdown is calculated as the largest peak-to-trough equity decline during the backtest
+- [ ] Metrics include: total trades, winning trades, losing trades, win rate (%), total PnL, max drawdown (absolute and %), average trade PnL, average hold time, number of hedges opened, total fees paid, number of grid cycles, final equity
+- [ ] Max drawdown is calculated as the largest peak-to-trough equity decline during the backtest, expressed in both absolute value and percentage of peak equity
 - [ ] Win rate is `winning trades / total trades * 100`
+
+#### Equity Tracking
+
+- [ ] The backtest tracks equity at each 15m tick (initial capital ± unrealised PnL ± realised PnL - fees)
+- [ ] The equity time-series is included in the `BacktestResult` as a list of (timestamp, equity) pairs
+- [ ] Initial capital is a required input in `BacktestConfig`
+
+#### Trade Log
+
+- [ ] The `BacktestResult` includes a complete ordered trade log
+- [ ] Each `BacktestTrade` entry contains: trade ID, grid cycle ID, entry time, entry price, exit time, exit price, side, size, PnL, fees, trade type (grid fill, take profit, hedge open, hedge close)
 
 ### Non-Functional Requirements
 
@@ -90,14 +112,16 @@ There is no mechanism to replay historical candle data through the trading pipel
 2. Backtest is triggered (via F4 API or directly via `IBacktestRunner`)
 3. `BacktestRunner` loads candle data for all requested intervals from the database
 4. CandleReplayEngine iterates through 15m candles in time order
-5. At each tick, MarketContextBuilder provides the latest 1h and 4h context
-6. StrategyEngine evaluates grid deployment signals; GridController manages grid lifecycle
-7. SimulatedExecutionEngine fills orders based on candle OHLC:
+5. Indicator warmup runs for the first N candles (e.g., 200) — no signals generated
+6. At each tick, MarketContextBuilder provides the latest 1h and 4h context
+7. StrategyEngine evaluates grid deployment signals; GridController manages grid lifecycle
+8. SimulatedExecutionEngine fills orders based on candle OHLC (buy fills processed before TP fills):
    - Limit buy fills on low ≤ price
    - Take profit fills on high ≥ price
    - Hedge triggers on close < breakdown threshold
-8. After all candles are replayed, BacktestMetricsCalculator computes summary metrics
-9. BacktestResult is returned with all metrics and the trade log
+9. Grid completes and strategy re-deploys as conditions warrant (multi-cycle)
+10. After all candles are replayed, BacktestMetricsCalculator computes summary metrics
+11. BacktestResult is returned with metrics, equity time-series, and full trade log
 
 ### Error States
 
@@ -123,7 +147,8 @@ There is no mechanism to replay historical candle data through the trading pipel
 | `BacktestMetricsCalculator` | `TradingApp.Application` | Computes summary metrics from trade log |
 | `BacktestResult` | `TradingApp.Application` | Result DTO containing metrics and trade log |
 | `BacktestTrade` | `TradingApp.Application` | DTO for individual trade: entry/exit time, price, PnL, fees |
-| `BacktestConfig` | `TradingApp.Application` | Configuration DTO for strategy parameters, fee model, slippage |
+| `BacktestConfig` | `TradingApp.Application` | Configuration DTO for strategy parameters, fee model, slippage, initial capital |
+| `EquitySnapshot` | `TradingApp.Application` | DTO for per-tick equity: timestamp + equity value |
 
 ### Pipeline Wiring (Backtest Mode)
 
@@ -171,21 +196,32 @@ Net PnL = Fill PnL - Entry Fee - Exit Fee
 ## Out of Scope
 
 - Backtest result persistence to database (results are returned in-memory only)
-- Parameter sweep automation
+- Parameter sweep automation (future story — sequential-only for v1)
+- Parallel backtest execution (future story — sequential-only for v1)
 - SignalR progress reporting during long-running backtests
 - Tick-level or order-book-level simulation
 - Funding rate modelling in PnL
+- Partial fill simulation (all-or-nothing in v1)
 - Frontend visualisation of backtest results
 - Multi-asset backtesting
 
 ---
 
-## Open Questions
+## Resolved Decisions
 
-- [ ] Should the hedge fill simulation use candle close (as described in architecture: "price closes below breakdown threshold") or candle low (more aggressive assumption)?
-- [ ] For multi-timeframe backtesting, should the replay engine require all three timeframes (15m, 1h, 4h) to be present in the DB, or degrade gracefully if higher timeframes are missing?
-- [ ] Should the simulated execution engine support partial fills, or assume all orders fill completely when the price condition is met?
-- [ ] What Hyperliquid fee tier should be used as the default? The PRD assumes maker = 0.01%, taker = 0.035%.
+| Decision | Resolution | Rationale |
+|----------|------------|----------|
+| Hedge fill price | Candle close (± slippage) | Matches live semantics where hedge triggers on "price closes below breakdown" |
+| Missing HTF data | Fail fast with descriptive error | Avoids misleading backtest results from incomplete context |
+| Partial fills | All-or-nothing | Simpler for v1; grid order sizes are small enough that full fills are realistic |
+| Default fee tier | Hyperliquid standard: maker 0.01%, taker 0.035% | Matches most users; configurable via `BacktestConfig` |
+| Indicator warmup | Required — 200+ candles loaded before evaluation range | Prevents inaccurate early signals from uninitialised indicators |
+| Equity tracking | Per-tick (each 15m candle) | Enables accurate max drawdown and future equity curve charting |
+| Initial capital | Required in `BacktestConfig` | Needed for position sizing, equity tracking, and percentage-based drawdown |
+| Concurrency | Sequential only (v1) | Parallel runs deferred to future story |
+| Grid redeployment | Multiple cycles per run | Strategy re-deploys grids as conditions warrant over long backtests |
+| Intra-candle fill order | Buy fills first, then TP | Conservative ordering avoids phantom same-candle round-trips |
+| Trade log | Full ordered log included | Required for debugging, analysis, and metrics calculation |
 
 ---
 
@@ -197,9 +233,16 @@ Net PnL = Fill PnL - Entry Fee - Exit Fee
 - [ ] **Given** a hedge trigger condition, **When** the candle close falls below the breakdown threshold, **Then** the hedge signal activates
 - [ ] **Given** maker fee = 0.01% and taker fee = 0.035%, **When** a simulated fill occurs, **Then** the appropriate fee is deducted from PnL
 - [ ] **Given** slippage = 0.05%, **When** a fill occurs, **Then** the fill price is adjusted away from the order price by the slippage percentage
-- [ ] **Given** a backtest completes, **Then** the result includes: total trades, winning trades, losing trades, win rate, total PnL, max drawdown, average trade PnL, average hold time, hedges opened, total fees paid
+- [ ] **Given** a backtest completes, **Then** the result includes: total trades, winning trades, losing trades, win rate, total PnL, max drawdown (absolute and %), average trade PnL, average hold time, hedges opened, total fees paid, grid cycles, final equity
+- [ ] **Given** a backtest completes, **Then** the result includes a per-tick equity time-series and a complete ordered trade log
 - [ ] **Given** the same inputs, **When** the backtest is run twice, **Then** the results are identical (deterministic)
 - [ ] **Given** no candle data exists for the requested range, **When** the backtest is triggered, **Then** an error is returned indicating insufficient data
+- [ ] **Given** 1h or 4h candle data is missing for the requested range, **When** the backtest is triggered, **Then** the runner fails fast with an error identifying which timeframe is missing
+- [ ] **Given** an indicator warmup of 200 candles is required, **When** the backtest starts, **Then** the first 200 candles feed indicators only and no signals are generated
+- [ ] **Given** insufficient candle data before the start date for indicator warmup, **When** the backtest is triggered, **Then** an error is returned indicating insufficient warmup data
+- [ ] **Given** a grid completes (TP hit) mid-backtest, **When** conditions remain valid, **Then** the strategy re-deploys a new grid and the backtest continues
+- [ ] **Given** multiple orders could fill on the same candle, **When** both a buy and TP qualify, **Then** the buy fills first
+- [ ] **Given** initial capital of $10,000 in config, **When** the backtest runs, **Then** equity tracking starts at $10,000 and all metrics reference this starting capital
 - [ ] **Given** 15m candles at time T, **When** the MarketContext is built, **Then** it includes the latest closed 1h and 4h candles at or before T
 
 ### Release Notes Information
