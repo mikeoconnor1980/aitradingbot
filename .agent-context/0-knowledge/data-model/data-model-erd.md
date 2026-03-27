@@ -172,16 +172,16 @@ erDiagram
     }
 
     Candle {
-        guid Id PK
+        long Id PK
         string Symbol
-        string Timeframe
-        datetime OpenTime
-        datetime CloseTime
+        string Interval
+        long Timestamp
         decimal Open
         decimal High
         decimal Low
         decimal Close
         decimal Volume
+        int NumTrades
     }
 
     LlmSnapshot {
@@ -362,8 +362,10 @@ erDiagram
 
 ### Market Data
 
-**Candle** — OHLCV candle data. Used by both live trading (from Hyperliquid WebSocket) and backtesting (from HistoricalDataProvider).
-- Timeframes: `15m`, `1H`, `4H`
+**Candle** — OHLCV candle data. Persisted via `ICandleRepository`. Used by live trading (sourced from Hyperliquid) and backtesting (queried by `HistoricalDataProvider`). Not tenant-scoped.
+- `Interval` values: `15m`, `1H`, `4H`
+- `Timestamp`: Unix milliseconds (open time of the candle)
+- Composite unique index on `(Symbol, Interval, Timestamp)` — supports `INSERT OR IGNORE` idempotent ingestion
 
 ---
 

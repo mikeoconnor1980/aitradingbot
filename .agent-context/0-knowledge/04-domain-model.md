@@ -11,10 +11,13 @@ Position
 Signal  
 Strategy  
 StrategyConfig  
-BotState
+BotState  
+Candle
 
 All trading entities (Order, Fill, Position, Signal, Strategy, StrategyConfig, BotState)
 are tenant-scoped — they belong to a specific User.
+
+`Candle` is a market data entity and is **not** tenant-scoped. Candle data is shared across all users.
 
 ---
 
@@ -114,3 +117,31 @@ Direction
 AverageEntryPrice  
 Quantity  
 PnL
+
+---
+
+# Candle
+
+OHLCV market data. Persisted to the database for backtesting and historical analysis. Not tenant-scoped.
+
+Fields:
+
+Id (long, auto-increment)  
+Symbol  
+Interval (e.g. `15m`, `1H`, `4H`)  
+Timestamp (Unix milliseconds — open time of the candle)  
+Open  
+High  
+Low  
+Close  
+Volume  
+NumTrades
+
+Key design patterns:
+
+- Static `Create` factory method with validation guards (null/whitespace, positive open price, high >= low)
+- Private setters — immutable after creation
+- Composite unique index on `(Symbol, Interval, Timestamp)` — enforces idempotent ingestion
+- Bulk inserts use `INSERT OR IGNORE` for safe re-ingestion of overlapping data
+
+File: `src/TradingApp.Domain/Entities/Candle.cs`

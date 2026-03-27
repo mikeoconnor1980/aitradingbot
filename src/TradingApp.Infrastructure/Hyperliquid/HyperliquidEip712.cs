@@ -7,6 +7,7 @@ using MessagePack.Resolvers;
 using Nethereum.ABI.EIP712;
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Util;
+using Eip712Domain = Nethereum.ABI.EIP712.Domain;
 
 namespace TradingApp.Infrastructure.Hyperliquid;
 
@@ -42,7 +43,7 @@ public static class HyperliquidEip712
         return Sha3Keccack.Current.CalculateHash(input.ToArray());
     }
 
-    public static TypedData<Domain> BuildPhantomAgentTypedData(byte[] connectionId, bool isMainnet)
+    public static TypedData<Eip712Domain> BuildPhantomAgentTypedData(byte[] connectionId, bool isMainnet)
     {
         if (connectionId.Length != 32)
         {
@@ -50,9 +51,9 @@ public static class HyperliquidEip712
         }
 
         var source = isMainnet ? MainnetSource : TestnetSource;
-        var typedData = new TypedData<Domain>
+        var typedData = new TypedData<Eip712Domain>
         {
-            Domain = new Domain
+            Domain = new Eip712Domain
             {
                 Name = "Exchange",
                 Version = "1",

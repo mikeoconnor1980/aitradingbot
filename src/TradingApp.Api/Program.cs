@@ -9,6 +9,7 @@ using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Queries;
 using TradingApp.Infrastructure.Services;
+using TradingApp.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +71,7 @@ builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
+builder.Services.AddPersistence(builder.Configuration);
 
 // SignalR
 builder.Services.AddSignalR();
@@ -106,6 +108,8 @@ builder.Services.AddControllers(options =>
 });
 
 var app = builder.Build();
+
+await app.Services.MigrateDatabaseAsync();
 
 app.Logger.LogInformation(
     "Hyperliquid wallet configured: {WalletAddress}",

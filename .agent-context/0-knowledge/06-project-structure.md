@@ -4,10 +4,10 @@ Solution file: `TradingApp.sln`
 
 | Project | Role |
 |---------|------|
-| `TradingApp.Domain` | Core domain entities, value objects (scaffolded — no entities yet) |
+| `TradingApp.Domain` | Core domain entities; entities use a `static Create` factory with validation guards and private setters |
 | `TradingApp.Application` | CQRS commands/queries/handlers, DTOs, interfaces, config options |
 | `TradingApp.Infrastructure` | External service implementations (Hyperliquid client, signing) |
-| `TradingApp.Persistence` | EF Core context and repositories (scaffolded — no DbContext yet) |
+| `TradingApp.Persistence` | EF Core context (`TradingAppDbContext`), repository implementations, and `PersistenceServiceExtensions` for DI and auto-migration |
 | `TradingApp.Api` | ASP.NET Core Web API host, controllers, DI composition root |
 | `TradingApp.Worker` | .NET Worker Service host for background strategy execution |
 
@@ -71,6 +71,27 @@ src/TradingApp.Infrastructure/
 
 ---
 
+## Persistence Layer
+
+```
+src/TradingApp.Persistence/
+├── Repositories/                   # EF Core repository implementations (interfaces in Application.Abstractions.Repositories)
+├── TradingAppDbContext.cs          # EF Core DbContext; one DbSet per persisted entity; configures column mappings and indexes
+├── PersistenceServiceExtensions.cs # AddPersistence() registers DbContext + all repositories; MigrateDatabaseAsync() runs EF migrations on startup
+├── DesignTimeDbContextFactory.cs   # Design-time factory for EF migration tooling
+└── Migrations/                     # EF Core auto-generated migration files
+```
+
+**Key conventions:**
+- Repository interfaces live in `src/TradingApp.Application/Abstractions/Repositories/` (Application layer owns the contract)
+- Repository implementations live in `src/TradingApp.Persistence/Repositories/`
+- Call `AddPersistence()` from both the API and Worker host `Program.cs`
+- Call `MigrateDatabaseAsync()` on startup in both hosts to auto-apply EF migrations
+- Connection string key: `ConnectionStrings:DefaultConnection` in `appsettings.json`
+- SQLite path convention: `Data Source=../../data/tradingapp.db` — shared database between API and Worker
+
+---
+
 ## Test Projects
 
 ```
@@ -82,11 +103,15 @@ tests/
 │       └── FakeHttpMessageHandler.cs   # Configurable HttpMessageHandler stub
 ├── TradingApp.Application.Tests/  # Handler unit tests
 ├── TradingApp.Domain.Tests/       # Domain entity unit tests
-└── TradingApp.Infrastructure.Tests/
-    └── Services/                  # Infrastructure unit tests
+├── TradingApp.Infrastructure.Tests/
+│   └── Services/                  # Infrastructure unit tests
+└── TradingApp.Persistence.Tests/
+    └── Repositories/              # Persistence integration tests using in-memory SQLite
 ```
 
 `BaseControllerTests` creates a `WebApplicationFactory<Program>` with web host configuration via `ConfigureWebHost()` and service replacement via `ConfigureTestServices()`. It defines `HttpResponseExtensions` (`ReadAndAssertSuccessAsync<T>`, `AssertStatusCode`).
+
+`TradingApp.Persistence.Tests` uses an in-memory SQLite connection (`SqliteConnection("Data Source=:memory:")`) kept open for the test lifetime. Each test creates its own `TradingAppDbContext` from shared `DbContextOptions`. The connection is disposed in `[TestCleanup]`. See `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` for the reference pattern.
 
 `FakeHttpMessageHandler` accepts a preset `HttpResponseMessage` or `Exception` and returns/throws it for every request.
 

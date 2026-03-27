@@ -1,0 +1,8 @@
+<Project>
+  <ItemGroup>
+    <Compile Remove="**/artifacts/**/*.cs" />
+    <None Remove="**/artifacts/**/*" />
+    <Content Remove="**/artifacts/**/*" />
+    <EmbeddedResource Remove="**/artifacts/**/*" />
+  </ItemGroup>
+</Project>

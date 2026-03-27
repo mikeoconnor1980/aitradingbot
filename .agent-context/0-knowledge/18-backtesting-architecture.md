@@ -61,6 +61,8 @@ Minimum viable backtesting input:
 
 The GridStrategy can run on these timeframes without needing tick-level data.
 
+OHLCV candles are persisted to the database via `ICandleRepository` (interface: `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs`, implementation: `src/TradingApp.Persistence/Repositories/CandleRepository.cs`). The `HistoricalDataProvider` component should query `ICandleRepository.GetCandlesAsync(symbol, interval, startTime, endTime)` to supply the replay engine with ordered candle data.
+
 ---
 
 # Replay Model

@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TradingApp.Application\TradingApp.Application.csproj" />
     <ProjectReference Include="..\TradingApp.Infrastructure\TradingApp.Infrastructure.csproj" />
+    <ProjectReference Include="..\TradingApp.Persistence\TradingApp.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>
