@@ -5,6 +5,7 @@ using TradingApp.Api.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Candles.Commands;
 using TradingApp.Application.Candles.Models;
+using TradingApp.Infrastructure.Binance;
 using TradingApp.Infrastructure.Hyperliquid;
 
 namespace TradingApp.Api.Controllers;
@@ -45,6 +46,44 @@ public sealed class CandlesController : ApiController
                 request.Intervals,
                 request.StartTime,
                 request.EndTime),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("ingest/binance")]
+    [ProducesResponseType(typeof(IngestionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> IngestBinanceAsync(
+        [FromBody] IngestCandlesRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!BinanceAssetMapper.IsValidSymbol(request.Symbol))
+        {
+            throw new DomainException(
+                $"Invalid symbol: '{request.Symbol}'. Valid Binance symbols: {string.Join(", ", BinanceAssetMapper.ValidSymbols)}");
+        }
+
+        foreach (var interval in request.Intervals)
+        {
+            if (!BinanceAssetMapper.IsValidInterval(interval))
+            {
+                throw new DomainException(
+                    $"Invalid interval: '{interval}'. Valid Binance intervals: {string.Join(", ", BinanceAssetMapper.ValidIntervals)}");
+            }
+        }
+
+        var result = await Mediator.Send(
+            new IngestBinanceCandlesCommand(
+                new IngestionRequest
+                {
+                    Symbol = request.Symbol,
+                    Intervals = request.Intervals,
+                    StartTime = request.StartTime,
+                    EndTime = request.EndTime,
+                    IncludeMarkPrice = request.IncludeMarkPrice,
+                }),
             cancellationToken);
 
         return Ok(result);

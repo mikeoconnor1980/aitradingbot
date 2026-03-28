@@ -6,4 +6,9 @@ public sealed class IngestionAlreadyRunningException : Exception
         : base("Candle ingestion is already running.")
     {
     }
+
+    public IngestionAlreadyRunningException(string message)
+        : base(message)
+    {
+    }
 }

@@ -35,6 +35,11 @@ builder.Services.AddOptions<CandleIngestionOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<BinanceIngestionOptions>()
+    .Bind(builder.Configuration.GetSection(BinanceIngestionOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // Read private key directly — consumed once at startup, not stored in DI
 var privateKey = builder.Configuration
     .GetSection(HyperliquidOptions.SectionName)["PrivateKey"]
@@ -77,6 +82,34 @@ builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
+builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<BinanceIngestionOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddResilienceHandler("binance-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 5,
+        BackoffType = DelayBackoffType.Exponential,
+        Delay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        UseJitter = true,
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+        OnRetry = args =>
+        {
+            return ValueTask.CompletedTask;
+        },
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
+});
+builder.Services.AddScoped<IBinanceCandleIngestionService, BinanceCandleIngestionService>();
+builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
 builder.Services.AddPersistence(builder.Configuration);
 

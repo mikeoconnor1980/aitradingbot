@@ -45,6 +45,7 @@ public sealed class CandleRepositoryTests
         await using var verifyContext = CreateContext();
         var stored = await verifyContext.Candles.ToListAsync();
         stored.Should().HaveCount(3);
+        stored.Should().OnlyContain(c => c.Source == "Hyperliquid");
     }
 
     [TestMethod]
@@ -63,6 +64,29 @@ public sealed class CandleRepositoryTests
         await using var verifyContext = CreateContext();
         var stored = await verifyContext.Candles.ToListAsync();
         stored.Should().HaveCount(4);
+    }
+
+    [TestMethod]
+    public async Task GivenCandlesWithSameTimestampButDifferentSources_WhenBulkInsertAsync_ThenBothCandlesArePersisted()
+    {
+        var candles = new[]
+        {
+            Candle.Create("BTC", "15m", 1000, 100m, 105m, 95m, 102m, 50m, 10, source: "Hyperliquid"),
+            Candle.Create("BTC", "15m", 1000, 100m, 105m, 95m, 102m, 50m, 10, source: "Binance")
+        };
+
+        await using var context = CreateContext();
+        var sut = new CandleRepository(context);
+
+        await sut.BulkInsertAsync(candles);
+
+        await using var verifyContext = CreateContext();
+        var stored = await verifyContext.Candles
+            .OrderBy(c => c.Source)
+            .ToListAsync();
+
+        stored.Should().HaveCount(2);
+        stored.Select(c => c.Source).Should().Equal("Binance", "Hyperliquid");
     }
 
     [TestMethod]
@@ -91,6 +115,28 @@ public sealed class CandleRepositoryTests
     }
 
     [TestMethod]
+    public async Task GivenSourceFilter_WhenGetCandlesAsync_ThenReturnsOnlyMatchingSource()
+    {
+        var candles = new[]
+        {
+            Candle.Create("BTC", "15m", 1000, 100m, 105m, 95m, 102m, 50m, 10, source: "Hyperliquid"),
+            Candle.Create("BTC", "15m", 1000, 100m, 105m, 95m, 102m, 50m, 10, source: "Binance"),
+            Candle.Create("BTC", "15m", 2000, 100m, 105m, 95m, 102m, 50m, 10, source: "Binance")
+        };
+
+        await using var context = CreateContext();
+        var sut = new CandleRepository(context);
+        await sut.BulkInsertAsync(candles);
+
+        await using var queryContext = CreateContext();
+        var querySut = new CandleRepository(queryContext);
+        var result = await querySut.GetCandlesAsync("BTC", "15m", 1000, 2000, source: "Binance");
+
+        result.Should().HaveCount(2);
+        result.Should().OnlyContain(c => c.Source == "Binance");
+    }
+
+    [TestMethod]
     public async Task GivenNoCandlesInRange_WhenGetCandlesAsync_ThenReturnsEmptyList()
     {
         await using var context = CreateContext();
@@ -114,6 +160,27 @@ public sealed class CandleRepositoryTests
         var result = await querySut.GetLatestTimestampAsync("BTC", "1h");
 
         result.Should().Be(5000);
+    }
+
+    [TestMethod]
+    public async Task GivenSourceFilter_WhenGetLatestTimestampAsync_ThenReturnsMaxTimestampForMatchingSource()
+    {
+        var candles = new[]
+        {
+            Candle.Create("BTC", "1h", 1000, 100m, 105m, 95m, 102m, 50m, 10, source: "Hyperliquid"),
+            Candle.Create("BTC", "1h", 2000, 100m, 105m, 95m, 102m, 50m, 10, source: "Binance"),
+            Candle.Create("BTC", "1h", 3000, 100m, 105m, 95m, 102m, 50m, 10, source: "Binance")
+        };
+
+        await using var context = CreateContext();
+        var sut = new CandleRepository(context);
+        await sut.BulkInsertAsync(candles);
+
+        await using var queryContext = CreateContext();
+        var querySut = new CandleRepository(queryContext);
+        var result = await querySut.GetLatestTimestampAsync("BTC", "1h", source: "Binance");
+
+        result.Should().Be(3000);
     }
 
     [TestMethod]
@@ -154,6 +221,7 @@ public sealed class CandleRepositoryTests
         var result = await querySut.GetCandlesAsync("BTC", "15m", 1000, 1000);
 
         var stored = result.Single();
+        stored.Source.Should().Be("Hyperliquid");
         stored.Open.Should().BeApproximately(67234.56m, 0.01m);
         stored.High.Should().BeApproximately(67500.12m, 0.01m);
         stored.Low.Should().BeApproximately(67100.99m, 0.01m);
@@ -161,7 +229,7 @@ public sealed class CandleRepositoryTests
         stored.Volume.Should().BeApproximately(1234.5678m, 0.001m);
     }
 
-    private static List<Candle> CreateCandles(string symbol, string interval, long startTimestamp, int count)
+    private static List<Candle> CreateCandles(string symbol, string interval, long startTimestamp, int count, string source = "Hyperliquid")
     {
         return Enumerable.Range(0, count)
             .Select(i => Candle.Create(
@@ -173,7 +241,8 @@ public sealed class CandleRepositoryTests
                 95m + i,
                 102m + i,
                 50m + i,
-                10 + i))
+                10 + i,
+                source))
             .ToList();
     }
 }

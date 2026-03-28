@@ -11,6 +11,7 @@ public sealed class TradingAppDbContext : DbContext
     }
 
     public DbSet<Candle> Candles => Set<Candle>();
+    public DbSet<FundingRate> FundingRates => Set<FundingRate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,9 +32,14 @@ public sealed class TradingAppDbContext : DbContext
                 .HasMaxLength(10)
                 .IsRequired();
 
-            entity.HasIndex(c => new { c.Symbol, c.Interval, c.Timestamp })
+            entity.Property(c => c.Source)
+                .HasMaxLength(20)
+                .IsRequired()
+                .HasDefaultValue("Hyperliquid");
+
+            entity.HasIndex(c => new { c.Source, c.Symbol, c.Interval, c.Timestamp })
                 .IsUnique()
-                .HasDatabaseName("IX_Candles_Symbol_Interval_Timestamp");
+                .HasDatabaseName("IX_Candles_Source_Symbol_Interval_Timestamp");
 
             // SQLite stores decimal values as REAL for query translation support.
             entity.Property(c => c.Open).HasConversion<double>();
@@ -41,6 +47,35 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(c => c.Low).HasConversion<double>();
             entity.Property(c => c.Close).HasConversion<double>();
             entity.Property(c => c.Volume).HasConversion<double>();
+        });
+
+        modelBuilder.Entity<FundingRate>(entity =>
+        {
+            entity.ToTable("FundingRates");
+
+            entity.HasKey(f => f.Id);
+
+            entity.Property(f => f.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(f => f.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(f => f.Timestamp)
+                .IsRequired();
+
+            entity.Property(f => f.Rate)
+                .HasConversion<double>()
+                .IsRequired();
+
+            entity.Property(f => f.MarkPrice)
+                .HasConversion<double>()
+                .IsRequired();
+
+            entity.HasIndex(f => new { f.Symbol, f.Timestamp })
+                .IsUnique()
+                .HasDatabaseName("IX_FundingRates_Symbol_Timestamp");
         });
     }
 }

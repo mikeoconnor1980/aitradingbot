@@ -16,6 +16,7 @@ public sealed class CandleIngestionServiceTests
 {
     private static readonly DateTime DefaultStartDate = new(2022, 11, 1, 0, 0, 0, DateTimeKind.Utc);
     private const int PageSize = 500;
+    private const string HyperliquidSource = "Hyperliquid";
 
     private Mock<IHyperliquidRestClient> _restClientMock = default!;
     private Mock<ICandleRepository> _repositoryMock = default!;
@@ -38,7 +39,7 @@ public sealed class CandleIngestionServiceTests
         var explicitEndTime = expectedStart + 3600000L;
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _restClientMock
@@ -61,7 +62,7 @@ public sealed class CandleIngestionServiceTests
         const long explicitEndTime = latestTimestamp + 3600000L + 1;
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync(latestTimestamp);
 
         _restClientMock
@@ -110,7 +111,7 @@ public sealed class CandleIngestionServiceTests
         IReadOnlyList<Candle>? persistedBatch = null;
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _repositoryMock
@@ -137,6 +138,7 @@ public sealed class CandleIngestionServiceTests
             Times.Exactly(2));
         persistedBatch.Should().NotBeNull();
         persistedBatch!.First().Timestamp.Should().Be(secondBatch[0].Timestamp);
+        persistedBatch.Should().OnlyContain(candle => candle.Source == HyperliquidSource);
     }
 
     [TestMethod]
@@ -160,7 +162,7 @@ public sealed class CandleIngestionServiceTests
         _sut = CreateSut(batchDelayMs: 100);
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _repositoryMock
@@ -177,7 +179,7 @@ public sealed class CandleIngestionServiceTests
                 return callCount == 1 ? batch : [];
             });
 
-    await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"], EndTime = explicitEndTime });
+        await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"], EndTime = explicitEndTime });
 
         invocationTimes.Should().HaveCount(2);
         (invocationTimes[1] - invocationTimes[0]).Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(90));
@@ -189,7 +191,7 @@ public sealed class CandleIngestionServiceTests
         var latestTimestamp = DateTimeOffset.UtcNow.AddHours(-8).ToUnixTimeMilliseconds();
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "4h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "4h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync(latestTimestamp);
 
         _restClientMock
@@ -212,7 +214,7 @@ public sealed class CandleIngestionServiceTests
         const long latestTimestamp = 1700000000000L;
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "4h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "4h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync(latestTimestamp);
 
         _repositoryMock
@@ -249,10 +251,10 @@ public sealed class CandleIngestionServiceTests
         _sut = CreateSut(maxRetries: 0);
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "15m", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "15m", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _restClientMock
@@ -275,7 +277,7 @@ public sealed class CandleIngestionServiceTests
         _sut = CreateSut(maxIngestionTimeoutMs: 50);
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _restClientMock
@@ -298,7 +300,7 @@ public sealed class CandleIngestionServiceTests
         var releaseFirstCall = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         _repositoryMock
-            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", HyperliquidSource, It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _restClientMock

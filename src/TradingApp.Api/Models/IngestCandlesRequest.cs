@@ -14,4 +14,6 @@ public sealed class IngestCandlesRequest
     public long? StartTime { get; set; }
 
     public long? EndTime { get; set; }
+
+    public bool IncludeMarkPrice { get; set; }
 }

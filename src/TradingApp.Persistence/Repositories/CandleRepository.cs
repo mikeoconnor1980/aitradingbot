@@ -20,16 +20,24 @@ public sealed class CandleRepository : ICandleRepository
         string interval,
         long startTime,
         long endTime,
+        string? source = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(interval);
 
-        return await _context.Candles
+        var query = _context.Candles
             .Where(c => c.Symbol == symbol
                 && c.Interval == interval
                 && c.Timestamp >= startTime
-                && c.Timestamp <= endTime)
+                && c.Timestamp <= endTime);
+
+        if (source is not null)
+        {
+            query = query.Where(c => c.Source == source);
+        }
+
+        return await query
             .OrderBy(c => c.Timestamp)
             .ToListAsync(cancellationToken);
     }
@@ -43,7 +51,7 @@ public sealed class CandleRepository : ICandleRepository
             await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
             var sql = new StringBuilder();
-            sql.Append("INSERT OR IGNORE INTO Candles (Symbol, Interval, Timestamp, Open, High, Low, Close, Volume, NumTrades) VALUES ");
+            sql.Append("INSERT OR IGNORE INTO Candles (Source, Symbol, Interval, Timestamp, Open, High, Low, Close, Volume, NumTrades) VALUES ");
 
             var parameters = new List<object>();
             for (var i = 0; i < batch.Length; i++)
@@ -53,10 +61,11 @@ public sealed class CandleRepository : ICandleRepository
                     sql.Append(',');
                 }
 
-                var offset = i * 9;
-                sql.Append($"({{{offset}}},{{{offset + 1}}},{{{offset + 2}}},{{{offset + 3}}},{{{offset + 4}}},{{{offset + 5}}},{{{offset + 6}}},{{{offset + 7}}},{{{offset + 8}}})");
+                var offset = i * 10;
+                sql.Append($"({{{offset}}},{{{offset + 1}}},{{{offset + 2}}},{{{offset + 3}}},{{{offset + 4}}},{{{offset + 5}}},{{{offset + 6}}},{{{offset + 7}}},{{{offset + 8}}},{{{offset + 9}}})");
 
                 var candle = batch[i];
+                parameters.Add(candle.Source);
                 parameters.Add(candle.Symbol);
                 parameters.Add(candle.Interval);
                 parameters.Add(candle.Timestamp);
@@ -77,13 +86,21 @@ public sealed class CandleRepository : ICandleRepository
     public async Task<long?> GetLatestTimestampAsync(
         string symbol,
         string interval,
+        string? source = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(interval);
 
-        return await _context.Candles
-            .Where(c => c.Symbol == symbol && c.Interval == interval)
+        var query = _context.Candles
+            .Where(c => c.Symbol == symbol && c.Interval == interval);
+
+        if (source is not null)
+        {
+            query = query.Where(c => c.Source == source);
+        }
+
+        return await query
             .MaxAsync(c => (long?)c.Timestamp, cancellationToken);
     }
 }

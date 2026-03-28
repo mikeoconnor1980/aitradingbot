@@ -13,6 +13,7 @@ public sealed class CandleTests
         candle.Symbol.Should().Be("BTC");
         candle.Interval.Should().Be("15m");
         candle.Timestamp.Should().Be(1710000000000);
+        candle.Source.Should().Be("Hyperliquid");
         candle.Open.Should().Be(67000m);
         candle.High.Should().Be(67500m);
         candle.Low.Should().Be(66800m);
@@ -41,5 +42,24 @@ public sealed class CandleTests
         var act = () => Candle.Create("BTC", interval!, 1000, 100m, 105m, 95m, 102m, 50m, 10);
 
         act.Should().Throw<ArgumentException>();
+    }
+
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("")]
+    [DataRow(" ")]
+    public void GivenInvalidSource_WhenCreate_ThenThrowsArgumentException(string? source)
+    {
+        var act = () => Candle.Create("BTC", "15m", 1000, 100m, 105m, 95m, 102m, 50m, 10, source!);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [TestMethod]
+    public void GivenExplicitSource_WhenCreate_ThenSourceIsSet()
+    {
+        var candle = Candle.Create("BTC", "15m", 1710000000000, 67000m, 67500m, 66800m, 67200m, 1234.56m, 42, source: "Binance");
+
+        candle.Source.Should().Be("Binance");
     }
 }

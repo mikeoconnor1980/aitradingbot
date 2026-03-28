@@ -9,6 +9,7 @@ public interface ICandleRepository
         string interval,
         long startTime,
         long endTime,
+        string? source = null,
         CancellationToken cancellationToken = default);
 
     Task BulkInsertAsync(
@@ -18,5 +19,6 @@ public interface ICandleRepository
     Task<long?> GetLatestTimestampAsync(
         string symbol,
         string interval,
+        string? source = null,
         CancellationToken cancellationToken = default);
 }

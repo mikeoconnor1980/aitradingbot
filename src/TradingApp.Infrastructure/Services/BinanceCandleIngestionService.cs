@@ -8,25 +8,26 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Candles.Models;
 using TradingApp.Application.MarketData.Models;
 using TradingApp.Domain.Entities;
-using TradingApp.Infrastructure.Hyperliquid;
+using TradingApp.Infrastructure.Binance;
 
 namespace TradingApp.Infrastructure.Services;
 
-public sealed class CandleIngestionService : ICandleIngestionService
+public sealed class BinanceCandleIngestionService : IBinanceCandleIngestionService
 {
-    private const int PageSize = 500;
+    private const string BinanceSource = "Binance";
+    private const string MarkPriceIntervalPrefix = "mark-";
     private static readonly SemaphoreSlim Guard = new(1, 1);
 
-    private readonly IHyperliquidRestClient _restClient;
+    private readonly IBinanceFuturesRestClient _restClient;
     private readonly ICandleRepository _candleRepository;
-    private readonly CandleIngestionOptions _options;
-    private readonly ILogger<CandleIngestionService> _logger;
+    private readonly BinanceIngestionOptions _options;
+    private readonly ILogger<BinanceCandleIngestionService> _logger;
 
-    public CandleIngestionService(
-        IHyperliquidRestClient restClient,
+    public BinanceCandleIngestionService(
+        IBinanceFuturesRestClient restClient,
         ICandleRepository candleRepository,
-        IOptions<CandleIngestionOptions> options,
-        ILogger<CandleIngestionService> logger)
+        IOptions<BinanceIngestionOptions> options,
+        ILogger<BinanceCandleIngestionService> logger)
     {
         _restClient = restClient;
         _candleRepository = candleRepository;
@@ -40,7 +41,7 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
         if (!Guard.Wait(0))
         {
-            throw new IngestionAlreadyRunningException();
+            throw new IngestionAlreadyRunningException("Binance candle ingestion is already running.");
         }
 
         try
@@ -60,26 +61,70 @@ public sealed class CandleIngestionService : ICandleIngestionService
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
         var token = linkedCts.Token;
 
-        var coin = HyperliquidAssetMapper.ToCoin(request.Symbol);
+        var displaySymbol = request.Symbol.ToUpperInvariant();
+        var futuresSymbol = BinanceAssetMapper.ToFuturesSymbol(displaySymbol);
         var defaultStartTime = new DateTimeOffset(_options.DefaultStartDate).ToUnixTimeMilliseconds();
         var intervalResults = new List<IntervalResult>();
 
         _logger.LogInformation(
-            "Candle ingestion started for {Symbol} with intervals [{Intervals}]",
-            coin,
+            "Binance candle ingestion started for {Symbol} with intervals [{Intervals}]",
+            displaySymbol,
             string.Join(", ", request.Intervals));
 
         foreach (var interval in request.Intervals)
         {
             if (token.IsCancellationRequested)
             {
-                _logger.LogWarning("Candle ingestion cancelled before interval {Interval} for {Symbol} could start", interval, coin);
+                _logger.LogWarning(
+                    "Binance candle ingestion cancelled before interval {Interval} for {Symbol} could start",
+                    interval,
+                    displaySymbol);
                 break;
             }
 
             var intervalEndTime = GetEffectiveEndTime(interval, request.EndTime);
-            var intervalResult = await IngestIntervalAsync(coin, interval, request.StartTime, intervalEndTime, defaultStartTime, token);
+            var intervalResult = await IngestIntervalAsync(
+                displaySymbol,
+                futuresSymbol,
+                interval,
+                interval,
+                request.StartTime,
+                intervalEndTime,
+                defaultStartTime,
+                useMarkPrice: false,
+                token);
+
             intervalResults.Add(intervalResult);
+        }
+
+        if (request.IncludeMarkPrice)
+        {
+            foreach (var interval in request.Intervals)
+            {
+                if (token.IsCancellationRequested)
+                {
+                    _logger.LogWarning(
+                        "Binance mark price ingestion cancelled before interval {Interval} for {Symbol} could start",
+                        interval,
+                        displaySymbol);
+                    break;
+                }
+
+                var markPriceInterval = $"{MarkPriceIntervalPrefix}{interval}";
+                var intervalEndTime = GetEffectiveEndTime(markPriceInterval, request.EndTime);
+                var markPriceResult = await IngestIntervalAsync(
+                    displaySymbol,
+                    futuresSymbol,
+                    markPriceInterval,
+                    interval,
+                    request.StartTime,
+                    intervalEndTime,
+                    defaultStartTime,
+                    useMarkPrice: true,
+                    token);
+
+                intervalResults.Add(markPriceResult);
+            }
         }
 
         stopwatch.Stop();
@@ -94,8 +139,8 @@ public sealed class CandleIngestionService : ICandleIngestionService
         };
 
         _logger.LogInformation(
-            "Candle ingestion completed for {Symbol}. Fetched={Fetched}, Inserted={Inserted}, Skipped={Skipped}, ElapsedMs={ElapsedMs}",
-            coin,
+            "Binance candle ingestion completed for {Symbol}. Fetched={Fetched}, Inserted={Inserted}, Skipped={Skipped}, ElapsedMs={ElapsedMs}",
+            displaySymbol,
             result.TotalFetched,
             result.TotalInserted,
             result.TotalSkipped,
@@ -105,11 +150,14 @@ public sealed class CandleIngestionService : ICandleIngestionService
     }
 
     private async Task<IntervalResult> IngestIntervalAsync(
-        string coin,
-        string interval,
+        string displaySymbol,
+        string futuresSymbol,
+        string storageInterval,
+        string fetchInterval,
         long? requestStartTime,
         long endTime,
         long defaultStartTime,
+        bool useMarkPrice,
         CancellationToken cancellationToken)
     {
         var fetched = 0;
@@ -121,9 +169,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
         try
         {
-            var intervalMs = HyperliquidAssetMapper.GetIntervalMs(interval);
+            var intervalMs = BinanceAssetMapper.GetIntervalMs(fetchInterval);
             var latestTimestamp = requestStartTime is null
-                ? await _candleRepository.GetLatestTimestampAsync(coin, interval, source: "Hyperliquid", cancellationToken)
+                ? await _candleRepository.GetLatestTimestampAsync(displaySymbol, storageInterval, BinanceSource, cancellationToken)
                 : null;
 
             var cursor = requestStartTime
@@ -136,9 +184,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
             }
 
             _logger.LogInformation(
-                "Ingesting {Interval} candles for {Symbol} from {StartDate} to {EndDate}",
-                interval,
-                coin,
+                "Ingesting Binance {Interval} candles for {Symbol} from {StartDate} to {EndDate}",
+                storageInterval,
+                displaySymbol,
                 FormatTimestamp(cursor),
                 FormatTimestamp(endTime));
 
@@ -146,12 +194,18 @@ public sealed class CandleIngestionService : ICandleIngestionService
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var batchEnd = Math.Min(cursor + (PageSize * intervalMs), endTime);
+                var batchEnd = Math.Min(cursor + (_options.PageSize * intervalMs), endTime);
 
-                List<CandleSnapshotDto> batch;
+                IReadOnlyList<CandleSnapshotDto> batch;
                 try
                 {
-                    batch = await _restClient.GetCandleSnapshotsAsync(coin, interval, cursor, batchEnd, cancellationToken);
+                    batch = await FetchKlinesAsync(
+                        futuresSymbol,
+                        fetchInterval,
+                        cursor,
+                        batchEnd,
+                        useMarkPrice,
+                        cancellationToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException && retryCount < _options.MaxRetries)
                 {
@@ -160,9 +214,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
                     _logger.LogWarning(
                         ex,
-                        "Batch fetch failed for {Symbol}/{Interval} (retry {Retry}/{MaxRetries}). Retrying in {DelayMs}ms",
-                        coin,
-                        interval,
+                        "Binance batch fetch failed for {Symbol}/{Interval} (retry {Retry}/{MaxRetries}). Retrying in {DelayMs}ms",
+                        displaySymbol,
+                        storageInterval,
                         retryCount,
                         _options.MaxRetries,
                         delayMs);
@@ -178,23 +232,29 @@ public sealed class CandleIngestionService : ICandleIngestionService
                     if (consecutiveEmptyBatches >= 3)
                     {
                         var nextDataStart = await FindNextDataStartAsync(
-                            coin, interval, batchEnd, endTime, intervalMs, cancellationToken);
+                            futuresSymbol,
+                            fetchInterval,
+                            batchEnd,
+                            endTime,
+                            intervalMs,
+                            useMarkPrice,
+                            cancellationToken);
 
                         if (nextDataStart is null)
                         {
                             _logger.LogInformation(
-                                "No more data found for {Symbol}/{Interval} between {From} and {To}. Ending interval.",
-                                coin,
-                                interval,
+                                "No more Binance data found for {Symbol}/{Interval} between {From} and {To}. Ending interval.",
+                                displaySymbol,
+                                storageInterval,
                                 FormatTimestamp(batchEnd),
                                 FormatTimestamp(endTime));
                             break;
                         }
 
                         _logger.LogInformation(
-                            "Skipped empty range for {Symbol}/{Interval}. Next data found near {DataStart}",
-                            coin,
-                            interval,
+                            "Skipped empty Binance range for {Symbol}/{Interval}. Next data found near {DataStart}",
+                            displaySymbol,
+                            storageInterval,
                             FormatTimestamp(nextDataStart.Value));
 
                         cursor = nextDataStart.Value;
@@ -219,9 +279,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
                 if (nextCursor <= cursor)
                 {
                     _logger.LogWarning(
-                        "Received non-advancing batch for {Symbol}/{Interval}. CurrentCursor={Cursor}, LastBatchTimestamp={LastBatchTimestamp}. Ending interval to avoid infinite loop.",
-                        coin,
-                        interval,
+                        "Received non-advancing Binance batch for {Symbol}/{Interval}. CurrentCursor={Cursor}, LastBatchTimestamp={LastBatchTimestamp}. Ending interval to avoid infinite loop.",
+                        displaySymbol,
+                        storageInterval,
                         cursor,
                         orderedBatch[^1].Timestamp);
 
@@ -230,8 +290,8 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
                 var candles = orderedBatch
                     .Select(candle => Candle.Create(
-                        coin,
-                        interval,
+                        displaySymbol,
+                        storageInterval,
                         candle.Timestamp,
                         candle.Open,
                         candle.High,
@@ -239,7 +299,7 @@ public sealed class CandleIngestionService : ICandleIngestionService
                         candle.Close,
                         candle.Volume,
                         candle.NumTrades,
-                        source: "Hyperliquid"))
+                        source: BinanceSource))
                     .ToList();
 
                 await _candleRepository.BulkInsertAsync(candles, cancellationToken);
@@ -250,9 +310,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
                 latestCandleTimestamp = orderedBatch[^1].Timestamp;
 
                 _logger.LogInformation(
-                    "Fetched batch for {Symbol}/{Interval}. Count={Count}, Inserted={Inserted}, CandleDate={CandleDate}",
-                    coin,
-                    interval,
+                    "Fetched Binance batch for {Symbol}/{Interval}. Count={Count}, Inserted={Inserted}, CandleDate={CandleDate}",
+                    displaySymbol,
+                    storageInterval,
                     orderedBatch.Count,
                     candles.Count,
                     FormatTimestamp(orderedBatch[^1].Timestamp));
@@ -264,9 +324,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
             }
 
             _logger.LogInformation(
-                "Interval {Interval} complete for {Symbol}. Fetched={Fetched}, Inserted={Inserted}, Range={Earliest} to {Latest}",
-                interval,
-                coin,
+                "Binance interval {Interval} complete for {Symbol}. Fetched={Fetched}, Inserted={Inserted}, Range={Earliest} to {Latest}",
+                storageInterval,
+                displaySymbol,
                 fetched,
                 inserted,
                 earliestTimestamp.HasValue ? FormatTimestamp(earliestTimestamp.Value) : "N/A",
@@ -274,7 +334,7 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
             return new IntervalResult
             {
-                Interval = interval,
+                Interval = storageInterval,
                 Fetched = fetched,
                 Inserted = inserted,
                 Skipped = fetched - inserted,
@@ -285,15 +345,15 @@ public sealed class CandleIngestionService : ICandleIngestionService
         catch (OperationCanceledException)
         {
             _logger.LogWarning(
-                "Interval {Interval} for {Symbol} was cancelled. Fetched so far={Fetched}, Inserted so far={Inserted}",
-                interval,
-                coin,
+                "Binance interval {Interval} for {Symbol} was cancelled. Fetched so far={Fetched}, Inserted so far={Inserted}",
+                storageInterval,
+                displaySymbol,
                 fetched,
                 inserted);
 
             return new IntervalResult
             {
-                Interval = interval,
+                Interval = storageInterval,
                 Fetched = fetched,
                 Inserted = inserted,
                 Skipped = fetched - inserted,
@@ -304,15 +364,15 @@ public sealed class CandleIngestionService : ICandleIngestionService
         {
             _logger.LogError(
                 ex,
-                "Interval {Interval} for {Symbol} failed after retries. Fetched so far={Fetched}, Inserted so far={Inserted}",
-                interval,
-                coin,
+                "Binance interval {Interval} for {Symbol} failed after retries. Fetched so far={Fetched}, Inserted so far={Inserted}",
+                storageInterval,
+                displaySymbol,
                 fetched,
                 inserted);
 
             return new IntervalResult
             {
-                Interval = interval,
+                Interval = storageInterval,
                 Fetched = fetched,
                 Inserted = inserted,
                 Skipped = fetched - inserted,
@@ -321,18 +381,23 @@ public sealed class CandleIngestionService : ICandleIngestionService
         }
     }
 
-    private static string FormatTimestamp(long unixMs) =>
-        DateTimeOffset.FromUnixTimeMilliseconds(unixMs).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
-
     private async Task<long?> FindNextDataStartAsync(
-        string coin,
+        string futuresSymbol,
         string interval,
         long searchStart,
         long searchEnd,
         long intervalMs,
+        bool useMarkPrice,
         CancellationToken cancellationToken)
     {
-        var probe = await _restClient.GetCandleSnapshotsAsync(coin, interval, searchStart, searchEnd, cancellationToken);
+        var probe = await FetchKlinesAsync(
+            futuresSymbol,
+            interval,
+            searchStart,
+            searchEnd,
+            useMarkPrice,
+            cancellationToken);
+
         if (probe.Count == 0)
         {
             return null;
@@ -342,14 +407,20 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
         var left = searchStart;
         var right = searchEnd;
-        var minWindow = PageSize * intervalMs;
+        var minWindow = _options.PageSize * intervalMs;
 
         while (right - left > minWindow)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var mid = left + ((right - left) / 2);
-            var midProbe = await _restClient.GetCandleSnapshotsAsync(coin, interval, left, mid, cancellationToken);
+            var midProbe = await FetchKlinesAsync(
+                futuresSymbol,
+                interval,
+                left,
+                mid,
+                useMarkPrice,
+                cancellationToken);
 
             if (midProbe.Count > 0)
             {
@@ -366,6 +437,19 @@ public sealed class CandleIngestionService : ICandleIngestionService
         return left;
     }
 
+    private Task<IReadOnlyList<CandleSnapshotDto>> FetchKlinesAsync(
+        string futuresSymbol,
+        string interval,
+        long startTime,
+        long? endTime,
+        bool useMarkPrice,
+        CancellationToken cancellationToken)
+    {
+        return useMarkPrice
+            ? _restClient.GetMarkPriceKlinesAsync(futuresSymbol, interval, startTime, endTime, _options.PageSize, cancellationToken)
+            : _restClient.GetKlinesAsync(futuresSymbol, interval, startTime, endTime, _options.PageSize, cancellationToken);
+    }
+
     private static long GetEffectiveEndTime(string interval, long? requestedEndTime)
     {
         if (requestedEndTime.HasValue)
@@ -373,11 +457,14 @@ public sealed class CandleIngestionService : ICandleIngestionService
             return requestedEndTime.Value;
         }
 
-        var intervalMs = HyperliquidAssetMapper.GetIntervalMs(interval);
+        var intervalMs = BinanceAssetMapper.GetIntervalMs(interval);
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var currentIntervalStart = (now / intervalMs) * intervalMs;
         var lastClosedCandleStart = currentIntervalStart - intervalMs;
 
         return Math.Max(0, lastClosedCandleStart);
     }
+
+    private static string FormatTimestamp(long unixMs) =>
+        DateTimeOffset.FromUnixTimeMilliseconds(unixMs).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
 }

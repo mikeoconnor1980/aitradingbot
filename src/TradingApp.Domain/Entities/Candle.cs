@@ -3,6 +3,7 @@ namespace TradingApp.Domain.Entities;
 public sealed class Candle
 {
     public long Id { get; private set; }
+    public string Source { get; private set; } = string.Empty;
     public string Symbol { get; private set; } = string.Empty;
     public string Interval { get; private set; } = string.Empty;
     public long Timestamp { get; private set; }
@@ -18,6 +19,7 @@ public sealed class Candle
     }
 
     public static Candle Create(
+        string source,
         string symbol,
         string interval,
         long timestamp,
@@ -28,6 +30,7 @@ public sealed class Candle
         decimal volume,
         int numTrades)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(interval);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(open);
@@ -41,6 +44,7 @@ public sealed class Candle
 
         return new Candle
         {
+            Source = source,
             Symbol = symbol,
             Interval = interval,
             Timestamp = timestamp,
@@ -52,4 +56,17 @@ public sealed class Candle
             NumTrades = numTrades
         };
     }
+
+    public static Candle Create(
+        string symbol,
+        string interval,
+        long timestamp,
+        decimal open,
+        decimal high,
+        decimal low,
+        decimal close,
+        decimal volume,
+        int numTrades,
+        string source = "Hyperliquid")
+        => Create(source, symbol, interval, timestamp, open, high, low, close, volume, numTrades);
 }

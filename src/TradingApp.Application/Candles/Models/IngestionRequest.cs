@@ -6,4 +6,5 @@ public sealed class IngestionRequest
     public required string[] Intervals { get; init; }
     public long? StartTime { get; init; }
     public long? EndTime { get; init; }
+    public bool IncludeMarkPrice { get; init; }
 }

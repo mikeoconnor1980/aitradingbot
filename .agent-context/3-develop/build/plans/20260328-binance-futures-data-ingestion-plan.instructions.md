@@ -1,16 +1,12 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260328-binance-futures-data-ingestion-changes.md"
 currentAgent: "None"
-agentStartedAt: "2026-03-28T08:57:45Z"
-status: "plan-reviewed"
-lastUpdated: "2026-03-28T09:04:26Z"
+agentStartedAt: "2026-03-28T09:05:00Z"
+status: "implemented"
+lastUpdated: "2026-03-28T09:50:00Z"
 ---
 
 <!-- markdownlint-disable-file -->
-
-# Task Checklist: Binance USDⓈ-M Futures Data Ingestion
-
-## Overview
 
 Add Binance USDⓈ-M Futures as a historical market data source for backtesting, including kline ingestion, funding rate history, and mark price klines — providing 6+ years of perpetual futures data versus Hyperliquid's ~60-day retention.
 
@@ -88,129 +84,129 @@ Add Binance USDⓈ-M Futures as a historical market data source for backtesting,
 - `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — In-memory SQLite repository tests
 - `tests/TradingApp.Domain.Tests/Entities/CandleTests.cs` — Entity factory method tests
 
-### [ ] Phase 1: Domain & Persistence Foundation (Source Column)
+### [x] Phase 1: Domain & Persistence Foundation (Source Column)
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [ ] Task 1.1: Add `Source` property to `Candle` entity and update `Create` factory
+- [x] Task 1.1: Add `Source` property to `Candle` entity and update `Create` factory
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-11-add-source-property-to-candle-entity
 
-- [ ] Task 1.2: Update `TradingAppDbContext` with Source column configuration and new unique index
+- [x] Task 1.2: Update `TradingAppDbContext` with Source column configuration and new unique index
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-12-update-dbcontext-configuration
 
-- [ ] Task 1.3: Create EF migration `AddSourceToCandles`
+- [x] Task 1.3: Create EF migration `AddSourceToCandles`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-13-create-ef-migration
 
-- [ ] Task 1.4: Update `CandleRepository` for Source column (BulkInsertAsync + query methods)
+- [x] Task 1.4: Update `CandleRepository` for Source column (BulkInsertAsync + query methods)
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-14-update-candlerepository-bulkinsertasync
 
-- [ ] Task 1.5: Update `CandleIngestionService` to pass `Source = "Hyperliquid"`
+- [x] Task 1.5: Update `CandleIngestionService` to pass `Source = "Hyperliquid"`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-15-update-candleingestionservice-for-source
 
-- [ ] Task 1.6: Update existing tests for Source column changes
+- [x] Task 1.6: Update existing tests for Source column changes
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-16-update-existing-tests
 
-- [ ] Task 1.7: Build and run all test projects
+- [x] Task 1.7: Build and run all test projects
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-17-build-and-run-tests
 
-### [ ] Phase 2: Binance REST Client & Ingestion Infrastructure
+### [x] Phase 2: Binance REST Client & Ingestion Infrastructure
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 2.1: Create `BinanceIngestionOptions` configuration class
+- [x] Task 2.1: Create `BinanceIngestionOptions` configuration class
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-21-create-binanceingestionoptions
 
-- [ ] Task 2.2: Create `IBinanceFuturesRestClient` interface
+- [x] Task 2.2: Create `IBinanceFuturesRestClient` interface
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-22-create-ibinancefuturesrestclient-interface
 
-- [ ] Task 2.3: Create `BinanceAssetMapper` static class
+- [x] Task 2.3: Create `BinanceAssetMapper` static class
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-23-create-binanceassetmapper
 
-- [ ] Task 2.4: Create Binance wire models
+- [x] Task 2.4: Create Binance wire models
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-24-create-binance-wire-models
 
-- [ ] Task 2.5: Implement `BinanceFuturesRestClient`
+- [x] Task 2.5: Implement `BinanceFuturesRestClient`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-25-implement-binancefuturesrestclient
 
-- [ ] Task 2.6: Create `IBinanceCandleIngestionService` and implement `BinanceCandleIngestionService`
+- [x] Task 2.6: Create `IBinanceCandleIngestionService` and implement `BinanceCandleIngestionService`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-26-create-binancecandleingestionservice
 
-- [ ] Task 2.7: Write unit tests for all new components
+- [x] Task 2.7: Write unit tests for all new components
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-27-write-unit-tests
 
-- [ ] Task 2.8: Build and run tests
+- [x] Task 2.8: Build and run tests
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-02-details.md#task-28-build-and-run-tests
 
-### [ ] Phase 3: Binance Kline API Endpoint
+### [x] Phase 3: Binance Kline API Endpoint
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 3.1: Create `IngestBinanceCandlesCommand` and handler
+- [x] Task 3.1: Create `IngestBinanceCandlesCommand` and handler
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-03-details.md#task-31-create-ingestbinancecandlescommand
 
-- [ ] Task 3.2: Add `POST /api/candles/ingest/binance` endpoint to `CandlesController`
+- [x] Task 3.2: Add `POST /api/candles/ingest/binance` endpoint to `CandlesController`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-03-details.md#task-32-add-binance-ingest-endpoint
 
-- [ ] Task 3.3: Wire up Binance DI registrations in `Program.cs`
+- [x] Task 3.3: Wire up Binance DI registrations in `Program.cs`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-03-details.md#task-33-wire-up-binance-di
 
-- [ ] Task 3.4: Add `BinanceIngestion` configuration to `appsettings.json`
+- [x] Task 3.4: Add `BinanceIngestion` configuration to `appsettings.json`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-03-details.md#task-34-add-appsettings-configuration
 
-- [ ] Task 3.5: Create controller tests for Binance ingestion endpoint
+- [x] Task 3.5: Create controller tests for Binance ingestion endpoint
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-03-details.md#task-35-create-controller-tests
 
-- [ ] Task 3.6: Build and run tests
+- [x] Task 3.6: Build and run tests
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-03-details.md#task-36-build-and-run-tests
 
-### [ ] Phase 4: FundingRate Entity & Ingestion
+### [x] Phase 4: FundingRate Entity & Ingestion
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 4.1: Create `FundingRate` domain entity
+- [x] Task 4.1: Create `FundingRate` domain entity
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-41-create-fundingrate-entity
 
-- [ ] Task 4.2: Update `TradingAppDbContext` and create EF migration for `FundingRates` table
+- [x] Task 4.2: Update `TradingAppDbContext` and create EF migration for `FundingRates` table
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-42-update-dbcontext-and-create-migration
 
-- [ ] Task 4.3: Create `IFundingRateRepository` and `FundingRateRepository`
+- [x] Task 4.3: Create `IFundingRateRepository` and `FundingRateRepository`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-43-create-funding-rate-repository
 
-- [ ] Task 4.4: Add `GetFundingRatesAsync` to `IBinanceFuturesRestClient` and implementation
+- [x] Task 4.4: Add `GetFundingRatesAsync` to `IBinanceFuturesRestClient` and implementation
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-44-add-getfundingratesasync-to-rest-client
 
-- [ ] Task 4.5: Create `IFundingRateIngestionService` and `FundingRateIngestionService`
+- [x] Task 4.5: Create `IFundingRateIngestionService` and `FundingRateIngestionService`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-45-create-funding-rate-ingestion-service
 
-- [ ] Task 4.6: Create `IngestFundingRatesCommand`, handler, and `FundingRatesController`
+- [x] Task 4.6: Create `IngestFundingRatesCommand`, handler, and `FundingRatesController`
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-46-create-api-layer
 
-- [ ] Task 4.7: Wire up DI and configuration
+- [x] Task 4.7: Wire up DI and configuration
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-47-wire-up-di-and-configuration
 
-- [ ] Task 4.8: Write tests for all FundingRate components
+- [x] Task 4.8: Write tests for all FundingRate components
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-48-write-tests
 
-- [ ] Task 4.9: Build and run tests
+- [x] Task 4.9: Build and run tests
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-49-build-and-run-tests
 
-### [ ] Phase 5: Mark Price Klines
+### [x] Phase 5: Mark Price Klines
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 5.1: Add `GetMarkPriceKlinesAsync` to `IBinanceFuturesRestClient` and implementation
+- [x] Task 5.1: Add `GetMarkPriceKlinesAsync` to `IBinanceFuturesRestClient` and implementation
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-05-details.md#task-51-add-mark-price-klines-to-rest-client
 
-- [ ] Task 5.2: Extend `BinanceCandleIngestionService` for mark price kline ingestion
+- [x] Task 5.2: Extend `BinanceCandleIngestionService` for mark price kline ingestion
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-05-details.md#task-52-extend-ingestion-service-for-mark-price
 
-- [ ] Task 5.3: Add `IncludeMarkPrice` parameter to command and API endpoint
+- [x] Task 5.3: Add `IncludeMarkPrice` parameter to command and API endpoint
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-05-details.md#task-53-add-mark-price-api-parameter
 
-- [ ] Task 5.4: Write tests for mark price functionality
+- [x] Task 5.4: Write tests for mark price functionality
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-05-details.md#task-54-write-mark-price-tests
 
-- [ ] Task 5.5: Build and run tests
+- [x] Task 5.5: Build and run tests
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-05-details.md#task-55-build-and-run-tests
 
 ## Scoping Summary
@@ -259,3 +255,4 @@ Add Binance USDⓈ-M Futures as a historical market data source for backtesting,
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-28T08:25:58Z | 2026-03-28T08:45:00Z |
 | Plan Reviewer | plan-reviewed | 2026-03-28T08:57:45Z | 2026-03-28T09:04:26Z |
+| Plan Implementer | implemented | 2026-03-28T09:05:00Z | 2026-03-28T09:50:00Z |

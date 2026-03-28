@@ -21,6 +21,7 @@ public static class PersistenceServiceExtensions
             options.UseSqlite(connectionString));
 
         services.AddScoped<ICandleRepository, CandleRepository>();
+        services.AddScoped<IFundingRateRepository, FundingRateRepository>();
 
         return services;
     }
