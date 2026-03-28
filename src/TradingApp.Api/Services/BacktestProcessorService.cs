@@ -90,7 +90,8 @@ public sealed class BacktestProcessorService : BackgroundService
                 averageHoldTimeMinutes: result.AverageHoldTime.TotalMinutes,
                 hedgesOpened: result.HedgesOpened,
                 totalFeesPaid: result.TotalFeesPaid,
-                tradesJson: BacktestRunResponseMapper.SerializeTrades(result.TradeLog));
+                tradesJson: BacktestRunResponseMapper.SerializeTrades(result.TradeLog),
+                equityTimeSeriesJson: BacktestRunResponseMapper.SerializeEquityTimeSeries(result.EquityTimeSeries));
 
             await repository.UpdateAsync(backtestRun, stoppingToken);
             await BroadcastStatusAsync(backtestRun);

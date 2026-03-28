@@ -25,5 +25,12 @@ public sealed class BacktestRunResponse
     public required int HedgesOpened { get; init; }
     public required decimal TotalFeesPaid { get; init; }
     public required IReadOnlyList<BacktestTradeResponse> Trades { get; init; }
+    public required IReadOnlyList<EquitySnapshotResponse> EquityTimeSeries { get; init; }
     public required DateTime CreatedAt { get; init; }
+}
+
+public sealed class EquitySnapshotResponse
+{
+    public required long TimestampUtc { get; init; }
+    public required decimal Equity { get; init; }
 }

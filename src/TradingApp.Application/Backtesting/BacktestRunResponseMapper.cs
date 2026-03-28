@@ -26,6 +26,13 @@ public static class BacktestRunResponseMapper
         return JsonSerializer.Serialize(trades, JsonOptions);
     }
 
+    public static string SerializeEquityTimeSeries(IReadOnlyList<EquitySnapshot> equityTimeSeries)
+    {
+        ArgumentNullException.ThrowIfNull(equityTimeSeries);
+
+        return JsonSerializer.Serialize(equityTimeSeries, JsonOptions);
+    }
+
     public static BacktestRunResponse ToResponse(BacktestRun entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -34,6 +41,9 @@ public static class BacktestRunResponseMapper
             ?? throw new JsonException("Stored strategy config is invalid.");
         var trades = JsonSerializer.Deserialize<List<BacktestTrade>>(entity.TradesJson, JsonOptions)
             ?? [];
+        var equityTimeSeries = string.IsNullOrWhiteSpace(entity.EquityTimeSeriesJson)
+            ? []
+            : JsonSerializer.Deserialize<List<EquitySnapshot>>(entity.EquityTimeSeriesJson, JsonOptions) ?? [];
         var intervals = JsonSerializer.Deserialize<string[]>(entity.IntervalsJson, JsonOptions)
             ?? [];
 
@@ -62,6 +72,7 @@ public static class BacktestRunResponseMapper
             HedgesOpened = entity.HedgesOpened,
             TotalFeesPaid = entity.TotalFeesPaid,
             Trades = MapTrades(trades),
+            EquityTimeSeries = MapEquityTimeSeries(equityTimeSeries),
             CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(entity.CreatedAtUtc).UtcDateTime
         };
     }
@@ -82,6 +93,17 @@ public static class BacktestRunResponseMapper
                 Pnl = trade.PnL,
                 Fees = trade.Fees,
                 TradeType = trade.TradeType.ToString()
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyList<EquitySnapshotResponse> MapEquityTimeSeries(IReadOnlyList<EquitySnapshot> snapshots)
+    {
+        return snapshots
+            .Select(s => new EquitySnapshotResponse
+            {
+                TimestampUtc = s.TimestampUtc,
+                Equity = s.Equity
             })
             .ToList();
     }

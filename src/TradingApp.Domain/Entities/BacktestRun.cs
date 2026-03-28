@@ -28,6 +28,7 @@ public sealed class BacktestRun
     public int HedgesOpened { get; private set; }
     public decimal TotalFeesPaid { get; private set; }
     public string TradesJson { get; private set; } = string.Empty;
+    public string EquityTimeSeriesJson { get; private set; } = string.Empty;
     public long CreatedAtUtc { get; private set; }
 
     private BacktestRun()
@@ -61,6 +62,7 @@ public sealed class BacktestRun
             Progress = 0,
             TotalCandles = 0,
             TradesJson = "[]",
+            EquityTimeSeriesJson = "[]",
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
     }
@@ -92,7 +94,8 @@ public sealed class BacktestRun
         double averageHoldTimeMinutes,
         int hedgesOpened,
         decimal totalFeesPaid,
-        string tradesJson)
+        string tradesJson,
+        string equityTimeSeriesJson)
     {
         Status = BacktestStatus.Completed;
         Progress = 100;
@@ -109,6 +112,7 @@ public sealed class BacktestRun
         HedgesOpened = hedgesOpened;
         TotalFeesPaid = totalFeesPaid;
         TradesJson = tradesJson ?? "[]";
+        EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]";
     }
 
     public void MarkFailed(string errorMessage)
@@ -136,7 +140,8 @@ public sealed class BacktestRun
         double averageHoldTimeMinutes,
         int hedgesOpened,
         decimal totalFeesPaid,
-        string tradesJson)
+        string tradesJson,
+        string equityTimeSeriesJson = "[]")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
@@ -168,6 +173,7 @@ public sealed class BacktestRun
             HedgesOpened = hedgesOpened,
             TotalFeesPaid = totalFeesPaid,
             TradesJson = tradesJson ?? "[]",
+            EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]",
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
     }
