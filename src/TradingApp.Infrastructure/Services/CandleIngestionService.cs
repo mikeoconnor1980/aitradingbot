@@ -115,6 +115,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
         var fetched = 0;
         var inserted = 0;
         var retryCount = 0;
+        long? earliestTimestamp = null;
+        long? latestCandleTimestamp = null;
+        var consecutiveEmptyBatches = 0;
 
         try
         {
@@ -133,11 +136,11 @@ public sealed class CandleIngestionService : ICandleIngestionService
             }
 
             _logger.LogInformation(
-                "Ingesting {Interval} candles for {Symbol} from {StartTime} to {EndTime}",
+                "Ingesting {Interval} candles for {Symbol} from {StartDate} to {EndDate}",
                 interval,
                 coin,
-                cursor,
-                endTime);
+                FormatTimestamp(cursor),
+                FormatTimestamp(endTime));
 
             while (cursor < endTime)
             {
@@ -170,10 +173,43 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
                 if (batch.Count == 0)
                 {
-                    cursor = batchEnd + 1;
+                    consecutiveEmptyBatches++;
+
+                    if (consecutiveEmptyBatches >= 3)
+                    {
+                        var nextDataStart = await FindNextDataStartAsync(
+                            coin, interval, batchEnd, endTime, intervalMs, cancellationToken);
+
+                        if (nextDataStart is null)
+                        {
+                            _logger.LogInformation(
+                                "No more data found for {Symbol}/{Interval} between {From} and {To}. Ending interval.",
+                                coin,
+                                interval,
+                                FormatTimestamp(batchEnd),
+                                FormatTimestamp(endTime));
+                            break;
+                        }
+
+                        _logger.LogInformation(
+                            "Skipped empty range for {Symbol}/{Interval}. Next data found near {DataStart}",
+                            coin,
+                            interval,
+                            FormatTimestamp(nextDataStart.Value));
+
+                        cursor = nextDataStart.Value;
+                        consecutiveEmptyBatches = 0;
+                    }
+                    else
+                    {
+                        cursor = batchEnd + 1;
+                    }
+
                     await Task.Delay(_options.BatchDelayMs, cancellationToken);
                     continue;
                 }
+
+                consecutiveEmptyBatches = 0;
 
                 var orderedBatch = batch
                     .OrderBy(candle => candle.Timestamp)
@@ -209,14 +245,16 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
                 fetched += orderedBatch.Count;
                 inserted += candles.Count;
+                earliestTimestamp ??= orderedBatch[0].Timestamp;
+                latestCandleTimestamp = orderedBatch[^1].Timestamp;
 
                 _logger.LogInformation(
-                    "Fetched batch for {Symbol}/{Interval}. Count={Count}, Inserted={Inserted}, Cursor={Cursor}",
+                    "Fetched batch for {Symbol}/{Interval}. Count={Count}, Inserted={Inserted}, CandleDate={CandleDate}",
                     coin,
                     interval,
                     orderedBatch.Count,
                     candles.Count,
-                    orderedBatch[^1].Timestamp);
+                    FormatTimestamp(orderedBatch[^1].Timestamp));
 
                 cursor = nextCursor;
                 retryCount = 0;
@@ -225,11 +263,13 @@ public sealed class CandleIngestionService : ICandleIngestionService
             }
 
             _logger.LogInformation(
-                "Interval {Interval} complete for {Symbol}. Fetched={Fetched}, Inserted={Inserted}",
+                "Interval {Interval} complete for {Symbol}. Fetched={Fetched}, Inserted={Inserted}, Range={Earliest} to {Latest}",
                 interval,
                 coin,
                 fetched,
-                inserted);
+                inserted,
+                earliestTimestamp.HasValue ? FormatTimestamp(earliestTimestamp.Value) : "N/A",
+                latestCandleTimestamp.HasValue ? FormatTimestamp(latestCandleTimestamp.Value) : "N/A");
 
             return new IntervalResult
             {
@@ -237,6 +277,8 @@ public sealed class CandleIngestionService : ICandleIngestionService
                 Fetched = fetched,
                 Inserted = inserted,
                 Skipped = fetched - inserted,
+                EarliestCandle = earliestTimestamp.HasValue ? FormatTimestamp(earliestTimestamp.Value) : null,
+                LatestCandle = latestCandleTimestamp.HasValue ? FormatTimestamp(latestCandleTimestamp.Value) : null,
             };
         }
         catch (OperationCanceledException)
@@ -276,6 +318,51 @@ public sealed class CandleIngestionService : ICandleIngestionService
                 Error = ex.Message,
             };
         }
+    }
+
+    private static string FormatTimestamp(long unixMs) =>
+        DateTimeOffset.FromUnixTimeMilliseconds(unixMs).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss") + " UTC";
+
+    private async Task<long?> FindNextDataStartAsync(
+        string coin,
+        string interval,
+        long searchStart,
+        long searchEnd,
+        long intervalMs,
+        CancellationToken cancellationToken)
+    {
+        var probe = await _restClient.GetCandleSnapshotsAsync(coin, interval, searchStart, searchEnd, cancellationToken);
+        if (probe.Count == 0)
+        {
+            return null;
+        }
+
+        await Task.Delay(_options.BatchDelayMs, cancellationToken);
+
+        var left = searchStart;
+        var right = searchEnd;
+        var minWindow = PageSize * intervalMs;
+
+        while (right - left > minWindow)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var mid = left + ((right - left) / 2);
+            var midProbe = await _restClient.GetCandleSnapshotsAsync(coin, interval, left, mid, cancellationToken);
+
+            if (midProbe.Count > 0)
+            {
+                right = mid;
+            }
+            else
+            {
+                left = mid;
+            }
+
+            await Task.Delay(_options.BatchDelayMs, cancellationToken);
+        }
+
+        return left;
     }
 
     private static long GetEffectiveEndTime(string interval, long? requestedEndTime)
