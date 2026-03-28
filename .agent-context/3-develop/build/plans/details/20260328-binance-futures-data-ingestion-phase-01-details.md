@@ -164,19 +164,23 @@ migrationBuilder.CreateIndex(
 
 ---
 
-### Task 1.4: Update `CandleRepository.BulkInsertAsync` for Source column {#task-14-update-candlerepository-bulkinsertasync}
+### Task 1.4: Update `CandleRepository` for Source column {#task-14-update-candlerepository-bulkinsertasync}
 
-Update the raw SQL `INSERT OR IGNORE` statement to include the `Source` column. Update parameter count from 9 to 10 per row.
+Update the raw SQL `INSERT OR IGNORE` statement to include the `Source` column. Update `GetLatestTimestampAsync` and `GetCandlesAsync` to accept an optional `source` parameter for source-specific filtering. Update the `ICandleRepository` interface accordingly.
 
 - **Complexity**: Medium
-- **Risk Factors**: Hardcoded column count in SQL and parameter offset math must change from 9 to 10
+- **Risk Factors**: Hardcoded column count in SQL and parameter offset math must change from 9 to 10; query methods gain optional Source filter
 - **Files**:
-  - `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — Update BulkInsertAsync SQL
+  - `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs` — Add `source` parameter to `GetLatestTimestampAsync` and `GetCandlesAsync`
+  - `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — Update BulkInsertAsync SQL, update query methods for Source filter
 - **Success**:
   - SQL includes `Source` as the first column in INSERT statement
   - Parameter offset uses `i * 10` (was `i * 9`)
   - 10 parameters per row (was 9)
   - Existing `INSERT OR IGNORE` deduplication still works with new 4-column unique index
+  - `GetLatestTimestampAsync(symbol, interval, source)` filters by Source when provided
+  - `GetCandlesAsync(symbol, interval, startTime, endTime, source)` filters by Source when provided
+  - Passing `source: null` returns data across all sources (backward-compatible)
 - **Dependencies**: Task 1.3
 
 #### Implementation Details
@@ -208,20 +212,76 @@ parameters.Add(new SqliteParameter($"@p{offset + 9}", candle.NumTrades));
 
 - `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — existing `BulkInsertAsync` raw SQL pattern
 
+#### Additional Implementation: Query Method Updates
+
+```csharp
+// src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs — modification
+// Add optional source parameter to both query methods:
+
+Task<IReadOnlyList<Candle>> GetCandlesAsync(
+    string symbol,
+    string interval,
+    long startTime,
+    long endTime,
+    string? source = null,
+    CancellationToken cancellationToken = default);
+
+Task<long?> GetLatestTimestampAsync(
+    string symbol,
+    string interval,
+    string? source = null,
+    CancellationToken cancellationToken = default);
+```
+
+```csharp
+// src/TradingApp.Persistence/Repositories/CandleRepository.cs — modification
+// Update GetCandlesAsync to filter by Source when provided:
+public async Task<IReadOnlyList<Candle>> GetCandlesAsync(
+    string symbol, string interval, long startTime, long endTime,
+    string? source = null, CancellationToken cancellationToken = default)
+{
+    var query = _context.Candles
+        .Where(c => c.Symbol == symbol && c.Interval == interval
+            && c.Timestamp >= startTime && c.Timestamp <= endTime);
+
+    if (source is not null)
+        query = query.Where(c => c.Source == source);
+
+    return await query.OrderBy(c => c.Timestamp).ToListAsync(cancellationToken);
+}
+
+// Update GetLatestTimestampAsync to filter by Source when provided:
+public async Task<long?> GetLatestTimestampAsync(
+    string symbol, string interval, string? source = null,
+    CancellationToken cancellationToken = default)
+{
+    var query = _context.Candles
+        .Where(c => c.Symbol == symbol && c.Interval == interval);
+
+    if (source is not null)
+        query = query.Where(c => c.Source == source);
+
+    return await query.MaxAsync(c => (long?)c.Timestamp, cancellationToken);
+}
+```
+
 ---
 
 ### Task 1.5: Update `CandleIngestionService` to pass `Source = "Hyperliquid"` {#task-15-update-candleingestionservice-for-source}
 
-Update the existing Hyperliquid `CandleIngestionService` to pass `source: "Hyperliquid"` when creating `Candle` entities from ingested data.
+Update the existing Hyperliquid `CandleIngestionService` to pass `source: "Hyperliquid"` when creating `Candle` entities from ingested data. Also update its `GetLatestTimestampAsync` call to pass `source: "Hyperliquid"` for source-specific resume. Additionally, update `IngestionAlreadyRunningException` to accept an optional message parameter (required by Phase 2 Binance and Phase 4 FundingRate services).
 
 - **Complexity**: Low
-- **Risk Factors**: None — the default parameter value already handles this, but being explicit is better
+- **Risk Factors**: None — the default parameter value already handles Candle.Create, but being explicit is better
 - **Files**:
-  - `src/TradingApp.Infrastructure/Services/CandleIngestionService.cs` — Pass source explicitly to Candle.Create
+  - `src/TradingApp.Infrastructure/Services/CandleIngestionService.cs` — Pass source explicitly to Candle.Create and GetLatestTimestampAsync
+  - `src/TradingApp.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs` — Add `(string message)` constructor
 - **Success**:
   - All `Candle.Create(...)` calls in `CandleIngestionService` include `source: "Hyperliquid"`
+  - `GetLatestTimestampAsync` calls pass `source: "Hyperliquid"`
   - Existing ingestion behaviour unchanged
-- **Dependencies**: Task 1.1
+  - `IngestionAlreadyRunningException` has both parameterless and `(string message)` constructors
+- **Dependencies**: Task 1.1, Task 1.4
 
 #### Implementation Details
 
@@ -239,6 +299,27 @@ var candle = Candle.Create(
     snapshot.Volume,
     snapshot.NumTrades,
     source: "Hyperliquid");
+
+// Also update GetLatestTimestampAsync call to pass source:
+var latestTimestamp = await _candleRepository.GetLatestTimestampAsync(
+    coin, interval, source: "Hyperliquid", token);
+```
+
+```csharp
+// src/TradingApp.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs — modification
+// Add message constructor alongside existing parameterless constructor:
+public sealed class IngestionAlreadyRunningException : Exception
+{
+    public IngestionAlreadyRunningException()
+        : base("Candle ingestion is already running.")
+    {
+    }
+
+    public IngestionAlreadyRunningException(string message)
+        : base(message)
+    {
+    }
+}
 ```
 
 ##### Pattern References

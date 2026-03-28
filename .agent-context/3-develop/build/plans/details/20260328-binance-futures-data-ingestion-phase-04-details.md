@@ -192,6 +192,8 @@ public sealed class FundingRateRepository : IFundingRateRepository
         for (var batch = 0; batch < rates.Count; batch += batchSize)
         {
             var chunk = rates.Skip(batch).Take(batchSize).ToList();
+            await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
             var sql = new StringBuilder();
             var parameters = new List<SqliteParameter>();
 
@@ -211,6 +213,8 @@ public sealed class FundingRateRepository : IFundingRateRepository
             }
 
             await _context.Database.ExecuteSqlRawAsync(sql.ToString(), parameters, cancellationToken);
+
+            await transaction.CommitAsync(cancellationToken);
         }
     }
 
@@ -272,6 +276,7 @@ public sealed class FundingRateDto
 ```csharp
 // src/TradingApp.Infrastructure/Binance/Models/BinanceFundingRate.cs — new file
 using System.Text.Json.Serialization;
+using System.Globalization;
 using TradingApp.Application.FundingRates.Models;
 
 namespace TradingApp.Infrastructure.Binance.Models;
@@ -293,8 +298,8 @@ public sealed class BinanceFundingRate
     public FundingRateDto ToDto() => new()
     {
         FundingTime = FundingTime,
-        FundingRate = decimal.Parse(FundingRateValue),
-        MarkPrice = decimal.Parse(MarkPriceValue)
+        FundingRate = decimal.Parse(FundingRateValue, CultureInfo.InvariantCulture),
+        MarkPrice = decimal.Parse(MarkPriceValue, CultureInfo.InvariantCulture)
     };
 }
 ```
@@ -568,10 +573,10 @@ public sealed class IngestFundingRatesCommandHandler
         _ingestionService = ingestionService;
     }
 
-    protected override async Task<FundingRateIngestionResult> HandleAsync(
-        IngestFundingRatesCommand command, CancellationToken cancellationToken)
+    public override async Task<FundingRateIngestionResult> Handle(
+        IngestFundingRatesCommand request, CancellationToken cancellationToken)
     {
-        return await _ingestionService.IngestAsync(command.Request, cancellationToken);
+        return await _ingestionService.IngestAsync(request.Request, cancellationToken);
     }
 }
 ```

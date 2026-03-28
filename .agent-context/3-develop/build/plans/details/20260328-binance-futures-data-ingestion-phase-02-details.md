@@ -213,6 +213,7 @@ Create the wire model for deserializing Binance kline API responses. Binance ret
 
 ```csharp
 // src/TradingApp.Infrastructure/Binance/Models/BinanceKline.cs — new file
+using System.Globalization;
 using System.Text.Json;
 using TradingApp.Application.MarketData.Models;
 
@@ -239,11 +240,11 @@ public sealed class BinanceKline
         return new BinanceKline
         {
             OpenTime = element[0].GetInt64(),
-            Open = decimal.Parse(element[1].GetString()!),
-            High = decimal.Parse(element[2].GetString()!),
-            Low = decimal.Parse(element[3].GetString()!),
-            Close = decimal.Parse(element[4].GetString()!),
-            Volume = decimal.Parse(element[5].GetString()!),
+            Open = decimal.Parse(element[1].GetString()!, CultureInfo.InvariantCulture),
+            High = decimal.Parse(element[2].GetString()!, CultureInfo.InvariantCulture),
+            Low = decimal.Parse(element[3].GetString()!, CultureInfo.InvariantCulture),
+            Close = decimal.Parse(element[4].GetString()!, CultureInfo.InvariantCulture),
+            Volume = decimal.Parse(element[5].GetString()!, CultureInfo.InvariantCulture),
             CloseTime = element[6].GetInt64(),
             NumberOfTrades = element[8].GetInt32()
         };
@@ -470,8 +471,7 @@ The implementation should match the existing `CandleIngestionService` structure 
 - `_restClient.GetCandleSnapshotsAsync()` → `_restClient.GetKlinesAsync()`
 - Page size 500 → `_options.PageSize` (1500)
 - `Candle.Create(...)`  → `Candle.Create(..., source: "Binance")`
-- Default start date from `BinanceIngestionOptions.DefaultStartDate`
-
+- Default start date from `BinanceIngestionOptions.DefaultStartDate`- `GetLatestTimestampAsync(symbol, interval)` → `GetLatestTimestampAsync(symbol, interval, source: "Binance")` to resume from Binance-specific data only
 ##### Pattern References
 
 - `src/TradingApp.Infrastructure/Services/CandleIngestionService.cs` — exact template for pagination, retry, gap detection, concurrency guard
@@ -485,7 +485,7 @@ Write comprehensive unit tests for `BinanceAssetMapper`, `BinanceFuturesRestClie
 - **Complexity**: High
 - **Risk Factors**: Multiple test classes needed; REST client tests require `FakeHttpMessageHandler`
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/BinanceAssetMapperTests.cs` — New file
+  - `tests/TradingApp.Infrastructure.Tests/Services/BinanceAssetMapperTests.cs` — New file
   - `tests/TradingApp.Api.Tests/Services/BinanceFuturesRestClientTests.cs` — New file
   - `tests/TradingApp.Api.Tests/Services/BinanceCandleIngestionServiceTests.cs` — New file
 - **Success**:

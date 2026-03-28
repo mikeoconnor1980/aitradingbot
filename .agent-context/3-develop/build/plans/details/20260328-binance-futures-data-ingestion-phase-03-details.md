@@ -49,10 +49,10 @@ public sealed class IngestBinanceCandlesCommandHandler
         _ingestionService = ingestionService;
     }
 
-    protected override async Task<IngestionResult> HandleAsync(
-        IngestBinanceCandlesCommand command, CancellationToken cancellationToken)
+    public override async Task<IngestionResult> Handle(
+        IngestBinanceCandlesCommand request, CancellationToken cancellationToken)
     {
-        return await _ingestionService.IngestAsync(command.Request, cancellationToken);
+        return await _ingestionService.IngestAsync(request.Request, cancellationToken);
     }
 }
 ```
