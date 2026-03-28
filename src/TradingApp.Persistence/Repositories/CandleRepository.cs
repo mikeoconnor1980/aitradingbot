@@ -103,4 +103,36 @@ public sealed class CandleRepository : ICandleRepository
         return await query
             .MaxAsync(c => (long?)c.Timestamp, cancellationToken);
     }
+
+    public async Task<(long? FromTimestampUtc, long? ToTimestampUtc, int CandleCount)> GetCoverageAsync(
+        string symbol,
+        string interval,
+        string? source = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentException.ThrowIfNullOrWhiteSpace(interval);
+
+        var query = _context.Candles
+            .Where(c => c.Symbol == symbol && c.Interval == interval);
+
+        if (source is not null)
+        {
+            query = query.Where(c => c.Source == source);
+        }
+
+        var coverage = await query
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                FromTimestampUtc = (long?)group.Min(candle => candle.Timestamp),
+                ToTimestampUtc = (long?)group.Max(candle => candle.Timestamp),
+                CandleCount = group.Count()
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return coverage is null
+            ? (null, null, 0)
+            : (coverage.FromTimestampUtc, coverage.ToTimestampUtc, coverage.CandleCount);
+    }
 }

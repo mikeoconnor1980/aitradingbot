@@ -1,0 +1,16 @@
+<section class="equity-chart">
+  <div class="equity-chart__legend">
+    <span class="equity-chart__legend-item equity-chart__legend-item--primary">{{ primaryLabel }}</span>
+    @if (comparisonData && comparisonData.length > 0) {
+      <span class="equity-chart__legend-item equity-chart__legend-item--comparison">{{ comparisonLabel }}</span>
+    }
+  </div>
+
+  <div class="equity-chart__surface">
+    <div #chartContainer class="equity-chart__container"></div>
+
+    @if (!hasEquityData) {
+      <div class="equity-chart__empty">Equity curve data is unavailable for this run.</div>
+    }
+  </div>
+</section>

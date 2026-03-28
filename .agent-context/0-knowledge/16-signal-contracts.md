@@ -10,6 +10,25 @@ StrategyEngine → RiskEngine → PositionManager → ExecutionEngine
 
 ---
 
+# TradingSignal Class
+
+The current implementation uses a single flexible model rather than typed signal classes:
+
+```csharp
+// src/TradingApp.Application/Trading/Models/TradingSignal.cs
+public sealed class TradingSignal
+{
+    public required string SignalType { get; init; }    // e.g. "DeployGrid", "TakeProfit"
+    public required string Symbol { get; init; }
+    public string? Reason { get; init; }
+    public IReadOnlyDictionary<string, object>? Parameters { get; init; }
+}
+```
+
+`SignalType` string values correspond to the signal types listed below (e.g. `"DeployGrid"`, `"OpenHedge"`). Typed C# signal classes with strongly-typed payloads are a planned future step.
+
+---
+
 # Signal Categories
 
 Grid signals

@@ -21,4 +21,10 @@ public interface ICandleRepository
         string interval,
         string? source = null,
         CancellationToken cancellationToken = default);
+
+    Task<(long? FromTimestampUtc, long? ToTimestampUtc, int CandleCount)> GetCoverageAsync(
+        string symbol,
+        string interval,
+        string? source = null,
+        CancellationToken cancellationToken = default);
 }

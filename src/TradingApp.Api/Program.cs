@@ -7,7 +7,10 @@ using TradingApp.Api.Infrastructure.Filters;
 using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting;
+using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.MarketData.Queries;
+using TradingApp.Application.Trading.Services;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
 
@@ -82,6 +85,13 @@ builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
+builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
+builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
+builder.Services.AddScoped<IStrategyEngine, GridStrategyEngine>();
+builder.Services.AddScoped<IGridController, GridController>();
+builder.Services.AddScoped<IRiskEngine, PassThroughRiskEngine>();
+builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
+builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
 builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<BinanceIngestionOptions>>().Value;

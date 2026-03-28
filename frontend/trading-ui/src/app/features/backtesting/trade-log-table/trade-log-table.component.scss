@@ -1,0 +1,32 @@
+.trade-log {
+  margin: 1rem 0 0;
+
+  &__table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 12px;
+    background: var(--colour-surface-dark);
+  }
+
+  &__table {
+    width: 100%;
+  }
+
+  &__pnl--profit {
+    color: var(--colour-profit);
+    font-weight: 600;
+  }
+
+  &__pnl--loss {
+    color: var(--colour-loss);
+    font-weight: 600;
+  }
+
+  &__empty {
+    padding: 1rem 1.25rem;
+    border: 1px dashed var(--colour-border-subtle);
+    border-radius: 12px;
+    color: var(--colour-muted);
+    background: rgba(15, 23, 42, 0.4);
+  }
+}

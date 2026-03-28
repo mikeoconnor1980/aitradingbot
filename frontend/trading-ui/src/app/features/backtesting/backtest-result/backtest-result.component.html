@@ -1,0 +1,153 @@
+<section class="backtest-result">
+  @if (hasNoTrades) {
+    <div class="backtest-result__empty">
+      <mat-icon>info</mat-icon>
+      <p>Strategy did not generate any trades in this date range.</p>
+    </div>
+  }
+
+  <div class="backtest-result__cards backtest-result__cards--primary">
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Total PnL</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span [class]="totalPnlClass">${{ result.totalPnl | number: "1.2-2" }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Win Rate</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span>{{ result.winRate | number: "1.1-1" }}%</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Max Drawdown</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span class="backtest-result__value--loss">${{ result.maxDrawdown | number: "1.2-2" }}</span>
+        <span class="backtest-result__subtitle">({{ drawdownPercent | number: "1.1-1" }}%)</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Total Trades</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span>{{ result.totalTrades }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Avg Trade PnL</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span [class]="averageTradePnlClass">${{ result.averageTradePnl | number: "1.2-2" }}</span>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div class="backtest-result__cards backtest-result__cards--secondary">
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Winning Trades</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span class="backtest-result__value--profit">{{ result.winningTrades }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Losing Trades</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span class="backtest-result__value--loss">{{ result.losingTrades }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Avg Hold Time</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span>{{ averageHoldTimeLabel }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Hedges Opened</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span>{{ result.hedgesOpened }}</span>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="backtest-result__card">
+      <mat-card-header>
+        <mat-card-title>Total Fees</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <span class="backtest-result__value--loss">${{ result.totalFeesPaid | number: "1.2-2" }}</span>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <mat-card class="backtest-result__config">
+    <mat-card-header>
+      <mat-card-title>Configuration Used</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="backtest-result__config-grid">
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Symbol</span>
+          <span class="backtest-result__config-value">{{ result.symbol }}</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Intervals</span>
+          <span class="backtest-result__config-value">{{ intervalsLabel }}</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Grid Levels</span>
+          <span class="backtest-result__config-value">{{ result.strategyConfig.gridLevels }}</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Grid Spacing</span>
+          <span class="backtest-result__config-value">{{ result.strategyConfig.gridSpacing | number: "1.2-2" }}%</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Take Profit</span>
+          <span class="backtest-result__config-value">{{ result.strategyConfig.takeProfitPercent | number: "1.2-2" }}%</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Leverage</span>
+          <span class="backtest-result__config-value">{{ result.strategyConfig.leverage | number: "1.0-2" }}x</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Position Size</span>
+          <span class="backtest-result__config-value">${{ result.strategyConfig.positionSize | number: "1.2-2" }}</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Stop Loss</span>
+          <span class="backtest-result__config-value">{{ result.strategyConfig.stopLossPercent | number: "1.2-2" }}%</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Candles Replayed</span>
+          <span class="backtest-result__config-value">{{ result.candlesReplayed | number }}</span>
+        </div>
+        <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Elapsed</span>
+          <span class="backtest-result__config-value">{{ elapsedLabel }}</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</section>

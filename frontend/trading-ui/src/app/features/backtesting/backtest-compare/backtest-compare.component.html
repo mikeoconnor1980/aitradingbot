@@ -1,0 +1,98 @@
+<section class="backtest-compare">
+  <div class="backtest-compare__run-labels">
+    <div class="backtest-compare__run-card">
+      <span class="backtest-compare__run-dot backtest-compare__run-dot--a"></span>
+      <div>
+        <div class="backtest-compare__run-title">{{ runALabel }}</div>
+        <div class="backtest-compare__run-detail">{{ runADetail }}</div>
+      </div>
+    </div>
+
+    <div class="backtest-compare__run-card">
+      <span class="backtest-compare__run-dot backtest-compare__run-dot--b"></span>
+      <div>
+        <div class="backtest-compare__run-title">{{ runBLabel }}</div>
+        <div class="backtest-compare__run-detail">{{ runBDetail }}</div>
+      </div>
+    </div>
+  </div>
+
+  <mat-card class="backtest-compare__section-card">
+    <mat-card-header>
+      <mat-card-title>Configuration Differences</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="backtest-compare__config-grid">
+        @for (item of configDiffs; track item.label) {
+          <div class="backtest-compare__config-item" [class.backtest-compare__config-item--changed]="item.changed">
+            <div class="backtest-compare__config-label">{{ item.label }}</div>
+            @if (item.changed) {
+              <div class="backtest-compare__config-values">
+                <span class="backtest-compare__config-value backtest-compare__config-value--a">{{ item.valueA }}</span>
+                <span class="backtest-compare__config-separator">vs</span>
+                <span class="backtest-compare__config-value backtest-compare__config-value--b">{{ item.valueB }}</span>
+              </div>
+            } @else {
+              <div class="backtest-compare__config-values">
+                <span class="backtest-compare__config-value backtest-compare__config-value--same">{{ item.valueA }} (same)</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="backtest-compare__section-card">
+    <mat-card-header>
+      <mat-card-title>Equity Curve Comparison</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <app-equity-chart
+        [equityData]="resultA.equityTimeSeries ?? []"
+        [trades]="resultA.trades"
+        [comparisonData]="resultB.equityTimeSeries ?? []"
+        primaryLabel="Run A"
+        comparisonLabel="Run B">
+      </app-equity-chart>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="backtest-compare__section-card">
+    <mat-card-header>
+      <mat-card-title>Metrics Comparison</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="backtest-compare__table-wrapper">
+        <table mat-table [dataSource]="comparisonRows" class="backtest-compare__table">
+          <ng-container matColumnDef="metric">
+            <th mat-header-cell *matHeaderCellDef>Metric</th>
+            <td mat-cell *matCellDef="let row" class="backtest-compare__metric-name">{{ row.metric }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="valueA">
+            <th mat-header-cell *matHeaderCellDef>
+              Run A <span class="backtest-compare__header-dot backtest-compare__header-dot--a">●</span>
+            </th>
+            <td mat-cell *matCellDef="let row">{{ row.valueA }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="valueB">
+            <th mat-header-cell *matHeaderCellDef>
+              Run B <span class="backtest-compare__header-dot backtest-compare__header-dot--b">●</span>
+            </th>
+            <td mat-cell *matCellDef="let row">{{ row.valueB }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="delta">
+            <th mat-header-cell *matHeaderCellDef>Delta</th>
+            <td mat-cell *matCellDef="let row" [class]="row.deltaClass">{{ row.delta }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</section>

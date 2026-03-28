@@ -25,8 +25,28 @@ src/TradingApp.Application/
 │   ├── Configuration/     # Typed options (e.g., HyperliquidOptions)
 │   ├── Exceptions/        # DomainException (→400), NotFoundException (→404); mapped by HttpGlobalExceptionFilter
 │   ├── Identity/          # AppIdentity (UserId, Email; static System identity)
-│   └── Services/          # Application service interfaces
-└── {Feature}/             # Feature folder, e.g. Health/, MarketData/
+│   ├── Repositories/      # Repository interfaces (ICandleRepository, IFundingRateRepository, IBacktestRunRepository)
+│   └── Services/          # Pipeline interfaces (IStrategyEngine, IGridController, IRiskEngine, IPositionManager,
+│                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner) + infrastructure client contracts
+├── Backtesting/           # Backtest CQRS handlers + engine
+│   ├── Models/            # Engine models: BacktestConfig, BacktestResult, BacktestTrade, FeeModel, SimulatedFill/Order/Position, ReplayData
+│   │                      # Response DTOs: BacktestRunResponse, BacktestRunSummary, BacktestTradeResponse,
+│   │                      #   CandleCoverageResponse, IntervalCoverage, GridStrategyConfig
+│   ├── Services/          # BacktestRunner, CandleReplayEngine, SimulatedExecutionEngine, BacktestMetricsCalculator
+│   ├── RunBacktestCommand.cs        # CQRS command + handler
+│   ├── GetBacktestResultQuery.cs    # CQRS query + handler
+│   ├── GetBacktestListQuery.cs      # CQRS query + handler
+│   ├── GetCandleCoverageQuery.cs    # CQRS query + handler
+│   └── BacktestRunResponseMapper.cs # Internal: entity ↔ response DTO + JSON helpers
+├── Scheduling/            # Shared between live and backtest
+│   ├── CandleClock.cs              # Emits CandleClosedEvent once per closed candle
+│   ├── StrategyScheduler.cs        # Drives strategy pipeline on trigger timeframe
+│   └── Models/CandleClosedEvent.cs
+├── Trading/               # Trading pipeline models (no handlers — consumed by pipeline services)
+│   └── Models/            # MarketContext, StrategyEvaluation, IndicatorSnapshot,
+│                          #   GridState, GridLifecycle, PositionState, TradingSignal,
+│                          #   OrderRequest, OrderSide, OrderType, TradeType
+└── {Feature}/             # CQRS feature folder, e.g. Health/, MarketData/
     ├── Models/            # DTOs returned by queries
     └── Queries/           # Query record + Handler in same file
 ```
@@ -48,9 +68,10 @@ src/TradingApp.Api/
 │   ├── CreatedResultEnvelope.cs  # 201 response { Id (Guid) }
 │   ├── IdentityService.cs        # Dev stub returning hardcoded AppIdentity
 │   └── Filters/
-│       └── HttpGlobalExceptionFilter.cs  # Global IExceptionFilter: DomainException→400, NotFoundException→404, HttpRequestException→503, unhandled→500
+│       └── HttpGlobalExceptionFilter.cs  # Global IExceptionFilter: DomainException→400, NotFoundException→404, OperationCanceledException→408, HttpRequestException→503, unhandled→500
 ├── Models/                # DTOs for responses served directly by the Api layer (no Application-layer handler)
-├── Services/              # Api-layer services; includes MarketDataStreamService (BackgroundService — WebSocket aggregation + SignalR broadcast)
+├── Services/              # Api-layer services; includes MarketDataStreamService (BackgroundService — WebSocket aggregation + SignalR broadcast),
+│                          #   UnavailableBacktestRunner (IBacktestRunner placeholder — throws until full pipeline is composed in API host)
 └── Program.cs             # DI composition root and startup configuration
 ```
 

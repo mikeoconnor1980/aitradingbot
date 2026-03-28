@@ -47,6 +47,10 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
                 StatusCodes.Status409Conflict,
                 new Envelope(ex.Message, "ingestion_conflict", correlationId)),
 
+            BacktestUnavailableException ex => (
+                StatusCodes.Status503ServiceUnavailable,
+                new Envelope(ex.Message, "backtest_unavailable", correlationId)),
+
             HyperliquidApiException ex when ex.ExchangeStatusCode >= 400 && ex.ExchangeStatusCode < 500 => (
                 StatusCodes.Status400BadRequest,
                 new Envelope(ex.Message, ex.ErrorCategory, correlationId)),
@@ -58,6 +62,10 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
             HttpRequestException => (
                 StatusCodes.Status503ServiceUnavailable,
                 new Envelope("External service unavailable", "network_error", correlationId)),
+
+            OperationCanceledException => (
+                StatusCodes.Status408RequestTimeout,
+                new Envelope("Request was cancelled or exceeded maximum timeout", "request_timeout", correlationId)),
 
             JsonException => (
                 StatusCodes.Status502BadGateway,

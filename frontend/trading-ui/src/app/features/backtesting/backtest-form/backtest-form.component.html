@@ -1,0 +1,200 @@
+<mat-card class="backtest-form">
+  <mat-card-header>
+    <mat-card-title>Configure Backtest</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" class="backtest-form__grid">
+      <section class="backtest-form__section">
+        <h3 class="backtest-form__section-title">Symbol & Date Range</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Symbol</mat-label>
+          <mat-select formControlName="symbol">
+            @for (symbol of symbols; track symbol) {
+              <mat-option [value]="symbol">{{ symbol }}</mat-option>
+            }
+          </mat-select>
+          @if (hasControlError("symbol")) {
+            <mat-error>{{ getControlErrorMessage("symbol") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Start Date</mat-label>
+          <input matInput [matDatepicker]="startPicker" formControlName="startDate">
+          <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+          @if (hasControlError("startDate")) {
+            <mat-error>{{ getControlErrorMessage("startDate") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>End Date</mat-label>
+          <input matInput [matDatepicker]="endPicker" formControlName="endDate">
+          <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+          @if (hasControlError("endDate")) {
+            <mat-error>{{ getControlErrorMessage("endDate") }}</mat-error>
+          }
+        </mat-form-field>
+
+        @if (hasDateRangeError()) {
+          <p class="backtest-form__error">{{ getDateRangeErrorMessage() }}</p>
+        }
+      </section>
+
+      <section class="backtest-form__section">
+        <h3 class="backtest-form__section-title">Intervals</h3>
+
+        <div class="backtest-form__checkboxes">
+          <mat-checkbox formControlName="interval15m">15m</mat-checkbox>
+          <mat-checkbox formControlName="interval1h">1h</mat-checkbox>
+          <mat-checkbox formControlName="interval4h">4h</mat-checkbox>
+        </div>
+
+        @if (hasIntervalError()) {
+          <p class="backtest-form__error">{{ getIntervalErrorMessage() }}</p>
+        }
+      </section>
+
+      <mat-divider></mat-divider>
+
+      <section class="backtest-form__section">
+        <h3 class="backtest-form__section-title">Grid Strategy</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Grid Levels</mat-label>
+          <input matInput type="number" formControlName="gridLevels">
+          @if (hasControlError("gridLevels")) {
+            <mat-error>{{ getControlErrorMessage("gridLevels") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Grid Spacing (%)</mat-label>
+          <input matInput type="number" formControlName="gridSpacing" step="0.001">
+          @if (hasControlError("gridSpacing")) {
+            <mat-error>{{ getControlErrorMessage("gridSpacing") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Take Profit (%)</mat-label>
+          <input matInput type="number" formControlName="takeProfitPercent" step="0.001">
+          @if (hasControlError("takeProfitPercent")) {
+            <mat-error>{{ getControlErrorMessage("takeProfitPercent") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Stop Loss (%)</mat-label>
+          <input matInput type="number" formControlName="stopLossPercent" step="0.001">
+          @if (hasControlError("stopLossPercent")) {
+            <mat-error>{{ getControlErrorMessage("stopLossPercent") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Breakdown Threshold (%)</mat-label>
+          <input matInput type="number" formControlName="breakdownThreshold" step="0.1">
+          @if (hasControlError("breakdownThreshold")) {
+            <mat-error>{{ getControlErrorMessage("breakdownThreshold") }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <mat-divider></mat-divider>
+
+      <section class="backtest-form__section">
+        <h3 class="backtest-form__section-title">Position & Risk</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Initial Capital ($)</mat-label>
+          <input matInput type="number" formControlName="initialCapital" step="100">
+          @if (hasControlError("initialCapital")) {
+            <mat-error>{{ getControlErrorMessage("initialCapital") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Position Size ($)</mat-label>
+          <input matInput type="number" formControlName="positionSize" step="1">
+          @if (hasControlError("positionSize")) {
+            <mat-error>{{ getControlErrorMessage("positionSize") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Leverage</mat-label>
+          <input matInput type="number" formControlName="leverage" step="0.1">
+          @if (hasControlError("leverage")) {
+            <mat-error>{{ getControlErrorMessage("leverage") }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <mat-divider></mat-divider>
+
+      <section class="backtest-form__section">
+        <h3 class="backtest-form__section-title">Fees & Slippage</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Maker Fee Rate</mat-label>
+          <input matInput type="number" formControlName="makerFee" step="0.00001">
+          @if (hasControlError("makerFee")) {
+            <mat-error>{{ getControlErrorMessage("makerFee") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Taker Fee Rate</mat-label>
+          <input matInput type="number" formControlName="takerFee" step="0.00001">
+          @if (hasControlError("takerFee")) {
+            <mat-error>{{ getControlErrorMessage("takerFee") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Slippage Rate</mat-label>
+          <input matInput type="number" formControlName="slippage" step="0.00001">
+          @if (hasControlError("slippage")) {
+            <mat-error>{{ getControlErrorMessage("slippage") }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      @if (formLevelError) {
+        <p class="backtest-form__error backtest-form__error--full-width">{{ formLevelError }}</p>
+      }
+    </form>
+  </mat-card-content>
+
+  <mat-card-actions class="backtest-form__actions">
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="onValidateData()"
+      [disabled]="isValidating || !canValidateCoverage">
+      @if (isValidating) {
+        <mat-spinner diameter="18"></mat-spinner>
+      } @else {
+        Validate Data
+      }
+    </button>
+
+    <button
+      mat-flat-button
+      type="button"
+      color="primary"
+      (click)="onRunBacktest()"
+      [disabled]="isRunning || !isFormValid">
+      @if (isRunning) {
+        <mat-spinner diameter="18"></mat-spinner>
+      } @else {
+        Run Backtest
+      }
+    </button>
+  </mat-card-actions>
+</mat-card>

@@ -12,6 +12,7 @@ public sealed class TradingAppDbContext : DbContext
 
     public DbSet<Candle> Candles => Set<Candle>();
     public DbSet<FundingRate> FundingRates => Set<FundingRate>();
+    public DbSet<BacktestRun> BacktestRuns => Set<BacktestRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,6 +77,47 @@ public sealed class TradingAppDbContext : DbContext
             entity.HasIndex(f => new { f.Symbol, f.Timestamp })
                 .IsUnique()
                 .HasDatabaseName("IX_FundingRates_Symbol_Timestamp");
+        });
+
+        modelBuilder.Entity<BacktestRun>(entity =>
+        {
+            entity.ToTable("BacktestRuns");
+
+            entity.HasKey(backtestRun => backtestRun.Id);
+
+            entity.Property(backtestRun => backtestRun.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(backtestRun => backtestRun.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(backtestRun => backtestRun.IntervalsJson)
+                .IsRequired();
+
+            entity.Property(backtestRun => backtestRun.StrategyConfigJson)
+                .IsRequired();
+
+            entity.Property(backtestRun => backtestRun.TradesJson)
+                .IsRequired();
+
+            entity.Property(backtestRun => backtestRun.InitialCapital)
+                .HasConversion<double>();
+
+            entity.Property(backtestRun => backtestRun.WinRate)
+                .HasConversion<double>();
+
+            entity.Property(backtestRun => backtestRun.TotalPnl)
+                .HasConversion<double>();
+
+            entity.Property(backtestRun => backtestRun.MaxDrawdown)
+                .HasConversion<double>();
+
+            entity.Property(backtestRun => backtestRun.AverageTradePnl)
+                .HasConversion<double>();
+
+            entity.Property(backtestRun => backtestRun.TotalFeesPaid)
+                .HasConversion<double>();
         });
     }
 }

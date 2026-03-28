@@ -1,0 +1,47 @@
+@if (report !== null) {
+  <mat-card class="coverage-report">
+    <mat-card-header>
+      <mat-card-title>{{ heading }}</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (rows.length === 0) {
+        <p class="coverage-report__empty">No interval coverage data returned.</p>
+      } @else {
+        <div class="coverage-report__table-wrapper">
+          <table class="coverage-report__table" aria-label="Historical candle coverage">
+            <thead>
+              <tr>
+                <th>Interval</th>
+                <th>Status</th>
+                <th>Candles</th>
+                <th>Available Range</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of rows; track row.key) {
+                <tr>
+                  <td>{{ row.interval }}</td>
+                  <td>
+                    <span [class]="getStatusClass(row.status)">
+                      <mat-icon>{{ getStatusIcon(row.status) }}</mat-icon>
+                      {{ getStatusLabel(row.status) }}
+                    </span>
+                  </td>
+                  <td>{{ row.candleCount | number }}</td>
+                  <td>
+                    @if (row.from && row.to) {
+                      {{ row.from | date: "medium" }} - {{ row.to | date: "medium" }}
+                    } @else {
+                      No coverage available
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+}

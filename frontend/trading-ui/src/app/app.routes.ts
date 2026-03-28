@@ -19,6 +19,11 @@ export const routes: Routes = [
     loadComponent: () => import("./features/order-entry/order-entry.component").then((m) => m.OrderEntryComponent),
     title: "Order Entry"
   },
+  {
+    path: "backtesting",
+    loadComponent: () => import("./features/backtesting/backtest-page.component").then((m) => m.BacktestPageComponent),
+    title: "Backtesting"
+  },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },
   { path: "**", redirectTo: "dashboard" }
 ];

@@ -30,14 +30,19 @@ public sealed class CandleClock
 
         if (CandleClosed is not null)
         {
-            await CandleClosed.Invoke(new CandleClosedEvent
+            var closedEvent = new CandleClosedEvent
             {
                 Symbol = candle.Symbol,
                 Timeframe = candle.Interval,
                 OpenTimeUtc = candle.Timestamp,
                 CloseTimeUtc = closeTimeUtc,
                 Candle = candle
-            });
+            };
+
+            foreach (var handler in CandleClosed.GetInvocationList().Cast<Func<CandleClosedEvent, Task>>())
+            {
+                await handler(closedEvent);
+            }
         }
     }
 

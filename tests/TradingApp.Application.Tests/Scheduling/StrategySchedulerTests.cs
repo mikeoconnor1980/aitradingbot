@@ -1,0 +1,222 @@
+using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Scheduling;
+using TradingApp.Application.Scheduling.Models;
+using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Entities;
+
+namespace TradingApp.Application.Tests.Scheduling;
+
+[TestClass]
+public sealed class StrategySchedulerTests
+{
+    private Mock<IMarketContextBuilder> _contextBuilderMock = default!;
+    private Mock<IStrategyEngine> _strategyEngineMock = default!;
+    private Mock<IGridController> _gridControllerMock = default!;
+    private Mock<IRiskEngine> _riskEngineMock = default!;
+    private Mock<IPositionManager> _positionManagerMock = default!;
+    private StrategyScheduler _sut = default!;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        _contextBuilderMock = new Mock<IMarketContextBuilder>();
+        _strategyEngineMock = new Mock<IStrategyEngine>();
+        _gridControllerMock = new Mock<IGridController>();
+        _riskEngineMock = new Mock<IRiskEngine>();
+        _positionManagerMock = new Mock<IPositionManager>();
+
+        _sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            "{}");
+
+        _contextBuilderMock
+            .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
+            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour) => new MarketContext
+            {
+                Symbol = trigger.Symbol,
+                TimestampUtc = trigger.Timestamp,
+                CurrentCandle = trigger,
+                LatestOneHourCandle = oneHour,
+                LatestFourHourCandle = fourHour,
+                Indicators = new IndicatorSnapshot()
+            });
+
+        _strategyEngineMock
+            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StrategyEvaluation { SetupDetected = true });
+
+        _gridControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        _riskEngineMock
+            .Setup(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+    }
+
+    [TestMethod]
+    public async Task GivenNon15mEvent_WhenHandleCandleClosedAsync_ThenPipelineNotCalled()
+    {
+        var evt = CreateEvent("1h");
+
+        await _sut.HandleCandleClosedAsync(evt, null, null);
+
+        _contextBuilderMock.Verify(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()), Times.Never);
+        _strategyEngineMock.Verify(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _gridControllerMock.Verify(controller => controller.ProcessAsync(
+            It.IsAny<StrategyEvaluation>(),
+            It.IsAny<MarketContext>(),
+            It.IsAny<GridState>(),
+            It.IsAny<PositionState>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task Given15mEvent_WhenHandleCandleClosedAsync_ThenPipelineRunsInOrder()
+    {
+        var callOrder = new List<string>();
+        using var cts = new CancellationTokenSource();
+        var cancellationToken = cts.Token;
+        var marketContext = new MarketContext
+        {
+            Symbol = "BTC",
+            TimestampUtc = 1_000,
+            CurrentCandle = CreateCandle("15m"),
+            LatestOneHourCandle = null,
+            LatestFourHourCandle = null,
+            Indicators = new IndicatorSnapshot()
+        };
+        var evaluation = new StrategyEvaluation { SetupDetected = true };
+        IReadOnlyList<TradingSignal> signals =
+        [
+            new TradingSignal
+            {
+                SignalType = "deploy-grid",
+                Symbol = "BTC"
+            }
+        ];
+
+        _contextBuilderMock
+            .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
+            .Callback(() => callOrder.Add("context"))
+            .Returns(marketContext);
+
+        _strategyEngineMock
+            .Setup(engine => engine.EvaluateAsync(marketContext, "{}", cancellationToken))
+            .Callback(() => callOrder.Add("strategy"))
+            .ReturnsAsync(evaluation);
+
+        _gridControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                evaluation,
+                marketContext,
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                "{}",
+                cancellationToken))
+            .Callback(() => callOrder.Add("grid"))
+            .ReturnsAsync(signals);
+
+        _riskEngineMock
+            .Setup(engine => engine.ValidateAsync(signals, cancellationToken))
+            .Callback(() => callOrder.Add("risk"))
+            .ReturnsAsync(signals);
+
+        _positionManagerMock
+            .Setup(manager => manager.ExecuteSignalsAsync(signals, cancellationToken))
+            .Callback(() => callOrder.Add("position"))
+            .Returns(Task.CompletedTask);
+
+        await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null, cancellationToken);
+
+        callOrder.Should().Equal("context", "strategy", "grid", "risk", "position");
+    }
+
+    [TestMethod]
+    public async Task GivenNoSignals_WhenHandleCandleClosedAsync_ThenPositionManagerNotCalled()
+    {
+        _gridControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _riskEngineMock.Verify(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _positionManagerMock.Verify(manager => manager.ExecuteSignalsAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenNoApprovedSignals_WhenHandleCandleClosedAsync_ThenPositionManagerNotCalled()
+    {
+        IReadOnlyList<TradingSignal> signals =
+        [
+            new TradingSignal
+            {
+                SignalType = "deploy-grid",
+                Symbol = "BTC"
+            }
+        ];
+
+        _gridControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(signals);
+
+        _riskEngineMock
+            .Setup(engine => engine.ValidateAsync(signals, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _positionManagerMock.Verify(manager => manager.ExecuteSignalsAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static CandleClosedEvent CreateEvent(string timeframe)
+    {
+        return new CandleClosedEvent
+        {
+            Symbol = "BTC",
+            Timeframe = timeframe,
+            OpenTimeUtc = 1_000,
+            CloseTimeUtc = 1_000 + (15L * 60L * 1000L),
+            Candle = CreateCandle(timeframe)
+        };
+    }
+
+    private static Candle CreateCandle(string interval)
+    {
+        return Candle.Create(
+            "Binance",
+            "BTC",
+            interval,
+            1_000,
+            100m,
+            105m,
+            95m,
+            102m,
+            1_000m,
+            10);
+    }
+}

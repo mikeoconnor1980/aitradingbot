@@ -30,17 +30,21 @@ Backtest mode uses historical candles and a simulated execution engine.
 
 # Practical Runtime Flow
 
-Historical data
-→ Candle replay engine
-→ MarketContextBuilder
-→ StrategyEngine
-→ Signals
-→ RiskEngine
-→ PositionManager
-→ SimulatedExecutionEngine
-→ Backtest results
+BacktestRunner orchestrates five phases:
 
-This should mirror the live pipeline as closely as possible.
+1. **Validation** — guards on BacktestConfig (symbol, dates, capital, intervals)
+2. **Data load** — `CandleReplayEngine.LoadAsync` fetches 15m/1h/4h candles in parallel, aligns higher-timeframe starts, determines warmup boundary
+3. **Warmup** — feeds the first `WarmupPeriod` (default: 200) candles to `IMarketContextBuilder.UpdateIndicators()` to seed indicator state; no signals generated
+4. **Evaluation loop** — for each post-warmup 15m candle:
+   - `SimulatedExecutionEngine.ProcessCandle` — fills open orders against candle OHLC
+   - `IMarketContextBuilder.UpdateIndicators` — update indicator state
+   - `CandleReplayEngine.GetLatestClosedCandle` — resolve latest closed 1h/4h candle
+   - `CandleClock.ProcessCandleAsync` → fires `StrategyScheduler.HandleCandleClosedAsync`
+   - StrategyScheduler: `IMarketContextBuilder.Build` → `IStrategyEngine.EvaluateAsync` → `IGridController.ProcessAsync` → `IRiskEngine.ValidateAsync` → `IPositionManager.ExecuteSignalsAsync`
+   - Record equity snapshot
+5. **Metrics** — `BacktestMetricsCalculator.Calculate(tradeLog, equityTimeSeries, initialCapital, gridCycles)` → `BacktestResult`
+
+The `CandleClock` and `StrategyScheduler` are the exact same classes used in live trading. `SimulatedExecutionEngine` is the only backtest-specific pipeline component.
 
 ---
 
@@ -83,6 +87,25 @@ The replay must preserve time order.
 
 ---
 
+# BacktestConfig
+
+`BacktestConfig` (`src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs`):
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `Symbol` | `string` | — | Trading symbol (e.g. `BTC`) |
+| `Intervals` | `IReadOnlyList<string>` | — | Must include `15m`, `1h`, `4h` |
+| `StartDateUtc` | `long` | — | Unix ms — start of evaluation period (after warmup) |
+| `EndDateUtc` | `long` | — | Unix ms — end of evaluation period |
+| `InitialCapital` | `decimal` | — | Starting equity for PnL simulation |
+| `FeeModel` | `FeeModel` | — | Maker/taker rates and slippage |
+| `WarmupPeriod` | `int` | `200` | 15m candles fed to indicator state before evaluation starts |
+| `StrategyConfigJson` | `string` | — | Serialised strategy config passed to `IStrategyEngine` |
+
+`FeeModel` (`src/TradingApp.Application/Backtesting/Models/FeeModel.cs`): `MakerFeeRate` (default 0.0001), `TakerFeeRate` (default 0.00035), `SlippageRate` (default 0). Provides `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`.
+
+---
+
 # Execution Simulation
 
 Backtesting does not place real orders.
@@ -95,6 +118,22 @@ Instead, a SimulatedExecutionEngine must:
 - simulate hedge opening and closing
 - simulate take profit
 - record fees and slippage assumptions
+
+---
+
+# Execution Behavior
+
+**Fill priority**: Within each candle, buys are processed before sells. This avoids incorrect same-candle pairing when both a buy and sell price range would be satisfied.
+
+**FIFO trade pairing**: The trade log pairs entries and exits in order:
+- `GridFill` entries → `TakeProfit` exits
+- `HedgeOpen` entries → `HedgeClose` exits
+
+**Fees**: Deducted immediately at fill time into `SimulatedPosition.RealisedPnL`. Limit orders use maker rate; market orders use taker rate.
+
+**Higher-timeframe alignment**: `CandleReplayEngine.GetLatestClosedCandle(higherTfCandles, triggerCandleOpenTimeUtc)` returns the most recent candle whose `Timestamp + intervalMs <= triggerCandleOpenTimeUtc`. This prevents look-ahead bias.
+
+**SimulatedExecutionEngine scope**: Lives in the Application layer (no I/O). Instantiated directly inside `BacktestRunner.RunAsync`, not injected via DI, so each run gets a fresh in-memory order book.
 
 ---
 
@@ -132,16 +171,53 @@ Without fees and slippage, results will look unrealistically strong.
 
 # Backtest Result Model
 
-The engine should record:
+`BacktestResult` (`src/TradingApp.Application/Backtesting/Models/BacktestResult.cs`):
 
-- total trades
-- win rate
-- total PnL
-- max drawdown
-- average trade
-- average hold time
-- number of hedges opened
-- strategy mode usage
+| Field | Type | Description |
+|-------|------|-------------|
+| `TotalTrades` | `int` | Count of completed trades (entry and exit both recorded) |
+| `WinningTrades` / `LosingTrades` | `int` | Count of trades with positive/negative PnL |
+| `WinRate` | `decimal` | Percentage (0–100) of winning trades |
+| `TotalPnL` | `decimal` | Sum of realised PnL across all trades |
+| `MaxDrawdownAbsolute` / `MaxDrawdownPercent` | `decimal` | Worst peak-to-trough equity decline in absolute and % terms |
+| `AverageTradePnL` | `decimal` | Mean per-trade PnL |
+| `AverageHoldTime` | `TimeSpan` | Mean duration from entry fill to exit fill |
+| `HedgesOpened` | `int` | Count of `TradeType.HedgeOpen` fills |
+| `TotalFeesPaid` | `decimal` | Sum of all fees across all fills |
+| `GridCycles` | `int` | Number of completed grid lifecycle cycles (`Closed` state reached) |
+| `FinalEquity` | `decimal` | `InitialCapital + RealisedPnL + UnrealisedPnL` at last candle |
+| `EquityTimeSeries` | `IReadOnlyList<EquitySnapshot>` | Equity value per candle (`record (long TimestampUtc, decimal Equity)`) |
+| `TradeLog` | `IReadOnlyList<BacktestTrade>` | Full per-trade record including entry/exit price, fees, TradeType |
+
+`TradeType` enum (`src/TradingApp.Application/Trading/Models/TradeType.cs`): `GridFill`, `TakeProfit`, `HedgeOpen`, `HedgeClose`.
+
+---
+
+# Backtest Persistence
+
+Completed runs are persisted as `BacktestRun` domain entities immediately after `IBacktestRunner.RunAsync` completes.
+
+`BacktestRun` (`src/TradingApp.Domain/Entities/BacktestRun.cs`):
+
+- Created via `BacktestRun.Create(...)` static factory with validation guards
+- Summary metrics (TotalTrades, WinRate, TotalPnl, MaxDrawdown, etc.) stored as scalar columns
+- `StrategyConfigJson` and `TradesJson` stored as JSON blob columns
+- `IntervalsJson` stores the requested intervals array as a JSON string
+- **Not tenant-scoped** — runs are keyed by a generated Guid with no UserId
+
+**What is NOT persisted:** `EquityTimeSeries`, `FinalEquity`, `MaxDrawdownPercent`, and `GridCycles` are computed by the engine but dropped before persistence. Only `MaxDrawdown` (absolute) is stored.
+
+`IBacktestRunRepository` (`src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs`):
+
+| Method | Description |
+|--------|-------------|
+| `AddAsync(BacktestRun, ct)` | Persist a completed run |
+| `GetByIdAsync(Guid, ct)` | Full run by ID; returns null if absent |
+| `GetPagedSummariesAsync(page, pageSize, ct)` | `PagedResult<BacktestRunSummary>` — summary projection without trades |
+
+Implementation: `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs`
+
+`BacktestRunResponseMapper` (`src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs`): internal static helper that serializes `GridStrategyConfig`/trades to JSON for storage, and maps `BacktestRun` entity → `BacktestRunResponse` for API responses.
 
 ---
 
@@ -177,33 +253,58 @@ A sweep runs many backtests automatically and compares performance.
 
 ---
 
-# Suggested Components
+# Key Components
 
-BacktestRunner
-HistoricalDataProvider
-ReplayClock
-BacktestContextBuilder
-SimulatedExecutionEngine
-BacktestMetricsCalculator
-BacktestReportBuilder
+| Component | Purpose | File |
+|-----------|---------|------|
+| `BacktestRunner` | Orchestrates the full backtest: validation → data load → warmup → candle loop → metrics | `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` |
+| `CandleReplayEngine` | Loads and aligns historical candles from the database; resolves warmup boundary; provides `GetLatestClosedCandle` for HTF context | `src/TradingApp.Application/Backtesting/Services/CandleReplayEngine.cs` |
+| `SimulatedExecutionEngine` | Pure in-memory `IExecutionEngine`; accepts `OrderRequest`s, processes candles, simulates fills, tracks position and fees | `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
+| `BacktestMetricsCalculator` | Computes summary statistics from the trade log and equity curve | `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
+| `IBacktestRunner` | Public contract for the orchestrator | `src/TradingApp.Application/Abstractions/Services/IBacktestRunner.cs` |
+| `IExecutionEngine` | Execution boundary; `SimulatedExecutionEngine` (backtest) and a future `LiveExecutionEngine` both implement this | `src/TradingApp.Application/Abstractions/Services/IExecutionEngine.cs` |
+| `RunBacktestCommand` | CQRS command: maps request → `BacktestConfig`, runs via `IBacktestRunner`, persists `BacktestRun` entity, enforces 5-minute server-side timeout | `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` |
+| `GetBacktestResultQuery` | CQRS query: loads `BacktestRun` by Guid; throws `NotFoundException` if absent | `src/TradingApp.Application/Backtesting/GetBacktestResultQuery.cs` |
+| `GetBacktestListQuery` | CQRS query: returns `PagedResult<BacktestRunSummary>` from repository | `src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs` |
+| `GetCandleCoverageQuery` | CQRS query: calls `ICandleRepository.GetCoverageAsync` per interval; returns `CandleCoverageResponse` | `src/TradingApp.Application/Backtesting/GetCandleCoverageQuery.cs` |
+| `UnavailableBacktestRunner` | API-host placeholder `IBacktestRunner` — throws `InvalidOperationException` because the full strategy pipeline is not yet composed in the API host | `src/TradingApp.Api/Services/UnavailableBacktestRunner.cs` |
 
 ---
 
-# API and UI
+# API
 
-The API can expose endpoints such as:
+Implemented in `src/TradingApp.Api/Controllers/BacktestsController.cs`:
 
-POST /backtests
-GET /backtests/{id}
-GET /backtests/{id}/results
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/api/backtests` | Run backtest; returns 201 with `BacktestRunResponse`. Returns 408 if cancelled or exceeds 5-minute server timeout. |
+| `GET` | `/api/backtests/{id}` | Retrieve full result for a saved run; 404 if not found |
+| `GET` | `/api/backtests` | List backtest summaries with paging (`page`, `pageSize` query params; max 100 per page) |
+| `GET` | `/api/backtests/validate` | Check candle coverage for a symbol + comma-separated intervals before running |
 
-The Angular UI can allow the user to:
+`BacktestsController` extends `ApiController` and dispatches all operations via MediatR.
 
-- choose a strategy
-- choose a date range
-- run a backtest
-- view performance metrics
-- compare strategy versions
+**Response types:**
+- `BacktestSummaryDto` (`src/TradingApp.Api/Models/BacktestSummaryDto.cs`) — the API-layer projection returned by `GET /api/backtests` (mapped from `BacktestRunSummary`; same fields).
+- `PagedResult<T>` (`src/TradingApp.Application/Abstractions/Models/PagedResult.cs`) — generic paging envelope: `Items`, `Page`, `PageSize`, `TotalCount`, `TotalPages` (computed). Used by both the repository interface and the API response.
+
+# UI
+
+The backtesting UI lives at `/backtesting` and is implemented as a tabbed page shell in `frontend/trading-ui/src/app/features/backtesting/`.
+
+| Component | Purpose | File |
+|-----------|---------|------|
+| `BacktestPageComponent` | Tab shell: Run / Past Results / Compare. Owns `latestResult`, `compareResultA/B`, and tab navigation | `backtest-page.component.ts` |
+| `BacktestFormComponent` | Reactive form for strategy config, symbol, date range, capital. Emits `(runBacktest)` and `(validateCoverage)` | `backtest-form/` |
+| `CoverageReportComponent` | Displays `CandleCoverageResponse` — per-interval candle count and date range | `coverage-report/` |
+| `BacktestResultComponent` | Metric cards: PnL, win rate, drawdown, trades, fees, hold time | `backtest-result/` |
+| `EquityChartComponent` | Lightweight Charts area chart with trade markers and optional comparison overlay | `equity-chart/` |
+| `TradeLogTableComponent` | Sortable `mat-table` of `BacktestTrade[]` entries | `trade-log-table/` |
+| `BacktestListComponent` | Paginated past-results list with `mat-paginator`; emits IDs for comparison | `backtest-list/` |
+| `BacktestCompareComponent` | Side-by-side metric diff and overlaid equity curves for two runs | `backtest-compare/` |
+| `BacktestService` | API client: `runBacktest`, `getBacktest`, `validateCoverage`, `getBacktestList` | `src/app/core/services/backtest.service.ts` |
+
+Angular models mirror the API shapes and live in `frontend/trading-ui/src/app/core/models/backtest.model.ts`: `BacktestRequest`, `BacktestResult`, `BacktestSummary`, `BacktestTrade`, `EquitySnapshot`, `PagedResult<T>`, `CoverageReport`.
 
 ---
 

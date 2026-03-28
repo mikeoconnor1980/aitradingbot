@@ -20,6 +20,7 @@ public static class PersistenceServiceExtensions
         services.AddDbContext<TradingAppDbContext>(options =>
             options.UseSqlite(connectionString));
 
+        services.AddScoped<IBacktestRunRepository, BacktestRunRepository>();
         services.AddScoped<ICandleRepository, CandleRepository>();
         services.AddScoped<IFundingRateRepository, FundingRateRepository>();
 

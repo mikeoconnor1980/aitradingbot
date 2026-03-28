@@ -171,3 +171,38 @@ Key design patterns:
 - Source is always Binance USDⓈ-M Futures — see [Binance Integration](23-binance-integration.md)
 
 File: `src/TradingApp.Domain/Entities/FundingRate.cs`
+
+---
+
+# BacktestRun
+
+Persisted record of a completed backtest execution. Not tenant-scoped — backtest results are shared market-data artefacts, not user-specific.
+
+Fields:
+
+Id (Guid)
+Symbol
+IntervalsJson (serialised `string[]`)
+StartDateUtc / EndDateUtc (Unix ms)
+StrategyConfigJson
+InitialCapital
+CandlesReplayed
+ElapsedMs
+TotalTrades / WinningTrades / LosingTrades
+WinRate
+TotalPnl
+MaxDrawdown
+AverageTradePnl
+AverageHoldTimeMinutes (double)
+HedgesOpened
+TotalFeesPaid
+TradesJson (serialised trade log)
+CreatedAtUtc (Unix ms)
+
+Key design patterns:
+
+- Static `Create` factory with validation guards (symbol/config non-null, `initialCapital > 0`, `startDateUtc < endDateUtc`)
+- Private setters — immutable after creation
+- No `UserId` — not tenant-scoped
+
+File: `src/TradingApp.Domain/Entities/BacktestRun.cs`

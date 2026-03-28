@@ -1,0 +1,129 @@
+<section class="backtest-list">
+  <div class="backtest-list__toolbar">
+    <div>
+      <h3 class="backtest-list__title">Past Results</h3>
+      <p class="backtest-list__subtitle">Browse completed runs, open a saved result, or compare two runs.</p>
+    </div>
+
+    <button mat-stroked-button type="button" [disabled]="selectedIds.size !== 2" (click)="onCompare()">
+      <mat-icon>compare_arrows</mat-icon>
+      Compare Selected ({{ selectedIds.size }}/2)
+    </button>
+  </div>
+
+  @if (errorMessage) {
+    <div class="backtest-list__error-banner">
+      <p>{{ errorMessage }}</p>
+      <button mat-button type="button" (click)="loadPage()">Retry</button>
+    </div>
+  }
+
+  @if (isLoading) {
+    <div class="backtest-list__loading">
+      <mat-spinner diameter="36"></mat-spinner>
+      <p>Loading saved backtests...</p>
+    </div>
+  } @else if (results.length === 0 && !errorMessage) {
+    <div class="backtest-list__empty">
+      <mat-icon>science</mat-icon>
+      <p>No backtests run yet. Configure and run your first backtest above.</p>
+    </div>
+  } @else {
+    <div class="backtest-list__table-wrapper">
+      <table mat-table [dataSource]="results" class="backtest-list__table">
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef></th>
+          <td mat-cell *matCellDef="let row">
+            <mat-checkbox
+              [checked]="isSelected(row.id)"
+              [disabled]="!canSelect(row.id)"
+              (click)="$event.stopPropagation()"
+              (change)="toggleSelection(row.id)">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Run Date</th>
+          <td mat-cell *matCellDef="let row">{{ row.createdAt | date: "short" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="symbol">
+          <th mat-header-cell *matHeaderCellDef>Symbol</th>
+          <td mat-cell *matCellDef="let row">{{ row.symbol }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="dateRange">
+          <th mat-header-cell *matHeaderCellDef>Date Range</th>
+          <td mat-cell *matCellDef="let row">
+            {{ row.startDate | date: "mediumDate" }} to {{ row.endDate | date: "mediumDate" }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="intervals">
+          <th mat-header-cell *matHeaderCellDef>Intervals</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="backtest-list__intervals">
+              @for (interval of row.intervals; track interval) {
+                <span class="backtest-list__interval-badge">{{ interval }}</span>
+              }
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="totalTrades">
+          <th mat-header-cell *matHeaderCellDef>Trades</th>
+          <td mat-cell *matCellDef="let row">{{ row.totalTrades }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="winRate">
+          <th mat-header-cell *matHeaderCellDef>Win Rate</th>
+          <td mat-cell *matCellDef="let row">{{ row.winRate | number: "1.1-1" }}%</td>
+        </ng-container>
+
+        <ng-container matColumnDef="totalPnl">
+          <th mat-header-cell *matHeaderCellDef>Total PnL</th>
+          <td mat-cell *matCellDef="let row" [class]="getPnlClass(row.totalPnl)">
+            ${{ row.totalPnl | number: "1.2-2" }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="maxDrawdown">
+          <th mat-header-cell *matHeaderCellDef>Max Drawdown</th>
+          <td mat-cell *matCellDef="let row" class="backtest-list__pnl--loss">
+            ${{ row.maxDrawdown | number: "1.2-2" }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Re-run with changes"
+              (click)="onRerun(row.id, $event)">
+              <mat-icon>replay</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          class="backtest-list__row"
+          (click)="onViewResult(row.id)">
+        </tr>
+      </table>
+    </div>
+
+    <mat-paginator
+      [length]="totalCount"
+      [pageIndex]="page - 1"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  }
+</section>

@@ -8,20 +8,20 @@ export class ApiRestClient {
   private readonly _http = inject(HttpClient);
   private readonly _baseUrl = environment.apiBaseUrl;
 
-  public get<T>(path: string): Observable<T> {
-    return this._http.get<T>(this.buildUrl(path));
+  public get<T>(path: string, context?: HttpContext): Observable<T> {
+    return this._http.get<T>(this.buildUrl(path), context ? { context } : undefined);
   }
 
-  public post<T>(path: string, body: unknown): Observable<T> {
-    return this._http.post<T>(this.buildUrl(path), body);
+  public post<T>(path: string, body: unknown, context?: HttpContext): Observable<T> {
+    return this._http.post<T>(this.buildUrl(path), body, context ? { context } : undefined);
   }
 
   public put<T>(path: string, body: unknown, context?: HttpContext): Observable<T> {
     return this._http.put<T>(this.buildUrl(path), body, context ? { context } : undefined);
   }
 
-  public delete<T>(path: string): Observable<T> {
-    return this._http.delete<T>(this.buildUrl(path));
+  public delete<T>(path: string, context?: HttpContext): Observable<T> {
+    return this._http.delete<T>(this.buildUrl(path), context ? { context } : undefined);
   }
 
   private buildUrl(path: string): string {

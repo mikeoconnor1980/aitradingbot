@@ -1,0 +1,117 @@
+.backtest-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
+
+  &__header {
+    margin-bottom: 1rem;
+  }
+
+  &__title {
+    margin: 0;
+    color: var(--colour-text-primary);
+  }
+
+  &__subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--colour-muted);
+  }
+
+  &__tabs {
+    width: 100%;
+  }
+
+  &__tab-content {
+    padding: 1rem 0;
+  }
+
+  &__error-banner,
+  &__run-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+
+    p,
+    h3 {
+      margin: 0;
+    }
+  }
+
+  &__error-banner {
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    background: var(--colour-error-bg);
+    color: var(--colour-error-text);
+  }
+
+  &__run-status {
+    flex-direction: column;
+    align-items: flex-start;
+    border: 1px solid rgba(134, 239, 172, 0.2);
+    background: rgba(20, 83, 45, 0.25);
+    color: var(--colour-text-primary);
+  }
+
+  &__error-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+  }
+
+  &__placeholder-card {
+    padding: 1.25rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 12px;
+    background: var(--colour-surface-dark);
+
+    h3 {
+      margin: 0 0 0.5rem;
+      color: var(--colour-text-primary);
+    }
+
+    p {
+      margin: 0;
+      color: var(--colour-muted);
+    }
+  }
+
+  &__results {
+    margin-top: 1.5rem;
+  }
+
+  &__results-title {
+    margin: 0 0 0.9rem;
+    color: var(--colour-text-primary);
+  }
+
+  &__empty {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 1rem;
+    border: 1px dashed var(--colour-border-subtle);
+    border-radius: 12px;
+    background: var(--colour-surface-dark);
+    color: var(--colour-muted);
+    text-align: center;
+
+    p {
+      margin: 0;
+    }
+  }
+}
+
+@media (max-width: 720px) {
+  .backtest-page {
+    &__error-banner {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__error-actions {
+      justify-content: flex-end;
+    }
+  }
+}

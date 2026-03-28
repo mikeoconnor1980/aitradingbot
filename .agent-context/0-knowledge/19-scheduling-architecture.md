@@ -200,22 +200,24 @@ public class CandleClock
 
     public async Task ProcessCandleAsync(Candle candle)
     {
-        var key = $"{candle.Symbol}:{candle.Timeframe}";
+        // Candle domain entity uses Interval (not Timeframe) and Timestamp (open time, Unix ms)
+        // CloseTimeUtc is derived — it does not exist as a property on Candle
+        var key = $"{candle.Symbol}:{candle.Interval}";
+        var closeTimeUtc = candle.Timestamp + GetIntervalMs(candle.Interval);
 
-        if (_lastClosed.TryGetValue(key, out var last) &&
-            last >= candle.CloseTimeUtc)
+        if (_lastClosed.TryGetValue(key, out var last) && last >= closeTimeUtc)
             return;
 
-        _lastClosed[key] = candle.CloseTimeUtc;
+        _lastClosed[key] = closeTimeUtc;
 
-        if (CandleClosed != null)
+        if (CandleClosed is not null)
         {
             await CandleClosed.Invoke(new CandleClosedEvent
             {
                 Symbol = candle.Symbol,
-                Timeframe = candle.Timeframe,
-                OpenTimeUtc = candle.OpenTimeUtc,
-                CloseTimeUtc = candle.CloseTimeUtc,
+                Timeframe = candle.Interval,    // CandleClosedEvent.Timeframe ← Candle.Interval
+                OpenTimeUtc = candle.Timestamp,  // Candle.Timestamp is the open time
+                CloseTimeUtc = closeTimeUtc,
                 Candle = candle
             });
         }
@@ -224,22 +226,30 @@ public class CandleClock
 
 ---
 
-# StrategyScheduler Example
+# StrategyScheduler
 
-public class StrategyScheduler
-{
-    public async Task HandleAsync(CandleClosedEvent evt)
-    {
-        if(evt.Timeframe != "15m")
-            return;
+`src/TradingApp.Application/Scheduling/StrategyScheduler.cs`
 
-        // Build MarketContext
-        // Run StrategyEngine
-        // Run RiskEngine
-        // Run PositionManager
-        // Execute orders
-    }
-}
+**Constructor** takes the five pipeline services plus `string strategyConfigJson` and optional `string triggerTimeframe` (default `"15m"`).
+
+**Key methods:**
+
+```csharp
+// Called by CandleClock; latestOneHourCandle and latestFourHourCandle are resolved
+// by the caller (BacktestRunner or live worker) before invoking
+public async Task HandleCandleClosedAsync(
+    CandleClosedEvent evt,
+    Candle? latestOneHourCandle,
+    Candle? latestFourHourCandle,
+    CancellationToken cancellationToken = default)
+
+// State management — caller updates position/grid state before each candle event
+public void UpdateState(GridState gridState, PositionState positionState)
+public GridState GetGridState()
+```
+
+The scheduler filters on `evt.Timeframe == triggerTimeframe`, then drives the pipeline:
+`IMarketContextBuilder.Build` → `IStrategyEngine.EvaluateAsync` → `IGridController.ProcessAsync` → `IRiskEngine.ValidateAsync` → `IPositionManager.ExecuteSignalsAsync`.
 
 ---
 
@@ -252,15 +262,18 @@ public class StrategyScheduler
 
 ---
 
-# Recommended Folder Structure
+# Folder Structure
 
-Application/
-├ Scheduling/
-│ ├ ICandleClock.cs
-│ ├ CandleClock.cs
-│ ├ IStrategyScheduler.cs
-│ ├ StrategyScheduler.cs
-│ └ StrategyExecutionCheckpoint.cs
+```
+src/TradingApp.Application/
+└── Scheduling/
+    ├── CandleClock.cs          # Emits CandleClosedEvent; deduplicates per candle
+    ├── StrategyScheduler.cs    # Drives pipeline on trigger timeframe candle close
+    └── Models/
+        └── CandleClosedEvent.cs  # { Symbol, Timeframe, OpenTimeUtc, CloseTimeUtc, Candle }
+```
+
+Note: `ICandleClock`, `IStrategyScheduler`, and `StrategyExecutionCheckpoint` are not yet implemented.
 
 ---
 

@@ -181,6 +181,33 @@ Platform-level risk limits are applied on top of per-user limits.
 
 ---
 
+# Pipeline Interfaces
+
+The execution pipeline is defined by thin interfaces in `src/TradingApp.Application/Abstractions/Services/`.
+All of these are shared between live trading and backtesting:
+
+| Interface | Key Method(s) | Purpose |
+|-----------|--------------|----------|
+| `IStrategyEngine` | `EvaluateAsync(MarketContext, string configJson) → StrategyEvaluation` | Detects valid setups |
+| `IMarketContextBuilder` | `UpdateIndicators(Candle)` + `Build(trigger, 1h?, 4h?) → MarketContext` | Builds shared market context |
+| `IGridController` | `ProcessAsync(evaluation, context, gridState, positionState, configJson) → IReadOnlyList<TradingSignal>` | Grid lifecycle + signal emission |
+| `IRiskEngine` | `ValidateAsync(signals) → IReadOnlyList<TradingSignal>` | Filters signals against risk limits |
+| `IPositionManager` | `ExecuteSignalsAsync(approvedSignals)` | Routes approved signals to `IExecutionEngine` |
+| `IExecutionEngine` | `PlaceOrderAsync`, `CancelOrderAsync`, `CancelAllOrdersAsync` | Execution boundary (live vs. simulated) |
+
+Key model types in `src/TradingApp.Application/Trading/Models/`:
+
+| Model | Key Properties |
+|-------|----------------|
+| `MarketContext` | `Symbol`, `TimestampUtc`, `CurrentCandle`, `LatestOneHourCandle?`, `LatestFourHourCandle?`, `Indicators` |
+| `StrategyEvaluation` | `SetupDetected` (bool), `Reason` (string?) |
+| `IndicatorSnapshot` | `EmaFast`, `EmaSlow`, `EmaTrend`, `Rsi`, `Atr` |
+| `GridState` | `Lifecycle` (GridLifecycle), `GridCycleId?`, `FilledLevels`, `TotalLevels` |
+| `PositionState` | `Symbol`, `Size`, `AverageEntryPrice`, `UnrealisedPnL`, `IsOpen` |
+| `OrderRequest` | `Symbol`, `Side` (OrderSide), `OrderType`, `Price`, `Size`, `TradeType`, `ClientOrderId?` |
+
+---
+
 # Future Extensions
 
 Possible future improvements:

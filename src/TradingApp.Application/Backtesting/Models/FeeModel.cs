@@ -8,7 +8,7 @@ public sealed class FeeModel
     public decimal TakerFeeRate { get; init; } = 0.00035m;
     public decimal SlippageRate { get; init; } = 0m;
 
-    public static FeeModel Default => new();
+    public static FeeModel Default { get; } = new();
 
     public decimal CalculateFee(decimal fillSize, decimal fillPrice, bool isMaker)
     {

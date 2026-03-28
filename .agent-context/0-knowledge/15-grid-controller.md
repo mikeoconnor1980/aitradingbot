@@ -30,6 +30,32 @@ It acts as the central brain of the grid system.
 
 ---
 
+# Interface
+
+`IGridController` (`src/TradingApp.Application/Abstractions/Services/IGridController.cs`):
+
+```csharp
+Task<IReadOnlyList<TradingSignal>> ProcessAsync(
+    StrategyEvaluation evaluation,
+    MarketContext context,
+    GridState gridState,
+    PositionState positionState,
+    string strategyConfigJson,
+    CancellationToken cancellationToken = default);
+```
+
+Key model files:
+
+| Model | File |
+|-------|------|
+| `GridLifecycle` (enum) | `src/TradingApp.Application/Trading/Models/GridLifecycle.cs` |
+| `GridState` | `src/TradingApp.Application/Trading/Models/GridState.cs` |
+
+Note: Signals are currently emitted as `TradingSignal` with a `string SignalType` (e.g. `"DeployGrid"`).
+Typed signal classes are planned — see [Signal Contracts](16-signal-contracts.md).
+
+---
+
 # Architecture Position
 
 Pipeline:
@@ -65,14 +91,15 @@ The controller determines which transitions are allowed.
 
 # Inputs
 
-GridController receives:
+`IGridController.ProcessAsync` receives:
 
-StrategyConfig
-MarketSnapshot
-IndicatorSnapshot
-GridState
-PositionState
-SetupDetected flag
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `evaluation` | `StrategyEvaluation` | Contains `SetupDetected` bool and optional `Reason` |
+| `context` | `MarketContext` | Trigger candle + HTF candles + `IndicatorSnapshot` |
+| `gridState` | `GridState` | Current lifecycle, cycle ID, fill counts |
+| `positionState` | `PositionState` | Symbol, size, entry price, unrealised PnL |
+| `strategyConfigJson` | `string` | Configuration forwarded from `StrategyScheduler` |
 
 ---
 

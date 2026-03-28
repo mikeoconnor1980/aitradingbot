@@ -1,0 +1,54 @@
+<section class="trade-log">
+  @if (dataSource.data.length === 0) {
+    <div class="trade-log__empty">No completed trades recorded for this run.</div>
+  } @else {
+    <div class="trade-log__table-wrapper">
+      <table mat-table [dataSource]="dataSource" matSort class="trade-log__table">
+        <ng-container matColumnDef="entryTime">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Entry Time</th>
+          <td mat-cell *matCellDef="let trade">{{ trade.entryTime | date: "short" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="exitTime">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Exit Time</th>
+          <td mat-cell *matCellDef="let trade">{{ trade.exitTime ? (trade.exitTime | date: "short") : "—" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="entryPrice">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Entry Price</th>
+          <td mat-cell *matCellDef="let trade">{{ trade.entryPrice | number: "1.2-2" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="exitPrice">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Exit Price</th>
+          <td mat-cell *matCellDef="let trade">{{ trade.exitPrice !== null ? (trade.exitPrice | number: "1.2-2") : "—" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="side">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Side</th>
+          <td mat-cell *matCellDef="let trade">{{ trade.side }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="size">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Size</th>
+          <td mat-cell *matCellDef="let trade">{{ trade.size | number: "1.4-4" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="pnl">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>PnL</th>
+          <td mat-cell *matCellDef="let trade" [class]="getPnlClass(trade.pnl)">
+            {{ trade.pnl !== null ? "$" + (trade.pnl | number: "1.2-2") : "—" }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="fees">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Fees</th>
+          <td mat-cell *matCellDef="let trade">${{ trade.fees | number: "1.4-4" }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+  }
+</section>

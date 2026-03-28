@@ -1,0 +1,75 @@
+<section class="backtest-page">
+  <header class="backtest-page__header">
+    <h2 class="backtest-page__title">Backtesting</h2>
+    <p class="backtest-page__subtitle">Run strategy replays, review saved runs, and prepare comparisons.</p>
+  </header>
+
+  <mat-tab-group class="backtest-page__tabs" animationDuration="0ms" [(selectedIndex)]="selectedTabIndex">
+    <mat-tab label="Run Backtest">
+      <div class="backtest-page__tab-content">
+        <app-backtest-form
+          [isRunning]="isRunning"
+          [isValidating]="isValidating"
+          [prefillConfig]="prefillConfig"
+          [validationErrorMessage]="validationErrorMessage"
+          (runBacktest)="onRunBacktest($event)"
+          (validateData)="onValidateData($event)">
+        </app-backtest-form>
+
+        @if (apiError) {
+          <div class="backtest-page__error-banner">
+            <p>{{ apiError }}</p>
+            <div class="backtest-page__error-actions">
+              @if (showRetry) {
+                <button mat-button type="button" (click)="onRetry()">Retry</button>
+              }
+              <button mat-button type="button" (click)="dismissApiError()">Dismiss</button>
+            </div>
+          </div>
+        }
+
+        <app-coverage-report [report]="coverageReport"></app-coverage-report>
+
+        @if (latestResult) {
+          <section class="backtest-page__results">
+            <h3 class="backtest-page__results-title">Results</h3>
+            <app-backtest-result [result]="latestResult"></app-backtest-result>
+
+            @if (latestResult.totalTrades > 0) {
+              <h3 class="backtest-page__results-title">Equity Curve</h3>
+              <app-equity-chart
+                [equityData]="latestResult.equityTimeSeries ?? []"
+                [trades]="latestResult.trades">
+              </app-equity-chart>
+
+              <h3 class="backtest-page__results-title">Trade Log</h3>
+              <app-trade-log-table [trades]="latestResult.trades"></app-trade-log-table>
+            }
+          </section>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Past Results">
+      <div class="backtest-page__tab-content">
+        <app-backtest-list
+          (viewResult)="onViewResult($event)"
+          (rerunConfig)="onRerunConfig($event)"
+          (compareSelected)="onCompareSelected($event)">
+        </app-backtest-list>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Compare">
+      <div class="backtest-page__tab-content">
+        @if (compareResultA && compareResultB) {
+          <app-backtest-compare [resultA]="compareResultA" [resultB]="compareResultB"></app-backtest-compare>
+        } @else {
+          <div class="backtest-page__empty">
+            <p>Select two backtest results from the Past Results tab to compare.</p>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</section>

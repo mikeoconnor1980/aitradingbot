@@ -1,0 +1,52 @@
+.coverage-report {
+  margin-top: 1rem;
+  border: 1px solid var(--colour-border-subtle);
+  background: rgba(15, 23, 42, 0.72);
+
+  &__empty {
+    margin: 0;
+    color: var(--colour-muted);
+  }
+
+  &__table-wrapper {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th,
+    td {
+      padding: 0.85rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--colour-border-subtle);
+    }
+
+    th {
+      color: var(--colour-label);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+  }
+
+  &__status--full {
+    color: #86efac;
+  }
+
+  &__status--partial {
+    color: var(--colour-warning);
+  }
+
+  &__status--none {
+    color: var(--colour-error-text);
+  }
+}

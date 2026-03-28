@@ -14,6 +14,7 @@ public sealed class BacktestResult
     public required int HedgesOpened { get; init; }
     public required decimal TotalFeesPaid { get; init; }
     public required int GridCycles { get; init; }
+    public required int CandlesReplayed { get; init; }
     public required decimal FinalEquity { get; init; }
     public required IReadOnlyList<EquitySnapshot> EquityTimeSeries { get; init; }
     public required IReadOnlyList<BacktestTrade> TradeLog { get; init; }
