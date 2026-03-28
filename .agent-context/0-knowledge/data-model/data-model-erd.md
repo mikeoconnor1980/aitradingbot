@@ -11,7 +11,7 @@ All trading entities are tenant-scoped by `UserId`. The model covers seven domai
 | Strategy | Strategy, StrategyConfig, StrategyRun, StrategyPerformance, StrategyExecutionCheckpoint |
 | Trading | Order, Fill, Position, Signal |
 | Grid | GridState, GridPlan |
-| Market Data | Candle |
+| Market Data | Candle, FundingRate |
 | AI Context | LlmSnapshot |
 | Backtesting & Replay | Backtest, BacktestResult, StrategyStateSnapshot, CounterfactualBranch |
 | Operations | RiskEvent, AuditLog |
@@ -173,6 +173,7 @@ erDiagram
 
     Candle {
         long Id PK
+        string Source
         string Symbol
         string Interval
         long Timestamp
@@ -182,6 +183,14 @@ erDiagram
         decimal Close
         decimal Volume
         int NumTrades
+    }
+
+    FundingRate {
+        long Id PK
+        string Symbol
+        long Timestamp
+        decimal Rate
+        decimal MarkPrice
     }
 
     LlmSnapshot {

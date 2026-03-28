@@ -53,6 +53,27 @@ public sealed class BinanceCandleIngestionServiceTests
     }
 
     [TestMethod]
+    public async Task GivenEmptyDatabase_WhenIngest_ThenFetchesFromDefaultStartDate()
+    {
+        var expectedStart = new DateTimeOffset(DefaultStartDate).ToUnixTimeMilliseconds();
+        var explicitEndTime = expectedStart + 3_600_000L;
+
+        _repositoryMock
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", BinanceSource, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((long?)null);
+
+        _restClientMock
+            .Setup(client => client.GetKlinesAsync("BTCUSDT", "1h", expectedStart, It.IsAny<long?>(), 1500, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var result = await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"], EndTime = explicitEndTime });
+
+        result.TotalFetched.Should().Be(0);
+        result.Intervals.Should().ContainSingle();
+        result.Intervals[0].Error.Should().BeNull();
+    }
+
+    [TestMethod]
     public async Task GivenPagedResponses_WhenIngest_ThenSortsPersistsAndTagsBinanceCandles()
     {
         const long requestStartTime = 1700000000000L;

@@ -108,3 +108,18 @@ When business rules or domain entities are involved, use the standard MediatR pa
 
 Api-layer services live in `TradingApp.Api/Services/`, not `TradingApp.Infrastructure`.
 DTOs for these responses live in `TradingApp.Api/Models/`.
+
+ADR 15 — Historical Market Data Source
+
+Binance USDⓈ-M Futures is used as the primary source for historical candle and funding rate data.
+
+Rationale:
+
+- Hyperliquid's `candleSnapshot` API covers only from its own launch (late 2022). Binance data extends back to 2019, providing a much larger backtest window.
+- Binance USDⓈ-M Futures is the most liquid perpetual futures venue. Its price and funding history is a reliable training dataset.
+- Binance is read-only — no authentication or key management is required.
+
+Scope:
+
+- Binance is used for data ingestion only. Live trading always uses Hyperliquid.
+- Candles ingested from Binance are stored with `Source = "Binance"` to distinguish them from Hyperliquid candles in the shared `Candles` table.

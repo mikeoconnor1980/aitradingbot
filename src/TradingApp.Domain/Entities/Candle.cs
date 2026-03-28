@@ -33,7 +33,11 @@ public sealed class Candle
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(interval);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(open);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timestamp);
+        ArgumentOutOfRangeException.ThrowIfNegative(open);
+        ArgumentOutOfRangeException.ThrowIfNegative(high);
+        ArgumentOutOfRangeException.ThrowIfNegative(low);
+        ArgumentOutOfRangeException.ThrowIfNegative(close);
         ArgumentOutOfRangeException.ThrowIfNegative(volume);
         ArgumentOutOfRangeException.ThrowIfNegative(numTrades);
 

@@ -63,10 +63,17 @@ src/TradingApp.Infrastructure/
 ├── Hyperliquid/
 │   ├── HyperliquidAssetMapper.cs  # Maps display names (BTC-PERP → BTC) and timeframes to interval ms; validates against supported assets/timeframes
 │   └── Models/                    # Hyperliquid API request/response shapes (HyperliquidMeta, HyperliquidAssetCtx, HyperliquidCandle, etc.)
+├── Binance/
+│   ├── BinanceAssetMapper.cs      # Maps display symbols (BTC → BTCUSDT) and intervals to ms; handles mark-price interval prefix (mark-15m)
+│   └── Models/                    # Binance API response shapes (BinanceKline, BinanceFundingRate)
 └── Services/
-    ├── HyperliquidSigner.cs           # Derives wallet address from private key (Nethereum)
-    ├── HyperliquidRestClient.cs       # Typed HttpClient targeting Hyperliquid REST API
-    └── HyperliquidWebSocketClient.cs  # Persistent WebSocket client; implements IHyperliquidWebSocketClient (singleton)
+    ├── HyperliquidSigner.cs            # Derives wallet address from private key (Nethereum)
+    ├── HyperliquidRestClient.cs        # Typed HttpClient targeting Hyperliquid REST API
+    ├── HyperliquidWebSocketClient.cs   # Persistent WebSocket client; implements IHyperliquidWebSocketClient (singleton)
+    ├── BinanceFuturesRestClient.cs     # Typed HttpClient targeting Binance USDⓈ-M Futures REST API (/fapi/v1)
+    ├── BinanceCandleIngestionService.cs  # Paginates kline + mark-price kline history; writes to ICandleRepository
+    ├── CandleIngestionService.cs       # Paginates Hyperliquid candleSnapshot history; writes to ICandleRepository
+    └── FundingRateIngestionService.cs  # Paginates Binance funding rate history; writes to IFundingRateRepository
 ```
 
 ---

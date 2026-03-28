@@ -6,6 +6,8 @@ namespace TradingApp.Infrastructure.Binance.Models;
 
 public sealed class BinanceFundingRate
 {
+    private const decimal DefaultMarkPrice = 0m;
+
     [JsonPropertyName("symbol")]
     public string Symbol { get; init; } = string.Empty;
 
@@ -21,7 +23,32 @@ public sealed class BinanceFundingRate
     public FundingRateDto ToDto() => new()
     {
         FundingTime = FundingTime,
-        FundingRate = decimal.Parse(FundingRateValue, CultureInfo.InvariantCulture),
-        MarkPrice = decimal.Parse(MarkPriceValue, CultureInfo.InvariantCulture),
+        Rate = ParseRequiredDecimal(FundingRateValue, nameof(FundingRateValue)),
+        MarkPrice = ParseOptionalDecimal(MarkPriceValue, nameof(MarkPriceValue), DefaultMarkPrice),
     };
+
+    private static decimal ParseRequiredDecimal(string value, string fieldName)
+    {
+        if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        {
+            throw new System.Text.Json.JsonException($"Unable to parse Binance funding rate field '{fieldName}' value '{value}'.");
+        }
+
+        return parsed;
+    }
+
+    private static decimal ParseOptionalDecimal(string value, string fieldName, decimal fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        {
+            throw new System.Text.Json.JsonException($"Unable to parse Binance funding rate field '{fieldName}' value '{value}'.");
+        }
+
+        return parsed;
+    }
 }

@@ -31,6 +31,11 @@ public sealed class FundingRatesController : ApiController
                 $"Invalid symbol: '{request.Symbol}'. Valid Binance symbols: {string.Join(", ", BinanceAssetMapper.ValidSymbols)}");
         }
 
+        if (request.StartTime.HasValue && request.EndTime.HasValue && request.EndTime.Value <= request.StartTime.Value)
+        {
+            throw new DomainException("EndTime must be greater than StartTime.");
+        }
+
         var result = await Mediator.Send(
             new IngestFundingRatesCommand(
                 new FundingRateIngestionRequest

@@ -66,7 +66,7 @@ public sealed class FundingRateIngestionServiceTests
             .Select(index => new FundingRateDto
             {
                 FundingTime = startTime + (index * 1000L),
-                FundingRate = 0.0001m + (index * 0.000001m),
+                Rate = 0.0001m + (index * 0.000001m),
                 MarkPrice = 50000m + index,
             })
             .ToList();
@@ -77,7 +77,7 @@ public sealed class FundingRateIngestionServiceTests
             firstBatch,
             new List<FundingRateDto>
             {
-                new() { FundingTime = startTime + 1_000_000L, FundingRate = 0.0012m, MarkPrice = 51000m },
+                new() { FundingTime = startTime + 1_000_000L, Rate = 0.0012m, MarkPrice = 51000m },
             },
         ]);
 
@@ -172,13 +172,61 @@ public sealed class FundingRateIngestionServiceTests
         await firstCall;
     }
 
+    [TestMethod]
+    public async Task GivenTransientFailure_WhenIngest_ThenRetriesAndContinues()
+    {
+        const long startTime = 1700000000000L;
+        const long endTime = startTime + 100_000L;
+        var callCount = 0;
+
+        _sut = CreateSut(maxRetries: 1);
+
+        _repositoryMock
+            .Setup(repository => repository.BulkInsertAsync(It.IsAny<IEnumerable<FundingRate>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _restClientMock
+            .Setup(client => client.GetFundingRatesAsync("BTCUSDT", It.IsAny<long>(), endTime, 1000, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() =>
+            {
+                callCount++;
+                return callCount switch
+                {
+                    1 => throw new HttpRequestException("temporary failure"),
+                    2 =>
+                    [
+                        new FundingRateDto
+                        {
+                            FundingTime = startTime,
+                            Rate = 0.0001m,
+                            MarkPrice = 50000m,
+                        },
+                    ],
+                    _ => [],
+                };
+            });
+
+        var result = await _sut.IngestAsync(new FundingRateIngestionRequest
+        {
+            Symbol = "BTC",
+            StartTime = startTime,
+            EndTime = endTime,
+        });
+
+        callCount.Should().Be(2);
+        result.TotalFetched.Should().Be(1);
+        result.Error.Should().BeNull();
+    }
+
     private FundingRateIngestionService CreateSut(
         int batchDelayMs = 0,
+        int maxRetries = 3,
         int maxIngestionTimeoutMs = 7_200_000)
     {
         var options = Options.Create(new BinanceIngestionOptions
         {
             BatchDelayMs = batchDelayMs,
+            MaxRetries = maxRetries,
             MaxIngestionTimeoutMs = maxIngestionTimeoutMs,
             DefaultStartDate = DefaultStartDate,
             PageSize = 1500,

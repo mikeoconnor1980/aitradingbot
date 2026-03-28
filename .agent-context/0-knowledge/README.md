@@ -58,6 +58,12 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 |---|---|---|
 | 22 | [Pre-Launch Checklist](22-prelaunch-checklist.md) | Required audit checks before launching as a paid SaaS product |
 
+## Market Data
+
+| # | Document | Description |
+|---|---|---|
+| 23 | [Binance Integration](23-binance-integration.md) | Binance USDⓈ-M Futures as historical data source — klines, mark price klines, funding rates |
+
 ---
 
 ## Subfolders

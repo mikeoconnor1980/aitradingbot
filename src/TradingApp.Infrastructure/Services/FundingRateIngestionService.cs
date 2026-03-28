@@ -69,6 +69,7 @@ public sealed class FundingRateIngestionService : IFundingRateIngestionService
 
         var fetched = 0;
         var inserted = 0;
+        var retryCount = 0;
         long? earliestTimestamp = null;
         long? latestTimestamp = null;
 
@@ -91,12 +92,32 @@ public sealed class FundingRateIngestionService : IFundingRateIngestionService
             {
                 token.ThrowIfCancellationRequested();
 
-                var batch = await _restClient.GetFundingRatesAsync(
-                    futuresSymbol,
-                    cursor,
-                    effectiveEndTime,
-                    limit: 1000,
-                    cancellationToken: token);
+                IReadOnlyList<FundingRateDto> batch;
+                try
+                {
+                    batch = await _restClient.GetFundingRatesAsync(
+                        futuresSymbol,
+                        cursor,
+                        effectiveEndTime,
+                        limit: 1000,
+                        cancellationToken: token);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException && retryCount < _options.MaxRetries)
+                {
+                    retryCount++;
+                    var delayMs = (int)Math.Pow(2, retryCount) * 1000;
+
+                    _logger.LogWarning(
+                        ex,
+                        "Funding rate batch fetch failed for {Symbol} (retry {Retry}/{MaxRetries}). Retrying in {DelayMs}ms",
+                        displaySymbol,
+                        retryCount,
+                        _options.MaxRetries,
+                        delayMs);
+
+                    await Task.Delay(delayMs, token);
+                    continue;
+                }
 
                 if (batch.Count == 0)
                 {
@@ -122,7 +143,7 @@ public sealed class FundingRateIngestionService : IFundingRateIngestionService
                     .Select(rate => FundingRate.Create(
                         displaySymbol,
                         rate.FundingTime,
-                        rate.FundingRate,
+                        rate.Rate,
                         rate.MarkPrice))
                     .ToList();
 
@@ -140,6 +161,7 @@ public sealed class FundingRateIngestionService : IFundingRateIngestionService
                     FormatTimestamp(orderedBatch[^1].FundingTime));
 
                 cursor = nextCursor;
+                retryCount = 0;
 
                 if (orderedBatch.Count < 1000)
                 {

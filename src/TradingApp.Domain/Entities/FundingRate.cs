@@ -15,6 +15,8 @@ public sealed class FundingRate
     public static FundingRate Create(string symbol, long timestamp, decimal rate, decimal markPrice)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timestamp);
+        ArgumentOutOfRangeException.ThrowIfNegative(markPrice);
 
         return new FundingRate
         {

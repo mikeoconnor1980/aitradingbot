@@ -127,8 +127,9 @@ OHLCV market data. Persisted to the database for backtesting and historical anal
 Fields:
 
 Id (long, auto-increment)  
+Source (e.g. `Hyperliquid`, `Binance`) — identifies the data provider  
 Symbol  
-Interval (e.g. `15m`, `1H`, `4H`)  
+Interval (e.g. `15m`, `1h`, `4h`; mark price klines use prefix `mark-15m`)  
 Timestamp (Unix milliseconds — open time of the candle)  
 Open  
 High  
@@ -139,9 +140,34 @@ NumTrades
 
 Key design patterns:
 
-- Static `Create` factory method with validation guards (null/whitespace, positive open price, high >= low)
+- Static `Create` factory method with validation guards (null/whitespace, non-negative OHLC, positive timestamp, high >= low)
+- Backward-compatible overload uses `source = "Hyperliquid"` as default to preserve existing Hyperliquid ingestion callsites
 - Private setters — immutable after creation
-- Composite unique index on `(Symbol, Interval, Timestamp)` — enforces idempotent ingestion
+- Composite unique index on `(Source, Symbol, Interval, Timestamp)` — enforces idempotent ingestion per data provider
 - Bulk inserts use `INSERT OR IGNORE` for safe re-ingestion of overlapping data
 
 File: `src/TradingApp.Domain/Entities/Candle.cs`
+
+---
+
+# FundingRate
+
+Perpetual futures funding rate history. Persisted for backtesting, strategy context, and market regime analysis. Not tenant-scoped — shared market data.
+
+Fields:
+
+Id (long, auto-increment)  
+Symbol (display symbol, e.g. `BTC`)  
+Timestamp (Unix milliseconds — time the funding rate was applied)  
+Rate (decimal; can be negative)  
+MarkPrice (decimal; mark price at the funding settlement time)
+
+Key design patterns:
+
+- Static `Create` factory method with guards (null symbol, non-positive timestamp, negative mark price; `Rate` allows negative values)
+- Private setters — immutable after creation
+- Composite unique index on `(Symbol, Timestamp)` — enforces idempotent ingestion
+- Bulk inserts use `INSERT OR IGNORE`
+- Source is always Binance USDⓈ-M Futures — see [Binance Integration](23-binance-integration.md)
+
+File: `src/TradingApp.Domain/Entities/FundingRate.cs`

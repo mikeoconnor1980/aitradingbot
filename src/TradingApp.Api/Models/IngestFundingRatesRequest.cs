@@ -5,7 +5,7 @@ namespace TradingApp.Api.Models;
 public sealed class IngestFundingRatesRequest
 {
     [Required]
-    public string Symbol { get; set; } = string.Empty;
+    public string Symbol { get; set; } = default!;
 
     public long? StartTime { get; set; }
 

@@ -100,8 +100,12 @@ public sealed class BinanceFuturesRestClient : IBinanceFuturesRestClient
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         var rates = await JsonSerializer.DeserializeAsync<List<BinanceFundingRate>>(stream, cancellationToken: cancellationToken);
+        if (rates is null)
+        {
+            throw new JsonException("Unexpected Binance funding rate response shape — expected a JSON array.");
+        }
 
-        var result = rates?.Select(rate => rate.ToDto()).ToList() ?? [];
+        var result = rates.Select(rate => rate.ToDto()).ToList();
 
         _logger.LogDebug(
             "Binance funding rates fetched. Symbol={Symbol}, StartTime={StartTime}, EndTime={EndTime}, Count={Count}",

@@ -96,6 +96,56 @@ public sealed class BinanceFuturesRestClientTests
         handler.LastRequestUri.Should().Be("/fapi/v1/markPriceKlines?symbol=BTCUSDT&interval=15m&startTime=1700000000000&limit=1500&endTime=1700001800000");
     }
 
+    [TestMethod]
+    public async Task GivenBinanceReturnsFundingRates_WhenGetFundingRatesAsync_ThenReturnsFundingRateDtos()
+    {
+        const string payload = """
+[
+  {"symbol":"BTCUSDT","fundingTime":1700000000000,"fundingRate":"0.00010000","markPrice":"50000.12345678"},
+  {"symbol":"BTCUSDT","fundingTime":1700028800000,"fundingRate":"-0.00005000","markPrice":"50100.98765432"}
+]
+""";
+
+        var handler = new CapturingHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        });
+
+        var client = CreateClient(handler);
+
+        var result = await client.GetFundingRatesAsync("BTCUSDT", StartTime, EndTime);
+
+        result.Should().HaveCount(2);
+        result[0].FundingTime.Should().Be(1700000000000L);
+        result[0].Rate.Should().Be(0.0001m);
+        result[0].MarkPrice.Should().Be(50000.12345678m);
+        result[1].Rate.Should().Be(-0.00005m);
+        handler.LastRequestUri.Should().Contain("/fapi/v1/fundingRate");
+    }
+
+    [TestMethod]
+    public async Task GivenBinanceReturnsEmptyMarkPrice_WhenGetFundingRatesAsync_ThenDefaultsMarkPriceToZero()
+    {
+        const string payload = """
+[
+  {"symbol":"BTCUSDT","fundingTime":1700000000000,"fundingRate":"0.00010000","markPrice":""}
+]
+""";
+
+        var handler = new CapturingHttpMessageHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+        });
+
+        var client = CreateClient(handler);
+
+        var result = await client.GetFundingRatesAsync("BTCUSDT", StartTime, EndTime);
+
+        result.Should().HaveCount(1);
+        result[0].Rate.Should().Be(0.0001m);
+        result[0].MarkPrice.Should().Be(0m);
+    }
+
     private static BinanceFuturesRestClient CreateClient(HttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler)
@@ -122,9 +172,14 @@ public sealed class BinanceFuturesRestClientTests
         {
             LastRequestUri = request.RequestUri?.PathAndQuery;
 
+            var content = _response.Content;
+            var clonedContent = content is not null
+                ? new StringContent(content.ReadAsStringAsync().GetAwaiter().GetResult(), Encoding.UTF8, content.Headers.ContentType?.MediaType ?? "application/json")
+                : null;
+
             return Task.FromResult(new HttpResponseMessage(_response.StatusCode)
             {
-                Content = _response.Content,
+                Content = clonedContent,
                 RequestMessage = request,
             });
         }

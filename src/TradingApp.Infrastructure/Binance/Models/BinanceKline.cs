@@ -48,6 +48,11 @@ public sealed class BinanceKline
 
     private static decimal ParseDecimal(JsonElement value)
     {
+        if (value.ValueKind != JsonValueKind.String)
+        {
+            throw new JsonException($"Expected string for Binance decimal value, got {value.ValueKind}.");
+        }
+
         var stringValue = value.GetString();
         if (!decimal.TryParse(stringValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
         {

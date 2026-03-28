@@ -74,6 +74,11 @@ public sealed class CandlesController : ApiController
             }
         }
 
+        if (request.StartTime.HasValue && request.EndTime.HasValue && request.EndTime.Value <= request.StartTime.Value)
+        {
+            throw new DomainException("EndTime must be greater than StartTime.");
+        }
+
         var result = await Mediator.Send(
             new IngestBinanceCandlesCommand(
                 new IngestionRequest
