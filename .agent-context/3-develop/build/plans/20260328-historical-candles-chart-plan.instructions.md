@@ -1,16 +1,14 @@
----
 applyTo: ".agent-context/3-develop/build/changes/20260328-historical-candles-chart-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-03-28T20:42:51Z"
-status: "planned"
-lastUpdated: "2026-03-28T20:42:51Z"
+currentAgent: "Plan Implementer"
+agentStartedAt: "2026-03-28T21:01:21Z"
+status: "in-progress"
+lastUpdated: "2026-03-28T21:01:21Z"
 ---
-
 <!-- markdownlint-disable-file -->
-
+currentAgent: "None"
 # Task Checklist: Historical Candles from Local Database on Price Chart
-
-## Overview
+status: "complete"
+lastUpdated: "2026-03-28T21:50:39Z"
 
 Serve the Market Data price chart from the local SQLite candle database instead of the Hyperliquid REST API. The local DB already contains historical candles back to 2019 (ingested from Binance). Recent candles (last few hours) continue to come from Hyperliquid for real-time accuracy. The chart gains deep historical scrollback with faster load times and no exchange API dependency.
 
@@ -54,39 +52,39 @@ Serve the Market Data price chart from the local SQLite candle database instead 
 - `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — Repository implementation pattern
 - `frontend/trading-ui/src/app/core/services/market-data.service.ts` — Angular service pattern with `ApiRestClient`
 
-### Phase 1: Backend — New CQRS Query & API Endpoint
+### [x] Phase 1: Backend — New CQRS Query & API Endpoint
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 1.1: Create `GetHistoricalCandlesQuery` and handler
+- [x] Task 1.1: Create `GetHistoricalCandlesQuery` and handler
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-01-details.md#task-11-create-gethistoricalcandlesquery-and-handler
 
-- [ ] Task 1.2: Add `GetHistoricalCandlesAsync` endpoint to `MarketDataController`
+- [x] Task 1.2: Add `GetHistoricalCandlesAsync` endpoint to `MarketDataController`
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-01-details.md#task-12-add-gethistoricalcandlesasync-endpoint
 
-- [ ] Task 1.3: Write unit tests for `GetHistoricalCandlesQueryHandler`
+- [x] Task 1.3: Write unit tests for `GetHistoricalCandlesQueryHandler`
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-01-details.md#task-13-write-unit-tests
 
-- [ ] Task 1.4: Write controller integration tests
+- [x] Task 1.4: Write controller integration tests
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-01-details.md#task-14-write-controller-integration-tests
 
-- [ ] Task 1.5: Build solution and run all tests
+- [x] Task 1.5: Build solution and run all tests
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-01-details.md#task-15-build-and-test
 
-### Phase 2: Frontend — Wire Chart to Local DB Endpoint
+### [x] Phase 2: Frontend — Wire Chart to Local DB Endpoint
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 2.1: Add `getHistoricalCandles()` method to `MarketDataService`
+- [x] Task 2.1: Add `getHistoricalCandles()` method to `MarketDataService`
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-02-details.md#task-21-add-gethistoricalcandles-method
 
-- [ ] Task 2.2: Update `MarketDataComponent` to load initial candles from history endpoint
+- [x] Task 2.2: Update `MarketDataComponent` to load initial candles from history endpoint
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-02-details.md#task-22-update-marketdatacomponent
 
-- [ ] Task 2.3: Update `onLoadMoreCandles` to use history endpoint with DB fallback
+- [x] Task 2.3: Update `onLoadMoreCandles` to use history endpoint with DB fallback
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-02-details.md#task-23-update-onloadmorecandles
 
-- [ ] Task 2.4: Manual smoke test — verify chart loads with historical data
+- [x] Task 2.4: Manual smoke test — verify chart loads with historical data
   - Details: .agent-context/3-develop/build/plans/details/20260328-historical-candles-chart-phase-02-details.md#task-24-smoke-test
 
 ## Scoping Summary
@@ -130,3 +128,5 @@ Serve the Market Data price chart from the local SQLite candle database instead 
 | Agent | Status | Started | Completed |
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-28T20:42:51Z | 2026-03-28T20:42:51Z |
+| Plan Implementer | implemented | 2026-03-28T21:01:21Z | 2026-03-28T21:29:36Z |
+| Implementation Reviewer | complete | 2026-03-28T21:31:48Z | 2026-03-28T21:50:39Z |

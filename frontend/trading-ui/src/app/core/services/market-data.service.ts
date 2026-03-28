@@ -19,4 +19,17 @@ export class MarketDataService {
     }
     return this._apiClient.get<Candle[]>(url);
   }
+
+  public getHistoricalCandles(
+    asset: string,
+    timeframe: string,
+    endTime?: number,
+    limit = 500
+  ): Observable<Candle[]> {
+    let url = `market/candles/history?asset=${encodeURIComponent(asset)}&timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`;
+    if (endTime != null) {
+      url += `&endTime=${endTime}`;
+    }
+    return this._apiClient.get<Candle[]>(url);
+  }
 }

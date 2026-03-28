@@ -56,6 +56,8 @@ describe("BacktestService", () => {
       endDate: "2024-12-31T23:59:59Z",
       strategyConfig: request.strategyConfig,
       initialCapital: 10000,
+      status: "Completed",
+      progress: 100,
       candlesReplayed: 35040,
       elapsedMs: 1234,
       totalTrades: 100,
@@ -104,6 +106,8 @@ describe("BacktestService", () => {
         stopLossPercent: 5
       },
       initialCapital: 10000,
+      status: "Completed",
+      progress: 100,
       candlesReplayed: 100,
       elapsedMs: 200,
       totalTrades: 50,

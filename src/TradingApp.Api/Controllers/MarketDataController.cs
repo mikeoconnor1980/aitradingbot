@@ -39,4 +39,20 @@ public sealed class MarketDataController : ApiController
         var result = await Mediator.Send(new GetCandlesQuery(asset, timeframe, endTime), cancellationToken);
         return Ok(result);
     }
+
+    [HttpGet("candles/history")]
+    [ProducesResponseType(typeof(List<CandleDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetHistoricalCandlesAsync(
+        [FromQuery][Required] string asset,
+        [FromQuery][Required] string timeframe,
+        [FromQuery] long? endTime,
+        [FromQuery] int limit = 500,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await Mediator.Send(
+            new GetHistoricalCandlesQuery(asset, timeframe, endTime, limit),
+            cancellationToken);
+        return Ok(result);
+    }
 }

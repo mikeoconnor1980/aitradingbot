@@ -171,6 +171,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this._backtestService.getBacktest(id, this._localErrorContext).subscribe({
       next: (result: BacktestResult) => {
         this.latestResult = result;
+        this.prefillConfig = result;
         this.selectedTabIndex = 0;
         this._retryAction = null;
       },

@@ -94,9 +94,19 @@ export class MarketDataComponent implements OnInit {
   }
 
   public onLoadMoreCandles(endTimeMs: number): void {
-    this._marketDataService.getCandles(this.selectedAsset, this.selectedTimeframe, endTimeMs).subscribe({
-      next: (candles) => this._priceChart?.prependCandles(candles),
-      error: () => this._priceChart?.prependCandles([]),
+    this._marketDataService.getHistoricalCandles(this.selectedAsset, this.selectedTimeframe, endTimeMs).pipe(
+      catchError(() => of([] as Candle[])),
+      switchMap((candles: Candle[]) => {
+        if (candles.length > 0) {
+          return of(candles);
+        }
+
+        return this._marketDataService.getCandles(this.selectedAsset, this.selectedTimeframe, endTimeMs).pipe(
+          catchError(() => of([] as Candle[]))
+        );
+      })
+    ).subscribe((candles: Candle[]) => {
+      this._priceChart?.prependCandles(candles);
     });
   }
 
@@ -137,12 +147,21 @@ export class MarketDataComponent implements OnInit {
         switchMap(() => {
           this.isLoadingCandles = true;
           this.candleError = null;
-          return this._marketDataService.getCandles(this.selectedAsset, this.selectedTimeframe).pipe(
-            catchError(() => {
-              this.candles = [];
-              this.candleError = "Failed to load candle data.";
-              this.isLoadingCandles = false;
-              return EMPTY;
+          return this._marketDataService.getHistoricalCandles(this.selectedAsset, this.selectedTimeframe).pipe(
+            catchError(() => of([] as Candle[])),
+            switchMap((candles: Candle[]) => {
+              if (candles.length > 0) {
+                return of(candles);
+              }
+
+              return this._marketDataService.getCandles(this.selectedAsset, this.selectedTimeframe).pipe(
+                catchError(() => {
+                  this.candles = [];
+                  this.candleError = "Failed to load candle data.";
+                  this.isLoadingCandles = false;
+                  return EMPTY;
+                })
+              );
             })
           );
         }),

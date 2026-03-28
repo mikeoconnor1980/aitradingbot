@@ -50,9 +50,9 @@ public sealed class CandleReplayEngine
 
         await Task.WhenAll(candles15mTask, candles1hTask, candles4hTask);
 
-        var sorted15m = candles15mTask.Result.OrderBy(candle => candle.Timestamp).ToList();
-        var sorted1h = candles1hTask.Result.OrderBy(candle => candle.Timestamp).ToList();
-        var sorted4h = candles4hTask.Result.OrderBy(candle => candle.Timestamp).ToList();
+        var sorted15m = DeduplicateByTimestamp(candles15mTask.Result);
+        var sorted1h = DeduplicateByTimestamp(candles1hTask.Result);
+        var sorted4h = DeduplicateByTimestamp(candles4hTask.Result);
         var warmupEndIndex = DetermineWarmupEndIndex(sorted15m, config);
 
         ValidateDataAvailability(config, sorted15m, sorted1h, sorted4h, warmupEndIndex);
@@ -166,4 +166,12 @@ public sealed class CandleReplayEngine
         FourHourInterval => 4L * 60L * 60L * 1000L,
         _ => throw new ArgumentException($"Unsupported interval: {interval}", nameof(interval))
     };
+
+    private static List<Candle> DeduplicateByTimestamp(IReadOnlyList<Candle> candles)
+    {
+        return candles
+            .OrderBy(c => c.Timestamp)
+            .DistinctBy(c => c.Timestamp)
+            .ToList();
+    }
 }

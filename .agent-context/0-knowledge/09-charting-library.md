@@ -31,6 +31,8 @@ hedge levels
 - Uses `update()` for appending new points and `setData()` only when the rolling window prunes old data
 - Responsive: `ResizeObserver` watches the container `ElementRef` and calls `chart.applyOptions({ width })`
 - Cleanup: `ResizeObserver.disconnect()` + `chart.remove()` in `ngOnDestroy`
+- `prependCandles(candles: Candle[])` — public method for loading older candles into the chart; deduplicates against the current oldest entry, prepends unique candles, and calls `setData()` to refresh the full series. Called by `MarketDataComponent.onLoadMoreCandles()`.
+- "Load more older candles" pattern: pass the chart's oldest visible candle timestamp (Unix ms) as `endTime` to `GET /api/market/candles/history`, then call `prependCandles()` with the result. Fallback to `GET /api/market/candles` if empty.
 
 When adding overlays to the live price chart specifically (e.g., grid levels, take-profit bands), add additional `ISeriesApi` instances to `PriceChartComponent` rather than creating a new component. For a distinct visualization purpose (e.g., equity curves, backtesting), create a dedicated component rather than extending `PriceChartComponent`.
 

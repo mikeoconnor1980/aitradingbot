@@ -180,9 +180,16 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private _mapEquityData(data: EquitySnapshot[]): EquityDataPoint[] {
-    return data.map((snapshot: EquitySnapshot) => ({
-      time: Math.floor(snapshot.timestampUtc / 1000) as UTCTimestamp,
-      value: snapshot.equity
+    const deduped = new Map<number, number>();
+
+    for (const snapshot of data) {
+      const time = Math.floor(snapshot.timestampUtc / 1000);
+      deduped.set(time, snapshot.equity);
+    }
+
+    return Array.from(deduped, ([time, value]) => ({
+      time: time as UTCTimestamp,
+      value
     }));
   }
 

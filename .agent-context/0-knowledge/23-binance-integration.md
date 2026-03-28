@@ -64,6 +64,25 @@ Both endpoints accept `StartTime`/`EndTime` as Unix milliseconds (nullable). Omi
 
 ---
 
+## Consuming Ingested Candle Data
+
+Candles written to `ICandleRepository` via ingestion are served to the frontend by a separate read path. The `GetHistoricalCandlesQuery` reads directly from `ICandleRepository` — it does **not** go through Hyperliquid.
+
+| Component | Location |
+|-----------|----------|
+| `GetHistoricalCandlesQuery` + Handler | `src/TradingApp.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs` |
+| Endpoint | `GET /api/market/candles/history` (`MarketDataController`) |
+
+**Endpoint parameters**: `asset`, `timeframe`, `endTime` (Unix ms, optional), `limit` (default 500, max 5000).
+
+**Asset mapping**: The handler strips the `-PERP` suffix from the asset parameter (`BTC-PERP` → `BTC`) using its own inline mapping — it does not use `BinanceAssetMapper`.
+
+**Pagination** uses a reverse-cursor pattern: `endTime` anchors the end of the window; `startTime` is derived as `endTime - (limit × timeframeMs)`. To page backwards, pass the oldest candle timestamp as `endTime`.
+
+**Frontend fallback**: `MarketDataComponent` tries the history endpoint first; if it returns an empty result (no local data), it falls back to `GET /api/market/candles` (live Hyperliquid data). This applies to both initial chart load and "load more older candles" requests.
+
+---
+
 ## Configuration
 
 Config section: `BinanceIngestion`

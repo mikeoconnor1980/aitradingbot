@@ -107,6 +107,8 @@ describe("BacktestFormComponent", () => {
         stopLossPercent: 4
       },
       initialCapital: 25000,
+      status: "Completed",
+      progress: 100,
       candlesReplayed: 500,
       elapsedMs: 1800,
       totalTrades: 12,
