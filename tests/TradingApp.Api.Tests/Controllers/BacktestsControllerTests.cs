@@ -3,12 +3,15 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using TradingApp.Api.Models;
+using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Models;
 using TradingApp.Api.Tests.Infrastructure;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
@@ -42,17 +45,14 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         services.RemoveAll<ICandleRepository>();
         services.AddSingleton(_candleRepositoryMock.Object);
+
+        // Suppress the background processor so it doesn't interfere with tests
+        services.RemoveAll<IHostedService>();
     }
 
     [TestMethod]
-    public async Task GivenValidRequest_WhenPostBacktest_ThenReturnsOkWithResult()
+    public async Task GivenValidRequest_WhenPostBacktest_ThenReturnsAcceptedWithQueuedStatus()
     {
-        var backtestResult = CreateMockBacktestResult();
-
-        _backtestRunnerMock
-            .Setup(runner => runner.RunAsync(It.IsAny<BacktestConfig>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(backtestResult);
-
         _backtestRunRepositoryMock
             .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
@@ -62,7 +62,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         var response = await client.PostAsJsonAsync(BaseUrl, request);
 
-        response.AssertStatusCode(HttpStatusCode.Created);
+        response.AssertStatusCode(HttpStatusCode.Accepted);
         var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>();
         result.Should().NotBeNull();
 
@@ -70,50 +70,22 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.Symbol.Should().Be("BTC");
         result.Intervals.Should().Equal("15m", "1h", "4h");
         result.InitialCapital.Should().Be(10000m);
-        result.CandlesReplayed.Should().Be(35040);
-        result.TotalTrades.Should().Be(10);
-        result.WinningTrades.Should().Be(7);
-        result.LosingTrades.Should().Be(3);
-        result.WinRate.Should().Be(70m);
-        result.TotalPnl.Should().Be(500m);
-        result.MaxDrawdown.Should().Be(-100m);
-        result.AverageTradePnl.Should().Be(50m);
-        result.HedgesOpened.Should().Be(1);
-        result.TotalFeesPaid.Should().Be(5m);
-        result.ElapsedMs.Should().BeGreaterThan(0);
+        result.Status.Should().Be("Queued");
+        result.Progress.Should().Be(0);
+        result.CandlesReplayed.Should().Be(0);
+        result.TotalTrades.Should().Be(0);
         result.StartDate.Should().Be(new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         result.EndDate.Should().Be(new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc));
         result.CreatedAt.Should().BeAfter(DateTime.MinValue);
-        result.Trades.Should().HaveCount(1);
-        var trade = result.Trades[0];
-        trade.EntryPrice.Should().Be(42150.50m);
-        trade.ExitPrice.Should().Be(42361.25m);
-        trade.Side.Should().Be("Buy");
-        trade.Size.Should().Be(0.001m);
-        trade.Pnl.Should().Be(0.21m);
-        trade.Fees.Should().Be(0.015m);
-        trade.TradeType.Should().Be("GridFill");
         result.StrategyConfig.GridLevels.Should().Be(10);
         result.StrategyConfig.GridSpacing.Should().Be(0.5m);
-
-        _backtestRunnerMock.Verify(
-            runner => runner.RunAsync(
-                It.Is<BacktestConfig>(config =>
-                    config.Symbol == "BTC" &&
-                    config.Intervals.SequenceEqual(new[] { "15m", "1h", "4h" }) &&
-                    config.InitialCapital == 10000m &&
-                    config.StartDateUtc == new DateTimeOffset(request.StartDate!.Value).ToUnixTimeMilliseconds() &&
-                    config.EndDateUtc == new DateTimeOffset(request.EndDate!.Value).ToUnixTimeMilliseconds()),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
 
         _backtestRunRepositoryMock.Verify(
             repository => repository.AddAsync(
                 It.Is<BacktestRun>(run =>
                     run.Symbol == "BTC" &&
                     run.InitialCapital == 10000m &&
-                    run.CandlesReplayed == 35040 &&
-                    run.TotalTrades == 10),
+                    run.Status == Domain.Enums.BacktestStatus.Queued),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -426,100 +398,13 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
-    public async Task GivenNoCandleData_WhenPostBacktest_ThenReturnsNotFound()
+    public async Task GivenValidRequest_WhenPostBacktest_ThenEnqueuesJobAndSavesQueuedRun()
     {
-        _backtestRunnerMock
-            .Setup(runner => runner.RunAsync(It.IsAny<BacktestConfig>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new NotFoundException("No candle data found for the requested range"));
-
-        var client = GetTestClient();
-        var request = CreateValidRequest();
-
-        var response = await client.PostAsJsonAsync(BaseUrl, request);
-
-        response.AssertStatusCode(HttpStatusCode.NotFound);
-
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("errorCode").GetString().Should().Be("not_found");
-        body.GetProperty("errorMessage").GetString().Should().Contain("No candle data found");
-    }
-
-    [TestMethod]
-    public async Task GivenBacktestTimeout_WhenPostBacktest_ThenReturnsRequestTimeout()
-    {
-        _backtestRunnerMock
-            .Setup(runner => runner.RunAsync(It.IsAny<BacktestConfig>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new OperationCanceledException());
-
-        var client = GetTestClient();
-        var request = CreateValidRequest();
-
-        var response = await client.PostAsJsonAsync(BaseUrl, request);
-
-        response.AssertStatusCode(HttpStatusCode.RequestTimeout);
-
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("errorCode").GetString().Should().Be("request_timeout");
-        body.GetProperty("errorMessage").GetString().Should().Contain("Request was cancelled or exceeded maximum timeout");
-
-        _backtestRunRepositoryMock.Verify(
-            repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [TestMethod]
-    public async Task GivenBacktestRunnerUnavailable_WhenPostBacktest_ThenReturnsServiceUnavailable()
-    {
-        _backtestRunnerMock
-            .Setup(runner => runner.RunAsync(It.IsAny<BacktestConfig>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new BacktestUnavailableException(
-                "Backtest execution is not available in the API host yet. The concrete strategy pipeline services are not registered, so the endpoint can validate and read saved results but cannot run new backtests."));
-
-        var client = GetTestClient();
-        var request = CreateValidRequest();
-
-        var response = await client.PostAsJsonAsync(BaseUrl, request);
-
-        response.AssertStatusCode(HttpStatusCode.ServiceUnavailable);
-
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("errorCode").GetString().Should().Be("backtest_unavailable");
-        body.GetProperty("errorMessage").GetString().Should().Contain("Backtest execution is not available in the API host yet");
-
-        _backtestRunRepositoryMock.Verify(
-            repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-    }
-
-    [TestMethod]
-    public async Task GivenBacktestWithNoTrades_WhenPostBacktest_ThenReturnsEmptyTradesAndZeroMetrics()
-    {
-        var backtestResult = new BacktestResult
-        {
-            TotalTrades = 0,
-            WinningTrades = 0,
-            LosingTrades = 0,
-            WinRate = 0m,
-            TotalPnL = 0m,
-            MaxDrawdownAbsolute = 0m,
-            MaxDrawdownPercent = 0m,
-            AverageTradePnL = 0m,
-            AverageHoldTime = TimeSpan.Zero,
-            HedgesOpened = 0,
-            TotalFeesPaid = 0m,
-            GridCycles = 0,
-            CandlesReplayed = 35040,
-            FinalEquity = 10000m,
-            EquityTimeSeries = [],
-            TradeLog = [],
-        };
-
-        _backtestRunnerMock
-            .Setup(runner => runner.RunAsync(It.IsAny<BacktestConfig>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(backtestResult);
+        BacktestRun? savedRun = null;
 
         _backtestRunRepositoryMock
             .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
+            .Callback<BacktestRun, CancellationToken>((run, _) => savedRun = run)
             .Returns(Task.CompletedTask);
 
         var client = GetTestClient();
@@ -527,18 +412,16 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         var response = await client.PostAsJsonAsync(BaseUrl, request);
 
-        response.AssertStatusCode(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>();
-        result.Should().NotBeNull();
+        response.AssertStatusCode(HttpStatusCode.Accepted);
 
-        result!.Trades.Should().BeEmpty();
-        result.TotalTrades.Should().Be(0);
-        result.WinRate.Should().Be(0m);
-        result.TotalPnl.Should().Be(0m);
-        result.MaxDrawdown.Should().Be(0m);
-        result.AverageTradePnl.Should().Be(0m);
-        result.HedgesOpened.Should().Be(0);
-        result.TotalFeesPaid.Should().Be(0m);
+        savedRun.Should().NotBeNull();
+        savedRun!.Status.Should().Be(Domain.Enums.BacktestStatus.Queued);
+        savedRun.Progress.Should().Be(0);
+        savedRun.CandlesReplayed.Should().Be(0);
+        savedRun.TotalTrades.Should().Be(0);
+
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Contain($"api/backtests/{savedRun.Id}");
     }
 
     [TestMethod]

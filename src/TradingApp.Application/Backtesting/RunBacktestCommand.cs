@@ -1,8 +1,6 @@
-using System.Diagnostics;
 using System.Text.Json;
 using TradingApp.Application.Abstractions.Commands;
 using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Domain.Entities;
 
@@ -18,17 +16,15 @@ public sealed record RunBacktestCommand(
 
 public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestCommand, BacktestRunResponse>
 {
-    private static readonly TimeSpan ServerTimeout = TimeSpan.FromMinutes(5);
-
-    private readonly IBacktestRunner _backtestRunner;
     private readonly IBacktestRunRepository _backtestRunRepository;
+    private readonly BacktestJobQueue _backtestJobQueue;
 
     public RunBacktestCommandHandler(
-        IBacktestRunner backtestRunner,
-        IBacktestRunRepository backtestRunRepository)
+        IBacktestRunRepository backtestRunRepository,
+        BacktestJobQueue backtestJobQueue)
     {
-        _backtestRunner = backtestRunner;
         _backtestRunRepository = backtestRunRepository;
+        _backtestJobQueue = backtestJobQueue;
     }
 
     public override async Task<BacktestRunResponse> Handle(RunBacktestCommand request, CancellationToken cancellationToken)
@@ -45,51 +41,16 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
             : request.EndDate.ToUniversalTime();
         var strategyConfigJson = BacktestRunResponseMapper.SerializeStrategyConfig(request.StrategyConfig);
 
-        var config = new BacktestConfig
-        {
-            Symbol = request.Symbol,
-            Intervals = request.Intervals,
-            StartDateUtc = new DateTimeOffset(startDateUtc).ToUnixTimeMilliseconds(),
-            EndDateUtc = new DateTimeOffset(endDateUtc).ToUnixTimeMilliseconds(),
-            InitialCapital = request.InitialCapital,
-            FeeModel = new FeeModel
-            {
-                MakerFeeRate = request.StrategyConfig.MakerFee,
-                TakerFeeRate = request.StrategyConfig.TakerFee,
-                SlippageRate = request.StrategyConfig.Slippage
-            },
-            StrategyConfigJson = strategyConfigJson
-        };
-
-        using var timeoutCts = new CancellationTokenSource(ServerTimeout);
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
-        var stopwatch = Stopwatch.StartNew();
-        var result = await _backtestRunner.RunAsync(config, linkedCts.Token);
-        stopwatch.Stop();
-
-        var backtestRun = BacktestRun.Create(
+        var backtestRun = BacktestRun.CreateQueued(
             symbol: request.Symbol,
             intervalsJson: JsonSerializer.Serialize(request.Intervals),
-            startDateUtc: config.StartDateUtc,
-            endDateUtc: config.EndDateUtc,
+            startDateUtc: new DateTimeOffset(startDateUtc).ToUnixTimeMilliseconds(),
+            endDateUtc: new DateTimeOffset(endDateUtc).ToUnixTimeMilliseconds(),
             strategyConfigJson: strategyConfigJson,
-            initialCapital: request.InitialCapital,
-            candlesReplayed: result.CandlesReplayed,
-            elapsedMs: Math.Max(1, stopwatch.ElapsedMilliseconds),
-            totalTrades: result.TotalTrades,
-            winningTrades: result.WinningTrades,
-            losingTrades: result.LosingTrades,
-            winRate: result.WinRate,
-            totalPnl: result.TotalPnL,
-            maxDrawdown: result.MaxDrawdownAbsolute,
-            averageTradePnl: result.AverageTradePnL,
-            averageHoldTimeMinutes: result.AverageHoldTime.TotalMinutes,
-            hedgesOpened: result.HedgesOpened,
-            totalFeesPaid: result.TotalFeesPaid,
-            tradesJson: BacktestRunResponseMapper.SerializeTrades(result.TradeLog));
+            initialCapital: request.InitialCapital);
 
-        await _backtestRunRepository.AddAsync(backtestRun, linkedCts.Token);
+        await _backtestRunRepository.AddAsync(backtestRun, cancellationToken);
+        await _backtestJobQueue.EnqueueAsync(new BacktestJob(backtestRun.Id), cancellationToken);
 
         return BacktestRunResponseMapper.ToResponse(backtestRun);
     }

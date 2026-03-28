@@ -2,6 +2,7 @@ import { Injectable, OnDestroy, inject } from "@angular/core";
 import * as signalR from "@microsoft/signalr";
 import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { environment } from "../../../environments/environment";
+import { BacktestProgress } from "../models/backtest.model";
 import { ConnectionState, ConnectionStatus } from "../models/connection-status.model";
 import { PriceUpdate } from "../models/price-update.model";
 import { AccountStateService } from "./account-state.service";
@@ -13,6 +14,7 @@ export class SignalRService implements OnDestroy {
   private readonly _accountState = inject(AccountStateService);
 
   private readonly _priceUpdate$ = new Subject<PriceUpdate>();
+  private readonly _backtestProgress$ = new Subject<BacktestProgress>();
   private readonly _connectionStatus$ = new BehaviorSubject<ConnectionStatus>({
     source: "SignalR",
     status: "Disconnected",
@@ -32,6 +34,7 @@ export class SignalRService implements OnDestroy {
   private readonly _hubConnection: signalR.HubConnection;
 
   public readonly priceUpdate$: Observable<PriceUpdate> = this._priceUpdate$.asObservable();
+  public readonly backtestProgress$: Observable<BacktestProgress> = this._backtestProgress$.asObservable();
   public readonly connectionStatus$: Observable<ConnectionStatus> = this._connectionStatus$.asObservable();
 
   public constructor() {
@@ -48,12 +51,17 @@ export class SignalRService implements OnDestroy {
   public ngOnDestroy(): void {
     void this._hubConnection.stop();
     this._priceUpdate$.complete();
+    this._backtestProgress$.complete();
     this._connectionStatus$.complete();
   }
 
   private _registerHandlers(): void {
     this._hubConnection.on("ReceivePriceUpdate", (update: PriceUpdate) => {
       this._priceUpdate$.next(update);
+    });
+
+    this._hubConnection.on("ReceiveBacktestProgress", (progress: BacktestProgress) => {
+      this._backtestProgress$.next(progress);
     });
 
     this._hubConnection.on("ReceiveConnectionStatus", (status: ConnectionStatus) => {

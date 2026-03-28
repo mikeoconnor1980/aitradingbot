@@ -86,12 +86,14 @@ builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
 builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
+builder.Services.AddSingleton<BacktestJobQueue>();
 builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
 builder.Services.AddScoped<IStrategyEngine, GridStrategyEngine>();
 builder.Services.AddScoped<IGridController, GridController>();
 builder.Services.AddScoped<IRiskEngine, PassThroughRiskEngine>();
 builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
 builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
+builder.Services.AddHostedService<BacktestProcessorService>();
 builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>
 {
     var options = sp.GetRequiredService<IOptions<BinanceIngestionOptions>>().Value;

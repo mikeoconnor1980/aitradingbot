@@ -4,7 +4,7 @@ using TradingApp.Domain.Entities;
 
 namespace TradingApp.Application.Backtesting;
 
-internal static class BacktestRunResponseMapper
+public static class BacktestRunResponseMapper
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -46,6 +46,9 @@ internal static class BacktestRunResponseMapper
             EndDate = DateTimeOffset.FromUnixTimeMilliseconds(entity.EndDateUtc).UtcDateTime,
             StrategyConfig = strategyConfig,
             InitialCapital = entity.InitialCapital,
+            Status = entity.Status.ToString(),
+            Progress = entity.Progress,
+            ErrorMessage = entity.ErrorMessage,
             CandlesReplayed = entity.CandlesReplayed,
             ElapsedMs = entity.ElapsedMs,
             TotalTrades = entity.TotalTrades,

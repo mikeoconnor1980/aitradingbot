@@ -87,4 +87,12 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
         await _context.BacktestRuns.AddAsync(backtestRun, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task UpdateAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(backtestRun);
+
+        _context.BacktestRuns.Update(backtestRun);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }

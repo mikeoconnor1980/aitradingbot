@@ -101,6 +101,12 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(backtestRun => backtestRun.TradesJson)
                 .IsRequired();
 
+            entity.Property(backtestRun => backtestRun.Status)
+                .IsRequired();
+
+            entity.Property(backtestRun => backtestRun.ErrorMessage)
+                .HasMaxLength(2000);
+
             entity.Property(backtestRun => backtestRun.InitialCapital)
                 .HasConversion<double>();
 

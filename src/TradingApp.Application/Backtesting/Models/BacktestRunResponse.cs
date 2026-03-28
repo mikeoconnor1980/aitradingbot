@@ -9,6 +9,9 @@ public sealed class BacktestRunResponse
     public required DateTime EndDate { get; init; }
     public required GridStrategyConfig StrategyConfig { get; init; }
     public required decimal InitialCapital { get; init; }
+    public required string Status { get; init; }
+    public required int Progress { get; init; }
+    public string? ErrorMessage { get; init; }
     public required int CandlesReplayed { get; init; }
     public required long ElapsedMs { get; init; }
     public required int TotalTrades { get; init; }

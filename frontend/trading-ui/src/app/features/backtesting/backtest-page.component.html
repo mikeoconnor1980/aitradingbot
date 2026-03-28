@@ -28,6 +28,22 @@
           </div>
         }
 
+        @if (isRunning && backtestStatus) {
+          <div class="backtest-page__run-status">
+            <h3>
+              @switch (backtestStatus) {
+                @case ("Queued") { Backtest queued... }
+                @case ("Running") { Running backtest — {{ backtestProgress }}% }
+                @default { Processing... }
+              }
+            </h3>
+            <mat-progress-bar
+              [mode]="backtestStatus === 'Running' ? 'determinate' : 'indeterminate'"
+              [value]="backtestProgress">
+            </mat-progress-bar>
+          </div>
+        }
+
         <app-coverage-report [report]="coverageReport"></app-coverage-report>
 
         @if (latestResult) {

@@ -39,7 +39,12 @@ public sealed class BacktestRunner : IBacktestRunner
         _executionContextAccessor = executionContextAccessor ?? throw new ArgumentNullException(nameof(executionContextAccessor));
     }
 
-    public async Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
+    public Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
+    {
+        return RunAsync(config, onProgress: null, cancellationToken);
+    }
+
+    public async Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int>? onProgress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(config);
         ValidateConfig(config);
@@ -61,6 +66,8 @@ public sealed class BacktestRunner : IBacktestRunner
         try
         {
             var replayData = await replayEngine.LoadAsync(config, cancellationToken);
+            var totalCandles = Math.Max(0, replayData.Candles15m.Count - replayData.WarmupEndIndex);
+            onProgress?.Invoke(0, totalCandles);
             var tradeLog = new List<BacktestTrade>();
             var equityTimeSeries = new List<EquitySnapshot>();
             var currentGridState = scheduler.GetGridState();
@@ -120,6 +127,12 @@ public sealed class BacktestRunner : IBacktestRunner
                 var simulatedPosition = executionEngine.GetPosition();
                 var currentEquity = config.InitialCapital + simulatedPosition.RealisedPnL + simulatedPosition.UnrealisedPnL;
                 equityTimeSeries.Add(new EquitySnapshot(candle.Timestamp, currentEquity));
+
+                var candlesProcessed = index - replayData.WarmupEndIndex + 1;
+                if (candlesProcessed % 100 == 0 || candlesProcessed == totalCandles)
+                {
+                    onProgress?.Invoke(candlesProcessed, totalCandles);
+                }
             }
 
             return metricsCalculator.Calculate(

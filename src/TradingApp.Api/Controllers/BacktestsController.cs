@@ -19,10 +19,9 @@ public sealed class BacktestsController : ApiController
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(BacktestRunResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(BacktestRunResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(Envelope), StatusCodes.Status408RequestTimeout)]
     public async Task<IActionResult> RunAsync([FromBody] RunBacktestRequest request, CancellationToken cancellationToken)
     {
         ValidateRequest(request);
@@ -51,7 +50,7 @@ public sealed class BacktestsController : ApiController
                 request.InitialCapital!.Value),
             cancellationToken);
 
-        return CreatedAtRoute(GetBacktestByIdRouteName, new { id = result.Id }, result);
+        return AcceptedAtRoute(GetBacktestByIdRouteName, new { id = result.Id }, result);
     }
 
     [HttpGet]

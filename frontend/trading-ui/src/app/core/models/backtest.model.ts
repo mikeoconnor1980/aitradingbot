@@ -45,6 +45,9 @@ export interface BacktestResult {
   endDate: string;
   strategyConfig: GridStrategyConfig;
   initialCapital: number;
+  status: string;
+  progress: number;
+  errorMessage?: string | null;
   candlesReplayed: number;
   elapsedMs: number;
   totalTrades: number;
@@ -60,6 +63,14 @@ export interface BacktestResult {
   trades: BacktestTrade[];
   createdAt: string;
   equityTimeSeries?: EquitySnapshot[];
+}
+
+export interface BacktestProgress {
+  id: string;
+  status: string;
+  progress: number;
+  totalCandles: number;
+  errorMessage?: string | null;
 }
 
 export interface BacktestSummary {

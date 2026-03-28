@@ -12,4 +12,5 @@ public interface IBacktestRunRepository
         int pageSize,
         CancellationToken cancellationToken = default);
     Task AddAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default);
+    Task UpdateAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default);
 }
