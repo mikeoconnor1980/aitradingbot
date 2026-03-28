@@ -61,7 +61,6 @@ public sealed class CandleIngestionService : ICandleIngestionService
         var token = linkedCts.Token;
 
         var coin = HyperliquidAssetMapper.ToCoin(request.Symbol);
-        var endTime = request.EndTime ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var defaultStartTime = new DateTimeOffset(_options.DefaultStartDate).ToUnixTimeMilliseconds();
         var intervalResults = new List<IntervalResult>();
 
@@ -78,7 +77,8 @@ public sealed class CandleIngestionService : ICandleIngestionService
                 break;
             }
 
-            var intervalResult = await IngestIntervalAsync(coin, interval, request.StartTime, endTime, defaultStartTime, token);
+            var intervalEndTime = GetEffectiveEndTime(interval, request.EndTime);
+            var intervalResult = await IngestIntervalAsync(coin, interval, request.StartTime, intervalEndTime, defaultStartTime, token);
             intervalResults.Add(intervalResult);
         }
 
@@ -179,6 +179,19 @@ public sealed class CandleIngestionService : ICandleIngestionService
                     .OrderBy(candle => candle.Timestamp)
                     .ToList();
 
+                var nextCursor = orderedBatch[^1].Timestamp + 1;
+                if (nextCursor <= cursor)
+                {
+                    _logger.LogWarning(
+                        "Received non-advancing batch for {Symbol}/{Interval}. CurrentCursor={Cursor}, LastBatchTimestamp={LastBatchTimestamp}. Ending interval to avoid infinite loop.",
+                        coin,
+                        interval,
+                        cursor,
+                        orderedBatch[^1].Timestamp);
+
+                    break;
+                }
+
                 var candles = orderedBatch
                     .Select(candle => Candle.Create(
                         coin,
@@ -205,7 +218,7 @@ public sealed class CandleIngestionService : ICandleIngestionService
                     candles.Count,
                     orderedBatch[^1].Timestamp);
 
-                cursor = orderedBatch[^1].Timestamp + 1;
+                cursor = nextCursor;
                 retryCount = 0;
 
                 await Task.Delay(_options.BatchDelayMs, cancellationToken);
@@ -263,5 +276,20 @@ public sealed class CandleIngestionService : ICandleIngestionService
                 Error = ex.Message,
             };
         }
+    }
+
+    private static long GetEffectiveEndTime(string interval, long? requestedEndTime)
+    {
+        if (requestedEndTime.HasValue)
+        {
+            return requestedEndTime.Value;
+        }
+
+        var intervalMs = HyperliquidAssetMapper.GetIntervalMs(interval);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var currentIntervalStart = (now / intervalMs) * intervalMs;
+        var lastClosedCandleStart = currentIntervalStart - intervalMs;
+
+        return Math.Max(0, lastClosedCandleStart);
     }
 }

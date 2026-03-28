@@ -15,6 +15,7 @@ namespace TradingApp.Api.Tests.Services;
 public sealed class CandleIngestionServiceTests
 {
     private static readonly DateTime DefaultStartDate = new(2022, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+    private const int PageSize = 500;
 
     private Mock<IHyperliquidRestClient> _restClientMock = default!;
     private Mock<ICandleRepository> _repositoryMock = default!;
@@ -34,16 +35,17 @@ public sealed class CandleIngestionServiceTests
     public async Task GivenEmptyDatabase_WhenIngest_ThenFetchesFromDefaultStartDate()
     {
         var expectedStart = new DateTimeOffset(DefaultStartDate).ToUnixTimeMilliseconds();
+        var explicitEndTime = expectedStart + 3600000L;
 
         _repositoryMock
             .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
             .ReturnsAsync((long?)null);
 
         _restClientMock
-            .Setup(client => client.GetCandleSnapshotsAsync("BTC", "1h", expectedStart, It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Setup(client => client.GetCandleSnapshotsAsync("BTC", "1h", expectedStart, explicitEndTime, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        var result = await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"] });
+        var result = await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"], EndTime = explicitEndTime });
 
         result.TotalFetched.Should().Be(0);
         result.TotalInserted.Should().Be(0);
@@ -56,19 +58,20 @@ public sealed class CandleIngestionServiceTests
     public async Task GivenExistingCandles_WhenIngest_ThenResumesFromLatestTimestamp()
     {
         const long latestTimestamp = 1700000000000L;
+        const long explicitEndTime = latestTimestamp + 3600000L + 1;
 
         _repositoryMock
             .Setup(repository => repository.GetLatestTimestampAsync("BTC", "1h", It.IsAny<CancellationToken>()))
             .ReturnsAsync(latestTimestamp);
 
         _restClientMock
-            .Setup(client => client.GetCandleSnapshotsAsync("BTC", "1h", latestTimestamp + 1, It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Setup(client => client.GetCandleSnapshotsAsync("BTC", "1h", latestTimestamp + 1, explicitEndTime, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
-        await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"] });
+        await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"], EndTime = explicitEndTime });
 
         _restClientMock.Verify(
-            client => client.GetCandleSnapshotsAsync("BTC", "1h", latestTimestamp + 1, It.IsAny<long>(), It.IsAny<CancellationToken>()),
+            client => client.GetCandleSnapshotsAsync("BTC", "1h", latestTimestamp + 1, explicitEndTime, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -76,7 +79,7 @@ public sealed class CandleIngestionServiceTests
     public async Task GivenPagedBatch_WhenIngest_ThenSortsMapsAndPersistsCandles()
     {
         const long firstTimestamp = 1700000000000L;
-        var fullBatch = Enumerable.Range(0, 5000)
+        var fullBatch = Enumerable.Range(0, PageSize)
             .Select(index => new CandleSnapshotDto
             {
                 Timestamp = firstTimestamp + (index * 3600000L),
@@ -94,7 +97,7 @@ public sealed class CandleIngestionServiceTests
         {
             new()
             {
-                Timestamp = firstTimestamp + (5000L * 3600000L),
+                Timestamp = firstTimestamp + (PageSize * 3600000L),
                 Open = 55000m,
                 High = 55100m,
                 Low = 54900m,
@@ -126,8 +129,8 @@ public sealed class CandleIngestionServiceTests
 
         var result = await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"] });
 
-        result.TotalFetched.Should().Be(5001);
-        result.TotalInserted.Should().Be(5001);
+        result.TotalFetched.Should().Be(PageSize + 1);
+        result.TotalInserted.Should().Be(PageSize + 1);
         result.TotalSkipped.Should().Be(0);
         _repositoryMock.Verify(
             repository => repository.BulkInsertAsync(It.IsAny<IEnumerable<Candle>>(), It.IsAny<CancellationToken>()),
@@ -140,7 +143,8 @@ public sealed class CandleIngestionServiceTests
     public async Task GivenMultipleFullBatches_WhenIngest_ThenAppliesConfiguredBatchDelay()
     {
         var invocationTimes = new List<DateTimeOffset>();
-        var batch = Enumerable.Range(0, 5000)
+        var explicitEndTime = 1700000000000L + (PageSize * 3600000L) + 1;
+        var batch = Enumerable.Range(0, PageSize)
             .Select(index => new CandleSnapshotDto
             {
                 Timestamp = 1700000000000L + (index * 3600000L),
@@ -173,10 +177,70 @@ public sealed class CandleIngestionServiceTests
                 return callCount == 1 ? batch : [];
             });
 
-        await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"] });
+    await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["1h"], EndTime = explicitEndTime });
 
         invocationTimes.Should().HaveCount(2);
         (invocationTimes[1] - invocationTimes[0]).Should().BeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(90));
+    }
+
+    [TestMethod]
+    public async Task GivenRequestWithoutExplicitEndTime_WhenIngest_ThenStopsAtLastClosedCandleBoundary()
+    {
+        var latestTimestamp = DateTimeOffset.UtcNow.AddHours(-8).ToUnixTimeMilliseconds();
+
+        _repositoryMock
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "4h", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestTimestamp);
+
+        _restClientMock
+            .Setup(client => client.GetCandleSnapshotsAsync("BTC", "4h", latestTimestamp + 1, It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .Returns<string, string, long, long, CancellationToken>((_, _, _, endTime, _) =>
+            {
+                endTime.Should().BeLessThanOrEqualTo(DateTimeOffset.UtcNow.AddHours(-4).ToUnixTimeMilliseconds());
+                return Task.FromResult(new List<CandleSnapshotDto>());
+            });
+
+        var result = await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["4h"] });
+
+        result.TotalFetched.Should().Be(0);
+        result.Intervals[0].Error.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenNonAdvancingBatch_WhenIngest_ThenStopsToAvoidInfiniteLoop()
+    {
+        const long latestTimestamp = 1700000000000L;
+
+        _repositoryMock
+            .Setup(repository => repository.GetLatestTimestampAsync("BTC", "4h", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(latestTimestamp);
+
+        _repositoryMock
+            .Setup(repository => repository.BulkInsertAsync(It.IsAny<IEnumerable<Candle>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _restClientMock
+            .Setup(client => client.GetCandleSnapshotsAsync("BTC", "4h", latestTimestamp + 1, It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new CandleSnapshotDto
+                {
+                    Timestamp = latestTimestamp,
+                    Open = 1m,
+                    High = 1m,
+                    Low = 1m,
+                    Close = 1m,
+                    Volume = 1m,
+                    NumTrades = 1,
+                },
+            ]);
+
+        var result = await _sut.IngestAsync(new IngestionRequest { Symbol = "BTC", Intervals = ["4h"] });
+
+        result.TotalFetched.Should().Be(0);
+        result.TotalInserted.Should().Be(0);
+        _repositoryMock.Verify(
+            repository => repository.BulkInsertAsync(It.IsAny<IEnumerable<Candle>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [TestMethod]
