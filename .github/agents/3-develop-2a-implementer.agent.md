@@ -4,7 +4,7 @@ version: "0.2.0"
 description: "Implements task plans systematically, updating checklists and tracking changes reliably through all phases"
 argument-hint: "Provide the plan file path to implement (e.g., 20260123-feature-plan.instructions.md) with optional `--review` or `--auto` mode (default: `--review`)"
 tools: ["search", "edit", "todo", "vscode", "read", "execute", "agent"]
-model: "Claude Sonnet 4.6"
+model: "GPT-5.4"
 ---
 
 # Plan Implementer Agent

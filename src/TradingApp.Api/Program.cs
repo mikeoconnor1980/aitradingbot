@@ -29,6 +29,12 @@ builder.Services.AddOptions<HyperliquidOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Bind CandleIngestion configuration
+builder.Services.AddOptions<CandleIngestionOptions>()
+    .Bind(builder.Configuration.GetSection(CandleIngestionOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // Read private key directly — consumed once at startup, not stored in DI
 var privateKey = builder.Configuration
     .GetSection(HyperliquidOptions.SectionName)["PrivateKey"]
@@ -70,6 +76,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
+builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
 builder.Services.AddPersistence(builder.Configuration);
 

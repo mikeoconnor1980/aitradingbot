@@ -43,6 +43,10 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
                 StatusCodes.Status422UnprocessableEntity,
                 new Envelope(ex.Message, "signing_error", correlationId)),
 
+            IngestionAlreadyRunningException ex => (
+                StatusCodes.Status409Conflict,
+                new Envelope(ex.Message, "ingestion_conflict", correlationId)),
+
             HyperliquidApiException ex when ex.ExchangeStatusCode >= 400 && ex.ExchangeStatusCode < 500 => (
                 StatusCodes.Status400BadRequest,
                 new Envelope(ex.Message, ex.ErrorCategory, correlationId)),

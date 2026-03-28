@@ -4,7 +4,7 @@ version: "0.2.0"
 description: "Implements a single phase of an implementation plan, reading details files and following project standards to produce code changes"
 argument-hint: "Called by Plan Implementer with phase context — not intended for direct user invocation"
 tools: ["search", "edit", "todo", "execute", "read", "web", "context7/*", "microsoftdocs/mcp/*"]
-model: "GPT-5.3-Codex"
+model: "GPT-5.4"
 user-invocable: false
 ---
 

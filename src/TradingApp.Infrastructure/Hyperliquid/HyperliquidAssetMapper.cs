@@ -42,6 +42,11 @@ public static class HyperliquidAssetMapper
         return TimeframeToIntervalMs.ContainsKey(timeframe);
     }
 
+    public static bool IsValidCoin(string coin)
+    {
+        return CoinToDisplay.ContainsKey(coin);
+    }
+
     public static string ToDisplayName(string coin)
     {
         return CoinToDisplay.TryGetValue(coin, out var displayName)

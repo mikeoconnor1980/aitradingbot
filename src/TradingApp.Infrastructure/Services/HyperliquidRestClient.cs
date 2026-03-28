@@ -264,6 +264,44 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             .ToList();
     }
 
+    public async Task<List<CandleSnapshotDto>> GetCandleSnapshotsAsync(
+        string asset,
+        string timeframe,
+        long startTime,
+        long endTime,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedTimeframe = timeframe.ToLowerInvariant();
+        _ = HyperliquidAssetMapper.GetIntervalMs(normalizedTimeframe);
+        var coin = HyperliquidAssetMapper.ToCoin(asset);
+
+        var request = new HyperliquidCandleSnapshotRequest
+        {
+            Req = new CandleSnapshotPayload
+            {
+                Coin = coin,
+                Interval = normalizedTimeframe,
+                StartTime = startTime,
+                EndTime = endTime,
+            },
+        };
+
+        var candles = await PostInfoAsync<List<HyperliquidCandle>>(request, cancellationToken);
+
+        return candles
+            .Select(c => new CandleSnapshotDto
+            {
+                Timestamp = c.OpenTime,
+                Open = ParseDecimal(c.Open),
+                High = ParseDecimal(c.High),
+                Low = ParseDecimal(c.Low),
+                Close = ParseDecimal(c.Close),
+                Volume = ParseDecimal(c.Volume),
+                NumTrades = c.NumTrades,
+            })
+            .ToList();
+    }
+
     public async Task<List<FillEventDto>> GetUserFillsAsync(
         string walletAddress,
         long? startTimeMs = null,

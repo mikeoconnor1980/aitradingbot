@@ -24,6 +24,13 @@ public interface IHyperliquidRestClient
         long? endTime = null,
         CancellationToken cancellationToken = default);
 
+    Task<List<CandleSnapshotDto>> GetCandleSnapshotsAsync(
+        string asset,
+        string timeframe,
+        long startTime,
+        long endTime,
+        CancellationToken cancellationToken = default);
+
     Task<List<FillEventDto>> GetUserFillsAsync(
         string walletAddress,
         long? startTimeMs = null,

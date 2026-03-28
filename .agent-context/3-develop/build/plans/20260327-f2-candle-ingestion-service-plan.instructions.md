@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260327-f2-candle-ingestion-service-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-03-27T20:41:35Z"
-status: "plan-reviewed"
-lastUpdated: "2026-03-27T20:52:20Z"
+currentAgent: "Implementation Reviewer"
+agentStartedAt: "2026-03-27T22:00:00Z"
+status: "in-review"
+lastUpdated: "2026-03-27T22:00:00Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -76,64 +76,64 @@ Build a candle ingestion service that batch-fetches historical OHLCV candle data
 - `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — Integration test base with `WebApplicationFactory`
 - `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` — Controller integration test pattern
 
-### [ ] Phase 1: REST Client Overload & Configuration
+### [x] Phase 1: REST Client Overload & Configuration
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 1.1: Add `GetCandlesAsync` overload with explicit `startTime` and `endTime` to `IHyperliquidRestClient`
+- [x] Task 1.1: Add `GetCandlesAsync` overload with explicit `startTime` and `endTime` to `IHyperliquidRestClient`
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-01-details.md#task-11-add-getcandlesasync-overload-to-interface
 
-- [ ] Task 1.2: Implement the new `GetCandlesAsync` overload in `HyperliquidRestClient`
+- [x] Task 1.2: Implement the new `GetCandlesAsync` overload in `HyperliquidRestClient`
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-01-details.md#task-12-implement-getcandlesasync-overload
 
-- [ ] Task 1.3: Create `CandleIngestionOptions` configuration class
+- [x] Task 1.3: Create `CandleIngestionOptions` configuration class
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-01-details.md#task-13-create-candleingestionoptions
 
-- [ ] Task 1.4: Add configuration section to `appsettings.json`
+- [x] Task 1.4: Add configuration section to `appsettings.json`
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-01-details.md#task-14-add-configuration-to-appsettings
 
-- [ ] Task 1.5: Write unit tests for the new `GetCandlesAsync` overload
+- [x] Task 1.5: Write unit tests for the new `GetCandlesAsync` overload
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-01-details.md#task-15-write-unit-tests-for-overload
 
-- [ ] Task 1.6: Build and run tests to verify Phase 1
+- [x] Task 1.6: Build and run tests to verify Phase 1
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-01-details.md#task-16-build-and-run-tests
 
-### [ ] Phase 2: Ingestion Service Implementation
+### [x] Phase 2: Ingestion Service Implementation
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 2.1: Create `ICandleIngestionService` interface with DTOs
+- [x] Task 2.1: Create `ICandleIngestionService` interface with DTOs
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-02-details.md#task-21-create-icandleingestionservice-interface-with-dtos
 
-- [ ] Task 2.2: Implement `CandleIngestionService` with batch pagination, mapping, and rate limiting
+- [x] Task 2.2: Implement `CandleIngestionService` with batch pagination, mapping, and rate limiting
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-02-details.md#task-22-implement-candleingestionservice
 
-- [ ] Task 2.3: Register `ICandleIngestionService` in DI (`Program.cs`) as scoped with static concurrency guard
+- [x] Task 2.3: Register `ICandleIngestionService` in DI (`Program.cs`) as scoped with static concurrency guard
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-02-details.md#task-23-register-in-di
 
-- [ ] Task 2.4: Write unit tests for `CandleIngestionService`
+- [x] Task 2.4: Write unit tests for `CandleIngestionService`
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-02-details.md#task-24-write-unit-tests-for-candleingestionservice
 
-- [ ] Task 2.5: Build and run tests to verify Phase 2
+- [x] Task 2.5: Build and run tests to verify Phase 2
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-02-details.md#task-25-build-and-run-tests
 
-### [ ] Phase 3: API Endpoint & Exception Handling
+### [x] Phase 3: API Endpoint & Exception Handling
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 3.1: Create `IngestionAlreadyRunningException` and add 409 mapping to `HttpGlobalExceptionFilter`
+- [x] Task 3.1: Create `IngestionAlreadyRunningException` and add 409 mapping to `HttpGlobalExceptionFilter`
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-03-details.md#task-31-create-exception-and-409-mapping
 
-- [ ] Task 3.2: Create `IngestCandlesCommand` MediatR command and handler
+- [x] Task 3.2: Create `IngestCandlesCommand` MediatR command and handler
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-03-details.md#task-32-create-ingestcandlescommand
 
-- [ ] Task 3.3: Create `CandlesController` with `POST /api/candles/ingest` endpoint (includes adding `IsValidCoin()` to `HyperliquidAssetMapper` for symbol validation)
+- [x] Task 3.3: Create `CandlesController` with `POST /api/candles/ingest` endpoint (includes adding `IsValidCoin()` to `HyperliquidAssetMapper` for symbol validation)
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-03-details.md#task-33-create-candlescontroller
 
-- [ ] Task 3.4: Write integration tests for `CandlesController`
+- [x] Task 3.4: Write integration tests for `CandlesController`
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-03-details.md#task-34-write-integration-tests
 
-- [ ] Task 3.5: Build and run all tests to verify Phase 3
+- [x] Task 3.5: Build and run all tests to verify Phase 3
   - Details: .agent-context/3-develop/build/plans/details/20260327-f2-candle-ingestion-service-phase-03-details.md#task-35-build-and-run-all-tests
 
 ## Scoping Summary
@@ -177,3 +177,5 @@ Build a candle ingestion service that batch-fetches historical OHLCV candle data
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-27T20:28:30Z | 2026-03-27T20:41:01Z |
 | Plan Reviewer | plan-reviewed | 2026-03-27T20:41:35Z | 2026-03-27T20:52:20Z |
+| Plan Implementer | implemented | 2026-03-27T21:00:00Z | 2026-03-27T21:10:00Z |
+| Implementation Reviewer | in-review | 2026-03-27T22:00:00Z | |

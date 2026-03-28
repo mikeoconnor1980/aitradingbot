@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backtest — Compare — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --app-bg: #1a1a2e;
+      --surface: #16213e;
+      --surface-alt: #0f3460;
+      --accent: #e94560;
+      --accent-green: #00c897;
+      --accent-red: #e94560;
+      --accent-blue: #4fc3f7;
+      --text: #eaeaea;
+      --text-muted: #8892b0;
+      --border: #233554;
+      --input-bg: #1a1a3e;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Open Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      background: var(--app-bg);
+      color: var(--text);
+      padding: 0;
+    }
+    .wf-meta {
+      background: #111;
+      padding: 8px 16px;
+      font-size: 11px;
+      color: #666;
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+    }
+    .app-shell { display: flex; flex-direction: column; min-height: 100vh; }
+    .app-header {
+      background: var(--surface);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+    .app-header__title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .app-header__nav { display: flex; gap: 16px; }
+    .app-header__nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      padding: 16px 4px;
+      border-bottom: 2px solid transparent;
+    }
+    .app-header__nav a.active {
+      color: var(--accent-green);
+      border-bottom-color: var(--accent-green);
+    }
+    .app-header__status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--accent-green);
+    }
+    .app-header__status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+    }
+    .page { padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .page-title { font-size: 24px; font-weight: 700; margin-bottom: 20px; }
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+    .tab {
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+      position: relative;
+      color: var(--text-muted);
+    }
+    .tab.active { color: var(--text); }
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0; right: 0;
+      height: 2px;
+      background: var(--accent-green);
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    /* Run labels */
+    .run-labels {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+    .run-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      flex: 1;
+    }
+    .run-label-dot {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+    }
+    .run-label-name { font-weight: 600; font-size: 14px; }
+    .run-label-detail { font-size: 12px; color: var(--text-muted); }
+
+    /* Comparison Table */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .compare-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .compare-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .compare-table .metric-name {
+      font-weight: 600;
+      color: var(--text-muted);
+      width: 200px;
+    }
+    .compare-table .run-a { color: var(--accent-green); }
+    .compare-table .run-b { color: var(--accent-blue); }
+    .compare-table .delta { font-weight: 600; width: 140px; }
+    .delta-better { color: var(--accent-green); }
+    .delta-worse { color: var(--accent-red); }
+    .delta-neutral { color: var(--text-muted); }
+
+    /* Chart Placeholder */
+    .chart-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    .chart-placeholder {
+      background: var(--input-bg);
+      border: 2px dashed var(--border);
+      border-radius: 4px;
+      height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .chart-legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+    .chart-legend-item { display: flex; align-items: center; gap: 6px; }
+    .chart-legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* Config diff */
+    .config-diff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .config-diff-item { font-size: 12px; padding: 6px 10px; border-radius: 4px; }
+    .config-diff-item-label { color: var(--text-muted); font-size: 11px; }
+    .config-diff-item-values { display: flex; gap: 8px; margin-top: 2px; }
+    .config-diff-same { color: var(--text-muted); }
+    .config-diff-changed { 
+      background: rgba(233, 69, 96, 0.08);
+      border: 1px solid rgba(233, 69, 96, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .run-labels { flex-direction: column; }
+      .compare-table { display: block; overflow-x: auto; }
+      .config-diff-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>F5 — Backtest UI — Compare Two Runs</span>
+    <span>Wireframe</span>
+  </div>
+
+  <div class="app-shell">
+    <header class="app-header" data-wf-type="ddx-header">
+      <span class="app-header__title">TradingApp</span>
+      <nav class="app-header__nav">
+        <a href="#">Dashboard</a>
+        <a href="#">Connection</a>
+        <a href="#">Market Data</a>
+        <a href="#">Order Entry</a>
+        <a href="#" class="active">Backtesting</a>
+      </nav>
+      <div class="app-header__status">
+        <span class="app-header__status-dot"></span>
+        Connected
+      </div>
+    </header>
+
+    <div class="page">
+      <h1 class="page-title">Backtesting</h1>
+
+      <div class="tabs" data-wf-type="ddx-tabs">
+        <div class="tab">Run Backtest</div>
+        <div class="tab">Past Results</div>
+        <div class="tab active">Compare</div>
+      </div>
+
+      <!-- Run Labels -->
+      <div class="run-labels">
+        <div class="run-label">
+          <div class="run-label-dot" style="background: var(--accent-green);"></div>
+          <div>
+            <div class="run-label-name">Run A — Grid Levels: 10</div>
+            <div class="run-label-detail">BTC | 2024-01-01 — 2024-12-31 | Run: 2026-03-27 12:00</div>
+          </div>
+        </div>
+        <div class="run-label">
+          <div class="run-label-dot" style="background: var(--accent-blue);"></div>
+          <div>
+            <div class="run-label-name">Run B — Grid Levels: 15</div>
+            <div class="run-label-detail">BTC | 2024-01-01 — 2024-12-31 | Run: 2026-03-27 11:30</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Config Differences -->
+      <div class="card">
+        <div class="card-title">Configuration Differences</div>
+        <div class="config-diff-grid">
+          <div class="config-diff-item config-diff-changed">
+            <div class="config-diff-item-label">Grid Levels</div>
+            <div class="config-diff-item-values">
+              <span style="color: var(--accent-green);">10</span>
+              <span style="color: var(--text-muted);">vs</span>
+              <span style="color: var(--accent-blue);">15</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Grid Spacing</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">0.5% (same)</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Take Profit</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">1.0% (same)</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Leverage</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">3x (same)</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Position Size</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">$100 (same)</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Stop Loss</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">5.0% (same)</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Maker Fee</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">0.01% (same)</span>
+            </div>
+          </div>
+          <div class="config-diff-item">
+            <div class="config-diff-item-label">Taker Fee</div>
+            <div class="config-diff-item-values">
+              <span class="config-diff-same">0.035% (same)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overlaid Equity Curves -->
+      <div class="chart-container" data-wf-type="placeholder">
+        <div class="chart-title">Equity Curve Comparison</div>
+        <div class="chart-placeholder">
+          <svg viewBox="0 0 1000 270" preserveAspectRatio="none">
+            <!-- Grid lines -->
+            <line x1="0" y1="50" x2="1000" y2="50" stroke="#233554" stroke-width="0.5"/>
+            <line x1="0" y1="135" x2="1000" y2="135" stroke="#233554" stroke-width="0.5"/>
+            <line x1="0" y1="220" x2="1000" y2="220" stroke="#233554" stroke-width="0.5"/>
+            <!-- Run A (green) - better performance -->
+            <polyline points="0,220 50,215 100,205 150,210 200,195 250,180 300,190 350,165 400,150 450,160 500,140 550,130 600,145 650,120 700,100 750,115 800,90 850,80 900,70 950,55 1000,40"
+              fill="none" stroke="#00c897" stroke-width="2.5"/>
+            <!-- Run B (blue) - slightly worse -->
+            <polyline points="0,220 50,218 100,212 150,215 200,205 250,195 300,200 350,185 400,175 450,180 500,165 550,158 600,168 650,150 700,135 750,145 800,125 850,118 900,108 950,98 1000,85"
+              fill="none" stroke="#4fc3f7" stroke-width="2.5"/>
+            <!-- Filled areas -->
+            <polyline points="0,220 50,215 100,205 150,210 200,195 250,180 300,190 350,165 400,150 450,160 500,140 550,130 600,145 650,120 700,100 750,115 800,90 850,80 900,70 950,55 1000,40 1000,270 0,270"
+              fill="#00c897" opacity="0.08"/>
+            <polyline points="0,220 50,218 100,212 150,215 200,205 250,195 300,200 350,185 400,175 450,180 500,165 550,158 600,168 650,150 700,135 750,145 800,125 850,118 900,108 950,98 1000,85 1000,270 0,270"
+              fill="#4fc3f7" opacity="0.08"/>
+          </svg>
+        </div>
+        <div class="chart-legend">
+          <div class="chart-legend-item">
+            <div class="chart-legend-dot" style="background: var(--accent-green);"></div>
+            Run A — Grid Levels: 10
+          </div>
+          <div class="chart-legend-item">
+            <div class="chart-legend-dot" style="background: var(--accent-blue);"></div>
+            Run B — Grid Levels: 15
+          </div>
+        </div>
+      </div>
+
+      <!-- Metrics Comparison Table -->
+      <div class="card">
+        <div class="card-title">Metrics Comparison</div>
+        <table class="compare-table" data-wf-type="ddx-table">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Run A <span style="color: var(--accent-green);">&#x25CF;</span></th>
+              <th>Run B <span style="color: var(--accent-blue);">&#x25CF;</span></th>
+              <th>Delta</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="metric-name">Total PnL</td>
+              <td class="run-a">+$4,521.87</td>
+              <td class="run-b">+$3,842.15</td>
+              <td class="delta delta-better">+$679.72 &#x25B2;</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Win Rate</td>
+              <td class="run-a">72.3%</td>
+              <td class="run-b">68.1%</td>
+              <td class="delta delta-better">+4.2% &#x25B2;</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Max Drawdown</td>
+              <td class="run-a">-$1,234.56</td>
+              <td class="run-b">-$1,567.23</td>
+              <td class="delta delta-better">$332.67 better &#x25B2;</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Total Trades</td>
+              <td class="run-a">847</td>
+              <td class="run-b">723</td>
+              <td class="delta delta-neutral">+124</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Winning Trades</td>
+              <td class="run-a">612</td>
+              <td class="run-b">492</td>
+              <td class="delta delta-neutral">+120</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Losing Trades</td>
+              <td class="run-a">235</td>
+              <td class="run-b">231</td>
+              <td class="delta delta-neutral">+4</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Avg Trade PnL</td>
+              <td class="run-a">+$5.34</td>
+              <td class="run-b">+$5.31</td>
+              <td class="delta delta-better">+$0.03 &#x25B2;</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Avg Hold Time</td>
+              <td class="run-a">4h 5m</td>
+              <td class="run-b">5h 12m</td>
+              <td class="delta delta-better">-1h 7m &#x25B2;</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Hedges Opened</td>
+              <td class="run-a">12</td>
+              <td class="run-b">18</td>
+              <td class="delta delta-better">-6 &#x25B2;</td>
+            </tr>
+            <tr>
+              <td class="metric-name">Total Fees Paid</td>
+              <td class="run-a">$89.23</td>
+              <td class="run-b">$102.45</td>
+              <td class="delta delta-better">-$13.22 &#x25B2;</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</body>
+</html>
