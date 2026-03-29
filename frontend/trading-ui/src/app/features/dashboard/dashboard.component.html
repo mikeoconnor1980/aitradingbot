@@ -34,7 +34,10 @@
         [positions]="positions"
         [equity]="accountSummary?.equity ?? 0"
         (closeAllPositions)="onCloseAllPositions()"
-        (closePosition)="onClosePosition($event)"></app-positions-table>
+        (closePosition)="onClosePosition($event)"
+        (setSlTp)="onSetSlTp($event)"
+        (editSlTp)="onEditSlTp($event)"
+        (removeSlTp)="onRemoveSlTp($event)"></app-positions-table>
     </mat-tab>
     <mat-tab label="Orders">
       <app-orders-table

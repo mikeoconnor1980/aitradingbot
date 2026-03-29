@@ -76,6 +76,11 @@
     align-items: center;
   }
 
+  &__cell--sl,
+  &__cell--tp {
+    white-space: nowrap;
+  }
+
   &__details-col {
     width: 1%;
     white-space: nowrap;
@@ -88,6 +93,66 @@
 
   &__na {
     color: var(--colour-muted);
+  }
+
+  &__sl-price,
+  &__tp-price {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    padding: 0;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__sl-price {
+    color: var(--colour-loss);
+  }
+
+  &__tp-price {
+    color: var(--colour-profit);
+  }
+
+  &__remove-btn {
+    background: none;
+    border: none;
+    color: var(--colour-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    margin-left: 0.25rem;
+    padding: 0 0.2rem;
+
+    &:hover:not(:disabled) {
+      color: var(--colour-loss);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.5;
+    }
+  }
+
+  &__no-value {
+    color: var(--colour-muted);
+  }
+
+  &__inline-input {
+    width: 90px;
+    padding: 0.2rem 0.35rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: inherit;
+    font: inherit;
+
+    &:focus {
+      outline: 1px solid var(--colour-label);
+    }
   }
 
   &__details-row td {
@@ -131,6 +196,14 @@
     padding: 24px;
     color: var(--colour-muted);
     font-style: italic;
+  }
+
+  &__action-group {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 }
 
@@ -181,6 +254,10 @@
     th,
     td {
       padding: 0.7rem 0.75rem;
+    }
+
+    &__action-group {
+      justify-content: flex-start;
     }
   }
 

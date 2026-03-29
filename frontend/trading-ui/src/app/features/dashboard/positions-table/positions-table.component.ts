@@ -1,5 +1,6 @@
 import { DecimalPipe } from "@angular/common";
 import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
@@ -15,7 +16,7 @@ type SortDirection = "asc" | "desc" | null;
 @Component({
   selector: "app-positions-table",
   standalone: true,
-  imports: [DecimalPipe, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule, FundingIndicatorComponent],
+  imports: [DecimalPipe, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule, FundingIndicatorComponent],
   templateUrl: "./positions-table.component.html",
   styleUrl: "./positions-table.component.scss"
 })
@@ -32,8 +33,18 @@ export class PositionsTableComponent {
   @Output()
   public closeAllPositions = new EventEmitter<void>();
 
+  @Output()
+  public setSlTp = new EventEmitter<Position>();
+
+  @Output()
+  public editSlTp = new EventEmitter<{ position: Position; field: "sl" | "tp"; newPrice?: number }>();
+
+  @Output()
+  public removeSlTp = new EventEmitter<{ position: Position; field: "sl" | "tp" }>();
+
   public readonly loadingPositionKeys = new Set<string>();
   public readonly expandedPositionKeys = new Set<string>();
+  public inlineEdit: { positionKey: string; field: "sl" | "tp"; value: number | null } | null = null;
   public globalLoading = false;
   public sortColumn: SortableColumn | null = null;
   public sortDirection: SortDirection = null;
@@ -139,6 +150,54 @@ export class PositionsTableComponent {
 
   public clearFilter(): void {
     this.filterText = "";
+  }
+
+  public hasStopLoss(position: Position): boolean {
+    return position.stopLossPrice != null;
+  }
+
+  public hasTakeProfit(position: Position): boolean {
+    return position.takeProfitPrice != null;
+  }
+
+  public hasNoSlTp(position: Position): boolean {
+    return position.stopLossPrice == null && position.takeProfitPrice == null;
+  }
+
+  public startInlineEdit(position: Position, field: "sl" | "tp"): void {
+    const currentValue = field === "sl" ? position.stopLossPrice : position.takeProfitPrice;
+    if (currentValue == null || this.isLoading(position)) {
+      return;
+    }
+
+    this.inlineEdit = {
+      positionKey: this.getPositionKey(position),
+      field,
+      value: currentValue
+    };
+  }
+
+  public confirmInlineEdit(position: Position): void {
+    if (!this.inlineEdit || this.inlineEdit.value == null || this.inlineEdit.value <= 0) {
+      this.cancelInlineEdit();
+      return;
+    }
+
+    this.editSlTp.emit({
+      position,
+      field: this.inlineEdit.field,
+      newPrice: this.inlineEdit.value
+    });
+    this.inlineEdit = null;
+  }
+
+  public cancelInlineEdit(): void {
+    this.inlineEdit = null;
+  }
+
+  public isInlineEditing(position: Position, field: "sl" | "tp"): boolean {
+    return this.inlineEdit?.positionKey === this.getPositionKey(position)
+      && this.inlineEdit.field === field;
   }
 
   public getPnlClass(pnl: number): string {

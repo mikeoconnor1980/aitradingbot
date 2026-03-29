@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTabsModule } from "@angular/material/tabs";
 import { ModifyOrderDto } from "../../core/models/modify-order.model";
 import { CloseAllProgress, PlaceOrderRequest } from "../../core/models/place-order.model";
+import { ModifyTriggerOrderDto, PlaceTriggerOrderRequest } from "../../core/models/trigger-order.model";
 import { Observable, Subject, forkJoin, interval, of, timer } from "rxjs";
 import { catchError, last, startWith, switchMap, tap } from "rxjs/operators";
 import { HttpContext } from "@angular/common/http";
@@ -23,6 +24,7 @@ import { AccountSummaryComponent } from "./account-summary/account-summary.compo
 import { CloseAllDialogComponent, CloseAllResult } from "./positions-table/close-all-dialog/close-all-dialog.component";
 import { OrdersTableComponent } from "./orders-table/orders-table.component";
 import { ModifyOrderDialogData, ModifyOrderModalComponent } from "./orders-table/modify-order-modal/modify-order.modal.component";
+import { SetSlTpDialogData, SetSlTpModalComponent, SetSlTpResult } from "./positions-table/set-sltp-modal/set-sltp.modal.component";
 import { PositionsTableComponent } from "./positions-table/positions-table.component";
 import { ActivityFeedComponent } from "./activity-feed/activity-feed.component";
 
@@ -325,6 +327,95 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  public onSetSlTp(position: Position): void {
+    if (this.positionsTable?.isLoading(position)) {
+      return;
+    }
+
+    const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
+
+    this._dialog.open(SetSlTpModalComponent, {
+      data: { position } as SetSlTpDialogData,
+      width: "400px"
+    }).afterClosed().subscribe((result: SetSlTpResult | undefined) => {
+      if (result === undefined) {
+        return;
+      }
+
+      const requests = this._buildTriggerOrderRequests(position, result);
+      if (requests.length === 0) {
+        return;
+      }
+
+      this.positionsTable?.setLoading(positionKey, true);
+
+      forkJoin(requests).subscribe({
+        next: () => {
+          this.positionsTable?.setLoading(positionKey, false);
+          this._notifications.success("SL/TP set successfully");
+          this._refresh$.next();
+        },
+        error: () => {
+          this.positionsTable?.setLoading(positionKey, false);
+          this._refresh$.next();
+        }
+      });
+    });
+  }
+
+  public onEditSlTp(event: { position: Position; field: "sl" | "tp"; newPrice?: number }): void {
+    const { position, field, newPrice } = event;
+    const orderId = field === "sl" ? position.stopLossOrderId : position.takeProfitOrderId;
+
+    if (!orderId || newPrice == null || this.positionsTable?.isLoading(position)) {
+      return;
+    }
+
+    const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
+    const request: ModifyTriggerOrderDto = {
+      triggerPrice: newPrice,
+      size: Math.abs(position.size)
+    };
+
+    this.positionsTable?.setLoading(positionKey, true);
+
+    this._orderService.modifyTriggerOrder(orderId, request).subscribe({
+      next: () => {
+        this.positionsTable?.setLoading(positionKey, false);
+        this._notifications.success(field === "sl" ? "Stop loss updated" : "Take profit updated");
+        this._refresh$.next();
+      },
+      error: () => {
+        this.positionsTable?.setLoading(positionKey, false);
+        this._refresh$.next();
+      }
+    });
+  }
+
+  public onRemoveSlTp(event: { position: Position; field: "sl" | "tp" }): void {
+    const { position, field } = event;
+    const orderId = field === "sl" ? position.stopLossOrderId : position.takeProfitOrderId;
+
+    if (!orderId || this.positionsTable?.isLoading(position)) {
+      return;
+    }
+
+    const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
+    this.positionsTable?.setLoading(positionKey, true);
+
+    this._orderService.cancelTriggerOrder(orderId).subscribe({
+      next: () => {
+        this.positionsTable?.setLoading(positionKey, false);
+        this._notifications.success(field === "sl" ? "Stop loss removed" : "Take profit removed");
+        this._refresh$.next();
+      },
+      error: () => {
+        this.positionsTable?.setLoading(positionKey, false);
+        this._refresh$.next();
+      }
+    });
+  }
+
   private _startPolling(): void {
     const poll$ = this._refresh$.pipe(
       startWith(void 0),
@@ -406,6 +497,44 @@ export class DashboardComponent implements OnInit {
         this.isLoading = false;
       })
     );
+  }
+
+  private _buildTriggerOrderRequests(position: Position, result: SetSlTpResult): Observable<unknown>[] {
+    const closingSide = this._getClosingSide(position);
+    const size = Math.abs(position.size);
+    const requests: Observable<unknown>[] = [];
+
+    if (result.stopLossPrice != null) {
+      const request: PlaceTriggerOrderRequest = {
+        asset: position.asset,
+        side: closingSide,
+        size,
+        triggerPrice: result.stopLossPrice,
+        tpslType: "sl"
+      };
+      requests.push(this._orderService.placeTriggerOrder(request));
+    }
+
+    if (result.takeProfitPrice != null) {
+      const request: PlaceTriggerOrderRequest = {
+        asset: position.asset,
+        side: closingSide,
+        size,
+        triggerPrice: result.takeProfitPrice,
+        tpslType: "tp"
+      };
+      requests.push(this._orderService.placeTriggerOrder(request));
+    }
+
+    return requests;
+  }
+
+  private _getClosingSide(position: Position): "buy" | "sell" {
+    return this._isLongPosition(position) ? "sell" : "buy";
+  }
+
+  private _isLongPosition(position: Position): boolean {
+    return position.side === "Long" || position.size > 0;
   }
 
 }

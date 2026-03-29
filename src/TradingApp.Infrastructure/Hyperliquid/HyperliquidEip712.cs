@@ -120,6 +120,40 @@ public static class HyperliquidEip712
         };
     }
 
+    public static Dictionary<string, object> BuildTriggerOrderAction(
+        int assetIndex,
+        bool isBuy,
+        decimal triggerPrice,
+        decimal size,
+        string tpsl)
+    {
+        return new Dictionary<string, object>
+        {
+            ["type"] = "order",
+            ["orders"] = new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["a"] = assetIndex,
+                    ["b"] = isBuy,
+                    ["p"] = ToWireDecimal(triggerPrice),
+                    ["s"] = ToWireDecimal(size),
+                    ["r"] = true,
+                    ["t"] = new Dictionary<string, object>
+                    {
+                        ["trigger"] = new Dictionary<string, object>
+                        {
+                            ["triggerPx"] = ToWireDecimal(triggerPrice),
+                            ["isMarket"] = true,
+                            ["tpsl"] = tpsl,
+                        },
+                    },
+                },
+            },
+            ["grouping"] = "na"
+        };
+    }
+
     private static byte[] ParseAddress(string address)
     {
         var normalised = address.StartsWith("0x", StringComparison.OrdinalIgnoreCase)

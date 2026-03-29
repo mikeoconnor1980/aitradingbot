@@ -283,4 +283,128 @@ public sealed class HyperliquidOrderServiceTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
+
+    [TestMethod]
+    public async Task GivenValidTriggerRequest_WhenPlaceTriggerOrderAsync_ThenReturnsSuccessWithOrderId()
+    {
+        var request = new PlaceTriggerOrderRequest
+        {
+            Asset = "BTC",
+            Side = "sell",
+            Size = 0.1m,
+            TriggerPrice = 64000m,
+            TpslType = "sl",
+        };
+
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse
+            {
+                Status = "ok",
+                Response = new HyperliquidExchangeResponseData
+                {
+                    Type = "order",
+                    Data = new HyperliquidOrderResponseData
+                    {
+                        Statuses =
+                        [
+                            new HyperliquidOrderStatus { Resting = new HyperliquidRestingOrder { Oid = 98765 } },
+                        ],
+                    },
+                },
+            });
+
+        var result = await _sut.PlaceTriggerOrderAsync(request);
+
+        result.Success.Should().BeTrue();
+        result.OrderId.Should().Be("98765");
+        result.Status.Should().Be("open");
+    }
+
+    [TestMethod]
+    public async Task GivenUnknownAsset_WhenPlaceTriggerOrderAsync_ThenThrowsNotFoundException()
+    {
+        var request = new PlaceTriggerOrderRequest
+        {
+            Asset = "UNKNOWN",
+            Side = "sell",
+            Size = 0.1m,
+            TriggerPrice = 64000m,
+            TpslType = "sl",
+        };
+
+        _metadataCacheMock
+            .Setup(m => m.GetAsync("UNKNOWN", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("Asset", "UNKNOWN"));
+
+        var action = () => _sut.PlaceTriggerOrderAsync(request);
+
+        await action.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [TestMethod]
+    public async Task GivenExchangeError_WhenPlaceTriggerOrderAsync_ThenReturnsRejectedResponse()
+    {
+        var request = new PlaceTriggerOrderRequest
+        {
+            Asset = "BTC",
+            Side = "sell",
+            Size = 0.1m,
+            TriggerPrice = 64000m,
+            TpslType = "sl",
+        };
+
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse
+            {
+                Status = "ok",
+                Response = new HyperliquidExchangeResponseData
+                {
+                    Type = "order",
+                    Data = new HyperliquidOrderResponseData
+                    {
+                        Statuses = [new HyperliquidOrderStatus { Error = "Trigger rejected" }],
+                    },
+                },
+            });
+
+        var result = await _sut.PlaceTriggerOrderAsync(request);
+
+        result.Success.Should().BeFalse();
+        result.Status.Should().Be("rejected");
+        result.Detail.Should().Be("Trigger rejected");
+    }
+
+    [TestMethod]
+    public async Task GivenValidTriggerModifyParameters_WhenModifyTriggerOrderAsync_ThenSubmitsTriggerModifyAction()
+    {
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse { Status = "ok" });
+
+        await _sut.ModifyTriggerOrderAsync("12345", "BTC", "sell", 63500m, 0.003m, "sl", CancellationToken.None);
+
+        _restClientMock.Verify(
+            r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.Is<object>(payload =>
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("batchModifyOrders", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("triggerPx", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("63500", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("\"tpsl\":\"sl\"", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenUnknownAsset_WhenModifyTriggerOrderAsync_ThenThrowsNotFoundException()
+    {
+        _metadataCacheMock
+            .Setup(m => m.GetAsync("UNKNOWN", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("Asset", "UNKNOWN"));
+
+        var action = () => _sut.ModifyTriggerOrderAsync("12345", "UNKNOWN", "sell", 63500m, 0.003m, "sl", CancellationToken.None);
+
+        await action.Should().ThrowAsync<NotFoundException>();
+    }
 }

@@ -239,4 +239,117 @@ public sealed class OrdersControllerTests : BaseControllerTests
 
         response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
     }
+
+    [TestMethod]
+    public async Task GivenValidTriggerRequest_WhenPostTriggerOrder_ThenReturnsOkWithResponse()
+    {
+        _orderServiceMock
+            .Setup(s => s.PlaceTriggerOrderAsync(It.IsAny<PlaceTriggerOrderRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PlaceOrderResponse
+            {
+                Success = true,
+                OrderId = "55555",
+                Status = "open",
+            });
+
+        var request = new PlaceTriggerOrderRequest
+        {
+            Asset = "BTC",
+            Side = "sell",
+            Size = 0.1m,
+            TriggerPrice = 64000m,
+            TpslType = "sl",
+        };
+
+        var response = await _client.PostAsJsonAsync("api/orders/trigger", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<PlaceOrderResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.OrderId.Should().Be("55555");
+    }
+
+    [TestMethod]
+    public async Task GivenInvalidTriggerBody_WhenPostTriggerOrder_ThenReturnsBadRequest()
+    {
+        var response = await _client.PostAsJsonAsync("api/orders/trigger", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [TestMethod]
+    public async Task GivenValidTriggerModifyRequest_WhenPutTriggerOrder_ThenReturnsNoContent()
+    {
+        _accountServiceMock
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new OpenOrderDto
+                {
+                    OrderId = "12345",
+                    Asset = "BTC",
+                    Side = "Sell",
+                    OrderType = "trigger",
+                    TpslType = "sl",
+                    TriggerPrice = 64000m,
+                    IsReduceOnly = true,
+                },
+            ]);
+
+        _orderServiceMock
+            .Setup(s => s.ModifyTriggerOrderAsync(
+                "12345",
+                "BTC",
+                "Sell",
+                64500m,
+                0.002m,
+                "sl",
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _client.PutAsJsonAsync("api/orders/trigger/12345", new { triggerPrice = 64500m, size = 0.002m });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [TestMethod]
+    public async Task GivenExistingTriggerOrder_WhenDeleteTriggerOrder_ThenReturnsNoContent()
+    {
+        _accountServiceMock
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new OpenOrderDto
+                {
+                    OrderId = "456",
+                    Asset = "ETH",
+                    Side = "Buy",
+                    OrderType = "trigger",
+                    TpslType = "tp",
+                    TriggerPrice = 3200m,
+                    IsReduceOnly = true,
+                },
+            ]);
+
+        _orderServiceMock
+            .Setup(s => s.CancelOrderAsync("456", "ETH", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var response = await _client.DeleteAsync("api/orders/trigger/456");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [TestMethod]
+    public async Task GivenMissingTriggerOrder_WhenDeleteTriggerOrder_ThenReturnsNotFound()
+    {
+        _accountServiceMock
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var response = await _client.DeleteAsync("api/orders/trigger/99999");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

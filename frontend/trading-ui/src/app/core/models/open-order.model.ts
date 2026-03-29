@@ -6,4 +6,7 @@ export interface OpenOrder {
   size: number;
   orderType: string;
   status: string;
+  triggerPrice?: number | null;
+  tpslType?: "sl" | "tp" | null;
+  isReduceOnly?: boolean;
 }

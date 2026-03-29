@@ -83,6 +83,54 @@
           </mat-form-field>
         </div>
 
+        <div class="order-entry__sltp-toggle">
+          <button type="button" class="order-entry__sltp-toggle-button" (click)="toggleSlTp()">
+            {{ showSlTp() ? "Hide SL/TP" : "Add SL/TP" }}
+          </button>
+        </div>
+
+        @if (showSlTp()) {
+          <div class="order-entry__sltp-section">
+            <div class="order-entry__field">
+              <mat-form-field appearance="outline" class="order-entry__input">
+                <mat-label>Stop Loss Price (USD)</mat-label>
+                <input matInput type="number" formControlName="stopLossPrice" step="0.01" />
+                @if (orderForm.controls.stopLossPrice.hasError("min")) {
+                  <mat-error>Stop loss must be greater than 0.</mat-error>
+                }
+                @if (orderForm.controls.stopLossPrice.hasError("slInvalidSide")) {
+                  <mat-error>{{ orderForm.controls.stopLossPrice.getError("slInvalidSide") }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <div class="order-entry__field">
+              <mat-form-field appearance="outline" class="order-entry__input">
+                <mat-label>Take Profit Price (USD)</mat-label>
+                <input matInput type="number" formControlName="takeProfitPrice" step="0.01" />
+                @if (orderForm.controls.takeProfitPrice.hasError("min")) {
+                  <mat-error>Take profit must be greater than 0.</mat-error>
+                }
+                @if (orderForm.controls.takeProfitPrice.hasError("tpInvalidSide")) {
+                  <mat-error>{{ orderForm.controls.takeProfitPrice.getError("tpInvalidSide") }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            @if (getPartialSlTpWarning(); as warning) {
+              <div class="order-entry__sltp-warning">
+                Warning: {{ warning }}
+              </div>
+            }
+
+            @if (getLiquidationWarning(); as warning) {
+              <div class="order-entry__sltp-warning order-entry__sltp-warning--liquidation">
+                Warning: {{ warning }}
+              </div>
+            }
+          </div>
+        }
+
         <div class="order-entry__actions">
           @if (isSubmitting) {
             <mat-spinner diameter="36" />

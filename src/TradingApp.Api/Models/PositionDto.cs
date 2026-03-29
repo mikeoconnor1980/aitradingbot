@@ -14,4 +14,8 @@ public sealed class PositionDto
     public string MarginMode { get; set; } = string.Empty;
     public decimal MarginUsed { get; set; }
     public decimal FundingRate { get; set; }
+    public decimal? StopLossPrice { get; set; }
+    public string? StopLossOrderId { get; set; }
+    public decimal? TakeProfitPrice { get; set; }
+    public string? TakeProfitOrderId { get; set; }
 }

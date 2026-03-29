@@ -9,4 +9,7 @@ public sealed class OpenOrderDto
     public decimal Size { get; set; }
     public string OrderType { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public decimal? TriggerPrice { get; set; }
+    public string? TpslType { get; set; }
+    public bool IsReduceOnly { get; set; }
 }

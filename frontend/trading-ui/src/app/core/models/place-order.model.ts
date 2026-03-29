@@ -4,6 +4,8 @@ export interface PlaceOrderRequest {
   orderType: "market" | "limit";
   price: number | null;
   size: number;
+  stopLossPrice?: number | null;
+  takeProfitPrice?: number | null;
 }
 
 export interface PlaceOrderResponse {

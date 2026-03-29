@@ -20,4 +20,10 @@ public sealed class PlaceOrderRequest
     [Required]
     [Range(0.000001, double.MaxValue)]
     public decimal Size { get; set; }
+
+    [Range(0.000001, double.MaxValue, ErrorMessage = "Stop loss price must be positive.")]
+    public decimal? StopLossPrice { get; set; }
+
+    [Range(0.000001, double.MaxValue, ErrorMessage = "Take profit price must be positive.")]
+    public decimal? TakeProfitPrice { get; set; }
 }
