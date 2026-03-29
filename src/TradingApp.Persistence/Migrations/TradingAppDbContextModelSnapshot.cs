@@ -22,11 +22,17 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("AuditLogEnabled")
+                        .HasColumnType("INTEGER");
+
                     b.Property<double>("AverageHoldTimeMinutes")
                         .HasColumnType("REAL");
 
                     b.Property<double>("AverageTradePnl")
                         .HasColumnType("REAL");
+
+                    b.Property<string>("CandleLogJson")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("CandlesReplayed")
                         .HasColumnType("INTEGER");
@@ -48,6 +54,9 @@ namespace TradingApp.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("GridCycleLogJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("HedgesOpened")
                         .HasColumnType("INTEGER");
 
@@ -63,6 +72,9 @@ namespace TradingApp.Persistence.Migrations
 
                     b.Property<double>("MaxDrawdown")
                         .HasColumnType("REAL");
+
+                    b.Property<string>("OrderEventLogJson")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Progress")
                         .HasColumnType("INTEGER");

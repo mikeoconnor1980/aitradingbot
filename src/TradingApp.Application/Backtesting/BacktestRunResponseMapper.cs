@@ -33,6 +33,27 @@ public static class BacktestRunResponseMapper
         return JsonSerializer.Serialize(equityTimeSeries, JsonOptions);
     }
 
+    public static string SerializeCandleLog(IReadOnlyList<CandleEvaluationEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+
+        return JsonSerializer.Serialize(entries, JsonOptions);
+    }
+
+    public static string SerializeOrderEventLog(IReadOnlyList<OrderEventEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+
+        return JsonSerializer.Serialize(entries, JsonOptions);
+    }
+
+    public static string SerializeGridCycleLog(IReadOnlyList<GridCycleEntry> entries)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+
+        return JsonSerializer.Serialize(entries, JsonOptions);
+    }
+
     public static BacktestRunResponse ToResponse(BacktestRun entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -73,7 +94,8 @@ public static class BacktestRunResponseMapper
             TotalFeesPaid = entity.TotalFeesPaid,
             Trades = MapTrades(trades),
             EquityTimeSeries = MapEquityTimeSeries(equityTimeSeries),
-            CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(entity.CreatedAtUtc).UtcDateTime
+            CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(entity.CreatedAtUtc).UtcDateTime,
+            HasAuditLog = entity.CandleLogJson is not null || entity.OrderEventLogJson is not null || entity.GridCycleLogJson is not null
         };
     }
 
@@ -92,7 +114,8 @@ public static class BacktestRunResponseMapper
                 Size = trade.Size,
                 Pnl = trade.PnL,
                 Fees = trade.Fees,
-                TradeType = trade.TradeType.ToString()
+                TradeType = trade.TradeType.ToString(),
+                GridCycleId = trade.GridCycleId
             })
             .ToList();
     }

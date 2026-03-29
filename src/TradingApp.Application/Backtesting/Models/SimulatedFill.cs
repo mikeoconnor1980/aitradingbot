@@ -12,5 +12,6 @@ public sealed class SimulatedFill
     public required decimal Fee { get; init; }
     public required string Symbol { get; init; }
     public required TradeType TradeType { get; init; }
+    public string? GridCycleId { get; init; }
     public bool IsMaker { get; init; }
 }

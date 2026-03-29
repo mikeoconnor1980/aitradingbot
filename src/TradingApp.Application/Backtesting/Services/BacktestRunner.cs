@@ -4,6 +4,7 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Scheduling;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 
 namespace TradingApp.Application.Backtesting.Services;
@@ -49,17 +50,30 @@ public sealed class BacktestRunner : IBacktestRunner
         ArgumentNullException.ThrowIfNull(config);
         ValidateConfig(config);
 
+        var auditCollector = config.EnableAuditLog
+            ? new BacktestAuditCollector()
+            : null;
+        IBacktestAuditCollector collector = auditCollector is not null
+            ? auditCollector
+            : NullBacktestAuditCollector.Instance;
         var executionEngine = new SimulatedExecutionEngine(config.FeeModel);
         var replayEngine = new CandleReplayEngine(_candleRepository);
         var candleClock = new CandleClock();
         var metricsCalculator = new BacktestMetricsCalculator();
+        if (_positionManager is BacktestPositionManager btPm)
+        {
+            btPm.SetAuditCollector(collector);
+        }
+
+        var positionManager = _positionManager;
         var scheduler = new StrategyScheduler(
             _marketContextBuilder,
             _strategyEngine,
             _gridController,
             _riskEngine,
-            _positionManager,
-            config.StrategyConfigJson);
+            positionManager,
+            config.StrategyConfigJson,
+            auditCollector: collector);
 
         _executionContextAccessor.CurrentExecutionEngine = executionEngine;
 
@@ -72,6 +86,7 @@ public sealed class BacktestRunner : IBacktestRunner
             var equityTimeSeries = new List<EquitySnapshot>();
             var currentGridState = scheduler.GetGridState();
             var countedClosedCycles = new HashSet<string>(StringComparer.Ordinal);
+            var trackedCycles = new Dictionary<string, GridCycleTrackingState>(StringComparer.Ordinal);
             var gridCycles = 0;
             Candle? latestOneHourCandle = null;
             Candle? latestFourHourCandle = null;
@@ -85,7 +100,41 @@ public sealed class BacktestRunner : IBacktestRunner
             for (var index = 0; index < replayData.WarmupEndIndex; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                _marketContextBuilder.UpdateIndicators(replayData.Candles15m[index]);
+                var warmupCandle = replayData.Candles15m[index];
+                _executionContextAccessor.CurrentTimestampUtc = warmupCandle.Timestamp;
+                _marketContextBuilder.UpdateIndicators(warmupCandle);
+
+                if (auditCollector is not null)
+                {
+                    var warmupOneHourCandle = CandleReplayEngine.GetLatestClosedCandle(replayData.Candles1h, warmupCandle.Timestamp);
+                    var warmupFourHourCandle = CandleReplayEngine.GetLatestClosedCandle(replayData.Candles4h, warmupCandle.Timestamp);
+                    var warmupContext = _marketContextBuilder.Build(
+                        warmupCandle,
+                        warmupOneHourCandle,
+                        warmupFourHourCandle);
+
+                    auditCollector.LogCandleEvaluation(new CandleEvaluationEntry
+                    {
+                        TimestampUtc = warmupCandle.Timestamp,
+                        Open = warmupCandle.Open,
+                        High = warmupCandle.High,
+                        Low = warmupCandle.Low,
+                        Close = warmupCandle.Close,
+                        Volume = warmupCandle.Volume,
+                        IsWarmup = true,
+                        EmaFast = warmupContext.Indicators?.EmaFast ?? 0m,
+                        EmaSlow = warmupContext.Indicators?.EmaSlow ?? 0m,
+                        EmaTrend = warmupContext.Indicators?.EmaTrend ?? 0m,
+                        Rsi = warmupContext.Indicators?.Rsi ?? 0m,
+                        Atr = warmupContext.Indicators?.Atr ?? 0m,
+                        SetupDetected = false,
+                        GridLifecycleState = GridLifecycle.Inactive.ToString(),
+                        PositionSize = 0m,
+                        PositionAvgEntry = 0m,
+                        SignalsEmitted = [],
+                        GridCycleId = null
+                    });
+                }
             }
 
             for (var index = replayData.WarmupEndIndex; index < replayData.Candles15m.Count; index++)
@@ -93,11 +142,39 @@ public sealed class BacktestRunner : IBacktestRunner
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var candle = replayData.Candles15m[index];
+                _executionContextAccessor.CurrentTimestampUtc = candle.Timestamp;
                 var fills = executionEngine.ProcessCandle(candle);
 
                 foreach (var fill in fills)
                 {
                     RecordFill(tradeLog, currentGridState, fill);
+
+                    collector.LogOrderEvent(new OrderEventEntry
+                    {
+                        TimestampUtc = fill.FillTimeUtc,
+                        EventType = OrderEventType.Filled,
+                        OrderId = fill.OrderId,
+                        Side = fill.Side.ToString(),
+                        OrderType = fill.IsMaker ? OrderType.Limit.ToString() : OrderType.Market.ToString(),
+                        Price = fill.FillPrice,
+                        Size = fill.Size,
+                        FillPrice = fill.FillPrice,
+                        Fee = fill.Fee,
+                        IsMaker = fill.IsMaker,
+                        GridCycleId = fill.GridCycleId ?? currentGridState.GridCycleId ?? "default"
+                    });
+
+                    TrackCycleExit(trackedCycles, fill);
+                }
+
+                if (TryCountClosedGridCycle(currentGridState, countedClosedCycles))
+                {
+                    gridCycles++;
+
+                    if (auditCollector is not null)
+                    {
+                        LogCompletedGridCycle(auditCollector, trackedCycles, tradeLog, currentGridState, candle.Timestamp);
+                    }
                 }
 
                 _marketContextBuilder.UpdateIndicators(candle);
@@ -119,9 +196,16 @@ public sealed class BacktestRunner : IBacktestRunner
                 await candleClock.ProcessCandleAsync(candle);
 
                 currentGridState = scheduler.GetGridState();
+                TrackGridCycle(trackedCycles, currentGridState, executionEngine.GetOpenOrders(), candle);
+
                 if (TryCountClosedGridCycle(currentGridState, countedClosedCycles))
                 {
                     gridCycles++;
+
+                    if (auditCollector is not null)
+                    {
+                        LogCompletedGridCycle(auditCollector, trackedCycles, tradeLog, currentGridState, candle.Timestamp);
+                    }
                 }
 
                 var simulatedPosition = executionEngine.GetPosition();
@@ -135,16 +219,40 @@ public sealed class BacktestRunner : IBacktestRunner
                 }
             }
 
-            return metricsCalculator.Calculate(
+            var metrics = metricsCalculator.Calculate(
                 tradeLog,
                 equityTimeSeries,
                 config.InitialCapital,
                 gridCycles,
                 Math.Max(0, replayData.Candles15m.Count - replayData.WarmupEndIndex));
+
+            return new BacktestResult
+            {
+                TotalTrades = metrics.TotalTrades,
+                WinningTrades = metrics.WinningTrades,
+                LosingTrades = metrics.LosingTrades,
+                WinRate = metrics.WinRate,
+                TotalPnL = metrics.TotalPnL,
+                MaxDrawdownAbsolute = metrics.MaxDrawdownAbsolute,
+                MaxDrawdownPercent = metrics.MaxDrawdownPercent,
+                AverageTradePnL = metrics.AverageTradePnL,
+                AverageHoldTime = metrics.AverageHoldTime,
+                HedgesOpened = metrics.HedgesOpened,
+                TotalFeesPaid = metrics.TotalFeesPaid,
+                GridCycles = metrics.GridCycles,
+                CandlesReplayed = metrics.CandlesReplayed,
+                FinalEquity = metrics.FinalEquity,
+                EquityTimeSeries = metrics.EquityTimeSeries,
+                TradeLog = metrics.TradeLog,
+                CandleEvaluationLog = auditCollector?.CandleEvaluations,
+                OrderEventLog = auditCollector?.OrderEvents,
+                GridCycleLog = auditCollector?.GridCycles
+            };
         }
         finally
         {
             _executionContextAccessor.CurrentExecutionEngine = null;
+            _executionContextAccessor.CurrentTimestampUtc = 0;
         }
     }
 
@@ -201,7 +309,7 @@ public sealed class BacktestRunner : IBacktestRunner
 
     private static void RecordFill(List<BacktestTrade> tradeLog, GridState gridState, SimulatedFill fill)
     {
-        var gridCycleId = gridState.GridCycleId ?? "default";
+        var gridCycleId = fill.GridCycleId ?? gridState.GridCycleId ?? "default";
         ApplyGridFillState(gridState, fill);
 
         if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen)
@@ -320,5 +428,128 @@ public sealed class BacktestRunner : IBacktestRunner
 
         var cycleKey = gridState.GridCycleId ?? "closed-without-cycle-id";
         return countedClosedCycles.Add(cycleKey);
+    }
+
+    private static void TrackGridCycle(
+        IDictionary<string, GridCycleTrackingState> trackedCycles,
+        GridState gridState,
+        IReadOnlyList<SimulatedOrder> openOrders,
+        Candle candle)
+    {
+        if (string.IsNullOrWhiteSpace(gridState.GridCycleId))
+        {
+            return;
+        }
+
+        var cycleId = gridState.GridCycleId;
+        var cycleOrders = openOrders
+            .Where(order => string.Equals(order.GridCycleId, cycleId, StringComparison.Ordinal))
+            .ToList();
+
+        if (!trackedCycles.TryGetValue(cycleId, out var trackingState))
+        {
+            if (cycleOrders.Count == 0)
+            {
+                return;
+            }
+
+            var levelOrders = cycleOrders
+                .Where(order => order.TradeType == TradeType.GridFill)
+                .OrderBy(order => order.Price)
+                .ToList();
+
+            trackingState = new GridCycleTrackingState
+            {
+                DeployTimestampUtc = candle.Timestamp,
+                AnchorPrice = candle.Close,
+                LevelsPlaced = levelOrders.Count,
+                LevelPrices = levelOrders.Select(order => order.Price).ToList(),
+            };
+            trackedCycles[cycleId] = trackingState;
+        }
+
+        var takeProfitOrder = cycleOrders.FirstOrDefault(order => order.TradeType == TradeType.TakeProfit);
+        if (takeProfitOrder is not null && takeProfitOrder.OrderType == OrderType.Limit)
+        {
+            trackingState.TakeProfitPrice = takeProfitOrder.Price;
+        }
+    }
+
+    private static void TrackCycleExit(IDictionary<string, GridCycleTrackingState> trackedCycles, SimulatedFill fill)
+    {
+        if (string.IsNullOrWhiteSpace(fill.GridCycleId) || fill.TradeType != TradeType.TakeProfit)
+        {
+            return;
+        }
+
+        if (!trackedCycles.TryGetValue(fill.GridCycleId, out var trackingState))
+        {
+            trackingState = new GridCycleTrackingState();
+            trackedCycles[fill.GridCycleId] = trackingState;
+        }
+
+        if (fill.IsMaker)
+        {
+            trackingState.ExitReason = "TakeProfit";
+            trackingState.TakeProfitPrice = fill.FillPrice;
+        }
+        else
+        {
+            trackingState.ExitReason = "StopLoss";
+            trackingState.StopLossPrice = fill.FillPrice;
+        }
+    }
+
+    private static void LogCompletedGridCycle(
+        BacktestAuditCollector auditCollector,
+        IReadOnlyDictionary<string, GridCycleTrackingState> trackedCycles,
+        IReadOnlyList<BacktestTrade> tradeLog,
+        GridState gridState,
+        long closeTimestampUtc)
+    {
+        var cycleId = gridState.GridCycleId;
+        if (string.IsNullOrWhiteSpace(cycleId))
+        {
+            return;
+        }
+
+        trackedCycles.TryGetValue(cycleId, out var trackingState);
+        var cycleTrades = tradeLog
+            .Where(trade => string.Equals(trade.GridCycleId, cycleId, StringComparison.Ordinal))
+            .ToList();
+        var filledLevels = cycleTrades.Count(trade => trade.TradeType == TradeType.GridFill);
+
+        auditCollector.LogGridCycleCompleted(new GridCycleEntry
+        {
+            GridCycleId = cycleId,
+            DeployTimestampUtc = trackingState?.DeployTimestampUtc ?? closeTimestampUtc,
+            AnchorPrice = trackingState?.AnchorPrice ?? 0m,
+            LevelsPlaced = trackingState?.LevelsPlaced ?? 0,
+            LevelPrices = trackingState?.LevelPrices ?? [],
+            LevelsFilled = filledLevels,
+            TakeProfitPrice = trackingState?.TakeProfitPrice ?? 0m,
+            StopLossPrice = trackingState?.StopLossPrice,
+            ExitReason = trackingState?.ExitReason ?? "Unknown",
+            CyclePnl = cycleTrades.Sum(trade => trade.PnL ?? 0m),
+            CycleDurationMs = Math.Max(0, closeTimestampUtc - (trackingState?.DeployTimestampUtc ?? closeTimestampUtc)),
+            CloseTimestampUtc = closeTimestampUtc
+        });
+    }
+
+    private sealed class GridCycleTrackingState
+    {
+        public long DeployTimestampUtc { get; init; }
+
+        public decimal AnchorPrice { get; init; }
+
+        public int LevelsPlaced { get; init; }
+
+        public List<decimal> LevelPrices { get; init; } = [];
+
+        public decimal TakeProfitPrice { get; set; }
+
+        public decimal? StopLossPrice { get; set; }
+
+        public string ExitReason { get; set; } = "Unknown";
     }
 }

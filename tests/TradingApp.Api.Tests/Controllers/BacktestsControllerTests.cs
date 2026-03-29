@@ -115,6 +115,66 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenBacktestWithAuditData_WhenGetDebug_ThenReturns200WithFilteredData()
+    {
+        var backtestRun = CreateBacktestRunWithAuditData();
+
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(backtestRun.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(backtestRun);
+
+        var client = GetTestClient();
+
+        var response = await client.GetAsync($"{BaseUrl}/{backtestRun.Id}/debug?cycleId=cycle-1");
+
+        var result = await response.ReadAndAssertSuccessAsync<BacktestDebugResponse>();
+
+        result.CycleId.Should().Be("cycle-1");
+        result.CandleEvaluations.Should().HaveCount(1);
+        result.CandleEvaluations[0].GridCycleId.Should().Be("cycle-1");
+        result.OrderEvents.Should().HaveCount(1);
+        result.OrderEvents[0].GridCycleId.Should().Be("cycle-1");
+        result.GridCycleSummary.Should().NotBeNull();
+        result.GridCycleSummary!.GridCycleId.Should().Be("cycle-1");
+    }
+
+    [TestMethod]
+    public async Task GivenBacktestWithoutAuditData_WhenGetDebug_ThenReturns204()
+    {
+        var backtestRun = CreateBacktestRun();
+
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(backtestRun.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(backtestRun);
+
+        var client = GetTestClient();
+
+        var response = await client.GetAsync($"{BaseUrl}/{backtestRun.Id}/debug?cycleId=cycle-1");
+
+        response.AssertStatusCode(HttpStatusCode.NoContent);
+    }
+
+    [TestMethod]
+    public async Task GivenNonExistentBacktest_WhenGetDebug_ThenReturnsNotFound()
+    {
+        var backtestId = Guid.NewGuid();
+
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(backtestId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BacktestRun?)null);
+
+        var client = GetTestClient();
+
+        var response = await client.GetAsync($"{BaseUrl}/{backtestId}/debug?cycleId=cycle-1");
+
+        response.AssertStatusCode(HttpStatusCode.NotFound);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorCode").GetString().Should().Be("not_found");
+        body.GetProperty("errorMessage").GetString().Should().Contain(backtestId.ToString());
+    }
+
+    [TestMethod]
     public async Task GivenNoBacktests_WhenGetList_ThenReturnsEmptyPagedResult()
     {
         _backtestRunRepositoryMock
@@ -419,6 +479,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         savedRun.Progress.Should().Be(0);
         savedRun.CandlesReplayed.Should().Be(0);
         savedRun.TotalTrades.Should().Be(0);
+        savedRun.AuditLogEnabled.Should().BeTrue();
 
         response.Headers.Location.Should().NotBeNull();
         response.Headers.Location!.ToString().Should().Contain($"api/backtests/{savedRun.Id}");
@@ -541,6 +602,146 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             hedgesOpened: 12,
             totalFeesPaid: 89.23m,
             tradesJson: "[]");
+    }
+
+    private static BacktestRun CreateBacktestRunWithAuditData()
+    {
+        return BacktestRun.Create(
+            symbol: "BTC",
+            intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
+            startDateUtc: 1704067200000,
+            endDateUtc: 1735689599000,
+            strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
+            {
+                GridLevels = 10,
+                GridSpacing = 0.5m,
+                TakeProfitPercent = 1m,
+                BreakdownThreshold = -3m,
+                MakerFee = 0.0001m,
+                TakerFee = 0.00035m,
+                Slippage = 0m,
+                PositionSize = 100m,
+                Leverage = 3m,
+                StopLossPercent = 5m,
+            }),
+            initialCapital: 10000m,
+            candlesReplayed: 35040,
+            elapsedMs: 12500,
+            totalTrades: 847,
+            winningTrades: 612,
+            losingTrades: 235,
+            winRate: 72.3m,
+            totalPnl: 4521.87m,
+            maxDrawdown: -1234.56m,
+            averageTradePnl: 5.34m,
+            averageHoldTimeMinutes: 245.0,
+            hedgesOpened: 12,
+            totalFeesPaid: 89.23m,
+            tradesJson: "[]",
+            candleLogJson: BacktestRunResponseMapper.SerializeCandleLog(
+            [
+                new CandleEvaluationEntry
+                {
+                    TimestampUtc = 1704067200000,
+                    Open = 42000m,
+                    High = 42100m,
+                    Low = 41950m,
+                    Close = 42080m,
+                    Volume = 1234m,
+                    IsWarmup = false,
+                    EmaFast = 42010m,
+                    EmaSlow = 41990m,
+                    EmaTrend = 41850m,
+                    Rsi = 58m,
+                    Atr = 125m,
+                    SetupDetected = true,
+                    GridLifecycleState = "Active",
+                    PositionSize = 0.01m,
+                    PositionAvgEntry = 42000m,
+                    SignalsEmitted = ["DeployGrid"],
+                    GridCycleId = "cycle-1",
+                },
+                new CandleEvaluationEntry
+                {
+                    TimestampUtc = 1704068100000,
+                    Open = 42100m,
+                    High = 42200m,
+                    Low = 42050m,
+                    Close = 42150m,
+                    Volume = 1200m,
+                    IsWarmup = false,
+                    EmaFast = 42050m,
+                    EmaSlow = 42000m,
+                    EmaTrend = 41890m,
+                    Rsi = 61m,
+                    Atr = 130m,
+                    SetupDetected = true,
+                    GridLifecycleState = "Active",
+                    PositionSize = 0.02m,
+                    PositionAvgEntry = 42050m,
+                    SignalsEmitted = ["TakeProfit"],
+                    GridCycleId = "cycle-2",
+                },
+            ]),
+            orderEventLogJson: BacktestRunResponseMapper.SerializeOrderEventLog(
+            [
+                new OrderEventEntry
+                {
+                    TimestampUtc = 1704067200000,
+                    EventType = OrderEventType.Placed,
+                    OrderId = "order-1",
+                    Side = "Buy",
+                    OrderType = "Limit",
+                    Price = 42000m,
+                    Size = 0.01m,
+                    GridCycleId = "cycle-1",
+                },
+                new OrderEventEntry
+                {
+                    TimestampUtc = 1704068100000,
+                    EventType = OrderEventType.Cancelled,
+                    OrderId = "order-2",
+                    Side = "Sell",
+                    OrderType = "Limit",
+                    Price = 42150m,
+                    Size = 0.01m,
+                    CancellationReason = CancellationReason.PositionOpened,
+                    GridCycleId = "cycle-2",
+                },
+            ]),
+            gridCycleLogJson: BacktestRunResponseMapper.SerializeGridCycleLog(
+            [
+                new GridCycleEntry
+                {
+                    GridCycleId = "cycle-1",
+                    DeployTimestampUtc = 1704067200000,
+                    AnchorPrice = 42000m,
+                    LevelsPlaced = 3,
+                    LevelPrices = [42000m, 41900m, 41800m],
+                    LevelsFilled = 1,
+                    TakeProfitPrice = 42300m,
+                    StopLossPrice = 41000m,
+                    ExitReason = "TakeProfit",
+                    CyclePnl = 45.5m,
+                    CycleDurationMs = 900000,
+                    CloseTimestampUtc = 1704068100000,
+                },
+                new GridCycleEntry
+                {
+                    GridCycleId = "cycle-2",
+                    DeployTimestampUtc = 1704068100000,
+                    AnchorPrice = 42100m,
+                    LevelsPlaced = 2,
+                    LevelPrices = [42100m, 42000m],
+                    LevelsFilled = 0,
+                    TakeProfitPrice = 42400m,
+                    StopLossPrice = 41100m,
+                    ExitReason = "Cancelled",
+                    CyclePnl = 0m,
+                    CycleDurationMs = 600000,
+                    CloseTimestampUtc = 1704068700000,
+                },
+            ]));
     }
 
     private static BacktestRunSummary CreateBacktestRunSummary(

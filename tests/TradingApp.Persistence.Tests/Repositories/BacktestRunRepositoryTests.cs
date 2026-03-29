@@ -92,6 +92,101 @@ public sealed class BacktestRunRepositoryTests
     }
 
     [TestMethod]
+    public async Task GivenBacktestRunWithAuditLog_WhenPersisted_ThenDebugDataIsRetrievable()
+    {
+        var backtestRun = BacktestRun.CreateQueued(
+            symbol: "BTC",
+            intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
+            startDateUtc: 1000,
+            endDateUtc: 2000,
+            strategyConfigJson: "{\"gridLevels\":5}",
+            initialCapital: 10000m,
+            auditLogEnabled: true);
+
+        backtestRun.MarkRunning(100);
+        backtestRun.MarkCompleted(
+            candlesReplayed: 100,
+            elapsedMs: 5000,
+            totalTrades: 5,
+            winningTrades: 3,
+            losingTrades: 2,
+            winRate: 0.6m,
+            totalPnl: 50m,
+            maxDrawdown: 10m,
+            averageTradePnl: 10m,
+            averageHoldTimeMinutes: 60,
+            hedgesOpened: 0,
+            totalFeesPaid: 2m,
+            tradesJson: "[]",
+            equityTimeSeriesJson: "[]",
+            candleLogJson: "[{\"timestampUtc\":1000}]",
+            orderEventLogJson: "[{\"timestampUtc\":2000}]",
+            gridCycleLogJson: "[{\"gridCycleId\":\"abc\"}]");
+
+        await using (var writeContext = CreateContext())
+        {
+            var sut = new BacktestRunRepository(writeContext);
+            await sut.AddAsync(backtestRun);
+        }
+
+        await using var readContext = CreateContext();
+        var readSut = new BacktestRunRepository(readContext);
+        var result = await readSut.GetByIdAsync(backtestRun.Id);
+
+        result.Should().NotBeNull();
+        result!.AuditLogEnabled.Should().BeTrue();
+        result.CandleLogJson.Should().Contain("timestampUtc");
+        result.OrderEventLogJson.Should().Contain("timestampUtc");
+        result.GridCycleLogJson.Should().Contain("gridCycleId");
+    }
+
+    [TestMethod]
+    public async Task GivenBacktestRunWithoutAuditLog_WhenPersisted_ThenDebugColumnsAreNull()
+    {
+        var backtestRun = BacktestRun.CreateQueued(
+            symbol: "BTC",
+            intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
+            startDateUtc: 1000,
+            endDateUtc: 2000,
+            strategyConfigJson: "{\"gridLevels\":5}",
+            initialCapital: 10000m,
+            auditLogEnabled: false);
+
+        backtestRun.MarkRunning(100);
+        backtestRun.MarkCompleted(
+            candlesReplayed: 100,
+            elapsedMs: 5000,
+            totalTrades: 0,
+            winningTrades: 0,
+            losingTrades: 0,
+            winRate: 0m,
+            totalPnl: 0m,
+            maxDrawdown: 0m,
+            averageTradePnl: 0m,
+            averageHoldTimeMinutes: 0,
+            hedgesOpened: 0,
+            totalFeesPaid: 0m,
+            tradesJson: "[]",
+            equityTimeSeriesJson: "[]");
+
+        await using (var writeContext = CreateContext())
+        {
+            var sut = new BacktestRunRepository(writeContext);
+            await sut.AddAsync(backtestRun);
+        }
+
+        await using var readContext = CreateContext();
+        var readSut = new BacktestRunRepository(readContext);
+        var result = await readSut.GetByIdAsync(backtestRun.Id);
+
+        result.Should().NotBeNull();
+        result!.AuditLogEnabled.Should().BeFalse();
+        result.CandleLogJson.Should().BeNull();
+        result.OrderEventLogJson.Should().BeNull();
+        result.GridCycleLogJson.Should().BeNull();
+    }
+
+    [TestMethod]
     public async Task GivenNonExistentId_WhenGetByIdAsync_ThenReturnsNull()
     {
         await using var context = CreateContext();

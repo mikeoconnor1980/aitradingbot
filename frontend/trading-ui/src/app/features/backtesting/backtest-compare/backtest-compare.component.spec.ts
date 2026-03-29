@@ -42,6 +42,7 @@ describe("BacktestCompareComponent", () => {
     totalFeesPaid: 44.2,
     trades: [],
     equityTimeSeries: [],
+    hasAuditLog: false,
     createdAt: "2026-03-28T12:00:00Z",
     ...overrides
   });

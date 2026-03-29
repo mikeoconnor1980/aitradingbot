@@ -59,7 +59,11 @@
               </app-equity-chart>
 
               <h3 class="backtest-page__results-title">Trade Log</h3>
-              <app-trade-log-table [trades]="latestResult.trades"></app-trade-log-table>
+              <app-trade-log-table
+                [trades]="latestResult.trades"
+                [backtestId]="latestResult.id"
+                [hasAuditLog]="latestResult.hasAuditLog">
+              </app-trade-log-table>
             }
           </section>
         }

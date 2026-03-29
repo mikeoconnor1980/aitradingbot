@@ -1,6 +1,7 @@
 import { HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
+import { BacktestDebugResponse } from "../models/backtest-debug.model";
 import {
   BacktestRequest,
   BacktestResult,
@@ -20,6 +21,16 @@ export class BacktestService {
 
   public getBacktest(id: string, context?: HttpContext): Observable<BacktestResult> {
     return this._apiClient.get<BacktestResult>(`backtests/${encodeURIComponent(id)}`, context);
+  }
+
+  public getDebugData(id: string, cycleId: string, context?: HttpContext): Observable<BacktestDebugResponse | null> {
+    const encodedId = encodeURIComponent(id);
+    const encodedCycleId = encodeURIComponent(cycleId);
+
+    return this._apiClient.get<BacktestDebugResponse | null>(
+      `backtests/${encodedId}/debug?cycleId=${encodedCycleId}`,
+      context
+    );
   }
 
   public validateCoverage(

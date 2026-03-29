@@ -18,4 +18,7 @@ public sealed class BacktestResult
     public required decimal FinalEquity { get; init; }
     public required IReadOnlyList<EquitySnapshot> EquityTimeSeries { get; init; }
     public required IReadOnlyList<BacktestTrade> TradeLog { get; init; }
+    public IReadOnlyList<CandleEvaluationEntry>? CandleEvaluationLog { get; init; }
+    public IReadOnlyList<OrderEventEntry>? OrderEventLog { get; init; }
+    public IReadOnlyList<GridCycleEntry>? GridCycleLog { get; init; }
 }

@@ -23,6 +23,8 @@ public sealed class RunBacktestRequest
 
     [Required]
     public GridStrategyConfigRequest StrategyConfig { get; set; } = null!;
+
+    public bool EnableAuditLog { get; set; } = true;
 }
 
 public sealed class GridStrategyConfigRequest

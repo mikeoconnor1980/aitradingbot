@@ -178,6 +178,19 @@ public sealed class BacktestRunnerTests
         result.EquityTimeSeries[0].Equity.Should().Be(config.InitialCapital);
     }
 
+    [TestMethod]
+    public async Task GivenAuditLogDisabled_WhenRunCompletes_ThenAuditDataIsNull()
+    {
+        var config = CreateConfig(warmupPeriod: 2, enableAuditLog: false);
+        SetupCandles(config);
+
+        var result = await _sut.RunAsync(config);
+
+        result.CandleEvaluationLog.Should().BeNull();
+        result.OrderEventLog.Should().BeNull();
+        result.GridCycleLog.Should().BeNull();
+    }
+
     private void SetupCandles(BacktestConfig config)
     {
         var first15mTimestamp = config.StartDateUtc - (config.WarmupPeriod * FifteenMinutesMs);
@@ -208,7 +221,8 @@ public sealed class BacktestRunnerTests
         decimal initialCapital = 10_000m,
         int warmupPeriod = 2,
         IReadOnlyList<string>? intervals = null,
-        string strategyConfigJson = "{}")
+        string strategyConfigJson = "{}",
+        bool enableAuditLog = true)
     {
         return new BacktestConfig
         {
@@ -219,7 +233,8 @@ public sealed class BacktestRunnerTests
             InitialCapital = initialCapital,
             FeeModel = FeeModel.Default,
             WarmupPeriod = warmupPeriod,
-            StrategyConfigJson = strategyConfigJson
+            StrategyConfigJson = strategyConfigJson,
+            EnableAuditLog = enableAuditLog
         };
     }
 

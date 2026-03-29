@@ -41,6 +41,7 @@ public sealed class GridController : IGridController
             var targetPrice = shouldStopOut
                 ? context.CurrentCandle.Close
                 : positionState.AverageEntryPrice * (1m + (takeProfitPercent / 100m));
+            var gridCycleId = gridState.GridCycleId ?? "default";
 
             gridState.Lifecycle = GridLifecycle.Closing;
 
@@ -55,7 +56,8 @@ public sealed class GridController : IGridController
                     {
                         ["targetPrice"] = targetPrice,
                         ["size"] = Math.Abs(positionState.Size),
-                        ["orderType"] = orderType.ToString()
+                        ["orderType"] = orderType.ToString(),
+                        ["gridCycleId"] = gridCycleId
                     }
                 }
             ]);
@@ -93,6 +95,7 @@ public sealed class GridController : IGridController
                     ["gridLevels"] = gridLevels,
                     ["gridSpacingPercent"] = gridSpacingPercent,
                     ["notionalPerLevel"] = positionSize,
+                    ["gridCycleId"] = gridState.GridCycleId,
                 }
             }
         ]);

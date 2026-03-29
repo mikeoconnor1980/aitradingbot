@@ -8,5 +8,6 @@ public sealed class OrderRequest
     public required decimal Price { get; init; }
     public required decimal Size { get; init; }
     public required TradeType TradeType { get; init; }
+    public string? GridCycleId { get; init; }
     public string? ClientOrderId { get; init; }
 }

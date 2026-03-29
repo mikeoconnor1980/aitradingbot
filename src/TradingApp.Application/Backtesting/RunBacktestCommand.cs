@@ -12,7 +12,8 @@ public sealed record RunBacktestCommand(
     DateTime StartDate,
     DateTime EndDate,
     GridStrategyConfig StrategyConfig,
-    decimal InitialCapital) : Command<BacktestRunResponse>;
+    decimal InitialCapital,
+    bool EnableAuditLog) : Command<BacktestRunResponse>;
 
 public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestCommand, BacktestRunResponse>
 {
@@ -47,7 +48,8 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
             startDateUtc: new DateTimeOffset(startDateUtc).ToUnixTimeMilliseconds(),
             endDateUtc: new DateTimeOffset(endDateUtc).ToUnixTimeMilliseconds(),
             strategyConfigJson: strategyConfigJson,
-            initialCapital: request.InitialCapital);
+            initialCapital: request.InitialCapital,
+            auditLogEnabled: request.EnableAuditLog);
 
         await _backtestRunRepository.AddAsync(backtestRun, cancellationToken);
         await _backtestJobQueue.EnqueueAsync(new BacktestJob(backtestRun.Id), cancellationToken);

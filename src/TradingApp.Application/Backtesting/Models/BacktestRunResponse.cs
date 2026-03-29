@@ -27,6 +27,7 @@ public sealed class BacktestRunResponse
     public required IReadOnlyList<BacktestTradeResponse> Trades { get; init; }
     public required IReadOnlyList<EquitySnapshotResponse> EquityTimeSeries { get; init; }
     public required DateTime CreatedAt { get; init; }
+    public required bool HasAuditLog { get; init; }
 }
 
 public sealed class EquitySnapshotResponse

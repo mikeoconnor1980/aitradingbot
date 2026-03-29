@@ -104,6 +104,14 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(backtestRun => backtestRun.EquityTimeSeriesJson)
                 .IsRequired();
 
+            entity.Property(backtestRun => backtestRun.AuditLogEnabled);
+
+            entity.Property(backtestRun => backtestRun.CandleLogJson);
+
+            entity.Property(backtestRun => backtestRun.OrderEventLogJson);
+
+            entity.Property(backtestRun => backtestRun.GridCycleLogJson);
+
             entity.Property(backtestRun => backtestRun.Status)
                 .IsRequired();
 

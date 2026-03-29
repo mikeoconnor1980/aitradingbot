@@ -29,6 +29,10 @@ public sealed class BacktestRun
     public decimal TotalFeesPaid { get; private set; }
     public string TradesJson { get; private set; } = string.Empty;
     public string EquityTimeSeriesJson { get; private set; } = string.Empty;
+    public bool AuditLogEnabled { get; private set; }
+    public string? CandleLogJson { get; private set; }
+    public string? OrderEventLogJson { get; private set; }
+    public string? GridCycleLogJson { get; private set; }
     public long CreatedAtUtc { get; private set; }
 
     private BacktestRun()
@@ -41,7 +45,8 @@ public sealed class BacktestRun
         long startDateUtc,
         long endDateUtc,
         string strategyConfigJson,
-        decimal initialCapital)
+        decimal initialCapital,
+        bool auditLogEnabled = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
@@ -63,6 +68,10 @@ public sealed class BacktestRun
             TotalCandles = 0,
             TradesJson = "[]",
             EquityTimeSeriesJson = "[]",
+            AuditLogEnabled = auditLogEnabled,
+            CandleLogJson = null,
+            OrderEventLogJson = null,
+            GridCycleLogJson = null,
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
     }
@@ -95,7 +104,10 @@ public sealed class BacktestRun
         int hedgesOpened,
         decimal totalFeesPaid,
         string tradesJson,
-        string equityTimeSeriesJson)
+        string equityTimeSeriesJson,
+        string? candleLogJson = null,
+        string? orderEventLogJson = null,
+        string? gridCycleLogJson = null)
     {
         Status = BacktestStatus.Completed;
         Progress = 100;
@@ -113,6 +125,9 @@ public sealed class BacktestRun
         TotalFeesPaid = totalFeesPaid;
         TradesJson = tradesJson ?? "[]";
         EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]";
+        CandleLogJson = candleLogJson;
+        OrderEventLogJson = orderEventLogJson;
+        GridCycleLogJson = gridCycleLogJson;
     }
 
     public void MarkFailed(string errorMessage)
@@ -141,7 +156,11 @@ public sealed class BacktestRun
         int hedgesOpened,
         decimal totalFeesPaid,
         string tradesJson,
-        string equityTimeSeriesJson = "[]")
+        string equityTimeSeriesJson = "[]",
+        bool auditLogEnabled = true,
+        string? candleLogJson = null,
+        string? orderEventLogJson = null,
+        string? gridCycleLogJson = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
@@ -174,6 +193,10 @@ public sealed class BacktestRun
             TotalFeesPaid = totalFeesPaid,
             TradesJson = tradesJson ?? "[]",
             EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]",
+            AuditLogEnabled = auditLogEnabled,
+            CandleLogJson = candleLogJson,
+            OrderEventLogJson = orderEventLogJson,
+            GridCycleLogJson = gridCycleLogJson,
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
     }

@@ -71,6 +71,7 @@ describe("BacktestService", () => {
       hedgesOpened: 5,
       totalFeesPaid: 120.5,
       trades: [],
+      hasAuditLog: false,
       createdAt: "2026-03-28T12:00:00Z"
     };
 
@@ -121,6 +122,7 @@ describe("BacktestService", () => {
       hedgesOpened: 2,
       totalFeesPaid: 12,
       trades: [],
+      hasAuditLog: false,
       createdAt: "2026-03-28T12:00:00Z"
     };
 

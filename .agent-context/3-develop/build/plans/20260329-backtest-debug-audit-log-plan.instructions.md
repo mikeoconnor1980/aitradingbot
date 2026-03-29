@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260329-backtest-debug-audit-log-changes.md"
 currentAgent: "None"
-agentStartedAt: "2026-03-29T09:23:41Z"
-status: "plan-reviewed"
-lastUpdated: "2026-03-29T09:29:39Z"
+agentStartedAt: "2026-03-29T10:03:06Z"
+status: "complete"
+lastUpdated: "2026-03-29T10:20:00Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -90,105 +90,105 @@ As a developer, I want a debug/audit log available in the backtesting results so
 - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — Controller test pattern
 - `tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — Persistence test pattern
 
-### [ ] Phase 1: Audit Log Models & Collector Infrastructure
+### [x] Phase 1: Audit Log Models & Collector Infrastructure
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 1.1: Create audit log entry models (CandleEvaluationEntry, OrderEventEntry, GridCycleEntry)
+- [x] Task 1.1: Create audit log entry models (CandleEvaluationEntry, OrderEventEntry, GridCycleEntry)
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-01-details.md#task-11-create-audit-log-entry-models
 
-- [ ] Task 1.2: Create OrderEventType and CancellationReason enums
+- [x] Task 1.2: Create OrderEventType and CancellationReason enums
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-01-details.md#task-12-create-ordereventtype-and-cancellationreason-enums
 
-- [ ] Task 1.3: Create IBacktestAuditCollector interface, BacktestAuditCollector, and NullBacktestAuditCollector
+- [x] Task 1.3: Create IBacktestAuditCollector interface, BacktestAuditCollector, and NullBacktestAuditCollector
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-01-details.md#task-13-create-ibacktestauditcollector-interface-and-implementations
 
-- [ ] Task 1.4: Add EnableAuditLog to BacktestConfig
+- [x] Task 1.4: Add EnableAuditLog to BacktestConfig
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-01-details.md#task-14-add-enableauditlog-to-backtestconfig
 
-- [ ] Task 1.5: Unit tests for BacktestAuditCollector
+- [x] Task 1.5: Unit tests for BacktestAuditCollector
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-01-details.md#task-15-unit-tests-for-backtestauditcollector
 
-### [ ] Phase 2: Entity, Persistence & Migration
+### [x] Phase 2: Entity, Persistence & Migration
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Add audit log properties to BacktestRun entity
+- [x] Task 2.1: Add audit log properties to BacktestRun entity
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-02-details.md#task-21-add-audit-log-properties-to-backtestrun-entity
 
-- [ ] Task 2.2: Create EF Core migration for new columns
+- [x] Task 2.2: Create EF Core migration for new columns
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-02-details.md#task-22-create-ef-core-migration-for-new-columns
 
-- [ ] Task 2.3: Update DbContext configuration
+- [x] Task 2.3: Update DbContext configuration
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-02-details.md#task-23-update-dbcontext-configuration
 
-- [ ] Task 2.4: Add debug data serialization to BacktestRunResponseMapper
+- [x] Task 2.4: Add debug data serialization to BacktestRunResponseMapper
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-02-details.md#task-24-add-debug-data-serialization-to-backtestrunresponsemapper
 
-- [ ] Task 2.5: Persistence tests for new columns
+- [x] Task 2.5: Persistence tests for new columns
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-02-details.md#task-25-persistence-tests-for-new-columns
 
-### [ ] Phase 3: Pipeline Integration
+### [x] Phase 3: Pipeline Integration
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 3.1: Update StrategyScheduler to accept and invoke IBacktestAuditCollector
+- [x] Task 3.1: Update StrategyScheduler to accept and invoke IBacktestAuditCollector
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-03-details.md#task-31-update-strategyscheduler-to-accept-and-invoke-ibacktestauditcollector
 
-- [ ] Task 3.2: Update BacktestPositionManager to log order events via collector
+- [x] Task 3.2: Update BacktestPositionManager to log order events via collector
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-03-details.md#task-32-update-backtestpositionmanager-to-log-order-events
 
-- [ ] Task 3.3: Update BacktestRunner to create/wire collector and log grid cycle completions
+- [x] Task 3.3: Update BacktestRunner to create/wire collector and log grid cycle completions
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-03-details.md#task-33-update-backtestrunner-to-wire-collector-and-log-grid-cycles
 
-- [ ] Task 3.4: Update BacktestProcessorService to persist debug data
+- [x] Task 3.4: Update BacktestProcessorService to persist debug data
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-03-details.md#task-34-update-backtestprocessorservice-to-persist-debug-data
 
-- [ ] Task 3.5: Add GridCycleId to BacktestTradeResponse and HasAuditLog to BacktestRunResponse
+- [x] Task 3.5: Add GridCycleId to BacktestTradeResponse and HasAuditLog to BacktestRunResponse
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-03-details.md#task-35-add-gridcycleid-and-hasauditlog-to-response-models
 
-- [ ] Task 3.6: Integration tests for audit log capture
+- [x] Task 3.6: Integration tests for audit log capture
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-03-details.md#task-36-integration-tests-for-audit-log-capture
 
-### [ ] Phase 4: API Endpoint & CQRS Query
+### [x] Phase 4: API Endpoint & CQRS Query
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 4.1: Create GetBacktestDebugQuery and handler
+- [x] Task 4.1: Create GetBacktestDebugQuery and handler
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-04-details.md#task-41-create-getbacktestdebugquery-and-handler
 
-- [ ] Task 4.2: Create BacktestDebugResponse DTOs
+- [x] Task 4.2: Create BacktestDebugResponse DTOs
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-04-details.md#task-42-create-backtestdebugresponse-dtos
 
-- [ ] Task 4.3: Add debug endpoint to BacktestsController
+- [x] Task 4.3: Add debug endpoint to BacktestsController
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-04-details.md#task-43-add-debug-endpoint-to-backtestscontroller
 
-- [ ] Task 4.4: Add EnableAuditLog to RunBacktestRequest
+- [x] Task 4.4: Add EnableAuditLog to RunBacktestRequest
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-04-details.md#task-44-add-enableauditlog-to-runbacktestrequest
 
-- [ ] Task 4.5: Controller tests for debug endpoint
+- [x] Task 4.5: Controller tests for debug endpoint
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-04-details.md#task-45-controller-tests-for-debug-endpoint
 
-### [ ] Phase 5: Frontend — Expandable Debug Panel
+### [x] Phase 5: Frontend — Expandable Debug Panel
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 5.1: Add debug TypeScript models and enums
+- [x] Task 5.1: Add debug TypeScript models and enums
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-05-details.md#task-51-add-debug-typescript-models-and-enums
 
-- [ ] Task 5.2: Add getDebugData method to BacktestService and update BacktestTrade model
+- [x] Task 5.2: Add getDebugData method to BacktestService and update BacktestTrade model
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-05-details.md#task-52-add-getdebugdata-method-and-update-backtesttrade-model
 
-- [ ] Task 5.3: Make trade log table expandable with debug panel
+- [x] Task 5.3: Make trade log table expandable with debug panel
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-05-details.md#task-53-make-trade-log-table-expandable-with-debug-panel
 
-- [ ] Task 5.4: Build debug panel sub-sections (grid cycle summary, order events, candle evaluations)
+- [x] Task 5.4: Build debug panel sub-sections (grid cycle summary, order events, candle evaluations)
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-05-details.md#task-54-build-debug-panel-sub-sections
 
-- [ ] Task 5.5: Add filtering, color-coding, and export functionality
+- [x] Task 5.5: Add filtering, color-coding, and export functionality
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-05-details.md#task-55-add-filtering-color-coding-and-export
 
-- [ ] Task 5.6: Handle disabled state for pre-existing runs and run build/lint
+- [x] Task 5.6: Handle disabled state for pre-existing runs and run build/lint
   - Details: .agent-context/3-develop/build/plans/details/20260329-backtest-debug-audit-log-phase-05-details.md#task-56-handle-disabled-state-and-run-build-lint
 
 ## Scoping Summary
@@ -237,3 +237,5 @@ As a developer, I want a debug/audit log available in the backtesting results so
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-03-29T09:01:15Z | 2026-03-29T09:22:45Z |
 | Plan Reviewer | plan-reviewed | 2026-03-29T09:23:41Z | 2026-03-29T09:29:39Z |
+| Plan Implementer | implemented | 2026-03-29T09:31:52Z | 2026-03-29T10:00:37Z |
+| Implementation Reviewer | complete | 2026-03-29T10:03:06Z | 2026-03-29T10:20:00Z |

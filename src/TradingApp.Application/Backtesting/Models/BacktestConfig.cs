@@ -10,4 +10,5 @@ public sealed class BacktestConfig
     public required FeeModel FeeModel { get; init; }
     public int WarmupPeriod { get; init; } = 200;
     public required string StrategyConfigJson { get; init; }
+    public bool EnableAuditLog { get; init; } = true;
 }

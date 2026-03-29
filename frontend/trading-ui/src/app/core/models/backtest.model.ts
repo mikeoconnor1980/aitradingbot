@@ -30,6 +30,7 @@ export interface BacktestTrade {
   pnl: number | null;
   fees: number;
   tradeType: string;
+  gridCycleId?: string | null;
 }
 
 export interface EquitySnapshot {
@@ -63,6 +64,7 @@ export interface BacktestResult {
   trades: BacktestTrade[];
   createdAt: string;
   equityTimeSeries?: EquitySnapshot[];
+  hasAuditLog: boolean;
 }
 
 export interface BacktestProgress {

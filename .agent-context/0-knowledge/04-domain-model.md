@@ -197,12 +197,15 @@ AverageHoldTimeMinutes (double)
 HedgesOpened
 TotalFeesPaid
 TradesJson (serialised trade log)
+EquityTimeSeriesJson (serialised equity curve)
+AuditLogEnabled (bool — whether audit log was collected for this run)
+CandleLogJson / OrderEventLogJson / GridCycleLogJson (nullable — populated when AuditLogEnabled = true; queried by the debug endpoint)
 CreatedAtUtc (Unix ms)
 
 Key design patterns:
 
-- Static `Create` factory with validation guards (symbol/config non-null, `initialCapital > 0`, `startDateUtc < endDateUtc`)
-- Private setters — immutable after creation
+- `CreateQueued(...)` factory for async background runs (initial status: `Queued`); `Create(...)` factory for direct synchronous creation with final metrics
+- Private setters — immutable after creation; metrics and audit blobs written via `MarkCompleted(...)`
 - No `UserId` — not tenant-scoped
 
 File: `src/TradingApp.Domain/Entities/BacktestRun.cs`

@@ -101,6 +101,7 @@ The replay must preserve time order.
 | `FeeModel` | `FeeModel` | — | Maker/taker rates and slippage |
 | `WarmupPeriod` | `int` | `200` | 15m candles fed to indicator state before evaluation starts |
 | `StrategyConfigJson` | `string` | — | Serialised strategy config passed to `IStrategyEngine` |
+| `EnableAuditLog` | `bool` | `true` | When `true`, per-candle, order-event, and grid-cycle audit entries are collected and persisted as JSON blob columns on `BacktestRun` |
 
 `FeeModel` (`src/TradingApp.Application/Backtesting/Models/FeeModel.cs`): `MakerFeeRate` (default 0.0001), `TakerFeeRate` (default 0.00035), `SlippageRate` (default 0). Provides `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`.
 
@@ -199,13 +200,14 @@ Completed runs are persisted as `BacktestRun` domain entities immediately after 
 
 `BacktestRun` (`src/TradingApp.Domain/Entities/BacktestRun.cs`):
 
-- Created via `BacktestRun.Create(...)` static factory with validation guards
+- Created via `BacktestRun.CreateQueued(...)` for the async background path (status: `Queued → Running → Completed/Failed`) or `BacktestRun.Create(...)` for direct creation with final metrics
 - Summary metrics (TotalTrades, WinRate, TotalPnl, MaxDrawdown, etc.) stored as scalar columns
-- `StrategyConfigJson` and `TradesJson` stored as JSON blob columns
-- `IntervalsJson` stores the requested intervals array as a JSON string
+- JSON blob columns: `StrategyConfigJson`, `TradesJson`, `IntervalsJson`, `EquityTimeSeriesJson`
+- Audit log blob columns (nullable): `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson` — populated only when `AuditLogEnabled = true`
+- `AuditLogEnabled` (bool) — records whether audit data was collected for this run; controls whether the debug endpoint returns data
 - **Not tenant-scoped** — runs are keyed by a generated Guid with no UserId
 
-**What is NOT persisted:** `EquityTimeSeries`, `FinalEquity`, `MaxDrawdownPercent`, and `GridCycles` are computed by the engine but dropped before persistence. Only `MaxDrawdown` (absolute) is stored.
+**What is NOT persisted:** `FinalEquity`, `MaxDrawdownPercent`, and `GridCycles` from `BacktestResult` are not stored. Only `MaxDrawdown` (absolute) is stored. `EquityTimeSeriesJson` **is** persisted.
 
 `IBacktestRunRepository` (`src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs`):
 
@@ -268,6 +270,10 @@ A sweep runs many backtests automatically and compares performance.
 | `GetBacktestListQuery` | CQRS query: returns `PagedResult<BacktestRunSummary>` from repository | `src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs` |
 | `GetCandleCoverageQuery` | CQRS query: calls `ICandleRepository.GetCoverageAsync` per interval; returns `CandleCoverageResponse` | `src/TradingApp.Application/Backtesting/GetCandleCoverageQuery.cs` |
 | `UnavailableBacktestRunner` | API-host placeholder `IBacktestRunner` — throws `InvalidOperationException` because the full strategy pipeline is not yet composed in the API host | `src/TradingApp.Api/Services/UnavailableBacktestRunner.cs` |
+| `IBacktestAuditCollector` | Contract for collecting audit entries during replay: `LogCandleEvaluation`, `LogOrderEvent`, `LogGridCycleCompleted`. Injected into `StrategyScheduler` and `BacktestPositionManager`. | `src/TradingApp.Application/Backtesting/Services/IBacktestAuditCollector.cs` |
+| `BacktestAuditCollector` | Thread-safe in-memory implementation; accumulates entries via `ConcurrentQueue<T>`; exposes `CandleEvaluations`, `OrderEvents`, `GridCycles` read-only lists at run end | `src/TradingApp.Application/Backtesting/Services/BacktestAuditCollector.cs` |
+| `NullBacktestAuditCollector` | Singleton no-op implementation (`NullBacktestAuditCollector.Instance`); used when `EnableAuditLog = false` — null-object pattern avoids null checks in callers | `src/TradingApp.Application/Backtesting/Services/NullBacktestAuditCollector.cs` |
+| `GetBacktestDebugQuery` | CQRS query: deserialises `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson` from a saved run and filters all three collections by `CycleId`; returns `BacktestDebugResponse` | `src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs` |
 
 ---
 
@@ -281,6 +287,7 @@ Implemented in `src/TradingApp.Api/Controllers/BacktestsController.cs`:
 | `GET` | `/api/backtests/{id}` | Retrieve full result for a saved run; 404 if not found |
 | `GET` | `/api/backtests` | List backtest summaries with paging (`page`, `pageSize` query params; max 100 per page) |
 | `GET` | `/api/backtests/validate` | Check candle coverage for a symbol + comma-separated intervals before running |
+| `GET` | `/api/backtests/{id}/debug` | Per-cycle debug data (candle evaluations, order events, grid cycle summary). Requires `cycleId` query param. Returns 204 if audit log absent for this run; 404 if run not found. |
 
 `BacktestsController` extends `ApiController` and dispatches all operations via MediatR.
 
@@ -299,12 +306,16 @@ The backtesting UI lives at `/backtesting` and is implemented as a tabbed page s
 | `CoverageReportComponent` | Displays `CandleCoverageResponse` — per-interval candle count and date range | `coverage-report/` |
 | `BacktestResultComponent` | Metric cards: PnL, win rate, drawdown, trades, fees, hold time | `backtest-result/` |
 | `EquityChartComponent` | Lightweight Charts area chart with trade markers and optional comparison overlay | `equity-chart/` |
-| `TradeLogTableComponent` | Sortable `mat-table` of `BacktestTrade[]` entries | `trade-log-table/` |
+| `TradeLogTableComponent` | Sortable table of `BacktestTrade[]` entries; each row expands to a debug panel showing per-cycle candle evaluations (filterable by signal type / setup-detected), order events, and grid cycle summary; supports JSON and CSV export; data loaded on demand via `BacktestService.getDebugData` | `trade-log-table/` |
 | `BacktestListComponent` | Paginated past-results list with `mat-paginator`; emits IDs for comparison | `backtest-list/` |
 | `BacktestCompareComponent` | Side-by-side metric diff and overlaid equity curves for two runs | `backtest-compare/` |
 | `BacktestService` | API client: `runBacktest`, `getBacktest`, `validateCoverage`, `getBacktestList` | `src/app/core/services/backtest.service.ts` |
 
 Angular models mirror the API shapes and live in `frontend/trading-ui/src/app/core/models/backtest.model.ts`: `BacktestRequest`, `BacktestResult`, `BacktestSummary`, `BacktestTrade`, `EquitySnapshot`, `PagedResult<T>`, `CoverageReport`.
+
+Debug-specific models (`CandleEvaluation`, `OrderEvent`, `GridCycleSummary`, `BacktestDebugResponse`, `OrderEventType`, `CancellationReason`) live in `frontend/trading-ui/src/app/core/models/backtest-debug.model.ts`.
+
+`BacktestService` (`src/app/core/services/backtest.service.ts`) exposes: `runBacktest`, `getBacktest`, `validateCoverage`, `getBacktestList`, `getDebugData(id, cycleId)`.
 
 ---
 

@@ -91,7 +91,16 @@ public sealed class BacktestProcessorService : BackgroundService
                 hedgesOpened: result.HedgesOpened,
                 totalFeesPaid: result.TotalFeesPaid,
                 tradesJson: BacktestRunResponseMapper.SerializeTrades(result.TradeLog),
-                equityTimeSeriesJson: BacktestRunResponseMapper.SerializeEquityTimeSeries(result.EquityTimeSeries));
+                equityTimeSeriesJson: BacktestRunResponseMapper.SerializeEquityTimeSeries(result.EquityTimeSeries),
+                candleLogJson: result.CandleEvaluationLog is not null
+                    ? BacktestRunResponseMapper.SerializeCandleLog(result.CandleEvaluationLog)
+                    : null,
+                orderEventLogJson: result.OrderEventLog is not null
+                    ? BacktestRunResponseMapper.SerializeOrderEventLog(result.OrderEventLog)
+                    : null,
+                gridCycleLogJson: result.GridCycleLog is not null
+                    ? BacktestRunResponseMapper.SerializeGridCycleLog(result.GridCycleLog)
+                    : null);
 
             await repository.UpdateAsync(backtestRun, stoppingToken);
             await BroadcastStatusAsync(backtestRun);
@@ -155,11 +164,16 @@ public sealed class BacktestProcessorService : BackgroundService
         });
     }
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
     private static BacktestConfig BuildConfig(BacktestRun run)
     {
         var strategyConfig = JsonSerializer.Deserialize<GridStrategyConfig>(
             run.StrategyConfigJson,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+            JsonOptions)
             ?? throw new InvalidOperationException("Failed to deserialize strategy config.");
 
         return new BacktestConfig
@@ -167,7 +181,7 @@ public sealed class BacktestProcessorService : BackgroundService
             Symbol = run.Symbol,
             Intervals = JsonSerializer.Deserialize<string[]>(
                 run.IntervalsJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [],
+                JsonOptions) ?? [],
             StartDateUtc = run.StartDateUtc,
             EndDateUtc = run.EndDateUtc,
             InitialCapital = run.InitialCapital,
@@ -178,6 +192,7 @@ public sealed class BacktestProcessorService : BackgroundService
                 SlippageRate = strategyConfig.Slippage,
             },
             StrategyConfigJson = run.StrategyConfigJson,
+            EnableAuditLog = run.AuditLogEnabled,
         };
     }
 }

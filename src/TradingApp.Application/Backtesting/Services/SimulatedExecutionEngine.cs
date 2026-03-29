@@ -38,6 +38,7 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
             Price = order.Price,
             Size = order.Size,
             TradeType = order.TradeType,
+            GridCycleId = order.GridCycleId,
             PlacedAtUtc = _currentTimestampUtc
         });
 
@@ -104,7 +105,7 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
         return candleFills;
     }
 
-    public IReadOnlyList<SimulatedOrder> GetOpenOrders() => _openOrders.AsReadOnly();
+    public IReadOnlyList<SimulatedOrder> GetOpenOrders() => _openOrders.ToList();
 
     public SimulatedPosition GetPosition() => _position;
 
@@ -142,6 +143,7 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
             Fee = fee,
             Symbol = order.Symbol,
             TradeType = order.TradeType,
+            GridCycleId = order.GridCycleId,
             IsMaker = isMaker
         };
     }

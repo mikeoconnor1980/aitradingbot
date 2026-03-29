@@ -1,4 +1,6 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.Scheduling.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
@@ -16,6 +18,7 @@ public sealed class StrategyScheduler
     private readonly IGridController _gridController;
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
+    private readonly IBacktestAuditCollector _auditCollector;
     private readonly string _strategyConfigJson;
     private readonly string _triggerTimeframe;
 
@@ -29,7 +32,8 @@ public sealed class StrategyScheduler
         IRiskEngine riskEngine,
         IPositionManager positionManager,
         string strategyConfigJson,
-        string triggerTimeframe = "15m")
+        string triggerTimeframe = "15m",
+        IBacktestAuditCollector? auditCollector = null)
     {
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
         _strategyEngine = strategyEngine ?? throw new ArgumentNullException(nameof(strategyEngine));
@@ -39,6 +43,7 @@ public sealed class StrategyScheduler
         ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
         ArgumentException.ThrowIfNullOrWhiteSpace(triggerTimeframe);
 
+        _auditCollector = auditCollector ?? NullBacktestAuditCollector.Instance;
         _strategyConfigJson = strategyConfigJson;
         _triggerTimeframe = triggerTimeframe;
     }
@@ -73,6 +78,28 @@ public sealed class StrategyScheduler
             _positionState,
             _strategyConfigJson,
             cancellationToken);
+
+        _auditCollector.LogCandleEvaluation(new CandleEvaluationEntry
+        {
+            TimestampUtc = evt.Candle.Timestamp,
+            Open = evt.Candle.Open,
+            High = evt.Candle.High,
+            Low = evt.Candle.Low,
+            Close = evt.Candle.Close,
+            Volume = evt.Candle.Volume,
+            IsWarmup = false,
+            EmaFast = context.Indicators?.EmaFast ?? 0m,
+            EmaSlow = context.Indicators?.EmaSlow ?? 0m,
+            EmaTrend = context.Indicators?.EmaTrend ?? 0m,
+            Rsi = context.Indicators?.Rsi ?? 0m,
+            Atr = context.Indicators?.Atr ?? 0m,
+            SetupDetected = evaluation.SetupDetected,
+            GridLifecycleState = _gridState.Lifecycle.ToString(),
+            PositionSize = _positionState.Size,
+            PositionAvgEntry = _positionState.AverageEntryPrice,
+            SignalsEmitted = signals.Select(signal => signal.SignalType).ToList(),
+            GridCycleId = _gridState.GridCycleId
+        });
 
         if (signals.Count == 0)
         {

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Api.Infrastructure;
@@ -47,7 +48,8 @@ public sealed class BacktestsController : ApiController
                 request.StartDate!.Value,
                 request.EndDate!.Value,
                 strategyConfig,
-                request.InitialCapital!.Value),
+                request.InitialCapital!.Value,
+                request.EnableAuditLog),
             cancellationToken);
 
         return AcceptedAtRoute(GetBacktestByIdRouteName, new { id = result.Id }, result);
@@ -143,6 +145,19 @@ public sealed class BacktestsController : ApiController
     {
         var result = await Mediator.Send(new GetBacktestResultQuery(id), cancellationToken);
         return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/debug")]
+    [ProducesResponseType(typeof(BacktestDebugResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDebugDataAsync(
+        Guid id,
+        [FromQuery][Required] string cycleId,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetBacktestDebugQuery(id, cycleId), cancellationToken);
+        return result is not null ? Ok(result) : NoContent();
     }
 
     private static void ValidateRequest(RunBacktestRequest request)

@@ -1,54 +1,389 @@
 <section class="trade-log">
-  @if (dataSource.data.length === 0) {
-    <div class="trade-log__empty">No completed trades recorded for this run.</div>
+  @if (!hasAnyTrades) {
+    <div class="trade-log__empty">No trades recorded for this run.</div>
   } @else {
-    <div class="trade-log__table-wrapper">
-      <table mat-table [dataSource]="dataSource" matSort class="trade-log__table">
-        <ng-container matColumnDef="entryTime">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Entry Time</th>
-          <td mat-cell *matCellDef="let trade">{{ trade.entryTime | date: "short" }}</td>
-        </ng-container>
+    @if (completedTrades.length > 0) {
+      <section class="trade-log__group">
+        <h4 class="trade-log__group-title">Closed Trades</h4>
+        <div class="trade-log__table-wrapper">
+          <table class="trade-log__table">
+            <thead>
+              <tr>
+                <th class="trade-log__expand-col"></th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('entryTime')">
+                    <span>Entry Time</span>
+                    <mat-icon>{{ getSortIcon("entryTime") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('exitTime')">
+                    <span>Exit Time</span>
+                    <mat-icon>{{ getSortIcon("exitTime") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('entryPrice')">
+                    <span>Entry Price</span>
+                    <mat-icon>{{ getSortIcon("entryPrice") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('exitPrice')">
+                    <span>Exit Price</span>
+                    <mat-icon>{{ getSortIcon("exitPrice") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('side')">
+                    <span>Side</span>
+                    <mat-icon>{{ getSortIcon("side") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('size')">
+                    <span>Size</span>
+                    <mat-icon>{{ getSortIcon("size") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('pnl')">
+                    <span>PnL</span>
+                    <mat-icon>{{ getSortIcon("pnl") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('fees')">
+                    <span>Fees</span>
+                    <mat-icon>{{ getSortIcon("fees") }}</mat-icon>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (trade of completedTrades; track getTradeKey(trade)) {
+                <tr class="trade-log__row"
+                    [class.trade-log__row--disabled]="!hasDebugData(trade)"
+                    (click)="toggleDetails(trade)">
+                  <td class="trade-log__expand-cell">
+                    <span [matTooltip]="getExpandTooltip(trade)" class="trade-log__expand-tooltip-anchor">
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [disabled]="!hasDebugData(trade)"
+                        [attr.aria-expanded]="isExpanded(trade)"
+                        [attr.aria-label]="isExpanded(trade) ? 'Hide debug data' : 'Show debug data'"
+                        (click)="$event.stopPropagation(); toggleDetails(trade)">
+                        <mat-icon>{{ isExpanded(trade) ? "expand_less" : "expand_more" }}</mat-icon>
+                      </button>
+                    </span>
+                  </td>
+                  <td>{{ trade.entryTime | date: "short" }}</td>
+                  <td>{{ trade.exitTime ? (trade.exitTime | date: "short") : "—" }}</td>
+                  <td>{{ trade.entryPrice | number: "1.2-2" }}</td>
+                  <td>{{ trade.exitPrice !== null ? (trade.exitPrice | number: "1.2-2") : "—" }}</td>
+                  <td>{{ trade.side }}</td>
+                  <td>{{ trade.size | number: "1.4-4" }}</td>
+                  <td [class]="getPnlClass(trade.pnl)">
+                    {{ trade.pnl !== null ? "$" + (trade.pnl | number: "1.2-2") : "—" }}
+                  </td>
+                  <td>${{ trade.fees | number: "1.4-4" }}</td>
+                </tr>
 
-        <ng-container matColumnDef="exitTime">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Exit Time</th>
-          <td mat-cell *matCellDef="let trade">{{ trade.exitTime ? (trade.exitTime | date: "short") : "—" }}</td>
-        </ng-container>
+                @if (isExpanded(trade)) {
+                  <tr class="trade-log__details-row">
+                    <td colspan="9" class="trade-log__details-cell">
+                      @if (isLoading(trade)) {
+                        <div class="trade-log__loading">Loading debug data...</div>
+                      } @else {
+                        @let debugData = getDebugData(trade);
 
-        <ng-container matColumnDef="entryPrice">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Entry Price</th>
-          <td mat-cell *matCellDef="let trade">{{ trade.entryPrice | number: "1.2-2" }}</td>
-        </ng-container>
+                        @if (debugData) {
+                          <div class="trade-log__debug-panel">
+                            @let cycle = debugData.gridCycleSummary;
 
-        <ng-container matColumnDef="exitPrice">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Exit Price</th>
-          <td mat-cell *matCellDef="let trade">{{ trade.exitPrice !== null ? (trade.exitPrice | number: "1.2-2") : "—" }}</td>
-        </ng-container>
+                            @if (cycle) {
+                              <section class="trade-log__section">
+                                <div class="trade-log__section-heading">
+                                  <h4 class="trade-log__section-title">Grid Cycle Summary</h4>
+                                  <div class="trade-log__export-buttons">
+                                    <button mat-stroked-button type="button" (click)="exportJson(debugData)">
+                                      <mat-icon>download</mat-icon>
+                                      <span>JSON</span>
+                                    </button>
+                                    <button mat-stroked-button type="button" (click)="exportCsv(debugData)">
+                                      <mat-icon>download</mat-icon>
+                                      <span>CSV</span>
+                                    </button>
+                                  </div>
+                                </div>
 
-        <ng-container matColumnDef="side">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Side</th>
-          <td mat-cell *matCellDef="let trade">{{ trade.side }}</td>
-        </ng-container>
+                                <div class="trade-log__summary-grid">
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Cycle ID</span>
+                                    <span class="trade-log__value">{{ cycle.gridCycleId }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Deployed</span>
+                                    <span class="trade-log__value">{{ cycle.deployTimestampUtc | date: "short" }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Closed</span>
+                                    <span class="trade-log__value">{{ cycle.closeTimestampUtc | date: "short" }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Anchor Price</span>
+                                    <span class="trade-log__value">{{ cycle.anchorPrice | number: "1.2-2" }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Levels Filled</span>
+                                    <span class="trade-log__value">{{ cycle.levelsFilled }} / {{ cycle.levelsPlaced }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Level Prices</span>
+                                    <span class="trade-log__value">{{ cycle.levelPrices.join(", ") }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Take Profit</span>
+                                    <span class="trade-log__value">{{ cycle.takeProfitPrice | number: "1.2-2" }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Stop Loss</span>
+                                    <span class="trade-log__value">{{ cycle.stopLossPrice !== null ? (cycle.stopLossPrice | number: "1.2-2") : "—" }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Exit Reason</span>
+                                    <span class="trade-log__value">{{ cycle.exitReason }}</span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Cycle PnL</span>
+                                    <span class="trade-log__value" [class]="getPnlClass(cycle.cyclePnl)">
+                                      ${{ cycle.cyclePnl | number: "1.2-2" }}
+                                    </span>
+                                  </div>
+                                  <div class="trade-log__summary-item">
+                                    <span class="trade-log__label">Duration</span>
+                                    <span class="trade-log__value">{{ formatDuration(cycle.cycleDurationMs) }}</span>
+                                  </div>
+                                </div>
+                              </section>
+                            }
 
-        <ng-container matColumnDef="size">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Size</th>
-          <td mat-cell *matCellDef="let trade">{{ trade.size | number: "1.4-4" }}</td>
-        </ng-container>
+                            <section class="trade-log__section">
+                              <h4 class="trade-log__section-title">Order Events</h4>
 
-        <ng-container matColumnDef="pnl">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>PnL</th>
-          <td mat-cell *matCellDef="let trade" [class]="getPnlClass(trade.pnl)">
-            {{ trade.pnl !== null ? "$" + (trade.pnl | number: "1.2-2") : "—" }}
-          </td>
-        </ng-container>
+                              @if (debugData.orderEvents.length === 0) {
+                                <div class="trade-log__section-empty">No order events recorded for this cycle.</div>
+                              } @else {
+                                <div class="trade-log__section-table-wrapper">
+                                  <table class="trade-log__events-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Time</th>
+                                        <th>Event</th>
+                                        <th>Side</th>
+                                        <th>Type</th>
+                                        <th>Price</th>
+                                        <th>Size</th>
+                                        <th>Details</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      @for (event of debugData.orderEvents; track event.timestampUtc + event.orderId + event.eventType) {
+                                        <tr>
+                                          <td>{{ event.timestampUtc | date: "short" }}</td>
+                                          <td>
+                                            <span class="trade-log__event-badge"
+                                                  [class.trade-log__event-badge--filled]="event.eventType === orderEventTypes.Filled"
+                                                  [class.trade-log__event-badge--cancelled]="event.eventType === orderEventTypes.Cancelled"
+                                                  [class.trade-log__event-badge--placed]="event.eventType === orderEventTypes.Placed"
+                                                  [class.trade-log__event-badge--replaced]="event.eventType === orderEventTypes.Replaced">
+                                              {{ event.eventType }}
+                                            </span>
+                                          </td>
+                                          <td>{{ event.side }}</td>
+                                          <td>{{ event.orderType }}</td>
+                                          <td>{{ event.price | number: "1.2-2" }}</td>
+                                          <td>{{ event.size | number: "1.4-4" }}</td>
+                                          <td>{{ getOrderEventDetails(event) }}</td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                </div>
+                              }
+                            </section>
 
-        <ng-container matColumnDef="fees">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Fees</th>
-          <td mat-cell *matCellDef="let trade">${{ trade.fees | number: "1.4-4" }}</td>
-        </ng-container>
+                            <section class="trade-log__section">
+                              <div class="trade-log__section-heading">
+                                <h4 class="trade-log__section-title">Candle Evaluations</h4>
+                                <div class="trade-log__filter-bar">
+                                  <mat-form-field class="trade-log__filter-field" appearance="outline" subscriptSizing="dynamic">
+                                    <mat-label>Signal Type</mat-label>
+                                    <mat-select
+                                      [value]="getSignalTypeFilter(debugData.cycleId)"
+                                      (selectionChange)="onSignalTypeChange(debugData.cycleId, $event)">
+                                      <mat-option value="">All</mat-option>
+                                      @for (signalType of getAvailableSignalTypes(debugData); track signalType) {
+                                        <mat-option [value]="signalType">{{ signalType }}</mat-option>
+                                      }
+                                    </mat-select>
+                                  </mat-form-field>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-      </table>
-    </div>
+                                  <mat-form-field class="trade-log__filter-field" appearance="outline" subscriptSizing="dynamic">
+                                    <mat-label>Setup Detected</mat-label>
+                                    <mat-select
+                                      [value]="getSetupDetectedFilter(debugData.cycleId)"
+                                      (selectionChange)="onSetupDetectedFilterChange(debugData.cycleId, $event)">
+                                      <mat-option value="all">All</mat-option>
+                                      <mat-option value="true">Yes</mat-option>
+                                      <mat-option value="false">No</mat-option>
+                                    </mat-select>
+                                  </mat-form-field>
+                                </div>
+                              </div>
+
+                              @if (debugData.candleEvaluations.length === 0) {
+                                <div class="trade-log__section-empty">No candle evaluations recorded for this cycle.</div>
+                              } @else {
+                                @let filteredCandles = getFilteredCandles(debugData);
+
+                                @if (filteredCandles.length === 0) {
+                                  <div class="trade-log__section-empty">No candle evaluations match the selected filters.</div>
+                                } @else {
+                                  <div class="trade-log__section-table-wrapper">
+                                    <table class="trade-log__candles-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Time</th>
+                                          <th>O / H / L / C</th>
+                                          <th>EMA Fast</th>
+                                          <th>EMA Slow</th>
+                                          <th>EMA Trend</th>
+                                          <th>RSI</th>
+                                          <th>ATR</th>
+                                          <th>Setup</th>
+                                          <th>Grid State</th>
+                                          <th>Position</th>
+                                          <th>Signals</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        @for (candle of filteredCandles; track candle.timestampUtc + (candle.gridCycleId ?? "")) {
+                                          <tr [class.trade-log__candle-row--warmup]="candle.isWarmup">
+                                            <td>{{ candle.timestampUtc | date: "short" }}</td>
+                                            <td>
+                                              {{ candle.open | number: "1.2-2" }} /
+                                              {{ candle.high | number: "1.2-2" }} /
+                                              {{ candle.low | number: "1.2-2" }} /
+                                              {{ candle.close | number: "1.2-2" }}
+                                            </td>
+                                            <td>{{ candle.emaFast | number: "1.2-2" }}</td>
+                                            <td>{{ candle.emaSlow | number: "1.2-2" }}</td>
+                                            <td>{{ candle.emaTrend | number: "1.2-2" }}</td>
+                                            <td>{{ candle.rsi | number: "1.1-1" }}</td>
+                                            <td>{{ candle.atr | number: "1.4-4" }}</td>
+                                            <td>
+                                              <span [class]="getSetupBadgeClass(candle.setupDetected)">
+                                                {{ candle.setupDetected ? "Yes" : "No" }}
+                                              </span>
+                                            </td>
+                                            <td>{{ candle.gridLifecycleState }}</td>
+                                            <td>
+                                              {{ candle.positionSize | number: "1.4-4" }}
+                                              @if (candle.positionAvgEntry > 0) {
+                                                <span class="trade-log__position-meta">&#64; {{ candle.positionAvgEntry | number: "1.2-2" }}</span>
+                                              }
+                                            </td>
+                                            <td>
+                                              @if (candle.signalsEmitted.length > 0) {
+                                                {{ candle.signalsEmitted.join(", ") }}
+                                              } @else {
+                                                —
+                                              }
+                                            </td>
+                                          </tr>
+                                        }
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                }
+                              }
+                            </section>
+                          </div>
+                        } @else {
+                          <div class="trade-log__debug-empty">{{ getDebugEmptyMessage(trade) }}</div>
+                        }
+                      }
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    @if (openTrades.length > 0) {
+      <section class="trade-log__group">
+        <h4 class="trade-log__group-title">Open Positions At End Of Run</h4>
+        <div class="trade-log__table-wrapper">
+          <table class="trade-log__table">
+            <thead>
+              <tr>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('entryTime')">
+                    <span>Entry Time</span>
+                    <mat-icon>{{ getSortIcon("entryTime") }}</mat-icon>
+                  </button>
+                </th>
+                <th>Exit Time</th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('entryPrice')">
+                    <span>Entry Price</span>
+                    <mat-icon>{{ getSortIcon("entryPrice") }}</mat-icon>
+                  </button>
+                </th>
+                <th>Exit Price</th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('side')">
+                    <span>Side</span>
+                    <mat-icon>{{ getSortIcon("side") }}</mat-icon>
+                  </button>
+                </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('size')">
+                    <span>Size</span>
+                    <mat-icon>{{ getSortIcon("size") }}</mat-icon>
+                  </button>
+                </th>
+                <th>Realized PnL</th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('fees')">
+                    <span>Fees</span>
+                    <mat-icon>{{ getSortIcon("fees") }}</mat-icon>
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (trade of openTrades; track getTradeKey(trade)) {
+                <tr class="trade-log__row trade-log__row--disabled">
+                  <td>{{ trade.entryTime | date: "short" }}</td>
+                  <td>{{ trade.exitTime ? (trade.exitTime | date: "short") : "—" }}</td>
+                  <td>{{ trade.entryPrice | number: "1.2-2" }}</td>
+                  <td>{{ trade.exitPrice !== null ? (trade.exitPrice | number: "1.2-2") : "—" }}</td>
+                  <td>{{ trade.side }}</td>
+                  <td>{{ trade.size | number: "1.4-4" }}</td>
+                  <td>—</td>
+                  <td>${{ trade.fees | number: "1.4-4" }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
   }
 </section>
