@@ -78,6 +78,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.EndDate.Should().Be(new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc));
         result.CreatedAt.Should().BeAfter(DateTime.MinValue);
         result.StrategyConfig.GridLevels.Should().Be(10);
+        result.StrategyConfig.ManualAnchorPrice.Should().Be(42000m);
         result.StrategyConfig.GridSpacing.Should().Be(0.5m);
 
         _backtestRunRepositoryMock.Verify(
@@ -516,6 +517,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             StrategyConfig = new GridStrategyConfigRequest
             {
                 GridLevels = 10,
+                ManualAnchorPrice = 42000m,
                 GridSpacing = 0.5m,
                 TakeProfitPercent = 1.0m,
                 BreakdownThreshold = -3.0m,
@@ -578,6 +580,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
             {
                 GridLevels = 10,
+                ManualAnchorPrice = 42000m,
                 GridSpacing = 0.5m,
                 TakeProfitPercent = 1m,
                 BreakdownThreshold = -3m,
@@ -614,6 +617,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
             {
                 GridLevels = 10,
+                ManualAnchorPrice = 42000m,
                 GridSpacing = 0.5m,
                 TakeProfitPercent = 1m,
                 BreakdownThreshold = -3m,

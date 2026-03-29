@@ -33,6 +33,9 @@ public sealed class GridStrategyConfigRequest
     [Range(1, int.MaxValue, ErrorMessage = "gridLevels must be > 0")]
     public int GridLevels { get; set; }
 
+    [Range(0.00000001, double.MaxValue, ErrorMessage = "manualAnchorPrice must be > 0")]
+    public decimal? ManualAnchorPrice { get; set; }
+
     [Required]
     [Range(0.001, double.MaxValue, ErrorMessage = "gridSpacing must be > 0")]
     public decimal GridSpacing { get; set; }

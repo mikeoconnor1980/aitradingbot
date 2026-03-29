@@ -97,6 +97,7 @@ public sealed class BacktestPositionManager : IPositionManager
                     Side = OrderSide.Buy,
                     OrderType = OrderType.Limit,
                     Price = price,
+                    AnchorPrice = anchorPrice,
                     Size = size,
                     TradeType = TradeType.GridFill,
                     GridCycleId = gridCycleId

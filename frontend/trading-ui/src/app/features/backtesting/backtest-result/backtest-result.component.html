@@ -120,6 +120,10 @@
           <span class="backtest-result__config-value">{{ result.strategyConfig.gridLevels }}</span>
         </div>
         <div class="backtest-result__config-item">
+          <span class="backtest-result__config-label">Manual Anchor</span>
+          <span class="backtest-result__config-value">{{ result.strategyConfig.manualAnchorPrice !== null && result.strategyConfig.manualAnchorPrice !== undefined ? ('$' + (result.strategyConfig.manualAnchorPrice | number: "1.2-2")) : 'Auto from signal candle' }}</span>
+        </div>
+        <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Grid Spacing</span>
           <span class="backtest-result__config-value">{{ result.strategyConfig.gridSpacing | number: "1.2-2" }}%</span>
         </div>

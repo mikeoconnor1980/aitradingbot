@@ -3,6 +3,7 @@ namespace TradingApp.Application.Backtesting.Models;
 public sealed class GridStrategyConfig
 {
     public int GridLevels { get; set; }
+    public decimal? ManualAnchorPrice { get; set; }
     public decimal GridSpacing { get; set; }
     public decimal TakeProfitPercent { get; set; }
     public decimal BreakdownThreshold { get; set; }

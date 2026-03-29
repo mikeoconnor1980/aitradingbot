@@ -20,6 +20,7 @@ interface BacktestFormModel {
   interval1h: FormControl<boolean>;
   interval4h: FormControl<boolean>;
   gridLevels: FormControl<number>;
+  manualAnchorPrice: FormControl<number | null>;
   gridSpacing: FormControl<number>;
   takeProfitPercent: FormControl<number>;
   breakdownThreshold: FormControl<number>;
@@ -111,6 +112,7 @@ export class BacktestFormComponent implements OnChanges {
     interval1h: this._fb.nonNullable.control(true),
     interval4h: this._fb.nonNullable.control(true),
     gridLevels: this._fb.nonNullable.control(10, [Validators.required, Validators.min(1), Validators.max(50)]),
+    manualAnchorPrice: this._fb.control<number | null>(null, [Validators.min(0.00000001)]),
     gridSpacing: this._fb.nonNullable.control(0.5, [Validators.required, Validators.min(0.001)]),
     takeProfitPercent: this._fb.nonNullable.control(1, [Validators.required, Validators.min(0.001)]),
     breakdownThreshold: this._fb.nonNullable.control(2, [Validators.required]),
@@ -228,6 +230,7 @@ export class BacktestFormComponent implements OnChanges {
       initialCapital: formValue.initialCapital,
       strategyConfig: {
         gridLevels: formValue.gridLevels,
+        manualAnchorPrice: formValue.manualAnchorPrice,
         gridSpacing: formValue.gridSpacing,
         takeProfitPercent: formValue.takeProfitPercent,
         breakdownThreshold: formValue.breakdownThreshold,
@@ -288,6 +291,7 @@ export class BacktestFormComponent implements OnChanges {
       interval1h: result.intervals.includes("1h"),
       interval4h: result.intervals.includes("4h"),
       gridLevels: result.strategyConfig.gridLevels,
+      manualAnchorPrice: result.strategyConfig.manualAnchorPrice ?? null,
       gridSpacing: result.strategyConfig.gridSpacing,
       takeProfitPercent: result.strategyConfig.takeProfitPercent,
       breakdownThreshold: result.strategyConfig.breakdownThreshold,
@@ -328,6 +332,7 @@ export class BacktestFormComponent implements OnChanges {
       interval1h: ["1h"],
       interval4h: ["4h"],
       gridLevels: ["gridlevels"],
+      manualAnchorPrice: ["manualanchorprice", "anchorprice"],
       gridSpacing: ["gridspacing"],
       takeProfitPercent: ["takeprofitpercent"],
       breakdownThreshold: ["breakdownthreshold"],

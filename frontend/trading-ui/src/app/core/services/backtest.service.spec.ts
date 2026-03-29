@@ -37,6 +37,7 @@ describe("BacktestService", () => {
       initialCapital: 10000,
       strategyConfig: {
         gridLevels: 10,
+        manualAnchorPrice: 42000,
         gridSpacing: 0.5,
         takeProfitPercent: 1,
         breakdownThreshold: -3,
@@ -96,6 +97,7 @@ describe("BacktestService", () => {
       endDate: "2024-01-31T00:00:00Z",
       strategyConfig: {
         gridLevels: 10,
+        manualAnchorPrice: null,
         gridSpacing: 0.5,
         takeProfitPercent: 1,
         breakdownThreshold: -3,

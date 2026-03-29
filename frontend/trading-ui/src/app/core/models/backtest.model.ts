@@ -1,5 +1,6 @@
 export interface GridStrategyConfig {
   gridLevels: number;
+  manualAnchorPrice?: number | null;
   gridSpacing: number;
   takeProfitPercent: number;
   breakdownThreshold: number;

@@ -74,6 +74,7 @@ public sealed class GridController : IGridController
         }
 
         var gridLevels = Math.Max(1, config.GridLevels);
+        var anchorPrice = config.ManualAnchorPrice ?? context.CurrentCandle.Close;
         var gridSpacingPercent = Math.Abs(config.GridSpacing);
         var positionSize = Math.Abs(config.PositionSize);
 
@@ -91,7 +92,7 @@ public sealed class GridController : IGridController
                 Reason = evaluation.Reason,
                 Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ["anchorPrice"] = context.CurrentCandle.Close,
+                    ["anchorPrice"] = anchorPrice,
                     ["gridLevels"] = gridLevels,
                     ["gridSpacingPercent"] = gridSpacingPercent,
                     ["notionalPerLevel"] = positionSize,

@@ -23,6 +23,7 @@ describe("BacktestFormComponent", () => {
     expect(component).toBeTruthy();
     expect(component.form.controls.symbol.value).toBe("BTC");
     expect(component.form.controls.gridLevels.value).toBe(10);
+    expect(component.form.controls.manualAnchorPrice.value).toBeNull();
     expect(component.form.controls.makerFee.value).toBe(0.0001);
     expect(component.form.controls.takerFee.value).toBe(0.00035);
     expect(component.form.controls.initialCapital.value).toBe(10000);
@@ -56,7 +57,8 @@ describe("BacktestFormComponent", () => {
     spyOn(component.runBacktest, "emit");
     component.form.patchValue({
       startDate: new Date("2024-01-01T00:00:00Z"),
-      endDate: new Date("2024-12-31T00:00:00Z")
+      endDate: new Date("2024-12-31T00:00:00Z"),
+      manualAnchorPrice: 42000
     });
 
     component.onRunBacktest();
@@ -67,6 +69,7 @@ describe("BacktestFormComponent", () => {
       initialCapital: 10000,
       strategyConfig: jasmine.objectContaining({
         gridLevels: 10,
+        manualAnchorPrice: 42000,
         leverage: 3
       })
     }));
@@ -96,6 +99,7 @@ describe("BacktestFormComponent", () => {
       endDate: "2024-02-29T00:00:00Z",
       strategyConfig: {
         gridLevels: 7,
+        manualAnchorPrice: 152.25,
         gridSpacing: 0.35,
         takeProfitPercent: 1.5,
         breakdownThreshold: -2.5,
@@ -135,6 +139,7 @@ describe("BacktestFormComponent", () => {
     expect(component.form.controls.interval1h.value).toBeFalse();
     expect(component.form.controls.interval4h.value).toBeTrue();
     expect(component.form.controls.gridLevels.value).toBe(7);
+    expect(component.form.controls.manualAnchorPrice.value).toBe(152.25);
     expect(component.form.controls.initialCapital.value).toBe(25000);
   });
 

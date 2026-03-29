@@ -36,6 +36,7 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
             Side = order.Side,
             OrderType = order.OrderType,
             Price = order.Price,
+            AnchorPrice = order.AnchorPrice,
             Size = order.Size,
             TradeType = order.TradeType,
             GridCycleId = order.GridCycleId,

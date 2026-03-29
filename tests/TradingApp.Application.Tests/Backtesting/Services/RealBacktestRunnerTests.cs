@@ -93,7 +93,7 @@ public sealed class RealBacktestRunnerTests
             InitialCapital = 10_000m,
             FeeModel = FeeModel.Default,
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":1,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
+            StrategyConfigJson = "{\"gridLevels\":1,\"manualAnchorPrice\":100.2,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
             EnableAuditLog = true,
         };
 
@@ -131,6 +131,7 @@ public sealed class RealBacktestRunnerTests
         result.OrderEventLog.Should().NotBeEmpty();
         result.GridCycleLog.Should().NotBeNull();
         result.GridCycleLog.Should().ContainSingle();
+        result.GridCycleLog![0].AnchorPrice.Should().Be(100.2m);
         result.GridCycleLog![0].LevelsPlaced.Should().Be(1);
         result.GridCycleLog![0].LevelsFilled.Should().Be(1);
         result.GridCycleLog![0].StopLossPrice.Should().BeNull();

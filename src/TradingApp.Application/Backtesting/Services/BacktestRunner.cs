@@ -461,7 +461,7 @@ public sealed class BacktestRunner : IBacktestRunner
             trackingState = new GridCycleTrackingState
             {
                 DeployTimestampUtc = candle.Timestamp,
-                AnchorPrice = candle.Close,
+                AnchorPrice = levelOrders.MaxBy(order => order.Price)?.AnchorPrice ?? candle.Close,
                 LevelsPlaced = levelOrders.Count,
                 LevelPrices = levelOrders.Select(order => order.Price).ToList(),
             };

@@ -6,6 +6,7 @@ public sealed class OrderRequest
     public required OrderSide Side { get; init; }
     public required OrderType OrderType { get; init; }
     public required decimal Price { get; init; }
+    public decimal? AnchorPrice { get; init; }
     public required decimal Size { get; init; }
     public required TradeType TradeType { get; init; }
     public string? GridCycleId { get; init; }

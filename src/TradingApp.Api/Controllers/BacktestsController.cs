@@ -30,6 +30,7 @@ public sealed class BacktestsController : ApiController
         var strategyConfig = new GridStrategyConfig
         {
             GridLevels = request.StrategyConfig.GridLevels,
+            ManualAnchorPrice = request.StrategyConfig.ManualAnchorPrice,
             GridSpacing = request.StrategyConfig.GridSpacing,
             TakeProfitPercent = request.StrategyConfig.TakeProfitPercent,
             BreakdownThreshold = request.StrategyConfig.BreakdownThreshold,
