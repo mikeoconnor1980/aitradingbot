@@ -102,20 +102,36 @@ export class GridCycleViewerComponent implements OnChanges {
   }
 
   private _buildCycleOptions(): void {
-    const seen = new Set<string>();
-    const options: CycleOption[] = [];
+    const cycleTradesMap = new Map<string, BacktestTrade[]>();
 
     for (const trade of this.trades) {
       const cycleId = trade.gridCycleId;
-      if (!cycleId || seen.has(cycleId)) {
+      if (!cycleId) {
         continue;
       }
 
-      seen.add(cycleId);
-      const index = options.length + 1;
+      if (!cycleTradesMap.has(cycleId)) {
+        cycleTradesMap.set(cycleId, []);
+      }
+
+      cycleTradesMap.get(cycleId)!.push(trade);
+    }
+
+    const options: CycleOption[] = [];
+    let index = 0;
+
+    for (const [cycleId, cycleTrades] of cycleTradesMap) {
+      index++;
+      const timestamps = cycleTrades.map(t => t.entryTime).filter(Boolean).sort();
+      const first = timestamps[0];
+      const last = timestamps[timestamps.length - 1];
+      const dateLabel = first
+        ? this._formatShortDate(first) + (last && last !== first ? " → " + this._formatShortDate(last) : "")
+        : cycleId.substring(0, 8);
+
       options.push({
         cycleId,
-        label: `Cycle ${index} — ${cycleId.substring(0, 8)}`,
+        label: `Cycle ${index} — ${dateLabel}`,
         index
       });
     }
@@ -126,5 +142,10 @@ export class GridCycleViewerComponent implements OnChanges {
       this.selectedCycleId = options[0].cycleId;
       this._selectedCycleId$.next(options[0].cycleId);
     }
+  }
+
+  private _formatShortDate(isoDate: string): string {
+    const d = new Date(isoDate);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   }
 }
