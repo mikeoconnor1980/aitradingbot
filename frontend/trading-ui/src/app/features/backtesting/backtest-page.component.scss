@@ -87,6 +87,14 @@
     color: var(--colour-text-primary);
   }
 
+  &__results-tabs {
+    margin-top: 1rem;
+  }
+
+  &__results-tab-content {
+    padding: 1rem 0;
+  }
+
   &__empty {
     display: flex;
     justify-content: center;

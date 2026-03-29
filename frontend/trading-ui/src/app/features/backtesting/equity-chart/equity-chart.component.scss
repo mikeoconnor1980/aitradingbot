@@ -38,6 +38,14 @@
     background: #f59e0b;
   }
 
+  &__legend-item--deploy::before {
+    background: #f59e0b;
+  }
+
+  &__legend-item--tp::before {
+    background: #22c55e;
+  }
+
   &__container {
     width: 100%;
     height: 400px;
