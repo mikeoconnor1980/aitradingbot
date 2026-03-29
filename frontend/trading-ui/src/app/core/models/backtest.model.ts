@@ -1,5 +1,8 @@
+export type BacktestEntryMode = "AutoFromSignalCandle" | "WaitForLimitPrice";
+
 export interface GridStrategyConfig {
   gridLevels: number;
+  entryMode?: BacktestEntryMode;
   manualAnchorPrice?: number | null;
   gridSpacing: number;
   takeProfitPercent: number;

@@ -15,6 +15,7 @@ describe("BacktestCompareComponent", () => {
     endDate: "2024-01-31T00:00:00Z",
     strategyConfig: {
       gridLevels: 10,
+      entryMode: "AutoFromSignalCandle",
       manualAnchorPrice: null,
       gridSpacing: 0.5,
       takeProfitPercent: 1.2,
@@ -58,6 +59,7 @@ describe("BacktestCompareComponent", () => {
     fixture.componentRef.setInput("resultA", createResult({ id: "run-a", totalPnl: 1200, maxDrawdown: -280 }));
     fixture.componentRef.setInput("resultB", createResult({ id: "run-b", totalPnl: 900, maxDrawdown: -420, strategyConfig: {
       gridLevels: 12,
+      entryMode: "WaitForLimitPrice",
       manualAnchorPrice: 41850,
       gridSpacing: 0.75,
       takeProfitPercent: 1.5,
@@ -90,7 +92,8 @@ describe("BacktestCompareComponent", () => {
 
     expect(changedItems.length).toBeGreaterThan(0);
     expect(changedItems.some((item) => item.label === "Grid Levels")).toBeTrue();
-    expect(changedItems.some((item) => item.label === "Manual Anchor")).toBeTrue();
+    expect(changedItems.some((item) => item.label === "Entry Mode")).toBeTrue();
+    expect(changedItems.some((item) => item.label === "Limit Price")).toBeTrue();
   });
 
   it("uses neutral delta when values are equal", () => {

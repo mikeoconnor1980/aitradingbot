@@ -72,7 +72,8 @@ export class BacktestCompareComponent implements OnChanges {
       { label: "Intervals", valueA: this.resultA.intervals.join(", "), valueB: this.resultB.intervals.join(", ") },
       { label: "Initial Capital", valueA: this._formatCurrency(this.resultA.initialCapital), valueB: this._formatCurrency(this.resultB.initialCapital) },
       { label: "Grid Levels", valueA: String(this.resultA.strategyConfig.gridLevels), valueB: String(this.resultB.strategyConfig.gridLevels) },
-      { label: "Manual Anchor", valueA: this._formatAnchor(this.resultA.strategyConfig.manualAnchorPrice), valueB: this._formatAnchor(this.resultB.strategyConfig.manualAnchorPrice) },
+      { label: "Entry Mode", valueA: this._formatEntryMode(this.resultA.strategyConfig.entryMode), valueB: this._formatEntryMode(this.resultB.strategyConfig.entryMode) },
+      { label: "Limit Price", valueA: this._formatLimitPrice(this.resultA.strategyConfig.entryMode, this.resultA.strategyConfig.manualAnchorPrice), valueB: this._formatLimitPrice(this.resultB.strategyConfig.entryMode, this.resultB.strategyConfig.manualAnchorPrice) },
       { label: "Grid Spacing", valueA: this._formatPercent(this.resultA.strategyConfig.gridSpacing), valueB: this._formatPercent(this.resultB.strategyConfig.gridSpacing) },
       { label: "Take Profit", valueA: this._formatPercent(this.resultA.strategyConfig.takeProfitPercent), valueB: this._formatPercent(this.resultB.strategyConfig.takeProfitPercent) },
       { label: "Breakdown Threshold", valueA: this._formatPercent(this.resultA.strategyConfig.breakdownThreshold), valueB: this._formatPercent(this.resultB.strategyConfig.breakdownThreshold) },
@@ -187,8 +188,14 @@ export class BacktestCompareComponent implements OnChanges {
     return `${(value * 100).toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}%`;
   }
 
-  private _formatAnchor(value: number | null | undefined): string {
-    return value === null || value === undefined ? "Auto from signal candle" : this._formatCurrency(value);
+  private _formatEntryMode(value: string | null | undefined): string {
+    return value === "WaitForLimitPrice" ? "Wait for limit price" : "Auto from signal candle";
+  }
+
+  private _formatLimitPrice(entryMode: string | null | undefined, value: number | null | undefined): string {
+    return entryMode === "WaitForLimitPrice" && value !== null && value !== undefined
+      ? this._formatCurrency(value)
+      : "—";
   }
 
   private _formatDate(value: string): string {

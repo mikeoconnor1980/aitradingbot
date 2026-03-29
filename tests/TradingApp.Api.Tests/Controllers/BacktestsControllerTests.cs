@@ -78,6 +78,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.EndDate.Should().Be(new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc));
         result.CreatedAt.Should().BeAfter(DateTime.MinValue);
         result.StrategyConfig.GridLevels.Should().Be(10);
+        result.StrategyConfig.EntryMode.Should().Be(BacktestEntryModes.WaitForLimitPrice);
         result.StrategyConfig.ManualAnchorPrice.Should().Be(42000m);
         result.StrategyConfig.GridSpacing.Should().Be(0.5m);
 
@@ -363,6 +364,21 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenLimitEntryModeWithoutLimitPrice_WhenPostBacktest_ThenReturnsBadRequest()
+    {
+        var client = GetTestClient();
+        var request = CreateValidRequest();
+        request.StrategyConfig.ManualAnchorPrice = null;
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.BadRequest);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorMessage").GetString().Should().Contain("manualAnchorPrice is required");
+    }
+
+    [TestMethod]
     public async Task GivenMissingRequiredFields_WhenPostBacktest_ThenReturnsBadRequest()
     {
         var client = GetTestClient();
@@ -517,6 +533,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             StrategyConfig = new GridStrategyConfigRequest
             {
                 GridLevels = 10,
+                EntryMode = BacktestEntryModes.WaitForLimitPrice,
                 ManualAnchorPrice = 42000m,
                 GridSpacing = 0.5m,
                 TakeProfitPercent = 1.0m,
@@ -580,6 +597,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
             {
                 GridLevels = 10,
+                EntryMode = BacktestEntryModes.WaitForLimitPrice,
                 ManualAnchorPrice = 42000m,
                 GridSpacing = 0.5m,
                 TakeProfitPercent = 1m,
@@ -617,6 +635,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
             {
                 GridLevels = 10,
+                EntryMode = BacktestEntryModes.WaitForLimitPrice,
                 ManualAnchorPrice = 42000m,
                 GridSpacing = 0.5m,
                 TakeProfitPercent = 1m,

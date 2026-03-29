@@ -30,6 +30,7 @@ public sealed class BacktestsController : ApiController
         var strategyConfig = new GridStrategyConfig
         {
             GridLevels = request.StrategyConfig.GridLevels,
+            EntryMode = request.StrategyConfig.EntryMode,
             ManualAnchorPrice = request.StrategyConfig.ManualAnchorPrice,
             GridSpacing = request.StrategyConfig.GridSpacing,
             TakeProfitPercent = request.StrategyConfig.TakeProfitPercent,
@@ -181,6 +182,17 @@ public sealed class BacktestsController : ApiController
         if (request.EndDate!.Value <= request.StartDate!.Value)
         {
             throw new DomainException("endDate must be after startDate");
+        }
+
+        if (!BacktestEntryModes.IsValid(request.StrategyConfig.EntryMode))
+        {
+            throw new DomainException($"entryMode must be one of: {BacktestEntryModes.AutoFromSignalCandle}, {BacktestEntryModes.WaitForLimitPrice}");
+        }
+
+        if (string.Equals(request.StrategyConfig.EntryMode, BacktestEntryModes.WaitForLimitPrice, StringComparison.Ordinal) &&
+            request.StrategyConfig.ManualAnchorPrice is null)
+        {
+            throw new DomainException("manualAnchorPrice is required when entryMode is WaitForLimitPrice");
         }
     }
 

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TradingApp.Application.Backtesting.Models;
 
 namespace TradingApp.Api.Models;
 
@@ -32,6 +33,9 @@ public sealed class GridStrategyConfigRequest
     [Required]
     [Range(1, int.MaxValue, ErrorMessage = "gridLevels must be > 0")]
     public int GridLevels { get; set; }
+
+    [Required]
+    public string EntryMode { get; set; } = BacktestEntryModes.AutoFromSignalCandle;
 
     [Range(0.00000001, double.MaxValue, ErrorMessage = "manualAnchorPrice must be > 0")]
     public decimal? ManualAnchorPrice { get; set; }

@@ -10,7 +10,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSelectModule } from "@angular/material/select";
-import { BacktestRequest, BacktestResult } from "../../../core/models/backtest.model";
+import { BacktestEntryMode, BacktestRequest, BacktestResult } from "../../../core/models/backtest.model";
 
 interface BacktestFormModel {
   symbol: FormControl<string>;
@@ -20,6 +20,7 @@ interface BacktestFormModel {
   interval1h: FormControl<boolean>;
   interval4h: FormControl<boolean>;
   gridLevels: FormControl<number>;
+  entryMode: FormControl<BacktestEntryMode>;
   manualAnchorPrice: FormControl<number | null>;
   gridSpacing: FormControl<number>;
   takeProfitPercent: FormControl<number>;
@@ -63,6 +64,16 @@ function intervalSelectionValidator(control: AbstractControl): ValidationErrors 
   return hasSelection ? null : { intervals: true };
 }
 
+function limitPriceValidator(control: AbstractControl): ValidationErrors | null {
+  const formGroup = control as FormGroup<BacktestFormModel>;
+
+  if (formGroup.controls.entryMode.value !== "WaitForLimitPrice") {
+    return null;
+  }
+
+  return formGroup.controls.manualAnchorPrice.value === null ? { limitPriceRequired: true } : null;
+}
+
 @Component({
   selector: "app-backtest-form",
   standalone: true,
@@ -104,6 +115,10 @@ export class BacktestFormComponent implements OnChanges {
   public validateData = new EventEmitter<CoverageValidationRequest>();
 
   public readonly symbols = ["BTC", "ETH", "SOL", "DOGE", "ARB", "OP"];
+  public readonly entryModes: { value: BacktestEntryMode; label: string }[] = [
+    { value: "AutoFromSignalCandle", label: "Auto from signal candle" },
+    { value: "WaitForLimitPrice", label: "Wait for limit price" }
+  ];
   public readonly form: FormGroup<BacktestFormModel> = this._fb.group({
     symbol: this._fb.nonNullable.control("BTC"),
     startDate: this._fb.control<Date | null>(null, Validators.required),
@@ -112,6 +127,7 @@ export class BacktestFormComponent implements OnChanges {
     interval1h: this._fb.nonNullable.control(true),
     interval4h: this._fb.nonNullable.control(true),
     gridLevels: this._fb.nonNullable.control(10, [Validators.required, Validators.min(1), Validators.max(50)]),
+    entryMode: this._fb.nonNullable.control<BacktestEntryMode>("AutoFromSignalCandle"),
     manualAnchorPrice: this._fb.control<number | null>(null, [Validators.min(0.00000001)]),
     gridSpacing: this._fb.nonNullable.control(0.5, [Validators.required, Validators.min(0.001)]),
     takeProfitPercent: this._fb.nonNullable.control(1, [Validators.required, Validators.min(0.001)]),
@@ -124,7 +140,7 @@ export class BacktestFormComponent implements OnChanges {
     stopLossPercent: this._fb.nonNullable.control(5, [Validators.required, Validators.min(0.01)]),
     initialCapital: this._fb.nonNullable.control(10000, [Validators.required, Validators.min(100)])
   }, {
-    validators: [dateRangeValidator, intervalSelectionValidator]
+    validators: [dateRangeValidator, intervalSelectionValidator, limitPriceValidator]
   });
   public submitted = false;
   public formLevelError: string | null = null;
@@ -172,6 +188,10 @@ export class BacktestFormComponent implements OnChanges {
     return (this.form.hasError("intervals") || this.form.hasError("serverIntervals")) && this.submitted;
   }
 
+  public get usesLimitEntryMode(): boolean {
+    return this.form.controls.entryMode.value === "WaitForLimitPrice";
+  }
+
   public getControlErrorMessage(controlName: BacktestControlName): string {
     const errors = this.form.controls[controlName].errors;
 
@@ -191,6 +211,10 @@ export class BacktestFormComponent implements OnChanges {
     if (errors?.["max"]) {
       const requiredMax = errors["max"]["max"];
       return `Must be ${requiredMax} or less.`;
+    }
+
+    if (controlName === "manualAnchorPrice" && this.form.hasError("limitPriceRequired")) {
+      return "Limit price is required for this entry mode.";
     }
 
     return "Invalid value.";
@@ -230,7 +254,8 @@ export class BacktestFormComponent implements OnChanges {
       initialCapital: formValue.initialCapital,
       strategyConfig: {
         gridLevels: formValue.gridLevels,
-        manualAnchorPrice: formValue.manualAnchorPrice,
+        entryMode: formValue.entryMode,
+        manualAnchorPrice: formValue.entryMode === "WaitForLimitPrice" ? formValue.manualAnchorPrice : null,
         gridSpacing: formValue.gridSpacing,
         takeProfitPercent: formValue.takeProfitPercent,
         breakdownThreshold: formValue.breakdownThreshold,
@@ -291,6 +316,7 @@ export class BacktestFormComponent implements OnChanges {
       interval1h: result.intervals.includes("1h"),
       interval4h: result.intervals.includes("4h"),
       gridLevels: result.strategyConfig.gridLevels,
+      entryMode: result.strategyConfig.entryMode ?? "AutoFromSignalCandle",
       manualAnchorPrice: result.strategyConfig.manualAnchorPrice ?? null,
       gridSpacing: result.strategyConfig.gridSpacing,
       takeProfitPercent: result.strategyConfig.takeProfitPercent,
@@ -332,6 +358,7 @@ export class BacktestFormComponent implements OnChanges {
       interval1h: ["1h"],
       interval4h: ["4h"],
       gridLevels: ["gridlevels"],
+      entryMode: ["entrymode"],
       manualAnchorPrice: ["manualanchorprice", "anchorprice"],
       gridSpacing: ["gridspacing"],
       takeProfitPercent: ["takeprofitpercent"],

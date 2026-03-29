@@ -60,6 +60,18 @@ export class BacktestResultComponent {
     return this.result.intervals.join(", ");
   }
 
+  public get entryModeLabel(): string {
+    return this.result.strategyConfig.entryMode === "WaitForLimitPrice"
+      ? "Wait for limit price"
+      : "Auto from signal candle";
+  }
+
+  public get limitPriceLabel(): string {
+    return this.result.strategyConfig.entryMode === "WaitForLimitPrice" && this.result.strategyConfig.manualAnchorPrice !== null && this.result.strategyConfig.manualAnchorPrice !== undefined
+      ? `$${this.result.strategyConfig.manualAnchorPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : "—";
+  }
+
   public getPnlClass(value: number): string {
     return value >= 0 ? "backtest-result__value--profit" : "backtest-result__value--loss";
   }

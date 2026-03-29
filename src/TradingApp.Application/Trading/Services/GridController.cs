@@ -74,7 +74,21 @@ public sealed class GridController : IGridController
         }
 
         var gridLevels = Math.Max(1, config.GridLevels);
-        var anchorPrice = config.ManualAnchorPrice ?? context.CurrentCandle.Close;
+        var entryMode = string.IsNullOrWhiteSpace(config.EntryMode)
+            ? BacktestEntryModes.AutoFromSignalCandle
+            : config.EntryMode;
+        var anchorPrice = context.CurrentCandle.Close;
+
+        if (string.Equals(entryMode, BacktestEntryModes.WaitForLimitPrice, StringComparison.Ordinal))
+        {
+            if (config.ManualAnchorPrice is null || context.CurrentCandle.Low > config.ManualAnchorPrice.Value)
+            {
+                return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
+            }
+
+            anchorPrice = config.ManualAnchorPrice.Value;
+        }
+
         var gridSpacingPercent = Math.Abs(config.GridSpacing);
         var positionSize = Math.Abs(config.PositionSize);
 

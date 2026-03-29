@@ -93,7 +93,7 @@ public sealed class RealBacktestRunnerTests
             InitialCapital = 10_000m,
             FeeModel = FeeModel.Default,
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":1,\"manualAnchorPrice\":100.2,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
+            StrategyConfigJson = "{\"gridLevels\":1,\"entryMode\":\"WaitForLimitPrice\",\"manualAnchorPrice\":100.2,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
             EnableAuditLog = true,
         };
 

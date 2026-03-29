@@ -14,6 +14,7 @@ describe("BacktestResultComponent", () => {
     endDate: "2024-01-31T00:00:00Z",
     strategyConfig: {
       gridLevels: 8,
+      entryMode: "WaitForLimitPrice",
       manualAnchorPrice: 42500,
       gridSpacing: 0.45,
       takeProfitPercent: 1.2,
@@ -76,6 +77,7 @@ describe("BacktestResultComponent", () => {
     expect(content).toContain("BTC");
     expect(content).toContain("15m, 1h, 4h");
     expect(content).toContain("4x");
+    expect(content).toContain("Wait for limit price");
     expect(content).toContain("$42,500.00");
   });
 
