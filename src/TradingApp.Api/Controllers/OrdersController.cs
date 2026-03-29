@@ -94,14 +94,12 @@ public sealed class OrdersController : ControllerBase
     {
         var all = await _metadataCache.GetAllAsync(ct);
 
-        var prioritySet = new HashSet<string>(PriorityCoins, StringComparer.OrdinalIgnoreCase);
+        var priorityIndex = PriorityCoins
+            .Select((coin, idx) => (coin, idx))
+            .ToDictionary(x => x.coin, x => x.idx, StringComparer.OrdinalIgnoreCase);
 
         var sorted = all
-            .OrderBy(kvp =>
-            {
-                var idx = PriorityCoins.FindIndex(p => p.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
-                return idx >= 0 ? idx : int.MaxValue;
-            })
+            .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
             .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
             .Select(kvp => new TradableAssetDto
             {
@@ -126,6 +124,22 @@ public sealed class OrdersController : ControllerBase
         if (!result.Success)
         {
             return BadRequest(new Envelope(result.Detail ?? "Order rejected"));
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("trigger")]
+    [ProducesResponseType(typeof(PlaceOrderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> PlaceTriggerOrderAsync([FromBody] PlaceTriggerOrderRequest request, CancellationToken ct)
+    {
+        var result = await _orderService.PlaceTriggerOrderAsync(request, ct);
+
+        if (!result.Success)
+        {
+            return BadRequest(new Envelope(result.Detail ?? "Trigger order rejected"));
         }
 
         return Ok(result);
@@ -184,6 +198,48 @@ public sealed class OrdersController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("trigger/{orderId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> ModifyTriggerOrderAsync(string orderId, [FromBody] ModifyTriggerOrderDto dto, CancellationToken ct)
+    {
+        var openOrders = await _accountService.GetOpenOrdersAsync(ct);
+        var existingOrder = openOrders.FirstOrDefault(order =>
+                order.OrderId == orderId &&
+                string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
+            ?? throw new NotFoundException($"Trigger order {orderId} not found in open orders");
+
+        await _orderService.ModifyTriggerOrderAsync(
+            orderId,
+            existingOrder.Asset,
+            existingOrder.Side,
+            dto.TriggerPrice,
+            dto.Size,
+            existingOrder.TpslType ?? throw new DomainException($"Trigger order {orderId} is missing TP/SL type."),
+            ct);
+
+        return NoContent();
+    }
+
+    [HttpDelete("trigger/{orderId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> CancelTriggerOrderAsync(string orderId, CancellationToken ct)
+    {
+        var openOrders = await _accountService.GetOpenOrdersAsync(ct);
+        var existingOrder = openOrders.FirstOrDefault(order =>
+                order.OrderId == orderId &&
+                string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
+            ?? throw new NotFoundException($"Trigger order {orderId} not found in open orders");
+
+        await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+        return NoContent();
+    }
+
     [HttpPut("leverage")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
@@ -194,6 +250,7 @@ public sealed class OrdersController : ControllerBase
         return NoContent();
     }
 
+#if DEBUG
     /// <summary>Debug endpoint: returns allMids response from Hyperliquid testnet.</summary>
     [HttpGet("debug/mids")]
     public async Task<IActionResult> DebugMidsAsync(CancellationToken ct)
@@ -238,4 +295,5 @@ public sealed class OrdersController : ControllerBase
         var response = await _restClient.PostInfoAsync<JsonElement>(request, ct);
         return Ok(response);
     }
+#endif
 }

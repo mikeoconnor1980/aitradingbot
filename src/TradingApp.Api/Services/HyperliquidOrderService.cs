@@ -106,7 +106,21 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                 responseTimestamp,
                 stopwatch.ElapsedMilliseconds);
 
-            return MapExchangeResponse(exchangeResponse);
+            var response = MapExchangeResponse(exchangeResponse);
+
+            if (!response.Success)
+            {
+                return response;
+            }
+
+            await PlaceCompanionTriggerOrdersAsync(
+                request,
+                metadata.Index,
+                !isBuy,
+                response,
+                cancellationToken);
+
+            return response;
         }
         catch (HyperliquidApiException ex) when (
             ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase) ||
@@ -139,6 +153,24 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                 Detail = "Order submission failed. Please retry.",
             };
         }
+    }
+
+    public async Task<PlaceOrderResponse> PlaceTriggerOrderAsync(
+        PlaceTriggerOrderRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var assetIndex = await ResolveAssetIndexAsync(request.Asset, cancellationToken);
+        var isBuy = request.Side.Equals("buy", StringComparison.OrdinalIgnoreCase);
+
+        return await SubmitTriggerOrderAsync(
+            assetIndex,
+            isBuy,
+            request.TriggerPrice,
+            request.Size,
+            request.TpslType,
+            cancellationToken);
     }
 
     public Task<TestSignResponse> TestSignAsync(CancellationToken cancellationToken = default)
@@ -276,6 +308,58 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             size);
     }
 
+    public async Task ModifyTriggerOrderAsync(
+        string orderId,
+        string asset,
+        string side,
+        decimal triggerPrice,
+        decimal size,
+        string tpslType,
+        CancellationToken cancellationToken = default)
+    {
+        var orderIdLong = ParseOrderId(orderId);
+        var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
+        var assetIndex = await ResolveAssetIndexAsync(asset, cancellationToken);
+
+        var action = new HyperliquidModifyAction
+        {
+            Modifies =
+            [
+                new HyperliquidModifyEntry
+                {
+                    OrderId = orderIdLong,
+                    Order = new HyperliquidModifyOrderParams
+                    {
+                        AssetIndex = assetIndex,
+                        IsBuy = isBuy,
+                        Price = ToWireDecimal(triggerPrice),
+                        Size = ToWireDecimal(size),
+                        ReduceOnly = true,
+                        OrderType = new HyperliquidOrderType
+                        {
+                            Trigger = new HyperliquidTriggerParams
+                            {
+                                TriggerPx = ToWireDecimal(triggerPrice),
+                                IsMarket = true,
+                                Tpsl = tpslType,
+                            },
+                        },
+                    },
+                },
+            ],
+        };
+
+        await SubmitExchangeActionAsync(action, cancellationToken);
+
+        _logger.LogInformation(
+            "Modified trigger order {OrderId} for asset {Asset}: triggerPrice={TriggerPrice}, size={Size}, tpslType={TpslType}",
+            orderId,
+            asset,
+            triggerPrice,
+            size,
+            tpslType);
+    }
+
     private async Task SubmitExchangeActionAsync(object action, CancellationToken cancellationToken)
     {
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
@@ -294,18 +378,137 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
 
         try
         {
-            var response = await _restClient.PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
+            var response = await _restClient.PostExchangeAsync<JsonElement>(payload, cancellationToken);
 
-            if (response.Status == "err")
+            if (TryGetExchangeStatus(response, out var status) &&
+                string.Equals(status, "err", StringComparison.OrdinalIgnoreCase))
             {
                 throw new DomainException(
-                    response.Response?.ErrorMessage ?? "Exchange rejected the request");
+                    GetExchangeErrorMessage(response) ?? "Exchange rejected the request");
             }
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Exchange action failed: {Message}", ex.Message);
             throw;
+        }
+    }
+
+    private async Task<PlaceOrderResponse> SubmitTriggerOrderAsync(
+        int assetIndex,
+        bool isBuy,
+        decimal triggerPrice,
+        decimal size,
+        string tpslType,
+        CancellationToken cancellationToken)
+    {
+        var action = HyperliquidEip712.BuildTriggerOrderAction(
+            assetIndex,
+            isBuy,
+            triggerPrice,
+            size,
+            tpslType);
+
+        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+        var nonce = _nonceProvider.GetNextNonce();
+        var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
+        var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet);
+        var (r, s, v) = _signer.SignHash(eip712Hash);
+
+        var payload = new
+        {
+            action,
+            nonce,
+            signature = new { r, s, v },
+            vaultAddress = (string?)null,
+        };
+
+        try
+        {
+            var exchangeResponse = await _restClient
+                .PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
+
+            return MapExchangeResponse(exchangeResponse);
+        }
+        catch (HyperliquidApiException ex) when (
+            ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("INVALID_SIGNATURE", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogError(ex, "EIP-712 signature rejected for trigger order");
+            throw new SigningException("Signature rejected — check signing configuration", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Trigger order submission failed (network error)");
+            return new PlaceOrderResponse
+            {
+                Success = false,
+                Status = "rejected",
+                Detail = "Trigger order submission failed. Please retry.",
+            };
+        }
+    }
+
+    private async Task PlaceCompanionTriggerOrdersAsync(
+        PlaceOrderRequest request,
+        int assetIndex,
+        bool closingIsBuy,
+        PlaceOrderResponse response,
+        CancellationToken cancellationToken)
+    {
+        var warnings = new List<string>();
+
+        if (request.StopLossPrice.HasValue)
+        {
+            try
+            {
+                var stopLossResponse = await SubmitTriggerOrderAsync(
+                    assetIndex,
+                    closingIsBuy,
+                    request.StopLossPrice.Value,
+                    request.Size,
+                    "sl",
+                    cancellationToken);
+
+                if (!stopLossResponse.Success)
+                {
+                    warnings.Add($"Stop loss trigger order failed: {stopLossResponse.Detail ?? "Unknown exchange error"}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to place stop loss trigger order for {Asset}", request.Asset);
+                warnings.Add($"Stop loss trigger order failed: {ex.Message}");
+            }
+        }
+
+        if (request.TakeProfitPrice.HasValue)
+        {
+            try
+            {
+                var takeProfitResponse = await SubmitTriggerOrderAsync(
+                    assetIndex,
+                    closingIsBuy,
+                    request.TakeProfitPrice.Value,
+                    request.Size,
+                    "tp",
+                    cancellationToken);
+
+                if (!takeProfitResponse.Success)
+                {
+                    warnings.Add($"Take profit trigger order failed: {takeProfitResponse.Detail ?? "Unknown exchange error"}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to place take profit trigger order for {Asset}", request.Asset);
+                warnings.Add($"Take profit trigger order failed: {ex.Message}");
+            }
+        }
+
+        if (warnings.Count > 0)
+        {
+            response.Detail = string.Join("; ", warnings);
         }
     }
 
@@ -420,6 +623,44 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             Status = "rejected",
             Detail = $"Unexpected response: {exchangeResponse.Status}",
         };
+    }
+
+    private static bool TryGetExchangeStatus(JsonElement response, out string? status)
+    {
+        status = null;
+
+        if (response.ValueKind != JsonValueKind.Object ||
+            !response.TryGetProperty("status", out var statusElement) ||
+            statusElement.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        status = statusElement.GetString();
+        return !string.IsNullOrWhiteSpace(status);
+    }
+
+    private static string? GetExchangeErrorMessage(JsonElement response)
+    {
+        if (response.ValueKind != JsonValueKind.Object ||
+            !response.TryGetProperty("response", out var responseElement))
+        {
+            return null;
+        }
+
+        if (responseElement.ValueKind == JsonValueKind.String)
+        {
+            return responseElement.GetString();
+        }
+
+        if (responseElement.ValueKind == JsonValueKind.Object &&
+            responseElement.TryGetProperty("error", out var errorElement) &&
+            errorElement.ValueKind == JsonValueKind.String)
+        {
+            return errorElement.GetString();
+        }
+
+        return null;
     }
 
     private async Task<decimal> GetMidPriceAsync(string coin, CancellationToken cancellationToken)

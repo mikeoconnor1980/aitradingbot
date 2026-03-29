@@ -32,10 +32,14 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
     {
         var stateTask = GetClearinghouseStateAsync(cancellationToken);
         var contextsTask = GetAssetContextsAsync(cancellationToken);
+        var openOrdersTask = GetOpenOrdersAsync(cancellationToken);
 
-        await Task.WhenAll(stateTask, contextsTask);
+        await Task.WhenAll(stateTask, contextsTask, openOrdersTask);
 
-        return MapToPositions(await stateTask, await contextsTask);
+        var positions = MapToPositions(await stateTask, await contextsTask);
+        EnrichPositionsWithTriggerOrders(positions, await openOrdersTask);
+
+        return positions;
     }
 
     public async Task<IReadOnlyList<OpenOrderDto>> GetOpenOrdersAsync(CancellationToken cancellationToken = default)
@@ -102,9 +106,13 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
                 }
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Failed to fetch asset contexts; positions will default mark price and funding rate where unavailable");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse asset contexts response; positions will default mark price and funding rate where unavailable");
         }
 
         return result;
@@ -226,20 +234,156 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             }
 
             var size = ParseDecimal(GetPropertyOrDefault(order, "sz"));
+            var price = ParseDecimal(GetPropertyOrDefault(order, "limitPx"));
+            var orderType = GetOrderType(order);
+            decimal? triggerPrice = null;
+            string? tpslType = null;
+            var isReduceOnly = false;
+
+            if (string.Equals(orderType, "trigger", StringComparison.OrdinalIgnoreCase) &&
+                TryGetProperty(order, "orderType", out var orderTypeElement) &&
+                orderTypeElement.ValueKind == JsonValueKind.Object &&
+                TryGetProperty(orderTypeElement, "trigger", out var triggerElement))
+            {
+                if (TryGetProperty(triggerElement, "triggerPx", out var triggerPriceElement))
+                {
+                    triggerPrice = ParseDecimal(triggerPriceElement);
+                }
+
+                if (TryGetProperty(triggerElement, "tpsl", out var tpslElement))
+                {
+                    tpslType = GetString(tpslElement);
+                }
+            }
+
+            if (TryGetProperty(order, "reduceOnly", out var reduceOnlyElement) &&
+                reduceOnlyElement.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                isReduceOnly = reduceOnlyElement.GetBoolean();
+            }
+
+            if (string.IsNullOrWhiteSpace(orderType) && isReduceOnly)
+            {
+                orderType = "trigger";
+            }
+
+            if (triggerPrice is null && isReduceOnly && price > 0m)
+            {
+                triggerPrice = price;
+            }
 
             results.Add(new OpenOrderDto
             {
                 OrderId = GetString(GetPropertyOrDefault(order, "oid")),
                 Asset = GetString(GetPropertyOrDefault(order, "coin")),
                 Side = MapOrderSide(GetString(GetPropertyOrDefault(order, "side"))),
-                Price = ParseDecimal(GetPropertyOrDefault(order, "limitPx")),
+                Price = price,
                 Size = size,
-                OrderType = GetOrderType(order),
+                OrderType = orderType,
                 Status = GetString(GetPropertyOrDefault(order, "status")),
+                TriggerPrice = triggerPrice,
+                TpslType = tpslType,
+                IsReduceOnly = isReduceOnly,
             });
         }
 
         return results;
+    }
+
+    private static void EnrichPositionsWithTriggerOrders(
+        IReadOnlyList<PositionDto> positions,
+        IReadOnlyList<OpenOrderDto> openOrders)
+    {
+        var triggerOrdersByAsset = openOrders
+            .Where(order =>
+                string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase) &&
+                order.IsReduceOnly == true)
+            .GroupBy(order => NormalizeAsset(order.Asset), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var position in positions)
+        {
+            if (!triggerOrdersByAsset.TryGetValue(NormalizeAsset(position.Asset), out var triggerOrders))
+            {
+                continue;
+            }
+
+            var stopLossOrder = triggerOrders.FirstOrDefault(order =>
+                string.Equals(order.TpslType, "sl", StringComparison.OrdinalIgnoreCase));
+            var takeProfitOrder = triggerOrders.FirstOrDefault(order =>
+                string.Equals(order.TpslType, "tp", StringComparison.OrdinalIgnoreCase));
+
+            if (stopLossOrder is null || takeProfitOrder is null)
+            {
+                InferMissingTriggerTypes(position, triggerOrders, ref stopLossOrder, ref takeProfitOrder);
+            }
+
+            if (stopLossOrder is not null)
+            {
+                position.StopLossPrice = stopLossOrder.TriggerPrice;
+                position.StopLossOrderId = stopLossOrder.OrderId;
+            }
+
+            if (takeProfitOrder is not null)
+            {
+                position.TakeProfitPrice = takeProfitOrder.TriggerPrice;
+                position.TakeProfitOrderId = takeProfitOrder.OrderId;
+            }
+        }
+    }
+
+    private static void InferMissingTriggerTypes(
+        PositionDto position,
+        IReadOnlyList<OpenOrderDto> triggerOrders,
+        ref OpenOrderDto? stopLossOrder,
+        ref OpenOrderDto? takeProfitOrder)
+    {
+        var referencePrice = position.EntryPrice > 0m ? position.EntryPrice : position.MarkPrice;
+        if (referencePrice <= 0m)
+        {
+            return;
+        }
+
+        foreach (var order in triggerOrders)
+        {
+            if (order.TriggerPrice is null)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(order.TpslType))
+            {
+                continue;
+            }
+
+            var isLong = string.Equals(position.Side, "Long", StringComparison.OrdinalIgnoreCase) || position.Size >= 0m;
+            var isStopLoss = isLong
+                ? order.TriggerPrice.Value < referencePrice
+                : order.TriggerPrice.Value > referencePrice;
+
+            if (isStopLoss && stopLossOrder is null)
+            {
+                stopLossOrder = order;
+                continue;
+            }
+
+            if (!isStopLoss && takeProfitOrder is null)
+            {
+                takeProfitOrder = order;
+            }
+        }
+    }
+
+    private static string NormalizeAsset(string asset)
+    {
+        if (string.IsNullOrWhiteSpace(asset))
+        {
+            return string.Empty;
+        }
+
+        return asset.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
+            ? asset[..^5]
+            : asset;
     }
 
     private static (int Leverage, string MarginMode) ExtractLeverage(JsonElement assetPosition)

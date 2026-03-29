@@ -11,4 +11,8 @@ export interface Position {
   marginMode: string;
   marginUsed: number;
   fundingRate: number;
+  stopLossPrice?: number | null;
+  stopLossOrderId?: string | null;
+  takeProfitPrice?: number | null;
+  takeProfitOrderId?: string | null;
 }

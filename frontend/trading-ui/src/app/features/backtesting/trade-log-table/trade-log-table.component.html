@@ -78,8 +78,8 @@
                       </button>
                     </span>
                   </td>
-                  <td>{{ trade.entryTime | date: "short" }}</td>
-                  <td>{{ trade.exitTime ? (trade.exitTime | date: "short") : "—" }}</td>
+                  <td>{{ trade.entryTime | date: "d MMM yyyy, h:mm a" }}</td>
+                  <td>{{ trade.exitTime ? (trade.exitTime | date: "d MMM yyyy, h:mm a") : "—" }}</td>
                   <td>{{ trade.entryPrice | number: "1.2-2" }}</td>
                   <td>{{ trade.exitPrice !== null ? (trade.exitPrice | number: "1.2-2") : "—" }}</td>
                   <td>{{ trade.side }}</td>
@@ -125,11 +125,11 @@
                                   </div>
                                   <div class="trade-log__summary-item">
                                     <span class="trade-log__label">Deployed</span>
-                                    <span class="trade-log__value">{{ cycle.deployTimestampUtc | date: "short" }}</span>
+                                    <span class="trade-log__value">{{ cycle.deployTimestampUtc | date: "d MMM yyyy, h:mm a" }}</span>
                                   </div>
                                   <div class="trade-log__summary-item">
                                     <span class="trade-log__label">Closed</span>
-                                    <span class="trade-log__value">{{ cycle.closeTimestampUtc | date: "short" }}</span>
+                                    <span class="trade-log__value">{{ cycle.closeTimestampUtc | date: "d MMM yyyy, h:mm a" }}</span>
                                   </div>
                                   <div class="trade-log__summary-item">
                                     <span class="trade-log__label">Anchor Price</span>
@@ -191,7 +191,7 @@
                                     <tbody>
                                       @for (event of debugData.orderEvents; track event.timestampUtc + event.orderId + event.eventType) {
                                         <tr>
-                                          <td>{{ event.timestampUtc | date: "short" }}</td>
+                                          <td>{{ event.timestampUtc | date: "d MMM yyyy, h:mm a" }}</td>
                                           <td>
                                             <span class="trade-log__event-badge"
                                                   [class.trade-log__event-badge--filled]="event.eventType === orderEventTypes.Filled"
@@ -271,7 +271,7 @@
                                       <tbody>
                                         @for (candle of filteredCandles; track candle.timestampUtc + (candle.gridCycleId ?? "")) {
                                           <tr [class.trade-log__candle-row--warmup]="candle.isWarmup">
-                                            <td>{{ candle.timestampUtc | date: "short" }}</td>
+                                            <td>{{ candle.timestampUtc | date: "d MMM yyyy, h:mm a" }}</td>
                                             <td>
                                               {{ candle.open | number: "1.2-2" }} /
                                               {{ candle.high | number: "1.2-2" }} /
@@ -370,8 +370,8 @@
             <tbody>
               @for (trade of openTrades; track getTradeKey(trade)) {
                 <tr class="trade-log__row trade-log__row--disabled">
-                  <td>{{ trade.entryTime | date: "short" }}</td>
-                  <td>{{ trade.exitTime ? (trade.exitTime | date: "short") : "—" }}</td>
+                  <td>{{ trade.entryTime | date: "d MMM yyyy, h:mm a" }}</td>
+                  <td>{{ trade.exitTime ? (trade.exitTime | date: "d MMM yyyy, h:mm a") : "—" }}</td>
                   <td>{{ trade.entryPrice | number: "1.2-2" }}</td>
                   <td>{{ trade.exitPrice !== null ? (trade.exitPrice | number: "1.2-2") : "—" }}</td>
                   <td>{{ trade.side }}</td>

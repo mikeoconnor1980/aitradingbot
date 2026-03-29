@@ -108,15 +108,19 @@ ConfigJson
 
 # Position
 
-Represents open or closed positions.
+Represents open or closed positions. The `PositionDto` returned by the account API includes enriched SL/TP state read live from the exchange.
 
-Fields:
+Fields (PositionDto):
 
-Symbol  
-Direction  
-AverageEntryPrice  
-Quantity  
-PnL
+Asset, Size, Side, EntryPrice, MarkPrice  
+UnrealisedPnl, UnrealisedPnlPercent  
+LiquidationPrice, Leverage, MarginMode, MarginUsed, FundingRate  
+StopLossPrice?, StopLossOrderId? — populated from open reduce-only trigger orders  
+TakeProfitPrice?, TakeProfitOrderId? — populated from open reduce-only trigger orders
+
+SL/TP fields are **not persisted in the database**. They are correlated from the exchange's open orders on each position fetch. See [Hyperliquid Integration](02-hyperliquid-integration.md#trigger-orders-stop-loss--take-profit).
+
+File: `src/TradingApp.Api/Models/PositionDto.cs`
 
 ---
 

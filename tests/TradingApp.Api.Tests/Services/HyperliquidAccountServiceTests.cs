@@ -76,6 +76,36 @@ public sealed class HyperliquidAccountServiceTests
                 ]
                 """));
 
+        _restClientMock
+            .Setup(r => r.PostInfoAsync<JsonElement>(
+                It.Is<object>(request => RequestHasType(request, "openOrders")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ParseJson(
+                """
+                [
+                  {
+                    "oid": 1001,
+                    "coin": "BTC",
+                    "side": "A",
+                    "limitPx": "64000",
+                    "sz": "0.0276",
+                    "orderType": { "trigger": { "triggerPx": "64000", "isMarket": true, "tpsl": "sl" } },
+                    "status": "open",
+                    "reduceOnly": true
+                  },
+                  {
+                    "oid": 1002,
+                    "coin": "BTC",
+                    "side": "A",
+                    "limitPx": "76000",
+                    "sz": "0.0276",
+                    "orderType": { "trigger": { "triggerPx": "76000", "isMarket": true, "tpsl": "tp" } },
+                    "status": "open",
+                    "reduceOnly": true
+                  }
+                ]
+                """));
+
         var result = await _sut.GetPositionsAsync();
 
         result.Should().ContainSingle();
@@ -87,6 +117,90 @@ public sealed class HyperliquidAccountServiceTests
         position.Leverage.Should().Be(5);
         position.MarginMode.Should().Be("cross");
         position.UnrealisedPnlPercent.Should().Be(3.755m);
+        position.StopLossPrice.Should().Be(64000m);
+        position.StopLossOrderId.Should().Be("1001");
+        position.TakeProfitPrice.Should().Be(76000m);
+        position.TakeProfitOrderId.Should().Be("1002");
+    }
+
+    [TestMethod]
+    public async Task GivenReduceOnlyTriggerOrdersWithoutTpsl_WhenGetPositionsAsync_ThenInfersStopLossAndTakeProfit()
+    {
+        _restClientMock
+            .Setup(r => r.PostInfoAsync<JsonElement>(
+                It.Is<object>(request => RequestHasType(request, "clearinghouseState")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ParseJson(
+                """
+                {
+                  "assetPositions": [
+                    {
+                      "position": {
+                        "coin": "SUI",
+                        "szi": "20",
+                        "entryPx": "0.85",
+                        "markPx": "0.84",
+                        "unrealizedPnl": "-0.20",
+                        "returnOnEquity": "-0.0012",
+                        "liquidationPx": "0.71",
+                        "marginUsed": "3.37",
+                        "leverage": { "value": "5", "type": "isolated" }
+                      }
+                    }
+                  ]
+                }
+                """));
+
+        _restClientMock
+            .Setup(r => r.PostInfoAsync<JsonElement>(
+                It.Is<object>(request => RequestHasType(request, "metaAndAssetCtxs")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ParseJson(
+                """
+                [
+                  { "universe": [{ "name": "SUI" }] },
+                  [{ "funding": "0.000013" }]
+                ]
+                """));
+
+        _restClientMock
+            .Setup(r => r.PostInfoAsync<JsonElement>(
+                It.Is<object>(request => RequestHasType(request, "openOrders")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ParseJson(
+                """
+                [
+                  {
+                    "oid": 3001,
+                    "coin": "SUI-PERP",
+                    "side": "A",
+                    "limitPx": "0.80",
+                    "sz": "20",
+                    "orderType": { "trigger": { "triggerPx": "0.80", "isMarket": true } },
+                    "status": "open",
+                    "reduceOnly": true
+                  },
+                  {
+                    "oid": 3002,
+                    "coin": "SUI-PERP",
+                    "side": "A",
+                    "limitPx": "0.92",
+                    "sz": "20",
+                    "orderType": { "trigger": { "triggerPx": "0.92", "isMarket": true } },
+                    "status": "open",
+                    "reduceOnly": true
+                  }
+                ]
+                """));
+
+        var result = await _sut.GetPositionsAsync();
+
+        result.Should().ContainSingle();
+        var position = result[0];
+        position.StopLossPrice.Should().Be(0.80m);
+        position.StopLossOrderId.Should().Be("3001");
+        position.TakeProfitPrice.Should().Be(0.92m);
+        position.TakeProfitOrderId.Should().Be("3002");
     }
 
     [TestMethod]
@@ -122,6 +236,12 @@ public sealed class HyperliquidAccountServiceTests
                 It.Is<object>(request => RequestHasType(request, "metaAndAssetCtxs")),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(ParseJson("[{" + "\"universe\":[{\"name\":\"BTC\"}]} , [{\"funding\":\"0\"}]]"));
+
+        _restClientMock
+          .Setup(r => r.PostInfoAsync<JsonElement>(
+            It.Is<object>(request => RequestHasType(request, "openOrders")),
+            It.IsAny<CancellationToken>()))
+          .ReturnsAsync(ParseJson("[]"));
 
         var result = await _sut.GetPositionsAsync();
 
@@ -163,12 +283,83 @@ public sealed class HyperliquidAccountServiceTests
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Funding unavailable"));
 
+        _restClientMock
+          .Setup(r => r.PostInfoAsync<JsonElement>(
+            It.Is<object>(request => RequestHasType(request, "openOrders")),
+            It.IsAny<CancellationToken>()))
+          .ReturnsAsync(ParseJson("[]"));
+
         var result = await _sut.GetPositionsAsync();
 
         result.Should().ContainSingle();
         result[0].MarkPrice.Should().Be(3050m);
         result[0].FundingRate.Should().Be(0m);
         result[0].MarginUsed.Should().Be(457.5m);
+    }
+
+      [TestMethod]
+      public async Task GivenTriggerOpenOrders_WhenGetOpenOrdersAsync_ThenMapsTriggerFields()
+      {
+        _restClientMock
+          .Setup(r => r.PostInfoAsync<JsonElement>(
+            It.Is<object>(request => RequestHasType(request, "openOrders")),
+            It.IsAny<CancellationToken>()))
+          .ReturnsAsync(ParseJson(
+            """
+            [
+              {
+              "oid": 2001,
+              "coin": "ETH",
+              "side": "B",
+              "limitPx": "3200",
+              "sz": "1.25",
+              "orderType": { "trigger": { "triggerPx": "3200", "isMarket": true, "tpsl": "tp" } },
+              "status": "open",
+              "reduceOnly": true
+              }
+            ]
+            """));
+
+        var result = await _sut.GetOpenOrdersAsync();
+
+        result.Should().ContainSingle();
+        result[0].OrderType.Should().Be("trigger");
+        result[0].TriggerPrice.Should().Be(3200m);
+        result[0].TpslType.Should().Be("tp");
+        result[0].IsReduceOnly.Should().BeTrue();
+      }
+
+    [TestMethod]
+    public async Task GivenReduceOnlyOpenOrdersWithoutExplicitTriggerMetadata_WhenGetOpenOrdersAsync_ThenInfersTriggerOrderAndPrice()
+    {
+        _restClientMock
+          .Setup(r => r.PostInfoAsync<JsonElement>(
+            It.Is<object>(request => RequestHasType(request, "openOrders")),
+            It.IsAny<CancellationToken>()))
+          .ReturnsAsync(ParseJson(
+            """
+            [
+              {
+                "oid": 3001,
+                "coin": "SUI",
+                "side": "A",
+                "limitPx": "0.76",
+                "sz": "20.0",
+                "timestamp": 1774807249138,
+                "origSz": "20.0",
+                "reduceOnly": true
+              }
+            ]
+            """));
+
+        var result = await _sut.GetOpenOrdersAsync();
+
+        result.Should().ContainSingle();
+        result[0].OrderType.Should().Be("trigger");
+        result[0].Price.Should().Be(0.76m);
+        result[0].TriggerPrice.Should().Be(0.76m);
+        result[0].TpslType.Should().BeNull();
+        result[0].IsReduceOnly.Should().BeTrue();
     }
 
     private static bool RequestHasType(object request, string type)

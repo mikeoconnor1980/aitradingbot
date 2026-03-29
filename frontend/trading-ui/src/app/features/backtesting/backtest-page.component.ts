@@ -5,6 +5,7 @@ import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatTabGroup, MatTabsModule } from "@angular/material/tabs";
 import { Subject, filter, forkJoin, takeUntil } from "rxjs";
 import { BacktestRequest, BacktestResult, CoverageReport } from "../../core/models/backtest.model";
+import { GridCycleSummary } from "../../core/models/backtest-debug.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../core/services/backtest.service";
 import { SignalRService } from "../../core/services/signalr.service";
@@ -14,7 +15,9 @@ import { BacktestResultComponent } from "./backtest-result/backtest-result.compo
 import { BacktestListComponent } from "./backtest-list/backtest-list.component";
 import { BacktestFormComponent, CoverageValidationRequest } from "./backtest-form/backtest-form.component";
 import { CoverageReportComponent } from "./coverage-report/coverage-report.component";
+import { CycleStatsTableComponent } from "./cycle-stats-table/cycle-stats-table.component";
 import { EquityChartComponent } from "./equity-chart/equity-chart.component";
+import { GridCycleViewerComponent } from "./grid-cycle-viewer/grid-cycle-viewer.component";
 import { TradeLogTableComponent } from "./trade-log-table/trade-log-table.component";
 
 @Component({
@@ -28,8 +31,10 @@ import { TradeLogTableComponent } from "./trade-log-table/trade-log-table.compon
     BacktestListComponent,
     BacktestCompareComponent,
     CoverageReportComponent,
+    CycleStatsTableComponent,
     BacktestResultComponent,
     EquityChartComponent,
+    GridCycleViewerComponent,
     TradeLogTableComponent
   ],
   templateUrl: "./backtest-page.component.html",
@@ -54,6 +59,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   public apiError: string | null = null;
   public validationErrorMessage: string | null = null;
   public lastRequest: BacktestRequest | null = null;
+  public cycleSummaries: GridCycleSummary[] = [];
   public selectedTabIndex = 0;
   public backtestProgress = 0;
   public backtestStatus: string | null = null;
@@ -92,6 +98,7 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this.validationErrorMessage = null;
     this.backtestProgress = 0;
     this.backtestStatus = "Queued";
+    this.cycleSummaries = [];
     this._retryAction = () => this.onRunBacktest(request);
 
     this._backtestService.runBacktest(request, this._localErrorContext).subscribe({
@@ -219,6 +226,10 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   public dismissApiError(): void {
     this.apiError = null;
     this._retryAction = null;
+  }
+
+  public onCycleSummariesLoaded(summaries: GridCycleSummary[]): void {
+    this.cycleSummaries = summaries;
   }
 
   public onRetry(): void {

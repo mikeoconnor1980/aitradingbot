@@ -9,6 +9,8 @@ export interface ConfirmDialogData {
   asset?: string;
   price?: number | null;
   size?: number;
+  stopLossPrice?: number | null;
+  takeProfitPrice?: number | null;
   title?: string;
   message?: string;
   confirmText?: string;

@@ -1,0 +1,44 @@
+.set-sltp-modal {
+  &__info {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+  }
+
+  &__label {
+    color: var(--colour-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.72rem;
+  }
+
+  &__long {
+    color: var(--colour-profit);
+    font-weight: 600;
+  }
+
+  &__short {
+    color: var(--colour-loss);
+    font-weight: 600;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__field {
+    width: 100%;
+  }
+
+  &__liquidation-warning {
+    border-left: 3px solid #f59e0b;
+    color: #f59e0b;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    padding: 0.35rem 0.5rem;
+  }
+}

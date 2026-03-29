@@ -44,11 +44,28 @@ public sealed class HyperliquidModifyOrderParams
 public sealed class HyperliquidOrderType
 {
     [JsonPropertyName("limit")]
-    public HyperliquidLimitParams Limit { get; set; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HyperliquidLimitParams? Limit { get; set; }
+
+    [JsonPropertyName("trigger")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HyperliquidTriggerParams? Trigger { get; set; }
 }
 
 public sealed class HyperliquidLimitParams
 {
     [JsonPropertyName("tif")]
     public string Tif { get; set; } = "Gtc";
+}
+
+public sealed class HyperliquidTriggerParams
+{
+    [JsonPropertyName("isMarket")]
+    public bool IsMarket { get; set; } = true;
+
+    [JsonPropertyName("triggerPx")]
+    public required string TriggerPx { get; set; }
+
+    [JsonPropertyName("tpsl")]
+    public required string Tpsl { get; set; }
 }

@@ -74,6 +74,8 @@
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
+            <th class="positions-table__header">SL</th>
+            <th class="positions-table__header">TP</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -114,24 +116,97 @@
                 {{ position.unrealisedPnl | number: "1.2-2" }}
                 ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
               </td>
+              <td class="positions-table__cell positions-table__cell--sl">
+                @if (isInlineEditing(position, "sl")) {
+                  <input
+                    class="positions-table__inline-input"
+                    type="number"
+                    step="0.01"
+                    [ngModelOptions]="{ standalone: true }"
+                    [(ngModel)]="inlineEdit!.value"
+                    (keydown.enter)="confirmInlineEdit(position)"
+                    (keydown.escape)="cancelInlineEdit()"
+                    (blur)="cancelInlineEdit()" />
+                } @else if (hasStopLoss(position)) {
+                  <button
+                    class="positions-table__sl-price"
+                    type="button"
+                    title="Click to edit stop loss"
+                    (click)="startInlineEdit(position, 'sl')">
+                    {{ position.stopLossPrice | number: "1.2-2" }}
+                  </button>
+                  <button
+                    class="positions-table__remove-btn"
+                    type="button"
+                    title="Remove stop loss"
+                    [disabled]="isLoading(position)"
+                    (click)="removeSlTp.emit({ position, field: 'sl' })">
+                    ×
+                  </button>
+                } @else {
+                  <span class="positions-table__no-value">—</span>
+                }
+              </td>
+              <td class="positions-table__cell positions-table__cell--tp">
+                @if (isInlineEditing(position, "tp")) {
+                  <input
+                    class="positions-table__inline-input"
+                    type="number"
+                    step="0.01"
+                    [ngModelOptions]="{ standalone: true }"
+                    [(ngModel)]="inlineEdit!.value"
+                    (keydown.enter)="confirmInlineEdit(position)"
+                    (keydown.escape)="cancelInlineEdit()"
+                    (blur)="cancelInlineEdit()" />
+                } @else if (hasTakeProfit(position)) {
+                  <button
+                    class="positions-table__tp-price"
+                    type="button"
+                    title="Click to edit take profit"
+                    (click)="startInlineEdit(position, 'tp')">
+                    {{ position.takeProfitPrice | number: "1.2-2" }}
+                  </button>
+                  <button
+                    class="positions-table__remove-btn"
+                    type="button"
+                    title="Remove take profit"
+                    [disabled]="isLoading(position)"
+                    (click)="removeSlTp.emit({ position, field: 'tp' })">
+                    ×
+                  </button>
+                } @else {
+                  <span class="positions-table__no-value">—</span>
+                }
+              </td>
               <td class="positions-table__actions">
                 @if (isLoading(position)) {
                   <mat-spinner diameter="20" aria-label="Closing position"></mat-spinner>
                 } @else {
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    color="warn"
-                    aria-label="Close position"
-                    (click)="onCloseClick(position)">
-                    Close
-                  </button>
+                  <div class="positions-table__action-group">
+                    @if (hasNoSlTp(position)) {
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        class="positions-table__set-sltp-btn"
+                        (click)="setSlTp.emit(position)">
+                        Set SL/TP
+                      </button>
+                    }
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      color="warn"
+                      aria-label="Close position"
+                      (click)="onCloseClick(position)">
+                      Close
+                    </button>
+                  </div>
                 }
               </td>
             </tr>
             @if (isDetailsExpanded(position)) {
               <tr class="positions-table__details-row">
-                <td colspan="7" class="positions-table__details-cell">
+                <td colspan="9" class="positions-table__details-cell">
                   <div class="positions-table__details-grid">
                     <div class="positions-table__detail-item">
                       <span class="positions-table__detail-label">Leverage</span>

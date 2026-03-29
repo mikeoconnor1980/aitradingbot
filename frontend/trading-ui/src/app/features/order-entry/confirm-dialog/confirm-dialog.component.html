@@ -33,6 +33,20 @@
         <span class="confirm-dialog__label">Size</span>
         <span class="confirm-dialog__value">{{ data.size }}</span>
       </div>
+
+      @if (data.stopLossPrice !== null && data.stopLossPrice !== undefined) {
+        <div class="confirm-dialog__row">
+          <span class="confirm-dialog__label">Stop Loss</span>
+          <span class="confirm-dialog__value">{{ data.stopLossPrice | number: "1.2-2" }}</span>
+        </div>
+      }
+
+      @if (data.takeProfitPrice !== null && data.takeProfitPrice !== undefined) {
+        <div class="confirm-dialog__row">
+          <span class="confirm-dialog__label">Take Profit</span>
+          <span class="confirm-dialog__value">{{ data.takeProfitPrice | number: "1.2-2" }}</span>
+        </div>
+      }
     </div>
   }
 </mat-dialog-content>

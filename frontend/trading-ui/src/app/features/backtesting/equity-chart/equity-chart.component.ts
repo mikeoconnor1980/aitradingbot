@@ -21,6 +21,7 @@ import {
   UTCTimestamp
 } from "lightweight-charts";
 import { BacktestTrade, EquitySnapshot } from "../../../core/models/backtest.model";
+import { GridCycleSummary } from "../../../core/models/backtest-debug.model";
 
 interface EquityDataPoint {
   time: UTCTimestamp;
@@ -40,6 +41,9 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
 
   @Input()
   public trades: BacktestTrade[] = [];
+
+  @Input()
+  public cycleSummaries: GridCycleSummary[] = [];
 
   @Input()
   public comparisonData: EquitySnapshot[] | null = null;
@@ -81,7 +85,7 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
       this._comparisonSeries.applyOptions({ title: this.comparisonLabel });
     }
 
-    if (changes["equityData"] || changes["trades"] || changes["comparisonData"]) {
+    if (changes["equityData"] || changes["trades"] || changes["comparisonData"] || changes["cycleSummaries"]) {
       this._updateData();
     }
   }
@@ -194,35 +198,98 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private _buildMarkers(): SeriesMarker<Time>[] {
-    return this.trades
-      .flatMap((trade: BacktestTrade) => {
-        const markers: SeriesMarker<Time>[] = [
-          {
-            time: this._toUtcTimestamp(trade.entryTime),
-            position: "belowBar",
-            color: trade.side === "Long" ? "#26a69a" : "#60a5fa",
-            shape: trade.side === "Long" ? "arrowUp" : "arrowDown",
-            text: `${trade.side} entry`
-          }
-        ];
+    const markers: SeriesMarker<Time>[] = [];
 
-        if (trade.exitTime) {
-          markers.push({
-            time: this._toUtcTimestamp(trade.exitTime),
-            position: "aboveBar",
-            color: (trade.pnl ?? 0) >= 0 ? "#26a69a" : "#ef5350",
-            shape: "arrowDown",
-            text: trade.pnl != null
-              ? `Exit ${trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}`
-              : "Exit"
-          });
-        }
-
-        return markers;
-      })
-      .sort((left: SeriesMarker<Time>, right: SeriesMarker<Time>) => {
-        return (left.time as number) - (right.time as number);
+    // Add lifecycle annotations from cycle summaries
+    for (const summary of this.cycleSummaries) {
+      // Grid deployed marker
+      markers.push({
+        time: (Math.floor(summary.deployTimestampUtc / 1000)) as UTCTimestamp,
+        position: "belowBar",
+        color: "#f59e0b",
+        shape: "circle",
+        text: `Grid deployed`
       });
+
+      // Grid exit marker
+      if (summary.closeTimestampUtc > 0) {
+        const exitLabel = this._getExitLabel(summary);
+        const exitColor = summary.cyclePnl >= 0 ? "#22c55e" : "#ef5350";
+        markers.push({
+          time: (Math.floor(summary.closeTimestampUtc / 1000)) as UTCTimestamp,
+          position: "aboveBar",
+          color: exitColor,
+          shape: "circle",
+          text: exitLabel
+        });
+      }
+    }
+
+    // Add trade entry/exit markers
+    for (const trade of this.trades) {
+      markers.push({
+        time: this._toUtcTimestamp(trade.entryTime),
+        position: "belowBar",
+        color: trade.side === "Long" ? "#26a69a" : "#60a5fa",
+        shape: trade.side === "Long" ? "arrowUp" : "arrowDown",
+        text: `${trade.side} entry`
+      });
+
+      if (trade.exitTime) {
+        markers.push({
+          time: this._toUtcTimestamp(trade.exitTime),
+          position: "aboveBar",
+          color: (trade.pnl ?? 0) >= 0 ? "#26a69a" : "#ef5350",
+          shape: "arrowDown",
+          text: trade.pnl != null
+            ? `Exit ${trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}`
+            : "Exit"
+        });
+      }
+    }
+
+    // Deduplicate markers at the same timestamp by keeping the most informative one
+    const byTime = new Map<number, SeriesMarker<Time>[]>();
+    for (const marker of markers) {
+      const key = marker.time as number;
+      const existing = byTime.get(key) ?? [];
+      existing.push(marker);
+      byTime.set(key, existing);
+    }
+
+    const deduped: SeriesMarker<Time>[] = [];
+    for (const group of byTime.values()) {
+      // Prefer circle (lifecycle) markers, then keep first of each position
+      const aboveBar = group.filter((m) => m.position === "aboveBar");
+      const belowBar = group.filter((m) => m.position === "belowBar");
+
+      if (belowBar.length > 0) {
+        deduped.push(belowBar.find((m) => m.shape === "circle") ?? belowBar[0]);
+      }
+      if (aboveBar.length > 0) {
+        deduped.push(aboveBar.find((m) => m.shape === "circle") ?? aboveBar[0]);
+      }
+    }
+
+    return deduped.sort(
+      (left: SeriesMarker<Time>, right: SeriesMarker<Time>) => (left.time as number) - (right.time as number)
+    );
+  }
+
+  private _getExitLabel(summary: GridCycleSummary): string {
+    const pnl = summary.cyclePnl;
+    const pnlStr = pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`;
+
+    switch (summary.exitReason) {
+      case "TakeProfit":
+        return `TP hit ${pnlStr}`;
+      case "StopLoss":
+        return `SL hit ${pnlStr}`;
+      case "Breakdown":
+        return `Breakdown ${pnlStr}`;
+      default:
+        return `Exit ${pnlStr}`;
+    }
   }
 
   private _toUtcTimestamp(value: string): UTCTimestamp {

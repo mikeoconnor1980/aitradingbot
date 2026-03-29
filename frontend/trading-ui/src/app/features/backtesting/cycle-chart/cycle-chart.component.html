@@ -1,0 +1,17 @@
+<section class="cycle-chart">
+  <div class="cycle-chart__legend">
+    <span class="cycle-chart__legend-item cycle-chart__legend-item--anchor">Anchor</span>
+    <span class="cycle-chart__legend-item cycle-chart__legend-item--level-filled">Filled Level</span>
+    <span class="cycle-chart__legend-item cycle-chart__legend-item--level-unfilled">Unfilled Level</span>
+    <span class="cycle-chart__legend-item cycle-chart__legend-item--tp">Take Profit</span>
+    <span class="cycle-chart__legend-item cycle-chart__legend-item--sl">Stop Loss</span>
+  </div>
+
+  <div class="cycle-chart__surface">
+    <div #chartContainer class="cycle-chart__container"></div>
+
+    @if (!hasData) {
+      <div class="cycle-chart__empty">No candle data available for this cycle.</div>
+    }
+  </div>
+</section>

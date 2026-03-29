@@ -1,0 +1,48 @@
+<section class="cycle-viewer">
+  <div class="cycle-viewer__header">
+    <h3 class="cycle-viewer__title">Grid Cycle Analysis</h3>
+
+    @if (hasAuditLog && cycleOptions.length > 0) {
+      <mat-form-field class="cycle-viewer__selector" appearance="outline">
+        <mat-label>Select Grid Cycle</mat-label>
+        <mat-select [value]="selectedCycleId" (selectionChange)="onCycleChange($event)">
+          @for (option of cycleOptions; track option.cycleId) {
+            <mat-option [value]="option.cycleId">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+  </div>
+
+  @if (!hasAuditLog) {
+    <div class="cycle-viewer__empty">
+      <mat-icon>info</mat-icon>
+      <p>Cycle analysis requires audit log data. Re-run the backtest to generate debug data.</p>
+    </div>
+  } @else if (cycleOptions.length === 0) {
+    <div class="cycle-viewer__empty">
+      <mat-icon>info</mat-icon>
+      <p>No grid cycles were recorded in this backtest.</p>
+    </div>
+  } @else if (isLoading) {
+    <div class="cycle-viewer__loading">
+      <mat-spinner diameter="32"></mat-spinner>
+      <span>Loading cycle data...</span>
+    </div>
+  } @else if (errorMessage) {
+    <div class="cycle-viewer__error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ errorMessage }}</p>
+    </div>
+  } @else if (debugData) {
+    <app-cycle-narrative
+      [debugData]="debugData"
+      [symbol]="symbol">
+    </app-cycle-narrative>
+
+    <app-cycle-chart
+      [debugData]="debugData"
+      [symbol]="symbol">
+    </app-cycle-chart>
+  }
+</section>

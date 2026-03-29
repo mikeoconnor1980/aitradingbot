@@ -52,18 +52,45 @@
             <app-backtest-result [result]="latestResult"></app-backtest-result>
 
             @if (latestResult.totalTrades > 0) {
-              <h3 class="backtest-page__results-title">Equity Curve</h3>
-              <app-equity-chart
-                [equityData]="latestResult.equityTimeSeries ?? []"
-                [trades]="latestResult.trades">
-              </app-equity-chart>
+              <mat-tab-group class="backtest-page__results-tabs" animationDuration="0ms">
+                <mat-tab label="Overview">
+                  <div class="backtest-page__results-tab-content">
+                    <app-cycle-stats-table
+                      [backtestId]="latestResult.id"
+                      [trades]="latestResult.trades"
+                      [hasAuditLog]="latestResult.hasAuditLog"
+                      (summariesLoaded)="onCycleSummariesLoaded($event)">
+                    </app-cycle-stats-table>
 
-              <h3 class="backtest-page__results-title">Trade Log</h3>
-              <app-trade-log-table
-                [trades]="latestResult.trades"
-                [backtestId]="latestResult.id"
-                [hasAuditLog]="latestResult.hasAuditLog">
-              </app-trade-log-table>
+                    <app-equity-chart
+                      [equityData]="latestResult.equityTimeSeries ?? []"
+                      [trades]="latestResult.trades"
+                      [cycleSummaries]="cycleSummaries">
+                    </app-equity-chart>
+                  </div>
+                </mat-tab>
+
+                <mat-tab label="Grid Cycles">
+                  <div class="backtest-page__results-tab-content">
+                    <app-grid-cycle-viewer
+                      [backtestId]="latestResult.id"
+                      [trades]="latestResult.trades"
+                      [hasAuditLog]="latestResult.hasAuditLog"
+                      [symbol]="latestResult.symbol">
+                    </app-grid-cycle-viewer>
+                  </div>
+                </mat-tab>
+
+                <mat-tab label="Trade Log">
+                  <div class="backtest-page__results-tab-content">
+                    <app-trade-log-table
+                      [trades]="latestResult.trades"
+                      [backtestId]="latestResult.id"
+                      [hasAuditLog]="latestResult.hasAuditLog">
+                    </app-trade-log-table>
+                  </div>
+                </mat-tab>
+              </mat-tab-group>
             }
           </section>
         }

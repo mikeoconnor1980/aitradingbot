@@ -4,6 +4,10 @@
     @if (comparisonData && comparisonData.length > 0) {
       <span class="equity-chart__legend-item equity-chart__legend-item--comparison">{{ comparisonLabel }}</span>
     }
+    @if (cycleSummaries.length > 0) {
+      <span class="equity-chart__legend-item equity-chart__legend-item--deploy">Grid Deploy</span>
+      <span class="equity-chart__legend-item equity-chart__legend-item--tp">TP / Exit</span>
+    }
   </div>
 
   <div class="equity-chart__surface">

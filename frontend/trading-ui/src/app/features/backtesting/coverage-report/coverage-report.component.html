@@ -31,7 +31,7 @@
                   <td>{{ row.candleCount | number }}</td>
                   <td>
                     @if (row.from && row.to) {
-                      {{ row.from | date: "medium" }} - {{ row.to | date: "medium" }}
+                      {{ row.from | date: "d MMM yyyy, h:mm a" }} - {{ row.to | date: "d MMM yyyy, h:mm a" }}
                     } @else {
                       No coverage available
                     }

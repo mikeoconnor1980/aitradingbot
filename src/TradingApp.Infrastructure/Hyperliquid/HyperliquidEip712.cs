@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Collections;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 using MessagePack;
 using MessagePack.Resolvers;
 using Nethereum.ABI.EIP712;
@@ -120,6 +121,40 @@ public static class HyperliquidEip712
         };
     }
 
+    public static Dictionary<string, object> BuildTriggerOrderAction(
+        int assetIndex,
+        bool isBuy,
+        decimal triggerPrice,
+        decimal size,
+        string tpsl)
+    {
+        return new Dictionary<string, object>
+        {
+            ["type"] = "order",
+            ["orders"] = new[]
+            {
+                new Dictionary<string, object>
+                {
+                    ["a"] = assetIndex,
+                    ["b"] = isBuy,
+                    ["p"] = ToWireDecimal(triggerPrice),
+                    ["s"] = ToWireDecimal(size),
+                    ["r"] = true,
+                    ["t"] = new Dictionary<string, object>
+                    {
+                        ["trigger"] = new Dictionary<string, object>
+                        {
+                            ["isMarket"] = true,
+                            ["triggerPx"] = ToWireDecimal(triggerPrice),
+                            ["tpsl"] = tpsl,
+                        },
+                    },
+                },
+            },
+            ["grouping"] = "na"
+        };
+    }
+
     private static byte[] ParseAddress(string address)
     {
         var normalised = address.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
@@ -150,16 +185,19 @@ public static class HyperliquidEip712
     /// </summary>
     public static byte[] SerializeActionMsgPack(object action)
     {
-        if (action is not Dictionary<string, object>)
-        {
-            // Typed objects (cancel, modify) - fall back to ContractlessStandardResolver
-            return MessagePackSerializer.Serialize(action, ContractlessStandardResolver.Options);
-        }
-
-        // Dictionary-based actions (order) - use compact encoding matching Python's msgpack.packb
         var bufferWriter = new ArrayBufferWriter<byte>();
         var writer = new MessagePackWriter(bufferWriter);
-        WriteMsgPackValue(ref writer, action);
+
+        if (action is Dictionary<string, object> dictionary)
+        {
+            WriteMsgPackValue(ref writer, dictionary);
+        }
+        else
+        {
+            var jsonElement = JsonSerializer.SerializeToElement(action);
+            WriteMsgPackValue(ref writer, jsonElement);
+        }
+
         writer.Flush();
         return bufferWriter.WrittenSpan.ToArray();
     }
@@ -186,6 +224,9 @@ public static class HyperliquidEip712
             case double d:
                 writer.Write(d);
                 break;
+            case JsonElement jsonElement:
+                WriteJsonElement(ref writer, jsonElement);
+                break;
             case Dictionary<string, object> dict:
                 writer.WriteMapHeader(dict.Count);
                 foreach (var kvp in dict)
@@ -207,12 +248,79 @@ public static class HyperliquidEip712
         }
     }
 
+    private static void WriteJsonElement(ref MessagePackWriter writer, JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                var properties = element.EnumerateObject().ToArray();
+                writer.WriteMapHeader(properties.Length);
+                foreach (var property in properties)
+                {
+                    writer.Write(property.Name);
+                    WriteJsonElement(ref writer, property.Value);
+                }
+
+                break;
+            }
+            case JsonValueKind.Array:
+            {
+                var items = element.EnumerateArray().ToArray();
+                writer.WriteArrayHeader(items.Length);
+                foreach (var item in items)
+                {
+                    WriteJsonElement(ref writer, item);
+                }
+
+                break;
+            }
+            case JsonValueKind.String:
+                writer.Write(element.GetString());
+                break;
+            case JsonValueKind.True:
+            case JsonValueKind.False:
+                writer.Write(element.GetBoolean());
+                break;
+            case JsonValueKind.Number:
+                if (element.TryGetInt32(out var intValue))
+                {
+                    writer.Write(intValue);
+                }
+                else if (element.TryGetInt64(out var longValue))
+                {
+                    writer.Write(longValue);
+                }
+                else if (element.TryGetDouble(out var doubleValue))
+                {
+                    writer.Write(doubleValue);
+                }
+                else
+                {
+                    writer.Write(element.GetRawText());
+                }
+
+                break;
+            case JsonValueKind.Null:
+            case JsonValueKind.Undefined:
+                writer.WriteNil();
+                break;
+            default:
+                throw new NotSupportedException($"Unsupported JsonElement kind: {element.ValueKind}");
+        }
+    }
+
     /// <summary>
     /// Computes the EIP-712 hash manually, matching the Hyperliquid Python SDK exactly.
     /// This bypasses Nethereum's Eip712TypedDataEncoder to avoid domain type hash discrepancies.
     /// </summary>
     public static byte[] ComputeEip712Hash(byte[] connectionId, bool isMainnet)
     {
+        if (connectionId.Length != 32)
+        {
+            throw new ArgumentException("Connection ID must be 32 bytes.", nameof(connectionId));
+        }
+
         var keccak = Sha3Keccack.Current;
 
         // 1. Domain type hash: keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
