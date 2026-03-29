@@ -15,6 +15,7 @@ import { BacktestListComponent } from "./backtest-list/backtest-list.component";
 import { BacktestFormComponent, CoverageValidationRequest } from "./backtest-form/backtest-form.component";
 import { CoverageReportComponent } from "./coverage-report/coverage-report.component";
 import { EquityChartComponent } from "./equity-chart/equity-chart.component";
+import { GridCycleViewerComponent } from "./grid-cycle-viewer/grid-cycle-viewer.component";
 import { TradeLogTableComponent } from "./trade-log-table/trade-log-table.component";
 
 @Component({
@@ -30,6 +31,7 @@ import { TradeLogTableComponent } from "./trade-log-table/trade-log-table.compon
     CoverageReportComponent,
     BacktestResultComponent,
     EquityChartComponent,
+    GridCycleViewerComponent,
     TradeLogTableComponent
   ],
   templateUrl: "./backtest-page.component.html",

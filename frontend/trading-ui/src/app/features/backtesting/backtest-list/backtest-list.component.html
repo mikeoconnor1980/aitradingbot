@@ -45,7 +45,7 @@
 
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef>Run Date</th>
-          <td mat-cell *matCellDef="let row">{{ row.createdAt | date: "short" }}</td>
+          <td mat-cell *matCellDef="let row">{{ row.createdAt | date: "d MMM yyyy, h:mm a" }}</td>
         </ng-container>
 
         <ng-container matColumnDef="symbol">
@@ -56,7 +56,7 @@
         <ng-container matColumnDef="dateRange">
           <th mat-header-cell *matHeaderCellDef>Date Range</th>
           <td mat-cell *matCellDef="let row">
-            {{ row.startDate | date: "mediumDate" }} to {{ row.endDate | date: "mediumDate" }}
+            {{ row.startDate | date: "d MMM yyyy" }} to {{ row.endDate | date: "d MMM yyyy" }}
           </td>
         </ng-container>
 

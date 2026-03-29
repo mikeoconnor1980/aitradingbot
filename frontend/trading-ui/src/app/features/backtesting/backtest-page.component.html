@@ -58,6 +58,13 @@
                 [trades]="latestResult.trades">
               </app-equity-chart>
 
+              <app-grid-cycle-viewer
+                [backtestId]="latestResult.id"
+                [trades]="latestResult.trades"
+                [hasAuditLog]="latestResult.hasAuditLog"
+                [symbol]="latestResult.symbol">
+              </app-grid-cycle-viewer>
+
               <h3 class="backtest-page__results-title">Trade Log</h3>
               <app-trade-log-table
                 [trades]="latestResult.trades"

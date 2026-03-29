@@ -1,0 +1,8 @@
+<section class="narrative">
+  @for (line of narrativeLines; track $index) {
+    <div class="narrative__line" [class]="line.cssClass">
+      <mat-icon class="narrative__icon">{{ line.icon }}</mat-icon>
+      <span class="narrative__text">{{ line.text }}</span>
+    </div>
+  }
+</section>
