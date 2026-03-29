@@ -155,11 +155,12 @@ export class DashboardComponent implements OnInit {
       }
 
       const previousOrders = [...this.orders];
-      const asset = previousOrders[0]?.asset ?? "BTC";
+      const uniqueAssets = [...new Set(previousOrders.map(o => o.asset))];
       this.ordersTable?.setGlobalLoading(true);
       this.orders = [];
 
-      this._orderService.cancelAllOrders(asset).subscribe({
+      const cancelRequests = uniqueAssets.map(asset => this._orderService.cancelAllOrders(asset));
+      forkJoin(cancelRequests).subscribe({
         next: () => {
           this.ordersTable?.setGlobalLoading(false);
           this._notifications.success(`Cancelled ${orderCount} orders`);
@@ -470,11 +471,11 @@ export class DashboardComponent implements OnInit {
             this._notifications.warning('Failed to refresh dashboard data');
           }
         } else {
+          this._consecutiveErrors = 0;
+          this.showErrorBanner = false;
+
           if (failedCount > 0) {
             this._notifications.warning('Some dashboard data failed to load');
-          } else {
-            this._consecutiveErrors = 0;
-            this.showErrorBanner = false;
           }
 
           if (results.account !== null) { this.accountSummary = results.account; }

@@ -378,12 +378,13 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
 
         try
         {
-            var response = await _restClient.PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
+            var response = await _restClient.PostExchangeAsync<JsonElement>(payload, cancellationToken);
 
-            if (response.Status == "err")
+            if (TryGetExchangeStatus(response, out var status) &&
+                string.Equals(status, "err", StringComparison.OrdinalIgnoreCase))
             {
                 throw new DomainException(
-                    response.Response?.ErrorMessage ?? "Exchange rejected the request");
+                    GetExchangeErrorMessage(response) ?? "Exchange rejected the request");
             }
         }
         catch (HttpRequestException ex)
@@ -422,10 +423,30 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             vaultAddress = (string?)null,
         };
 
-        var exchangeResponse = await _restClient
-            .PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
+        try
+        {
+            var exchangeResponse = await _restClient
+                .PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
 
-        return MapExchangeResponse(exchangeResponse);
+            return MapExchangeResponse(exchangeResponse);
+        }
+        catch (HyperliquidApiException ex) when (
+            ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase) ||
+            ex.Message.Contains("INVALID_SIGNATURE", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogError(ex, "EIP-712 signature rejected for trigger order");
+            throw new SigningException("Signature rejected — check signing configuration", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Trigger order submission failed (network error)");
+            return new PlaceOrderResponse
+            {
+                Success = false,
+                Status = "rejected",
+                Detail = "Trigger order submission failed. Please retry.",
+            };
+        }
     }
 
     private async Task PlaceCompanionTriggerOrdersAsync(
@@ -602,6 +623,44 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             Status = "rejected",
             Detail = $"Unexpected response: {exchangeResponse.Status}",
         };
+    }
+
+    private static bool TryGetExchangeStatus(JsonElement response, out string? status)
+    {
+        status = null;
+
+        if (response.ValueKind != JsonValueKind.Object ||
+            !response.TryGetProperty("status", out var statusElement) ||
+            statusElement.ValueKind != JsonValueKind.String)
+        {
+            return false;
+        }
+
+        status = statusElement.GetString();
+        return !string.IsNullOrWhiteSpace(status);
+    }
+
+    private static string? GetExchangeErrorMessage(JsonElement response)
+    {
+        if (response.ValueKind != JsonValueKind.Object ||
+            !response.TryGetProperty("response", out var responseElement))
+        {
+            return null;
+        }
+
+        if (responseElement.ValueKind == JsonValueKind.String)
+        {
+            return responseElement.GetString();
+        }
+
+        if (responseElement.ValueKind == JsonValueKind.Object &&
+            responseElement.TryGetProperty("error", out var errorElement) &&
+            errorElement.ValueKind == JsonValueKind.String)
+        {
+            return errorElement.GetString();
+        }
+
+        return null;
     }
 
     private async Task<decimal> GetMidPriceAsync(string coin, CancellationToken cancellationToken)

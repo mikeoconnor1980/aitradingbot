@@ -123,3 +123,15 @@ Scope:
 
 - Binance is used for data ingestion only. Live trading always uses Hyperliquid.
 - Candles ingested from Binance are stored with `Source = "Binance"` to distinguish them from Hyperliquid candles in the shared `Candles` table.
+
+ADR 16 — Trigger Order State Not Persisted
+
+SL and TP trigger orders placed on Hyperliquid are not stored in the local database.
+
+Rationale:
+
+- Trigger orders are exchange-native. Hyperliquid is the single source of truth for whether they exist and at what price.
+- Syncing trigger order state to a local DB would require reliable fill/cancel webhook delivery or polling — adding complexity without benefit.
+- The exchange's `openOrders` endpoint always reflects live state, including updates made outside the platform (e.g., manual adjustments in the Hyperliquid UI).
+
+Implementation: `GetPositionsAsync` fetches open orders in parallel and enriches `PositionDto` at query time. No trigger order table or entity exists.

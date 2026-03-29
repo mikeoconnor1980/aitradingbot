@@ -94,14 +94,12 @@ public sealed class OrdersController : ControllerBase
     {
         var all = await _metadataCache.GetAllAsync(ct);
 
-        var prioritySet = new HashSet<string>(PriorityCoins, StringComparer.OrdinalIgnoreCase);
+        var priorityIndex = PriorityCoins
+            .Select((coin, idx) => (coin, idx))
+            .ToDictionary(x => x.coin, x => x.idx, StringComparer.OrdinalIgnoreCase);
 
         var sorted = all
-            .OrderBy(kvp =>
-            {
-                var idx = PriorityCoins.FindIndex(p => p.Equals(kvp.Key, StringComparison.OrdinalIgnoreCase));
-                return idx >= 0 ? idx : int.MaxValue;
-            })
+            .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
             .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
             .Select(kvp => new TradableAssetDto
             {
@@ -252,6 +250,7 @@ public sealed class OrdersController : ControllerBase
         return NoContent();
     }
 
+#if DEBUG
     /// <summary>Debug endpoint: returns allMids response from Hyperliquid testnet.</summary>
     [HttpGet("debug/mids")]
     public async Task<IActionResult> DebugMidsAsync(CancellationToken ct)
@@ -296,4 +295,5 @@ public sealed class OrdersController : ControllerBase
         var response = await _restClient.PostInfoAsync<JsonElement>(request, ct);
         return Ok(response);
     }
+#endif
 }

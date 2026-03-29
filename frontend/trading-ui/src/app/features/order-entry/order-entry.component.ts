@@ -165,9 +165,11 @@ export class OrderEntryComponent implements OnInit {
   }
 
   private _loadMidPrice(): void {
-    this._marketDataService.getMarketInfo(this.selectedAsset)
+    const asset = this.selectedAsset;
+    this._marketDataService.getMarketInfo(asset)
       .subscribe({
         next: (marketInfo) => {
+          if (this.selectedAsset !== asset) return;
           this.midPrice = marketInfo.midPrice;
           this.markPrice = marketInfo.markPrice;
           this.livePrice = marketInfo.midPrice;
@@ -355,6 +357,11 @@ export class OrderEntryComponent implements OnInit {
 
           if (response.success) {
             this._notifications.success(`Order placed (ID: ${response.orderId}, Status: ${response.status})`);
+
+            if (response.detail?.trim()) {
+              this._notifications.warning(`Order placed, but SL/TP needs attention: ${response.detail}`, 7000);
+            }
+
             return;
           }
 

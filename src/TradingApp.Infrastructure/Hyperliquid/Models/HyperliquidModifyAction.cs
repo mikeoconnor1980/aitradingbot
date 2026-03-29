@@ -60,12 +60,12 @@ public sealed class HyperliquidLimitParams
 
 public sealed class HyperliquidTriggerParams
 {
-    [JsonPropertyName("triggerPx")]
-    public string TriggerPx { get; set; } = default!;
-
     [JsonPropertyName("isMarket")]
     public bool IsMarket { get; set; } = true;
 
+    [JsonPropertyName("triggerPx")]
+    public required string TriggerPx { get; set; }
+
     [JsonPropertyName("tpsl")]
-    public string Tpsl { get; set; } = default!;
+    public required string Tpsl { get; set; }
 }

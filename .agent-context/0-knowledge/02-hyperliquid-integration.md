@@ -98,6 +98,8 @@ Market data streams are shared and do not multiply with user count.
 | `HyperliquidAssetMapper` | `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` |
 | `IHyperliquidAccountService` | `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` |
 | `HyperliquidAccountService` | `src/TradingApp.Api/Services/HyperliquidAccountService.cs` |
+| `IHyperliquidOrderService` | `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` |
+| `HyperliquidOrderService` | `src/TradingApp.Api/Services/HyperliquidOrderService.cs` |
 | `IHyperliquidWebSocketClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` |
 | `HyperliquidWebSocketClient` | `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` |
 | `WebSocketConnectionState` | `src/TradingApp.Application/Abstractions/Services/WebSocketConnectionState.cs` |
@@ -166,3 +168,46 @@ To add a new Hyperliquid read:
 1. **Simple raw reads with no domain logic** (e.g., POC account state) — use `PostInfoAsync<TResponse>` directly inside an Api-layer service (see `IHyperliquidAccountService` and ADR 14). No new `IHyperliquidRestClient` method needed.
 2. **Application-layer features with mapping/transformation** (e.g., asset name resolution, response parsing, candle batching) — add a typed method to `IHyperliquidRestClient` (e.g., `GetMarketInfoAsync`, `GetCandlesAsync`) and implement it in `HyperliquidRestClient` using `PostInfoAsync` internally. Consume via a MediatR query handler in `TradingApp.Application/{Feature}/Queries/`.
 3. **New non-info endpoints** (e.g., WebSocket subscriptions, exchange order actions) — add a method to `IHyperliquidRestClient` and implement in `HyperliquidRestClient`.
+4. **New order/exchange actions** (e.g., a new order type) — follow the trigger order pattern: build the action dict, sign via `HyperliquidEip712`, submit via `SubmitExchangeActionAsync` in `HyperliquidOrderService`. Add a new method to `IHyperliquidOrderService` if the action has a direct UI-callable surface.
+
+---
+
+## Trigger Orders (Stop Loss / Take Profit)
+
+Trigger orders are exchange-native SL/TP orders. They are `reduceOnly`, fire as market orders when price crosses the trigger level, and are **not persisted in the database** — they are read live from the exchange.
+
+### Wire Format
+
+`HyperliquidEip712.BuildTriggerOrderAction` constructs the `type=order` payload with a `trigger` sub-object:
+
+| Field | Value |
+|-------|-------|
+| `t.trigger.tpsl` | `"sl"` or `"tp"` |
+| `t.trigger.isMarket` | `true` |
+| `t.trigger.triggerPx` | Wire-formatted trigger price |
+| `r` (reduceOnly) | `true` |
+
+File: `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` → `BuildTriggerOrderAction`
+
+### API Endpoints
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `POST` | `/api/orders/trigger` | Place a standalone SL or TP trigger order |
+| `PUT` | `/api/orders/trigger/{orderId}` | Modify an existing trigger order (new trigger price) |
+| `DELETE` | `/api/orders/trigger/{orderId}` | Cancel a trigger order |
+
+Request model: `PlaceTriggerOrderRequest` (`Asset`, `Side`, `Size`, `TriggerPrice`, `TpslType: "sl"|"tp"`)  
+File: `src/TradingApp.Api/Models/PlaceTriggerOrderRequest.cs`
+
+### Companion Trigger Placement
+
+When `PlaceOrderRequest.StopLossPrice` or `.TakeProfitPrice` are set, `PlaceCompanionTriggerOrdersAsync` fires after the main order succeeds. Companion trigger failures are **non-fatal** — appended to `PlaceOrderResponse.Detail` as warnings.
+
+File: `src/TradingApp.Api/Services/HyperliquidOrderService.cs` → `PlaceCompanionTriggerOrdersAsync`
+
+### Position Enrichment
+
+`GetPositionsAsync` fetches `clearinghouseState`, `metaAndAssetCtxs`, and `openOrders` in parallel. After mapping, `EnrichPositionsWithTriggerOrders` correlates reduce-only trigger orders to positions by normalised asset name and populates `PositionDto.StopLossPrice/OrderId` and `TakeProfitPrice/OrderId`.
+
+File: `src/TradingApp.Api/Services/HyperliquidAccountService.cs` → `EnrichPositionsWithTriggerOrders`
