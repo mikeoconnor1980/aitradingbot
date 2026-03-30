@@ -37,6 +37,16 @@ $color-table-bg: rgba(15, 23, 42, 0.55);
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+
+  &__toggle {
+    border-color: var(--colour-border-light);
+    color: var(--colour-text-primary);
+
+    &--active {
+      background: var(--colour-surface-alt);
+      border-color: var(--colour-label);
+    }
+  }
 }
 
 .market-data__realtime {

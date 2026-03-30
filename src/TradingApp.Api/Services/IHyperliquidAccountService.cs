@@ -11,5 +11,7 @@ public interface IHyperliquidAccountService
 
     Task<IReadOnlyList<OpenOrderDto>> GetOpenOrdersAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(
+        string? asset = null,
+        CancellationToken cancellationToken = default);
 }

@@ -327,7 +327,6 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
                 OrderId = f.OrderId.ToString()
             })
             .OrderByDescending(f => f.Timestamp)
-            .Take(50)
             .ToList();
     }
 

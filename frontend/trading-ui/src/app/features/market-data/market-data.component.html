@@ -19,12 +19,29 @@
         <mat-icon>refresh</mat-icon>
         Refresh
       </button>
+
+      <button
+        mat-stroked-button
+        type="button"
+        class="controls__toggle"
+        [class.controls__toggle--active]="showFills"
+        [attr.aria-pressed]="showFills"
+        (click)="onToggleFills()">
+        <mat-icon>{{ showFills ? "visibility" : "visibility_off" }}</mat-icon>
+        Trades
+      </button>
     </div>
   </header>
 
   <section class="market-data__realtime">
     <app-price-ticker [seedMarketInfo]="marketInfo" [selectedAsset]="selectedAsset" />
-    <app-price-chart [seedCandles]="candles" [selectedAsset]="selectedAsset" [selectedTimeframe]="selectedTimeframe" (loadMoreCandles)="onLoadMoreCandles($event)" />
+    <app-price-chart
+      [seedCandles]="candles"
+      [selectedAsset]="selectedAsset"
+      [selectedTimeframe]="selectedTimeframe"
+      [fills]="fills"
+      [showTradeMarkers]="showFills"
+      (loadMoreCandles)="onLoadMoreCandles($event)" />
   </section>
 
   <mat-card class="market-info-card">

@@ -8,10 +8,79 @@
     letter-spacing: 0.05em;
   }
 
+  &__surface {
+    position: relative;
+  }
+
   &__container {
     width: 100%;
     min-height: 300px;
     border-radius: 0.5rem;
     overflow: hidden;
   }
+
+  &__fill-tooltip {
+    position: absolute;
+    z-index: 10;
+    min-width: 220px;
+    max-width: 280px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--colour-border-light);
+    border-radius: 0.5rem;
+    background: var(--colour-surface-dark);
+    color: var(--colour-text-primary);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+    pointer-events: none;
+  }
+}
+
+.tooltip-side {
+  margin-bottom: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &--buy {
+    color: var(--colour-profit);
+  }
+
+  &--sell {
+    color: var(--colour-warning);
+  }
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.tooltip-label {
+  color: var(--colour-label);
+}
+
+.tooltip-divider {
+  margin: 0.4rem 0;
+  border: 0;
+  border-top: 1px solid var(--colour-border-subtle);
+}
+
+.tooltip-fill-list {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--colour-border-subtle);
+}
+
+.tooltip-fill-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--colour-label);
 }

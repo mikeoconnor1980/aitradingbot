@@ -11,10 +11,13 @@ import { MatTableModule } from "@angular/material/table";
 import { BehaviorSubject, Subject, interval, merge, of, EMPTY } from "rxjs";
 import { catchError, startWith, switchMap } from "rxjs/operators";
 import { Candle } from "../../core/models/candle.model";
+import { FillEvent } from "../../core/models/fill-event.model";
 import { MarketInfo } from "../../core/models/market-info.model";
 import { TradableAsset } from "../../core/models/tradable-asset.model";
+import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
 import { MarketDataService } from "../../core/services/market-data.service";
 import { OrderService } from "../../core/services/order.service";
+import { SignalRService } from "../../core/services/signalr.service";
 import { PriceChartComponent } from "./price-chart/price-chart.component";
 import { PriceTickerComponent } from "./price-ticker/price-ticker.component";
 
@@ -40,8 +43,10 @@ export class MarketDataComponent implements OnInit {
   private static readonly POLL_INTERVAL_MS = 10_000;
 
   private readonly _destroyRef = inject(DestroyRef);
+  private readonly _apiService = inject(HyperliquidApiService);
   private readonly _marketDataService = inject(MarketDataService);
   private readonly _orderService = inject(OrderService);
+  private readonly _signalRService = inject(SignalRService);
   private readonly _selectedAsset$ = new BehaviorSubject<string>("BTC-PERP");
   private readonly _manualRefresh$ = new Subject<void>();
   private readonly _candleTrigger$ = new Subject<void>();
@@ -54,8 +59,10 @@ export class MarketDataComponent implements OnInit {
 
   public selectedAsset = "BTC-PERP";
   public selectedTimeframe = "15m";
+  public showFills = true;
   public marketInfo: MarketInfo | null = null;
   public candles: Candle[] = [];
+  public fills: FillEvent[] = [];
   public marketInfoError: string | null = null;
   public candleError: string | null = null;
   public isLoadingMarketInfo = true;
@@ -64,7 +71,9 @@ export class MarketDataComponent implements OnInit {
   public ngOnInit(): void {
     this._startMarketInfoPolling();
     this._startCandleLoading();
+    this._subscribeToFillEvents();
     this._candleTrigger$.next();
+    this._loadFillsForAsset(this.selectedAsset);
 
     this._orderService.getAvailableAssets().subscribe({
       next: (assets) => {
@@ -77,10 +86,12 @@ export class MarketDataComponent implements OnInit {
     this.selectedAsset = asset;
     this.marketInfo = null;
     this.candles = [];
+    this.fills = [];
     this.marketInfoError = null;
     this.candleError = null;
     this._selectedAsset$.next(asset);
     this._candleTrigger$.next();
+    this._loadFillsForAsset(asset);
   }
 
   public onTimeframeChanged(timeframe: string): void {
@@ -91,6 +102,7 @@ export class MarketDataComponent implements OnInit {
   public onManualRefresh(): void {
     this._manualRefresh$.next();
     this._candleTrigger$.next();
+    this._loadFillsForAsset(this.selectedAsset);
   }
 
   public onLoadMoreCandles(endTimeMs: number): void {
@@ -108,6 +120,10 @@ export class MarketDataComponent implements OnInit {
     ).subscribe((candles: Candle[]) => {
       this._priceChart?.prependCandles(candles);
     });
+  }
+
+  public onToggleFills(): void {
+    this.showFills = !this.showFills;
   }
 
   private _startMarketInfoPolling(): void {
@@ -171,5 +187,44 @@ export class MarketDataComponent implements OnInit {
         this.candles = [...data].sort((a: Candle, b: Candle) => b.timestamp - a.timestamp);
         this.isLoadingCandles = false;
       });
+  }
+
+  private _subscribeToFillEvents(): void {
+    this._signalRService.fillEvent$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((fill: FillEvent) => {
+        if (this._toCoin(fill.asset) !== this._toCoin(this.selectedAsset)) {
+          return;
+        }
+
+        if (this._hasFill(fill)) {
+          return;
+        }
+
+        this.fills = [...this.fills, fill];
+        this._priceChart?.addFill(fill);
+      });
+  }
+
+  private _loadFillsForAsset(asset: string): void {
+    this._apiService.getRecentFills(asset).subscribe((fills: FillEvent[]) => {
+      this.fills = fills
+        .filter((fill: FillEvent) => this._toCoin(fill.asset) === this._toCoin(asset))
+        .sort((left: FillEvent, right: FillEvent) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime());
+    });
+  }
+
+  private _hasFill(candidate: FillEvent): boolean {
+    return this.fills.some((fill: FillEvent) =>
+      fill.orderId === candidate.orderId &&
+      fill.timestamp === candidate.timestamp &&
+      fill.side === candidate.side &&
+      fill.price === candidate.price &&
+      fill.size === candidate.size
+    );
+  }
+
+  private _toCoin(asset: string): string {
+    return asset.replace(/-PERP$/i, "").toUpperCase();
   }
 }

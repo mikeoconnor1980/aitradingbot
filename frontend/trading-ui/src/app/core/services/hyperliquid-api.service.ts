@@ -28,7 +28,8 @@ export class HyperliquidApiService {
     return this._http.get<OpenOrder[]>(`${this._baseUrl}/api/account/orders`, context ? { context } : undefined);
   }
 
-  public getRecentFills(): Observable<FillEvent[]> {
-    return this._http.get<FillEvent[]>(`${this._baseUrl}/api/account/fills`);
+  public getRecentFills(asset?: string): Observable<FillEvent[]> {
+    const queryString = asset ? `?asset=${encodeURIComponent(asset)}` : "";
+    return this._http.get<FillEvent[]>(`${this._baseUrl}/api/account/fills${queryString}`);
   }
 }

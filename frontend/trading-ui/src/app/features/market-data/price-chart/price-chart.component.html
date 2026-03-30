@@ -1,4 +1,34 @@
 <section class="price-chart">
   <h3 class="price-chart__title">{{ selectedAsset }} — {{ timeWindowLabel }} ({{ selectedTimeframe }} candles)</h3>
-  <div #chartContainer class="price-chart__container"></div>
+  <div class="price-chart__surface">
+    <div #chartContainer class="price-chart__container"></div>
+
+    @if (tooltipVisible && tooltipGroups.length > 0) {
+      <div class="price-chart__fill-tooltip" [style.left.px]="tooltipLeft" [style.top.px]="tooltipTop">
+        @for (group of tooltipGroups; track group.time + '-' + group.side; let last = $last) {
+          <div class="tooltip-side" [class.tooltip-side--buy]="group.side === 'Buy'" [class.tooltip-side--sell]="group.side === 'Sell'">
+            {{ group.side }}
+          </div>
+          <div class="tooltip-row"><span class="tooltip-label">Avg Price</span><span>{{ group.averagePrice | number: "1.2-2" }}</span></div>
+          <div class="tooltip-row"><span class="tooltip-label">Total Size</span><span>{{ group.totalSize | number: "1.2-4" }}</span></div>
+          <div class="tooltip-row"><span class="tooltip-label">Fee</span><span>{{ group.totalFee | number: "1.4-4" }}</span></div>
+          <div class="tooltip-row"><span class="tooltip-label">Closed PnL</span><span>{{ group.totalClosedPnl | number: "1.2-2" }}</span></div>
+          <div class="tooltip-row"><span class="tooltip-label">Fills</span><span>{{ group.fills.length }}</span></div>
+
+          <div class="tooltip-fill-list">
+            @for (fill of group.fills; track fill.orderId + '-' + fill.timestamp) {
+              <div class="tooltip-fill-list__item">
+                <span>{{ fill.size | number: "1.2-4" }} &#64; {{ fill.price | number: "1.2-2" }}</span>
+                <span>{{ fill.fee | number: "1.4-4" }}</span>
+              </div>
+            }
+          </div>
+
+          @if (!last) {
+            <hr class="tooltip-divider" />
+          }
+        }
+      </div>
+    }
+  </div>
 </section>

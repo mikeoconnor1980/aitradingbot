@@ -19,7 +19,7 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
-| [ ] | Show trades on main chart | 30 Mar 2026 | — |
+| [x] | Show trades on main chart | 30 Mar 2026 | [pbi-draft-show-trades-on-chart](../3-develop/backlog/draft/pbi-draft-show-trades-on-chart.md) |
 | [ ] | Show indicators on main chart | 30 Mar 2026 | — |
 | [ ] | Backtest run deletion / archival | 30 Mar 2026 | — |
 | [ ] | Trigger backtest data sync from the UI | 30 Mar 2026 | — |
@@ -29,9 +29,9 @@
 | [ ] | All times displayed in UTC | 30 Mar 2026 | — |
 | [ ] | Change all dates throughout the project to use `DD Month YYYY - HH:MM` format | 29 Mar 2026 | [pbi-draft-date-format-standardization](../3-develop/backlog/draft/pbi-draft-date-format-standardization.md) |
 | [ ] | Dashboard: show liquidation price in the grid | 29 Mar 2026 | [pbi-draft-dashboard-liquidation-price](../3-develop/backlog/draft/pbi-draft-dashboard-liquidation-price.md) |
-| [ ] | SL/TP modal: display liquidation price and live asset price | 29 Mar 2026 | [pbi-draft-sltp-modal-liquidation-live-price](../3-develop/backlog/draft/pbi-draft-sltp-modal-liquidation-live-price.md) |
+| [x] | SL/TP modal: display liquidation price and live asset price | 29 Mar 2026 | [pbi-draft-sltp-modal-liquidation-live-price](../3-develop/backlog/draft/pbi-draft-sltp-modal-liquidation-live-price.md) |
 | [ ] | Dashboard: add activity date-range filter | 29 Mar 2026 | [pbi-draft-dashboard-activity-date-range](../3-develop/backlog/draft/pbi-draft-dashboard-activity-date-range.md) |
-| [ ] | Remove connection bubble from header; move functionality to the connection pill on right | 29 Mar 2026 | [pbi-draft-connection-header-consolidation](../3-develop/backlog/draft/pbi-draft-connection-header-consolidation.md) |
+| [x] | Remove connection bubble from header; move functionality to the connection pill on right | 29 Mar 2026 | [pbi-draft-connection-header-consolidation](../3-develop/backlog/draft/pbi-draft-connection-header-consolidation.md) |
 
 ## Bugs / Issues
 

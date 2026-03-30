@@ -52,9 +52,11 @@ public sealed class AccountController : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<FillEventDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status502BadGateway)]
-    public async Task<IActionResult> GetRecentFillsAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetRecentFillsAsync(
+        [FromQuery] string? asset,
+        CancellationToken cancellationToken)
     {
-        var fills = await _accountService.GetRecentFillsAsync(cancellationToken);
+        var fills = await _accountService.GetRecentFillsAsync(asset, cancellationToken);
         return Ok(fills);
     }
 }

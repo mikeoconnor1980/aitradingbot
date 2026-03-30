@@ -163,7 +163,7 @@ public sealed class AccountControllerTests
         };
 
         _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(fills);
 
         // Act
@@ -174,6 +174,74 @@ public sealed class AccountControllerTests
         var result = await response.Content.ReadFromJsonAsync<List<FillEventDto>>();
         result.Should().NotBeNull();
         result.Should().BeEquivalentTo(fills);
+    }
+
+    [TestMethod]
+    public async Task GivenFillsForMultipleAssets_WhenGetFillsWithAssetFilter_ThenReturnsOnlyMatchingFills()
+    {
+        // Arrange
+        IReadOnlyList<FillEventDto> filteredFills = new List<FillEventDto>
+        {
+            CreateFill("BTC", "Buy", "Open Long", 0.1m, 65000m, 0.01m, 0m, "order-1"),
+            CreateFill("BTC", "Sell", "Close Long", 0.1m, 66000m, 0.01m, 100m, "order-3"),
+        };
+
+        _accountServiceMock
+            .Setup(s => s.GetRecentFillsAsync("BTC-PERP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(filteredFills);
+
+        // Act
+        var response = await _client.GetAsync("api/account/fills?asset=BTC-PERP");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<FillEventDto>>();
+        result.Should().NotBeNull();
+        result.Should().HaveCount(2);
+        result.Should().OnlyContain(fill => fill.Asset == "BTC");
+    }
+
+    [TestMethod]
+    public async Task GivenFillsForMultipleAssets_WhenGetFillsWithoutAssetFilter_ThenReturnsAllFills()
+    {
+        // Arrange
+        IReadOnlyList<FillEventDto> fills = new List<FillEventDto>
+        {
+            CreateFill("BTC", "Buy", "Open Long", 0.1m, 65000m, 0.01m, 0m, "order-1"),
+            CreateFill("ETH", "Sell", "Close Long", 1m, 3200m, 0.02m, 50m, "order-2"),
+        };
+
+        _accountServiceMock
+            .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fills);
+
+        // Act
+        var response = await _client.GetAsync("api/account/fills");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<FillEventDto>>();
+        result.Should().NotBeNull();
+        result.Should().HaveCount(2);
+        result.Should().BeEquivalentTo(fills);
+    }
+
+    [TestMethod]
+    public async Task GivenNoFillsForAsset_WhenGetFillsWithAssetFilter_ThenReturnsEmptyList()
+    {
+        // Arrange
+        _accountServiceMock
+            .Setup(s => s.GetRecentFillsAsync("SOL-PERP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FillEventDto>());
+
+        // Act
+        var response = await _client.GetAsync("api/account/fills?asset=SOL-PERP");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<FillEventDto>>();
+        result.Should().NotBeNull();
+        result.Should().BeEmpty();
     }
 
     [TestMethod]
@@ -228,5 +296,29 @@ public sealed class AccountControllerTests
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("errorMessage").GetString().Should().Be("External service unavailable");
         body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    private static FillEventDto CreateFill(
+        string asset,
+        string side,
+        string direction,
+        decimal size,
+        decimal price,
+        decimal fee,
+        decimal closedPnl,
+        string orderId)
+    {
+        return new FillEventDto
+        {
+            Timestamp = new DateTime(2026, 3, 30, 12, 0, 0, DateTimeKind.Utc),
+            Asset = asset,
+            Side = side,
+            Direction = direction,
+            Size = size,
+            Price = price,
+            Fee = fee,
+            ClosedPnl = closedPnl,
+            OrderId = orderId,
+        };
     }
 }

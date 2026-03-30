@@ -21,6 +21,7 @@ export class SignalRService implements OnDestroy {
   private readonly _accountState = inject(AccountStateService);
 
   private readonly _priceUpdate$ = new Subject<PriceUpdate>();
+  private readonly _fillEvent$ = new Subject<FillEvent>();
   private readonly _backtestProgress$ = new Subject<BacktestProgress>();
   private readonly _connectionStatus$ = new BehaviorSubject<ConnectionStatus>(SignalRService.DISCONNECTED_STATUS);
   private readonly _transportConnectionStatus$ = new BehaviorSubject<ConnectionStatus>(SignalRService.DISCONNECTED_STATUS);
@@ -31,6 +32,7 @@ export class SignalRService implements OnDestroy {
   private readonly _hubConnection: signalR.HubConnection;
 
   public readonly priceUpdate$: Observable<PriceUpdate> = this._priceUpdate$.asObservable();
+  public readonly fillEvent$: Observable<FillEvent> = this._fillEvent$.asObservable();
   public readonly backtestProgress$: Observable<BacktestProgress> = this._backtestProgress$.asObservable();
   public readonly connectionStatus$: Observable<ConnectionStatus> = this._connectionStatus$.asObservable();
   public readonly transportConnectionStatus$: Observable<ConnectionStatus> = this._transportConnectionStatus$.asObservable();
@@ -49,6 +51,7 @@ export class SignalRService implements OnDestroy {
   public ngOnDestroy(): void {
     void this._hubConnection.stop();
     this._priceUpdate$.complete();
+    this._fillEvent$.complete();
     this._backtestProgress$.complete();
     this._connectionStatus$.complete();
     this._transportConnectionStatus$.complete();
@@ -69,6 +72,7 @@ export class SignalRService implements OnDestroy {
 
     this._hubConnection.on("ReceiveFillEvent", (fill: FillEvent) => {
       this._accountState.addFillEvent(fill);
+      this._fillEvent$.next(fill);
     });
 
     this._hubConnection.on("ReceiveOrderUpdate", (orderUpdate: OrderUpdate) => {

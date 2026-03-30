@@ -3,6 +3,7 @@ using System.Text.Json;
 using TradingApp.Api.Models;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
+using TradingApp.Infrastructure.Hyperliquid;
 
 namespace TradingApp.Api.Services;
 
@@ -49,10 +50,27 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         return MapToOpenOrders(response);
     }
 
-    public async Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(
+        string? asset = null,
+        CancellationToken cancellationToken = default)
     {
-        var startTime = DateTimeOffset.UtcNow.AddHours(-24).ToUnixTimeMilliseconds();
-        return await _restClient.GetUserFillsAsync(_signer.WalletAddress, startTime, cancellationToken);
+        var normalizedAsset = string.IsNullOrWhiteSpace(asset) ? null : asset;
+        long? startTime = normalizedAsset is null
+            ? DateTimeOffset.UtcNow.AddHours(-24).ToUnixTimeMilliseconds()
+            : null;
+
+        var fills = await _restClient.GetUserFillsAsync(_signer.WalletAddress, startTime, cancellationToken);
+
+        if (normalizedAsset is null)
+        {
+            return fills;
+        }
+
+        var coin = HyperliquidAssetMapper.ToCoin(normalizedAsset);
+
+        return fills
+            .Where(fill => string.Equals(fill.Asset, coin, StringComparison.OrdinalIgnoreCase))
+            .ToList();
     }
 
     private async Task<JsonElement> GetClearinghouseStateAsync(CancellationToken cancellationToken)
