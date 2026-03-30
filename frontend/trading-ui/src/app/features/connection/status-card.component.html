@@ -1,36 +1,101 @@
-@if (health$ | async; as health) {
-  <section class="status-card" aria-label="Hyperliquid connection status">
-    <header class="status-card__header">
-      <span
-        class="status-card__indicator"
-        [class.status-card__indicator--connected]="health.status === 'connected'"
-        [class.status-card__indicator--disconnected]="health.status === 'disconnected'"
-        aria-hidden="true">
-      </span>
-      <span class="status-card__status-text">{{ connectionStatusText(health) }}</span>
-    </header>
-
-    <div class="status-card__details">
-      <div class="status-card__row">
-        <span class="status-card__label">Wallet</span>
-        <span class="status-card__value status-card__value--mono">{{ truncateWalletAddress(health.walletAddress) }}</span>
-      </div>
-      <div class="status-card__row">
-        <span class="status-card__label">Network</span>
-        <span class="status-card__value">{{ health.network || 'N/A' }}</span>
-      </div>
+<section class="status-card" aria-label="Connection status summary">
+  <header class="status-card__hero">
+    <div>
+      <p class="status-card__eyebrow">Connections</p>
+      <h2 class="status-card__title">Connection Health</h2>
+      <p class="status-card__subtitle">Monitor backend wallet verification and live transport health from one compact view.</p>
     </div>
+  </header>
 
-    @if (health.error) {
-      <p class="status-card__error">{{ health.error }}</p>
+  <div class="status-card__grid">
+    <section class="status-card__panel" aria-label="Wallet and Hyperliquid connection">
+      <header class="status-card__panel-header">
+        <div>
+          <p class="status-card__panel-label">Wallet / Hyperliquid</p>
+          <h3 class="status-card__panel-title">Execution connection</h3>
+        </div>
+
+        @if (health$ | async; as health) {
+          <div
+            class="status-card__badge"
+            [class.status-card__badge--connected]="toneForStatus(health.status) === 'connected'"
+            [class.status-card__badge--disconnected]="toneForStatus(health.status) === 'disconnected'">
+            <span class="status-card__badge-dot" aria-hidden="true"></span>
+            <span>{{ walletBadgeText(health) }}</span>
+          </div>
+        } @else {
+          <span class="status-card__section-loading">Checking...</span>
+        }
+      </header>
+
+      @if (health$ | async; as health) {
+        <dl class="status-card__stats">
+          <div class="status-card__stat">
+            <dt class="status-card__label">Wallet</dt>
+            <dd class="status-card__value status-card__value--mono">{{ truncateWalletAddress(health.walletAddress) }}</dd>
+          </div>
+          <div class="status-card__stat">
+            <dt class="status-card__label">Network</dt>
+            <dd class="status-card__value">{{ health.network || 'N/A' }}</dd>
+          </div>
+          <div class="status-card__stat">
+            <dt class="status-card__label">Last Check</dt>
+            <dd class="status-card__value">{{ displayTimestamp(health.timestamp) }}</dd>
+          </div>
+        </dl>
+
+        <p
+          class="status-card__detail"
+          [class.status-card__detail--error]="!!health.error">
+          {{ healthDetailText(health) }}
+        </p>
+      } @else {
+        <p class="status-card__section-note">Checking backend and wallet health.</p>
+      }
+
+      <div class="status-card__panel-footer">
+        <button type="button" class="status-card__refresh" (click)="onRefresh()">
+          Refresh health
+        </button>
+        <p class="status-card__footer-note">Runs the existing backend and Hyperliquid verification again.</p>
+      </div>
+    </section>
+
+    @if (signalRTransportStatus$ | async; as signalRStatus) {
+      <section class="status-card__panel" aria-label="SignalR connection state">
+        <header class="status-card__panel-header">
+          <div>
+            <p class="status-card__panel-label">SignalR</p>
+            <h3 class="status-card__panel-title">Live transport</h3>
+          </div>
+
+          <div
+            class="status-card__badge"
+            [class.status-card__badge--connected]="toneForStatus(signalRStatus.status) === 'connected'"
+            [class.status-card__badge--reconnecting]="toneForStatus(signalRStatus.status) === 'reconnecting'"
+            [class.status-card__badge--disconnected]="toneForStatus(signalRStatus.status) === 'disconnected'">
+            <span class="status-card__badge-dot" aria-hidden="true"></span>
+            <span>{{ signalRStatusText(signalRStatus) }}</span>
+          </div>
+        </header>
+
+        <dl class="status-card__stats">
+          <div class="status-card__stat">
+            <dt class="status-card__label">Source</dt>
+            <dd class="status-card__value">{{ signalRStatus.source }}</dd>
+          </div>
+          <div class="status-card__stat">
+            <dt class="status-card__label">Retry Count</dt>
+            <dd class="status-card__value">{{ signalRStatus.retryCount }}</dd>
+          </div>
+          <div class="status-card__stat">
+            <dt class="status-card__label">Retries</dt>
+            <dd class="status-card__value">{{ signalRRetryText(signalRStatus.retryCount) }}</dd>
+          </div>
+        </dl>
+
+        <p class="status-card__detail">{{ signalRDetailText(signalRStatus) }}</p>
+      </section>
     }
-
-    <button type="button" class="status-card__refresh" (click)="onRefresh()">
-      Refresh
-    </button>
-  </section>
-} @else {
-  <section class="status-card status-card--loading">
-    <span>Checking connection...</span>
-  </section>
-}
+  </div>
+</section>

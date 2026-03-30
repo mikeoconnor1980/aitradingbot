@@ -10,6 +10,24 @@
     <span>{{ data.position.entryPrice | number: "1.2-2" }}</span>
     <span class="set-sltp-modal__label">Size</span>
     <span>{{ data.position.size | number: "1.4-4" }}</span>
+
+    <span class="set-sltp-modal__label">Liq. Price</span>
+    @if (data.position.liquidationPrice > 0) {
+      <span class="set-sltp-modal__muted">{{ data.position.liquidationPrice | number: "1.2-2" }}</span>
+    } @else {
+      <span class="set-sltp-modal__muted">-</span>
+    }
+
+    <span class="set-sltp-modal__label">Live Price</span>
+    <span [class]="getLivePriceClass()">{{ livePrice | number: "1.2-2" }}</span>
+
+    <span class="set-sltp-modal__label">Dist. to Liq.</span>
+    @let distance = getDistanceToLiquidation();
+    @if (distance !== null) {
+      <span class="set-sltp-modal__muted">{{ distance | number: "1.1-1" }}% away</span>
+    } @else {
+      <span class="set-sltp-modal__muted">-</span>
+    }
   </div>
 
   <form [formGroup]="form" class="set-sltp-modal__form">
@@ -20,12 +38,6 @@
         <mat-error>{{ errorMessage }}</mat-error>
       }
     </mat-form-field>
-
-    @if (isSlBeyondLiquidation()) {
-      <div class="set-sltp-modal__liquidation-warning">
-        Warning: Stop loss is beyond your liquidation price (${{ data.position.liquidationPrice | number: "1.2-2" }})
-      </div>
-    }
 
     <mat-form-field appearance="outline" class="set-sltp-modal__field">
       <mat-label>Take Profit Price (USD)</mat-label>
@@ -39,5 +51,5 @@
 
 <mat-dialog-actions align="end">
   <button mat-button type="button" (click)="onCancel()">Cancel</button>
-  <button mat-flat-button color="primary" type="button" (click)="onSubmit()">Confirm</button>
+  <button mat-flat-button color="primary" type="button" (click)="onSubmit()" [disabled]="form.invalid">Confirm</button>
 </mat-dialog-actions>

@@ -24,6 +24,21 @@
     font-weight: 600;
   }
 
+  &__muted {
+    color: var(--colour-muted);
+    font-size: 0.82rem;
+  }
+
+  &__price--profit {
+    color: var(--colour-profit);
+    font-weight: 600;
+  }
+
+  &__price--loss {
+    color: var(--colour-loss);
+    font-weight: 600;
+  }
+
   &__form {
     display: flex;
     flex-direction: column;
@@ -32,13 +47,5 @@
 
   &__field {
     width: 100%;
-  }
-
-  &__liquidation-warning {
-    border-left: 3px solid #f59e0b;
-    color: #f59e0b;
-    font-size: 0.78rem;
-    margin-bottom: 0.5rem;
-    padding: 0.35rem 0.5rem;
   }
 }

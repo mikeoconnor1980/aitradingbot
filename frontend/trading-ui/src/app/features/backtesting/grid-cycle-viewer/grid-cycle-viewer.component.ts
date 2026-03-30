@@ -6,7 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSelectChange, MatSelectModule } from "@angular/material/select";
 import { Subject, switchMap, tap, of, catchError, distinctUntilChanged } from "rxjs";
-import { BacktestDebugResponse, GridCycleSummary } from "../../../core/models/backtest-debug.model";
+import { BacktestDebugResponse } from "../../../core/models/backtest-debug.model";
 import { BacktestTrade } from "../../../core/models/backtest.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../../core/services/backtest.service";

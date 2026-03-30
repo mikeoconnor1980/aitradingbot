@@ -3,16 +3,20 @@
     <h1 class="app-shell__title">{{ title }}</h1>
     <nav class="app-shell__nav" aria-label="Primary navigation">
       <a routerLink="/dashboard" routerLinkActive="app-shell__link--active" [routerLinkActiveOptions]="{ exact: true }" class="app-shell__link">Dashboard</a>
-      <a routerLink="/connection" routerLinkActive="app-shell__link--active" class="app-shell__link">Connection</a>
       <a routerLink="/market-data" routerLinkActive="app-shell__link--active" class="app-shell__link">Market Data</a>
       <a routerLink="/order-entry" routerLinkActive="app-shell__link--active" class="app-shell__link">Order Entry</a>
       <a routerLink="/backtesting" routerLinkActive="app-shell__link--active" class="app-shell__link">Backtesting</a>
     </nav>
 
-    <div class="app-shell__status" [ngClass]="statusClass" [attr.aria-label]="'Connection status: ' + connectionStatus.status">
+    <a
+      class="app-shell__status"
+      [ngClass]="statusClass"
+      routerLink="/connection"
+      [attr.aria-label]="'Connection status: ' + statusLabel + '. Click to view details.'"
+    >
       <span class="app-shell__status-dot"></span>
-      <span class="app-shell__status-label">{{ connectionStatus.status }}</span>
-    </div>
+      <span class="app-shell__status-label">{{ statusLabel }}</span>
+    </a>
   </header>
 
   <router-outlet />

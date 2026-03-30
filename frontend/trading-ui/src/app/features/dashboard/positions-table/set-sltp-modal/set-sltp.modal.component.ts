@@ -1,11 +1,13 @@
 import { CommonModule } from "@angular/common";
-import { Component, inject } from "@angular/core";
+import { Component, DestroyRef, inject } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { AbstractControl, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { Position } from "../../../../core/models/position.model";
+import { SignalRService } from "../../../../core/services/signalr.service";
 
 export interface SetSlTpDialogData {
   position: Position;
@@ -31,10 +33,13 @@ interface SetSlTpForm {
 export class SetSlTpModalComponent {
   private readonly _fb = inject(FormBuilder);
   private readonly _dialogRef = inject(MatDialogRef<SetSlTpModalComponent>);
+  private readonly _signalRService = inject(SignalRService);
+  private readonly _destroyRef = inject(DestroyRef);
 
   public readonly data: SetSlTpDialogData = inject(MAT_DIALOG_DATA);
   public readonly isLong: boolean;
   public readonly form: FormGroup<SetSlTpForm>;
+  public livePrice: number;
 
   public constructor() {
     this.isLong = this._isLongPosition(this.data.position);
@@ -46,6 +51,9 @@ export class SetSlTpModalComponent {
         validators: [Validators.min(0.000001), this._createTpValidator()]
       })
     });
+
+    this.livePrice = this.data.position.markPrice;
+    this._subscribeToPriceUpdates();
   }
 
   public onCancel(): void {
@@ -66,28 +74,17 @@ export class SetSlTpModalComponent {
     this._dialogRef.close(result);
   }
 
-  public isSlBeyondLiquidation(): boolean {
-    const stopLossPrice = this.form.controls.stopLossPrice.value;
-    const liquidationPrice = this.data.position.liquidationPrice;
-
-    if (stopLossPrice == null || liquidationPrice <= 0) {
-      return false;
-    }
-
-    if (this.isLong) {
-      return stopLossPrice <= liquidationPrice;
-    }
-
-    return stopLossPrice >= liquidationPrice;
-  }
-
   public getStopLossErrorMessage(): string | null {
     const control = this.form.controls.stopLossPrice;
     if (control.hasError("min")) {
       return "Stop loss must be greater than 0";
     }
 
-    return control.getError("slInvalidSide") ?? null;
+    if (control.hasError("slInvalidSide")) {
+      return control.getError("slInvalidSide");
+    }
+
+    return control.getError("slBeyondLiquidation") ?? null;
   }
 
   public getTakeProfitErrorMessage(): string | null {
@@ -99,8 +96,38 @@ export class SetSlTpModalComponent {
     return control.getError("tpInvalidSide") ?? null;
   }
 
+  public getDistanceToLiquidation(): number | null {
+    const liquidationPrice = this.data.position.liquidationPrice;
+    if (liquidationPrice <= 0) {
+      return null;
+    }
+
+    return Math.abs((this.livePrice - liquidationPrice) / liquidationPrice) * 100;
+  }
+
+  public getLivePriceClass(): string {
+    const entryPrice = this.data.position.entryPrice;
+    if (this.livePrice === entryPrice) {
+      return "";
+    }
+
+    const isInProfit = this.isLong
+      ? this.livePrice > entryPrice
+      : this.livePrice < entryPrice;
+
+    return isInProfit ? "set-sltp-modal__price--profit" : "set-sltp-modal__price--loss";
+  }
+
   private _isLongPosition(position: Position): boolean {
-    return position.side === "Long" || position.size > 0;
+    if (position.side === "Long") {
+      return true;
+    }
+
+    if (position.side === "Short") {
+      return false;
+    }
+
+    return position.size > 0;
   }
 
   private _createSlValidator(): ValidatorFn {
@@ -117,6 +144,17 @@ export class SetSlTpModalComponent {
 
       if (!this.isLong && stopLossPrice <= entryPrice) {
         return { slInvalidSide: "Stop loss must be above entry price for short positions" };
+      }
+
+      const liquidationPrice = this.data.position.liquidationPrice;
+      if (liquidationPrice > 0) {
+        if (this.isLong && stopLossPrice <= liquidationPrice) {
+          return { slBeyondLiquidation: "Stop loss is beyond liquidation price - it would never trigger" };
+        }
+
+        if (!this.isLong && stopLossPrice >= liquidationPrice) {
+          return { slBeyondLiquidation: "Stop loss is beyond liquidation price - it would never trigger" };
+        }
       }
 
       return null;
@@ -141,5 +179,17 @@ export class SetSlTpModalComponent {
 
       return null;
     };
+  }
+
+  private _subscribeToPriceUpdates(): void {
+    this._signalRService.priceUpdate$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((update) => {
+        const positionAsset = this.data.position.asset.replace("-PERP", "").toUpperCase();
+        const updateAsset = update.asset.replace("-PERP", "").toUpperCase();
+        if (positionAsset === updateAsset) {
+          this.livePrice = update.lastPrice;
+        }
+      });
   }
 }

@@ -3,6 +3,8 @@ import { Component, DestroyRef, OnInit, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { ConnectionStatus } from "./core/models/connection-status.model";
+import { HealthResponse } from "./core/models/health-response.model";
+import { HealthService } from "./core/services/health.service";
 import { SignalRService } from "./core/services/signalr.service";
 
 @Component({
@@ -14,6 +16,7 @@ import { SignalRService } from "./core/services/signalr.service";
 })
 export class AppComponent implements OnInit {
   private readonly _signalRService = inject(SignalRService);
+  private readonly _healthService = inject(HealthService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public title = "Trading Dashboard";
@@ -24,6 +27,7 @@ export class AppComponent implements OnInit {
     detail: null,
     retryCount: 0
   };
+  public health: HealthResponse | null = null;
 
   public ngOnInit(): void {
     this._signalRService.connectionStatus$
@@ -31,9 +35,19 @@ export class AppComponent implements OnInit {
       .subscribe((status: ConnectionStatus) => {
         this.connectionStatus = status;
       });
+
+    this._healthService.health$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((health: HealthResponse | null) => {
+        this.health = health;
+      });
   }
 
   public get statusClass(): string {
+    if (this.health !== null) {
+      return this.health.status === "connected" ? "status--connected" : "status--disconnected";
+    }
+
     switch (this.connectionStatus.status) {
       case "Connected":
         return "status--connected";
@@ -43,5 +57,19 @@ export class AppComponent implements OnInit {
       default:
         return "status--disconnected";
     }
+  }
+
+  public get statusLabel(): string {
+    if (this.health !== null) {
+      const network = this.health.network.trim().toLowerCase();
+
+      if (network === "testnet") {
+        return "Testnet";
+      }
+
+      return this.health.status === "connected" ? "Connected" : "Disconnected";
+    }
+
+    return this.connectionStatus.status;
   }
 }
