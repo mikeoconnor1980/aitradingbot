@@ -186,7 +186,7 @@ public sealed class BacktestsController : ApiController
 
         if (!BacktestEntryModes.IsValid(request.StrategyConfig.EntryMode))
         {
-            throw new DomainException($"entryMode must be one of: {BacktestEntryModes.AutoFromSignalCandle}, {BacktestEntryModes.WaitForLimitPrice}");
+            throw new DomainException($"entryMode must be one of: {BacktestEntryModes.AutoFromSignalCandle}, {BacktestEntryModes.InitialMarketThenGrid}, {BacktestEntryModes.WaitForLimitPrice}");
         }
 
         if (string.Equals(request.StrategyConfig.EntryMode, BacktestEntryModes.WaitForLimitPrice, StringComparison.Ordinal) &&

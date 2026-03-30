@@ -93,6 +93,27 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenInitialMarketThenGridRequest_WhenPostBacktest_ThenAcceptsWithoutManualAnchorPrice()
+    {
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var client = GetTestClient();
+        var request = CreateValidRequest();
+        request.StrategyConfig.EntryMode = BacktestEntryModes.InitialMarketThenGrid;
+        request.StrategyConfig.ManualAnchorPrice = null;
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.Accepted);
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>();
+        result.Should().NotBeNull();
+        result!.StrategyConfig.EntryMode.Should().Be(BacktestEntryModes.InitialMarketThenGrid);
+        result.StrategyConfig.ManualAnchorPrice.Should().BeNull();
+    }
+
+    [TestMethod]
     public async Task GivenExistingBacktestId_WhenGetById_ThenReturnsOkWithResult()
     {
         var backtestRun = CreateBacktestRun();

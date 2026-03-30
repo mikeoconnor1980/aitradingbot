@@ -90,4 +90,19 @@ describe("BacktestResultComponent", () => {
     expect(emptyState).not.toBeNull();
     expect(emptyState.textContent).toContain("did not generate any trades");
   });
+
+  it("should render the hybrid entry mode label", () => {
+    fixture.componentRef.setInput("result", {
+      ...mockResult,
+      strategyConfig: {
+        ...mockResult.strategyConfig,
+        entryMode: "InitialMarketThenGrid",
+        manualAnchorPrice: null
+      }
+    });
+    fixture.detectChanges();
+
+    expect(component.entryModeLabel).toBe("Initial market buy, then grid");
+    expect(fixture.nativeElement.textContent).toContain("Initial market buy, then grid");
+  });
 });

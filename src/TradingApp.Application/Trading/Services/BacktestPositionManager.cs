@@ -75,10 +75,41 @@ public sealed class BacktestPositionManager : IPositionManager
         var gridSpacingPercent = Math.Abs(GetDecimal(signal.Parameters, "gridSpacingPercent"));
         var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalPerLevel"));
         var gridCycleId = GetGridCycleId(signal.Parameters);
+        var entryMode = GetOptionalString(signal.Parameters, "entryMode") ?? BacktestEntryModes.AutoFromSignalCandle;
 
-        for (var level = 1; level <= gridLevels; level++)
+        var firstLimitLevel = 1;
+
+        if (string.Equals(entryMode, BacktestEntryModes.InitialMarketThenGrid, StringComparison.Ordinal))
         {
-            var price = anchorPrice * (1m - ((gridSpacingPercent / 100m) * level));
+            var marketSize = decimal.Round(notionalPerLevel / anchorPrice, 8, MidpointRounding.AwayFromZero);
+            if (marketSize > 0m)
+            {
+                await PlaceAndLogOrderAsync(
+                    executionEngine,
+                    new OrderRequest
+                    {
+                        Symbol = signal.Symbol,
+                        Side = OrderSide.Buy,
+                        OrderType = OrderType.Market,
+                        Price = anchorPrice,
+                        AnchorPrice = anchorPrice,
+                        Size = marketSize,
+                        TradeType = TradeType.GridFill,
+                        GridCycleId = gridCycleId
+                    },
+                    gridCycleId,
+                    cancellationToken);
+            }
+
+            firstLimitLevel = 2;
+        }
+
+        for (var level = firstLimitLevel; level <= gridLevels; level++)
+        {
+            var ladderOffset = string.Equals(entryMode, BacktestEntryModes.InitialMarketThenGrid, StringComparison.Ordinal)
+                ? level - 1
+                : level;
+            var price = anchorPrice * (1m - ((gridSpacingPercent / 100m) * ladderOffset));
             if (price <= 0m)
             {
                 continue;
@@ -90,7 +121,8 @@ public sealed class BacktestPositionManager : IPositionManager
                 continue;
             }
 
-            var orderId = await executionEngine.PlaceOrderAsync(
+            await PlaceAndLogOrderAsync(
+                executionEngine,
                 new OrderRequest
                 {
                     Symbol = signal.Symbol,
@@ -102,19 +134,8 @@ public sealed class BacktestPositionManager : IPositionManager
                     TradeType = TradeType.GridFill,
                     GridCycleId = gridCycleId
                 },
+                gridCycleId,
                 cancellationToken);
-
-            _auditCollector.LogOrderEvent(new OrderEventEntry
-            {
-                TimestampUtc = _executionContextAccessor.CurrentTimestampUtc,
-                EventType = OrderEventType.Placed,
-                OrderId = orderId,
-                Side = OrderSide.Buy.ToString(),
-                OrderType = OrderType.Limit.ToString(),
-                Price = price,
-                Size = size,
-                GridCycleId = gridCycleId
-            });
         }
     }
 
@@ -145,7 +166,8 @@ public sealed class BacktestPositionManager : IPositionManager
             ? 0m
             : GetDecimal(signal.Parameters, "targetPrice");
 
-        var orderId = await executionEngine.PlaceOrderAsync(
+        await PlaceAndLogOrderAsync(
+            executionEngine,
             new OrderRequest
             {
                 Symbol = signal.Symbol,
@@ -156,17 +178,27 @@ public sealed class BacktestPositionManager : IPositionManager
                 TradeType = TradeType.TakeProfit,
                 GridCycleId = gridCycleId
             },
+            gridCycleId,
             cancellationToken);
+    }
+
+    private async Task PlaceAndLogOrderAsync(
+        Backtesting.Services.SimulatedExecutionEngine executionEngine,
+        OrderRequest orderRequest,
+        string gridCycleId,
+        CancellationToken cancellationToken)
+    {
+        var orderId = await executionEngine.PlaceOrderAsync(orderRequest, cancellationToken);
 
         _auditCollector.LogOrderEvent(new OrderEventEntry
         {
             TimestampUtc = _executionContextAccessor.CurrentTimestampUtc,
             EventType = OrderEventType.Placed,
             OrderId = orderId,
-            Side = OrderSide.Sell.ToString(),
-            OrderType = orderType.ToString(),
-            Price = targetPrice,
-            Size = size,
+            Side = orderRequest.Side.ToString(),
+            OrderType = orderRequest.OrderType.ToString(),
+            Price = orderRequest.Price,
+            Size = orderRequest.Size,
             GridCycleId = gridCycleId
         });
     }
@@ -235,6 +267,16 @@ public sealed class BacktestPositionManager : IPositionManager
         var value = GetRequiredValue(parameters, key);
         return value.ToString()
             ?? throw new InvalidOperationException($"Signal parameter '{key}' could not be converted to a string.");
+    }
+
+    private static string? GetOptionalString(IReadOnlyDictionary<string, object>? parameters, string key)
+    {
+        if (parameters is null || !parameters.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value.ToString();
     }
 
     private static string GetGridCycleId(IReadOnlyDictionary<string, object>? parameters)

@@ -61,9 +61,14 @@ export class BacktestResultComponent {
   }
 
   public get entryModeLabel(): string {
-    return this.result.strategyConfig.entryMode === "WaitForLimitPrice"
-      ? "Wait for limit price"
-      : "Auto from signal candle";
+    switch (this.result.strategyConfig.entryMode) {
+      case "WaitForLimitPrice":
+        return "Wait for limit price";
+      case "InitialMarketThenGrid":
+        return "Initial market buy, then grid";
+      default:
+        return "Auto from signal candle";
+    }
   }
 
   public get limitPriceLabel(): string {

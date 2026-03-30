@@ -2,6 +2,7 @@ using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
+using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 
@@ -135,6 +136,58 @@ public sealed class RealBacktestRunnerTests
         result.GridCycleLog![0].LevelsPlaced.Should().Be(1);
         result.GridCycleLog![0].LevelsFilled.Should().Be(1);
         result.GridCycleLog![0].StopLossPrice.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenInitialMarketThenGridEntryMode_WhenRunCompletes_ThenFirstTrancheOpensAtMarketAndCycleStillCloses()
+    {
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = (12 * OneHourMs) + (3 * FifteenMinutesMs),
+            InitialCapital = 10_000m,
+            FeeModel = FeeModel.Default,
+            WarmupPeriod = 2,
+            StrategyConfigJson = "{\"gridLevels\":2,\"entryMode\":\"InitialMarketThenGrid\",\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
+            EnableAuditLog = true,
+        };
+
+        SetupCandles("15m",
+        [
+            CreateCandle("15m", config.StartDateUtc - (2 * FifteenMinutesMs), 100m, 101m, 99.5m, 100m),
+            CreateCandle("15m", config.StartDateUtc - FifteenMinutesMs, 100m, 100.5m, 99.8m, 100m),
+            CreateCandle("15m", config.StartDateUtc, 100m, 100.2m, 99.9m, 100m),
+            CreateCandle("15m", config.StartDateUtc + FifteenMinutesMs, 100m, 100.4m, 99.8m, 100.2m),
+            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 100.3m, 101.5m, 100.1m, 101.1m),
+        ]);
+
+        SetupCandles("1h",
+        [
+            CreateCandle("1h", 10 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 11 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 12 * OneHourMs, 100m, 101m, 99m, 100m),
+        ]);
+
+        SetupCandles("4h",
+        [
+            CreateCandle("4h", OneHourMs * 4, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", OneHourMs * 8, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", OneHourMs * 12, 100m, 101m, 99m, 100m),
+        ]);
+
+        var result = await _sut.RunAsync(config);
+
+        result.TotalTrades.Should().Be(1);
+        result.TradeLog.Should().ContainSingle(trade => trade.ExitTimeUtc.HasValue);
+        result.TradeLog[0].EntryPrice.Should().Be(100.2m);
+        result.TradeLog[0].EntryTimeUtc.Should().Be(config.StartDateUtc + FifteenMinutesMs);
+        result.TradeLog[0].TradeType.Should().Be(TradeType.GridFill);
+        result.GridCycleLog.Should().ContainSingle();
+        result.GridCycleLog![0].LevelsPlaced.Should().Be(2);
+        result.GridCycleLog[0].LevelsFilled.Should().Be(1);
+        result.OrderEventLog.Should().Contain(entry => entry.EventType == OrderEventType.Placed && entry.OrderType == OrderType.Market.ToString() && entry.Side == OrderSide.Buy.ToString());
     }
 
     private void SetupCandles(string interval, IReadOnlyList<Candle> candles)

@@ -14,6 +14,7 @@ import {
   createSeriesMarkers,
   CrosshairMode,
   IChartApi,
+  IPriceLine,
   ISeriesApi,
   ISeriesMarkersPluginApi,
   SeriesMarker,
@@ -57,6 +58,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   private _candleSeries: ISeriesApi<"Candlestick"> | null = null;
   private _markersApi: ISeriesMarkersPluginApi<Time> | null = null;
   private _resizeObserver: ResizeObserver | null = null;
+  private _priceLines: IPriceLine[] = [];
 
   public get hasData(): boolean {
     return (this.debugData?.candleEvaluations.length ?? 0) > 0;
@@ -83,6 +85,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     this._resizeObserver = null;
     this._markersApi = null;
+    this._priceLines = [];
     this._candleSeries = null;
     this._chart = null;
 
@@ -182,13 +185,11 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       return;
     }
 
-    const existingLines = (this._candleSeries as unknown as { _priceLineIds?: string[] })._priceLineIds;
-    void existingLines;
+    for (const priceLine of this._priceLines) {
+      this._candleSeries.removePriceLine(priceLine);
+    }
 
-    // Lightweight-charts doesn't expose removePriceLine by reference easily;
-    // re-create fresh series if we need to clear. But since we set data fresh
-    // each time, the price lines accumulate. Instead, remove and re-add series.
-    // For simplicity we use createPriceLine which stacks — acceptable for <=12 lines.
+    this._priceLines = [];
   }
 
   private _addGridOverlay(summary: GridCycleSummary | null): void {
@@ -197,51 +198,56 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     // Anchor price line
-    this._candleSeries.createPriceLine({
+    this._priceLines.push(this._candleSeries.createPriceLine({
       price: summary.anchorPrice,
       color: "#f59e0b",
       lineWidth: 2,
       lineStyle: 0, // Solid
       axisLabelVisible: true,
       title: "Anchor"
-    });
+    }));
 
     // Grid level lines
     for (let i = 0; i < summary.levelPrices.length; i++) {
-      const isFilled = i < summary.levelsFilled;
-      this._candleSeries.createPriceLine({
+      const isFilled = this._isFilledLevel(summary, i);
+      this._priceLines.push(this._candleSeries.createPriceLine({
         price: summary.levelPrices[i],
         color: isFilled ? "#26a69a" : "rgba(96, 165, 250, 0.4)",
         lineWidth: 1,
         lineStyle: isFilled ? 0 : 2, // Solid if filled, dashed if not
         axisLabelVisible: false,
         title: isFilled ? `L${i + 1} ✓` : `L${i + 1}`
-      });
+      }));
     }
 
     // Take profit line
     if (summary.takeProfitPrice > 0) {
-      this._candleSeries.createPriceLine({
+      this._priceLines.push(this._candleSeries.createPriceLine({
         price: summary.takeProfitPrice,
         color: "#22c55e",
         lineWidth: 2,
         lineStyle: 2, // Dashed
         axisLabelVisible: true,
         title: "TP"
-      });
+      }));
     }
 
     // Stop loss line
     if (summary.stopLossPrice && summary.stopLossPrice > 0) {
-      this._candleSeries.createPriceLine({
+      this._priceLines.push(this._candleSeries.createPriceLine({
         price: summary.stopLossPrice,
         color: "#ef5350",
         lineWidth: 2,
         lineStyle: 2, // Dashed
         axisLabelVisible: true,
         title: "SL"
-      });
+      }));
     }
+  }
+
+  private _isFilledLevel(summary: GridCycleSummary, levelIndex: number): boolean {
+    const firstFilledIndex = Math.max(0, summary.levelPrices.length - summary.levelsFilled);
+    return levelIndex >= firstFilledIndex;
   }
 
   private _buildOrderMarkers(events: OrderEvent[]): SeriesMarker<Time>[] {

@@ -1,4 +1,4 @@
-export type BacktestEntryMode = "AutoFromSignalCandle" | "WaitForLimitPrice";
+export type BacktestEntryMode = "AutoFromSignalCandle" | "InitialMarketThenGrid" | "WaitForLimitPrice";
 
 export interface GridStrategyConfig {
   gridLevels: number;

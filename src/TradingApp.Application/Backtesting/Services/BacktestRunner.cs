@@ -332,48 +332,117 @@ public sealed class BacktestRunner : IBacktestRunner
             return;
         }
 
-        var openTrade = tradeLog.FirstOrDefault(trade =>
-            trade.ExitTimeUtc is null &&
-            IsCompatibleExit(trade, fill.TradeType));
+        var compatibleOpenTrades = tradeLog
+            .Where(trade =>
+                trade.ExitTimeUtc is null &&
+                string.Equals(trade.GridCycleId, gridCycleId, StringComparison.Ordinal) &&
+                IsCompatibleExit(trade, fill.TradeType))
+            .OrderBy(trade => trade.EntryTimeUtc)
+            .ToList();
 
-        if (openTrade is null)
+        if (compatibleOpenTrades.Count == 0)
         {
-            tradeLog.Add(new BacktestTrade
-            {
-                TradeId = fill.OrderId,
-                GridCycleId = gridCycleId,
-                EntryTimeUtc = fill.FillTimeUtc,
-                EntryPrice = fill.FillPrice,
-                ExitTimeUtc = null,
-                ExitPrice = null,
-                Side = fill.Side,
-                Size = fill.Size,
-                PnL = null,
-                Fees = fill.Fee,
-                TradeType = fill.TradeType
-            });
+            AppendOpenTrade(tradeLog, fill, gridCycleId, fill.Size, fill.Fee);
 
             return;
         }
 
-        var closedSize = Math.Min(openTrade.Size, fill.Size);
+        CloseCompatibleTrades(tradeLog, compatibleOpenTrades, fill, gridCycleId);
+    }
 
-        var pairedTrade = new BacktestTrade
+    private static void AppendOpenTrade(
+        List<BacktestTrade> tradeLog,
+        SimulatedFill fill,
+        string gridCycleId,
+        decimal size,
+        decimal fee)
+    {
+        tradeLog.Add(new BacktestTrade
         {
-            TradeId = openTrade.TradeId,
-            GridCycleId = openTrade.GridCycleId,
-            EntryTimeUtc = openTrade.EntryTimeUtc,
-            EntryPrice = openTrade.EntryPrice,
-            ExitTimeUtc = fill.FillTimeUtc,
-            ExitPrice = fill.FillPrice,
-            Side = openTrade.Side,
-            Size = closedSize,
-            PnL = CalculateTradePnl(openTrade.Side, openTrade.EntryPrice, fill.FillPrice, closedSize),
-            Fees = openTrade.Fees + fill.Fee,
-            TradeType = openTrade.TradeType
-        };
+            TradeId = fill.OrderId,
+            GridCycleId = gridCycleId,
+            EntryTimeUtc = fill.FillTimeUtc,
+            EntryPrice = fill.FillPrice,
+            ExitTimeUtc = null,
+            ExitPrice = null,
+            Side = fill.Side,
+            Size = size,
+            PnL = null,
+            Fees = fee,
+            TradeType = fill.TradeType
+        });
+    }
 
-        tradeLog[tradeLog.IndexOf(openTrade)] = pairedTrade;
+    private static void CloseCompatibleTrades(
+        List<BacktestTrade> tradeLog,
+        IReadOnlyList<BacktestTrade> compatibleOpenTrades,
+        SimulatedFill fill,
+        string gridCycleId)
+    {
+        var remainingSize = fill.Size;
+        var remainingFee = fill.Fee;
+
+        foreach (var openTrade in compatibleOpenTrades)
+        {
+            if (remainingSize <= 0m)
+            {
+                break;
+            }
+
+            var closedSize = Math.Min(openTrade.Size, remainingSize);
+            var allocatedExitFee = fill.Size > 0m
+                ? decimal.Round(fill.Fee * (closedSize / fill.Size), 12, MidpointRounding.AwayFromZero)
+                : 0m;
+
+            var pairedTrade = new BacktestTrade
+            {
+                TradeId = openTrade.TradeId,
+                GridCycleId = openTrade.GridCycleId,
+                EntryTimeUtc = openTrade.EntryTimeUtc,
+                EntryPrice = openTrade.EntryPrice,
+                ExitTimeUtc = fill.FillTimeUtc,
+                ExitPrice = fill.FillPrice,
+                Side = openTrade.Side,
+                Size = closedSize,
+                PnL = CalculateTradePnl(openTrade.Side, openTrade.EntryPrice, fill.FillPrice, closedSize),
+                Fees = openTrade.Fees + allocatedExitFee,
+                TradeType = openTrade.TradeType
+            };
+
+            var openTradeIndex = tradeLog.IndexOf(openTrade);
+            if (closedSize == openTrade.Size)
+            {
+                tradeLog[openTradeIndex] = pairedTrade;
+            }
+            else
+            {
+                var remainingOpenTrade = new BacktestTrade
+                {
+                    TradeId = openTrade.TradeId,
+                    GridCycleId = openTrade.GridCycleId,
+                    EntryTimeUtc = openTrade.EntryTimeUtc,
+                    EntryPrice = openTrade.EntryPrice,
+                    ExitTimeUtc = null,
+                    ExitPrice = null,
+                    Side = openTrade.Side,
+                    Size = openTrade.Size - closedSize,
+                    PnL = null,
+                    Fees = openTrade.Fees,
+                    TradeType = openTrade.TradeType
+                };
+
+                tradeLog[openTradeIndex] = remainingOpenTrade;
+                tradeLog.Insert(openTradeIndex + 1, pairedTrade);
+            }
+
+            remainingSize -= closedSize;
+            remainingFee -= allocatedExitFee;
+        }
+
+        if (remainingSize > 0m)
+        {
+            AppendOpenTrade(tradeLog, fill, gridCycleId, remainingSize, Math.Max(remainingFee, 0m));
+        }
     }
 
     private static bool IsCompatibleExit(BacktestTrade openTrade, TradeType exitTradeType)

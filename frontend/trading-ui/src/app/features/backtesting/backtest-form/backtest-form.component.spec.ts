@@ -78,6 +78,25 @@ describe("BacktestFormComponent", () => {
     }));
   });
 
+  it("should emit hybrid market-first entry mode without a manual anchor price", () => {
+    spyOn(component.runBacktest, "emit");
+    component.form.patchValue({
+      startDate: new Date("2024-01-01T00:00:00Z"),
+      endDate: new Date("2024-12-31T00:00:00Z"),
+      entryMode: "InitialMarketThenGrid",
+      manualAnchorPrice: null
+    });
+
+    component.onRunBacktest();
+
+    expect(component.runBacktest.emit).toHaveBeenCalledWith(jasmine.objectContaining({
+      strategyConfig: jasmine.objectContaining({
+        entryMode: "InitialMarketThenGrid",
+        manualAnchorPrice: null
+      })
+    }));
+  });
+
   it("should require limit price when wait for limit price mode is selected", () => {
     component.form.patchValue({
       startDate: new Date("2024-01-01T00:00:00Z"),

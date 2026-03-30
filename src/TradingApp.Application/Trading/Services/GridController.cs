@@ -111,6 +111,7 @@ public sealed class GridController : IGridController
                     ["gridSpacingPercent"] = gridSpacingPercent,
                     ["notionalPerLevel"] = positionSize,
                     ["gridCycleId"] = gridState.GridCycleId,
+                    ["entryMode"] = entryMode,
                 }
             }
         ]);

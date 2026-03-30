@@ -64,13 +64,14 @@ export class CycleNarrativeComponent implements OnChanges {
     });
 
     // 3. Fills
-    const fillLines = this._buildFillLines(summary, events);
+    const buyFillEvents = this._getBuyFillEvents(events);
+    const fillLines = this._buildFillLines(summary, buyFillEvents);
     for (const line of fillLines) {
       lines.push(line);
     }
 
     // 4. Exit
-    const exitLine = this._buildExitLine(summary);
+    const exitLine = this._buildExitLine(summary, buyFillEvents);
     lines.push(exitLine);
     this.exitIcon = exitLine.icon;
     this.exitClass = exitLine.cssClass;
@@ -88,7 +89,7 @@ export class CycleNarrativeComponent implements OnChanges {
   private _buildDeploymentLine(summary: GridCycleSummary): string {
     const deployDate = this._formatTimestamp(summary.deployTimestampUtc);
     const anchor = this._formatPrice(summary.anchorPrice);
-    return `Grid deployed on ${deployDate} with anchor price at ${anchor}.`;
+    return `Grid deployed on ${deployDate} with anchor price at ${anchor}. This placed resting buy orders below the market; no position opens until a buy level fills.`;
   }
 
   private _buildGridStructureLine(summary: GridCycleSummary): string {
@@ -103,13 +104,19 @@ export class CycleNarrativeComponent implements OnChanges {
     return `${levels} buy levels placed from ${lowest} to ${highest}.${tp}${sl}`;
   }
 
-  private _buildFillLines(summary: GridCycleSummary, events: OrderEvent[]): NarrativeLine[] {
-    const fills = events.filter((e: OrderEvent) => e.eventType === OrderEventType.Filled && e.side === "Buy");
-
+  private _buildFillLines(summary: GridCycleSummary, fills: OrderEvent[]): NarrativeLine[] {
     if (fills.length === 0) {
+      if (summary.levelsFilled > 0) {
+        return [{
+          icon: "shopping_cart",
+          text: this._buildSummaryFillFallback(summary),
+          cssClass: "narrative__line--fill"
+        }];
+      }
+
       return [{
         icon: "hourglass_empty",
-        text: "No grid levels were filled before exit.",
+        text: "No grid levels were filled before exit. Price never traded down to the resting buy levels.",
         cssClass: "narrative__line--muted"
       }];
     }
@@ -118,9 +125,12 @@ export class CycleNarrativeComponent implements OnChanges {
       const fill = fills[0];
       const fillPrice = this._formatPrice(fill.fillPrice ?? fill.price);
       const fillDate = this._formatTimestamp(fill.timestampUtc);
+      const isMarketFill = fill.orderType === "Market";
       return [{
         icon: "shopping_cart",
-        text: `Price dropped to ${fillPrice} on ${fillDate}, filling level 1 of ${summary.levelsPlaced}.`,
+        text: isMarketFill
+          ? `First position opened on ${fillDate} with an initial market buy at ${fillPrice}, filling level 1 of ${summary.levelsPlaced}.`
+          : `First position opened on ${fillDate} when price dropped to ${fillPrice}, filling level 1 of ${summary.levelsPlaced}.`,
         cssClass: "narrative__line--fill"
       }];
     }
@@ -133,44 +143,63 @@ export class CycleNarrativeComponent implements OnChanges {
 
     const lines: NarrativeLine[] = [{
       icon: "shopping_cart",
-      text: `${fills.length} of ${summary.levelsPlaced} levels filled between ${firstDate} and ${lastDate}, buying down to ${lowestFill}.`,
+      text: `First position opened on ${firstDate}. ${fills.length} of ${summary.levelsPlaced} levels filled by ${lastDate}, buying down to ${lowestFill}.`,
       cssClass: "narrative__line--fill"
     }];
 
     return lines;
   }
 
-  private _buildExitLine(summary: GridCycleSummary): NarrativeLine {
+  private _buildSummaryFillFallback(summary: GridCycleSummary): string {
+    return summary.levelsFilled === 1
+      ? `1 of ${summary.levelsPlaced} levels filled before exit.`
+      : `${summary.levelsFilled} of ${summary.levelsPlaced} levels filled before exit.`;
+  }
+
+  private _buildExitLine(summary: GridCycleSummary, fills: OrderEvent[]): NarrativeLine {
     const closeDate = this._formatTimestamp(summary.closeTimestampUtc);
-    const duration = this._formatDuration(summary.cycleDurationMs);
+    const cycleDuration = this._formatDuration(summary.cycleDurationMs);
+    const firstFillTimestamp = fills.length > 0 ? fills[0].timestampUtc : null;
+    const holdDuration = firstFillTimestamp === null
+      ? null
+      : this._formatDuration(Math.max(0, summary.closeTimestampUtc - firstFillTimestamp));
+    const durationSuffix = holdDuration === null
+      ? ` after ${cycleDuration}.`
+      : ` after ${cycleDuration} of cycle time. The open position had been active for ${holdDuration}.`;
     const reason = summary.exitReason;
 
     switch (reason) {
       case "TakeProfit":
         return {
           icon: "emoji_events",
-          text: `Take profit hit on ${closeDate} after ${duration}. Price reached ${this._formatPrice(summary.takeProfitPrice)}.`,
+          text: `Take profit hit on ${closeDate}${durationSuffix} Price reached ${this._formatPrice(summary.takeProfitPrice)}.`,
           cssClass: "narrative__line--profit"
         };
       case "StopLoss":
         return {
           icon: "shield",
-          text: `Stop loss triggered on ${closeDate} after ${duration}.`,
+          text: `Stop loss triggered on ${closeDate}${durationSuffix}`,
           cssClass: "narrative__line--loss"
         };
       case "Breakdown":
         return {
           icon: "trending_down",
-          text: `Grid broke down on ${closeDate} after ${duration}. Price fell below breakdown threshold.`,
+          text: `Grid broke down on ${closeDate}${durationSuffix} Price fell below breakdown threshold.`,
           cssClass: "narrative__line--loss"
         };
       default:
         return {
           icon: "logout",
-          text: `Grid closed on ${closeDate} after ${duration}. Reason: ${reason}.`,
+          text: `Grid closed on ${closeDate}${durationSuffix} Reason: ${reason}.`,
           cssClass: "narrative__line--muted"
         };
     }
+  }
+
+  private _getBuyFillEvents(events: OrderEvent[]): OrderEvent[] {
+    return events
+      .filter((event: OrderEvent) => event.eventType === OrderEventType.Filled && event.side === "Buy")
+      .sort((left: OrderEvent, right: OrderEvent) => left.timestampUtc - right.timestampUtc);
   }
 
   private _buildResultLine(summary: GridCycleSummary): string {

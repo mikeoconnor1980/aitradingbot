@@ -189,7 +189,14 @@ export class BacktestCompareComponent implements OnChanges {
   }
 
   private _formatEntryMode(value: string | null | undefined): string {
-    return value === "WaitForLimitPrice" ? "Wait for limit price" : "Auto from signal candle";
+    switch (value) {
+      case "WaitForLimitPrice":
+        return "Wait for limit price";
+      case "InitialMarketThenGrid":
+        return "Initial market buy, then grid";
+      default:
+        return "Auto from signal candle";
+    }
   }
 
   private _formatLimitPrice(entryMode: string | null | undefined, value: number | null | undefined): string {

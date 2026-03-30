@@ -1,3 +1,4 @@
+using System.Reflection;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Abstractions.Exceptions;
@@ -191,6 +192,40 @@ public sealed class BacktestRunnerTests
         result.GridCycleLog.Should().BeNull();
     }
 
+    [TestMethod]
+    public void GivenExitFillFromDifferentCycle_WhenRecordFill_ThenOnlyMatchingCycleTradeIsClosed()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { GridCycleId = "cycle-b", TotalLevels = 10 };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-a", "cycle-a", OrderSide.Buy, TradeType.GridFill, 100m, 1m, 0.01m, 1_000));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-b", "cycle-b", OrderSide.Buy, TradeType.GridFill, 101m, 1m, 0.01m, 2_000));
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("tp-b", "cycle-b", OrderSide.Sell, TradeType.TakeProfit, 105m, 1m, 0.01m, 3_000));
+
+        tradeLog.Should().ContainSingle(trade => trade.GridCycleId == "cycle-a" && trade.ExitTimeUtc == null);
+        tradeLog.Should().ContainSingle(trade =>
+            trade.GridCycleId == "cycle-b" &&
+            trade.ExitTimeUtc == 3_000 &&
+            trade.PnL == 4m);
+    }
+
+    [TestMethod]
+    public void GivenExitFillClosesMultipleLevels_WhenRecordFill_ThenAllMatchingTradesReceivePnL()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { GridCycleId = "cycle-1", TotalLevels = 10 };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-1", "cycle-1", OrderSide.Buy, TradeType.GridFill, 100m, 1m, 0.01m, 1_000));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-2", "cycle-1", OrderSide.Buy, TradeType.GridFill, 98m, 2m, 0.02m, 2_000));
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("tp-1", "cycle-1", OrderSide.Sell, TradeType.TakeProfit, 105m, 3m, 0.03m, 3_000));
+
+        tradeLog.Should().HaveCount(2);
+        tradeLog.Should().OnlyContain(trade => trade.ExitTimeUtc == 3_000);
+        tradeLog.Sum(trade => trade.PnL).Should().Be(19m);
+    }
+
     private void SetupCandles(BacktestConfig config)
     {
         var first15mTimestamp = config.StartDateUtc - (config.WarmupPeriod * FifteenMinutesMs);
@@ -261,5 +296,38 @@ public sealed class BacktestRunnerTests
                 1_000m,
                 10))
             .ToList();
+    }
+
+    private static void InvokeRecordFill(List<BacktestTrade> tradeLog, GridState gridState, SimulatedFill fill)
+    {
+        var method = typeof(BacktestRunner).GetMethod("RecordFill", BindingFlags.NonPublic | BindingFlags.Static);
+        method.Should().NotBeNull();
+
+        method!.Invoke(null, [tradeLog, gridState, fill]);
+    }
+
+    private static SimulatedFill CreateFill(
+        string orderId,
+        string cycleId,
+        OrderSide side,
+        TradeType tradeType,
+        decimal fillPrice,
+        decimal size,
+        decimal fee,
+        long fillTimeUtc)
+    {
+        return new SimulatedFill
+        {
+            OrderId = orderId,
+            FillTimeUtc = fillTimeUtc,
+            FillPrice = fillPrice,
+            Side = side,
+            Size = size,
+            Fee = fee,
+            Symbol = "BTC",
+            TradeType = tradeType,
+            GridCycleId = cycleId,
+            IsMaker = tradeType == TradeType.GridFill
+        };
     }
 }

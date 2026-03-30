@@ -103,7 +103,7 @@ export class BacktestFormComponent implements OnChanges {
     interval1h: "Include 1 hour candles for the bias timeframe.",
     interval4h: "Include 4 hour candles for the trend timeframe.",
     gridLevels: "Controls how many staggered entries can be placed in one grid.",
-    entryMode: "Defines whether the grid anchors automatically or waits for a manual limit price.",
+    entryMode: "Defines whether the grid waits below the signal candle, opens the first tranche at market before laddering in, or waits for a manual limit price.",
     manualAnchorPrice: "The grid waits until price trades through this level before deploying.",
     gridSpacing: "Sets the percentage gap between each grid level.",
     takeProfitPercent: "Closes the grid when price reaches this profit percentage from average entry.",
@@ -141,6 +141,7 @@ export class BacktestFormComponent implements OnChanges {
   public readonly symbols = ["BTC", "ETH", "SOL", "DOGE", "ARB", "OP"];
   public readonly entryModes: { value: BacktestEntryMode; label: string }[] = [
     { value: "AutoFromSignalCandle", label: "Auto from signal candle" },
+    { value: "InitialMarketThenGrid", label: "Initial market buy, then grid" },
     { value: "WaitForLimitPrice", label: "Wait for limit price" }
   ];
   public readonly form: FormGroup<BacktestFormModel> = this._fb.group({

@@ -104,4 +104,19 @@ describe("BacktestCompareComponent", () => {
 
     expect(pnlRow?.deltaClass).toBe("backtest-compare__delta--neutral");
   });
+
+  it("formats the hybrid entry mode label in config diffs", () => {
+    fixture.componentRef.setInput("resultA", createResult({
+      id: "run-a",
+      strategyConfig: {
+        ...createResult({}).strategyConfig,
+        entryMode: "InitialMarketThenGrid"
+      }
+    }));
+    fixture.detectChanges();
+
+    const entryModeItem = component.configDiffs.find((item) => item.label === "Entry Mode");
+
+    expect(entryModeItem?.valueA).toBe("Initial market buy, then grid");
+  });
 });
