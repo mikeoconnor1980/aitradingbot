@@ -41,6 +41,24 @@
     padding: 1rem;
   }
 
+  &__info-button {
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    color: var(--colour-label);
+
+    .mat-icon {
+      width: 1rem;
+      height: 1rem;
+      font-size: 1rem;
+      line-height: 1rem;
+    }
+
+    &[aria-pressed="true"] {
+      color: var(--colour-accent-primary);
+    }
+  }
+
   &__error {
     grid-column: 1 / -1;
     margin: 0;

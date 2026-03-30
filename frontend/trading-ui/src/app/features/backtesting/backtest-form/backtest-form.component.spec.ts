@@ -168,4 +168,25 @@ describe("BacktestFormComponent", () => {
     expect(component.form.hasError("serverDateRange")).toBeTrue();
     expect(component.getDateRangeErrorMessage()).toContain("endDate");
   });
+
+  it("should toggle contextual help for a field when the info icon is clicked", () => {
+    const event = new MouseEvent("click");
+
+    component.onToggleHelp("gridLevels", event);
+    expect(component.isHelpVisible("gridLevels")).toBeTrue();
+    expect(component.getHelpText("gridLevels")).toContain("staggered entries");
+
+    component.onToggleHelp("gridLevels", event);
+    expect(component.isHelpVisible("gridLevels")).toBeFalse();
+  });
+
+  it("should only keep one field help panel open at a time", () => {
+    const event = new MouseEvent("click");
+
+    component.onToggleHelp("gridLevels", event);
+    component.onToggleHelp("takeProfitPercent", event);
+
+    expect(component.isHelpVisible("gridLevels")).toBeFalse();
+    expect(component.isHelpVisible("takeProfitPercent")).toBeTrue();
+  });
 });

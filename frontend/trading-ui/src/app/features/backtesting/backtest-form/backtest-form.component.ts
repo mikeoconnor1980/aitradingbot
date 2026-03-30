@@ -7,6 +7,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatDatepickerModule } from "@angular/material/datepicker";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSelectModule } from "@angular/material/select";
@@ -85,6 +86,7 @@ function limitPriceValidator(control: AbstractControl): ValidationErrors | null 
     MatDatepickerModule,
     MatDividerModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule
@@ -93,6 +95,28 @@ function limitPriceValidator(control: AbstractControl): ValidationErrors | null 
   styleUrl: "./backtest-form.component.scss"
 })
 export class BacktestFormComponent implements OnChanges {
+  private static readonly HELP_TEXT: Record<BacktestControlName, string> = {
+    symbol: "Choose which market the backtest should run against.",
+    startDate: "Set the UTC date where the replay window begins.",
+    endDate: "Set the UTC date where the replay window ends.",
+    interval15m: "Include 15 minute candles for the trigger timeframe.",
+    interval1h: "Include 1 hour candles for the bias timeframe.",
+    interval4h: "Include 4 hour candles for the trend timeframe.",
+    gridLevels: "Controls how many staggered entries can be placed in one grid.",
+    entryMode: "Defines whether the grid anchors automatically or waits for a manual limit price.",
+    manualAnchorPrice: "The grid waits until price trades through this level before deploying.",
+    gridSpacing: "Sets the percentage gap between each grid level.",
+    takeProfitPercent: "Closes the grid when price reaches this profit percentage from average entry.",
+    breakdownThreshold: "Triggers the defensive breakdown logic once price moves this far against the grid.",
+    makerFee: "Applies the exchange maker fee rate to passive fills in the simulation.",
+    takerFee: "Applies the exchange taker fee rate to aggressive fills in the simulation.",
+    slippage: "Adds an execution slippage rate on top of the modelled fill price.",
+    positionSize: "Defines the dollar exposure allocated to each deployed grid.",
+    leverage: "Sets the leverage used to calculate position margin and exposure.",
+    stopLossPercent: "Exits the grid when price moves this percentage beyond the stop level.",
+    initialCapital: "Sets the starting account balance used for the backtest results."
+  };
+
   private readonly _fb = inject(FormBuilder);
   private readonly _destroyRef = inject(DestroyRef);
 
@@ -144,6 +168,7 @@ export class BacktestFormComponent implements OnChanges {
   });
   public submitted = false;
   public formLevelError: string | null = null;
+  public activeHelpField: BacktestControlName | null = null;
 
   public constructor() {
     this.form.valueChanges
@@ -220,6 +245,14 @@ export class BacktestFormComponent implements OnChanges {
     return "Invalid value.";
   }
 
+  public getHelpText(controlName: BacktestControlName): string {
+    return BacktestFormComponent.HELP_TEXT[controlName];
+  }
+
+  public isHelpVisible(controlName: BacktestControlName): boolean {
+    return this.activeHelpField === controlName;
+  }
+
   public getDateRangeErrorMessage(): string {
     if (this.form.hasError("serverDateRange")) {
       return this.validationErrorMessage ?? "End date must be after start date.";
@@ -286,6 +319,12 @@ export class BacktestFormComponent implements OnChanges {
       startDate: formValue.startDate!.toISOString(),
       endDate: formValue.endDate!.toISOString()
     });
+  }
+
+  public onToggleHelp(controlName: BacktestControlName, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.activeHelpField = this.activeHelpField === controlName ? null : controlName;
   }
 
   public getSelectedIntervals(): string[] {
