@@ -221,6 +221,11 @@ PublishScripts/
 
 # Hyperliquid POC - development config with private keys
 appsettings.Development.json
+
+# SQLite runtime sidecar files
+*.db-shm
+*.db-wal
+
 # NuGet v3's project.json files produces more ignorable files
 *.nuget.props
 *.nuget.targets
