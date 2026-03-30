@@ -7,12 +7,26 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
-| [ ] | *(none yet)* | — | — |
+| [ ] | Strategy selection — multiple types available for backtesting (Recovery Grid, DCA, Trend, etc.) | 30 Mar 2026 | — |
+| [ ] | Save and name strategies per user account | 30 Mar 2026 | — |
+| [ ] | Execute a saved strategy (live trading) | 30 Mar 2026 | — |
+| [ ] | Multiple Hyperliquid accounts on dashboard | 30 Mar 2026 | — |
+| [ ] | User account can have multiple wallets across multiple exchanges | 30 Mar 2026 | — |
+| [ ] | Select account for trade executions | 30 Mar 2026 | — |
+| [ ] | Rebalance between accounts / to a target ratio | 30 Mar 2026 | — |
 
 ## Improvements
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
+| [ ] | Show trades on main chart | 30 Mar 2026 | — |
+| [ ] | Show indicators on main chart | 30 Mar 2026 | — |
+| [ ] | Backtest run deletion / archival | 30 Mar 2026 | — |
+| [ ] | Trigger backtest data sync from the UI | 30 Mar 2026 | — |
+| [ ] | Update backtest data since last entry (incremental sync) | 30 Mar 2026 | — |
+| [ ] | Automatic hourly job to append new backtest data | 30 Mar 2026 | — |
+| [ ] | Export trades to CSV | 30 Mar 2026 | — |
+| [ ] | All times displayed in UTC | 30 Mar 2026 | — |
 | [ ] | Change all dates throughout the project to use `DD Month YYYY - HH:MM` format | 29 Mar 2026 | [pbi-draft-date-format-standardization](../3-develop/backlog/draft/pbi-draft-date-format-standardization.md) |
 | [ ] | Dashboard: show liquidation price in the grid | 29 Mar 2026 | [pbi-draft-dashboard-liquidation-price](../3-develop/backlog/draft/pbi-draft-dashboard-liquidation-price.md) |
 | [ ] | SL/TP modal: display liquidation price and live asset price | 29 Mar 2026 | [pbi-draft-sltp-modal-liquidation-live-price](../3-develop/backlog/draft/pbi-draft-sltp-modal-liquidation-live-price.md) |
