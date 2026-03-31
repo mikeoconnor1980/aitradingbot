@@ -14,6 +14,7 @@
 | [ ] | User account can have multiple wallets across multiple exchanges | 30 Mar 2026 | — |
 | [ ] | Select account for trade executions | 30 Mar 2026 | — |
 | [ ] | Rebalance between accounts / to a target ratio | 30 Mar 2026 | — |
+| [ ] | Pine Script (TV script) parser, chart indicator draw and signal execution (additional strategies) | 31 Mar 2026 | — |
 
 ## Improvements
 
