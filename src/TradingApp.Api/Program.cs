@@ -20,8 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<TradingApp.Application.Abstractions.Commands.Command>());
 
-// AutoMapper - scan Application assembly for profiles
-builder.Services.AddAutoMapper(typeof(GetMarketInfoQuery).Assembly);
+
 
 // Identity stub (replace with real auth service in production)
 builder.Services.AddSingleton<IdentityService>();
