@@ -18,7 +18,7 @@
 
     <mat-card class="backtest-result__card">
       <mat-card-header>
-        <mat-card-title>Win Rate</mat-card-title>
+        <mat-card-title>Lot Win Rate</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <span>{{ result.winRate | number: "1.1-1" }}%</span>
@@ -37,7 +37,7 @@
 
     <mat-card class="backtest-result__card">
       <mat-card-header>
-        <mat-card-title>Total Trades</mat-card-title>
+        <mat-card-title>Trade Lots</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <span>{{ result.totalTrades }}</span>
@@ -46,7 +46,7 @@
 
     <mat-card class="backtest-result__card">
       <mat-card-header>
-        <mat-card-title>Avg Trade PnL</mat-card-title>
+        <mat-card-title>Avg Lot PnL</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <span [class]="averageTradePnlClass">${{ result.averageTradePnl | number: "1.2-2" }}</span>
@@ -57,7 +57,7 @@
   <div class="backtest-result__cards backtest-result__cards--secondary">
     <mat-card class="backtest-result__card">
       <mat-card-header>
-        <mat-card-title>Winning Trades</mat-card-title>
+        <mat-card-title>Winning Lots</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <span class="backtest-result__value--profit">{{ result.winningTrades }}</span>
@@ -66,7 +66,7 @@
 
     <mat-card class="backtest-result__card">
       <mat-card-header>
-        <mat-card-title>Losing Trades</mat-card-title>
+        <mat-card-title>Losing Lots</mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <span class="backtest-result__value--loss">{{ result.losingTrades }}</span>
@@ -99,6 +99,10 @@
         <span class="backtest-result__value--loss">${{ result.totalFeesPaid | number: "1.2-2" }}</span>
       </mat-card-content>
     </mat-card>
+  </div>
+
+  <div class="backtest-result__metric-note">
+    Trade metrics are counted per trade lot. Each filled grid level becomes its own lot, while cycle outcomes are summarized in the Grid Cycles tab.
   </div>
 
   <mat-card class="backtest-result__config">

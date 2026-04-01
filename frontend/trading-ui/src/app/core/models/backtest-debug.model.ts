@@ -7,7 +7,7 @@ export enum OrderEventType {
 
 export enum CancellationReason {
   GridRedeployed = "GridRedeployed",
-  PositionOpened = "PositionOpened",
+  TakeProfitTriggered = "TakeProfitTriggered",
   StopLossTriggered = "StopLossTriggered",
   ManualCancel = "ManualCancel"
 }

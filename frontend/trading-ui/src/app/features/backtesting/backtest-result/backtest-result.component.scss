@@ -44,6 +44,17 @@
     color: var(--colour-muted);
   }
 
+  &__metric-note {
+    margin: 0 0 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 12px;
+    background: var(--colour-surface-alt);
+    color: var(--colour-muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
   &__config {
     border: 1px solid var(--colour-border-subtle);
     background: var(--colour-surface-dark);

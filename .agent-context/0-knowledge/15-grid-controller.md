@@ -22,9 +22,12 @@ GridController is responsible for:
 
 - creating grid plans using GridPlanner
 - managing GridLifecycle transitions
-- updating GridState when fills occur
 - emitting trading signals
 - resetting grid after completion
+
+Execution fills update `GridState.FilledLevels` and move the runtime into
+`PartiallyFilled` or `FullyFilled`. The controller then decides whether the cycle
+stays active, transitions to `Closing`, or waits for the next candle.
 
 It acts as the central brain of the grid system.
 
@@ -87,6 +90,15 @@ Closed
 
 The controller determines which transitions are allowed.
 
+Operational flow with the current backtest/live runtime:
+
+- `Inactive` or `Closed` -> `Deploying` when a fresh setup is detected
+- `Deploying` -> `PartiallyFilled` / `FullyFilled` when execution reports fills
+- `PartiallyFilled` -> stays active while remaining ladder levels are still working
+- `PartiallyFilled` -> `Closing` only when candle-close take profit or stop loss triggers
+- `FullyFilled` -> `Closing` when the controller places the full-position take-profit order
+- `Closing` -> `Closed` when the exit order fills
+
 ---
 
 # Inputs
@@ -141,6 +153,13 @@ PositionManager ensures:
 - hedge consistency
 - correct position sizing
 - order reconciliation
+
+For partial fills, the controller does not immediately replace the ladder with a
+persistent sell order. Remaining buy levels stay open, average entry can continue to
+improve, and the controller checks candle close against the dynamic take-profit level
+computed from the latest average entry. Once the cycle is fully filled, the controller
+reverts to the standard closing flow and the PositionManager places a single limit
+take-profit order for the whole position.
 
 The controller does not directly manage orders.
 

@@ -749,7 +749,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
                     OrderType = "Limit",
                     Price = 42150m,
                     Size = 0.01m,
-                    CancellationReason = CancellationReason.PositionOpened,
+                    CancellationReason = CancellationReason.TakeProfitTriggered,
                     GridCycleId = "cycle-2",
                 },
             ]),

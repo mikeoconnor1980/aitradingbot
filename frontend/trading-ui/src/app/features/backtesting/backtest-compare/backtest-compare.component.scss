@@ -95,6 +95,13 @@
     color: var(--colour-muted);
   }
 
+  &__section-copy {
+    margin: 0 0 1rem;
+    color: var(--colour-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
   &__table-wrapper {
     overflow-x: auto;
   }

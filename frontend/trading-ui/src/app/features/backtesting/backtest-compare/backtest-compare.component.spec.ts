@@ -77,6 +77,9 @@ describe("BacktestCompareComponent", () => {
   it("renders comparison rows", () => {
     expect(component.comparisonRows.length).toBe(10);
     expect(fixture.nativeElement.textContent).toContain("Metrics Comparison");
+    expect(fixture.nativeElement.textContent).toContain("Trade metrics below are counted per trade lot");
+    expect(component.comparisonRows.some((row) => row.metric === "Trade Lots")).toBeTrue();
+    expect(component.comparisonRows.some((row) => row.metric === "Winning Lots")).toBeTrue();
   });
 
   it("marks pnl delta as better when run A is higher", () => {

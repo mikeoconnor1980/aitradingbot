@@ -13,5 +13,6 @@ public sealed class SimulatedFill
     public required string Symbol { get; init; }
     public required TradeType TradeType { get; init; }
     public string? GridCycleId { get; init; }
+    public CancellationReason? CloseReason { get; init; }
     public bool IsMaker { get; init; }
 }

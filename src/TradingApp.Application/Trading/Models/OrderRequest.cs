@@ -1,3 +1,5 @@
+using TradingApp.Application.Backtesting.Models;
+
 namespace TradingApp.Application.Trading.Models;
 
 public sealed class OrderRequest
@@ -10,5 +12,6 @@ public sealed class OrderRequest
     public required decimal Size { get; init; }
     public required TradeType TradeType { get; init; }
     public string? GridCycleId { get; init; }
+    public CancellationReason? CloseReason { get; init; }
     public string? ClientOrderId { get; init; }
 }

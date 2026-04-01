@@ -47,6 +47,8 @@ describe("BacktestListComponent", () => {
     expect(backtestService.getBacktestList).toHaveBeenCalled();
     expect(component.results.length).toBe(1);
     expect(fixture.nativeElement.textContent).toContain("BTC");
+    expect(fixture.nativeElement.textContent).toContain("Trade Lots");
+    expect(fixture.nativeElement.textContent).toContain("Lot Win Rate");
   });
 
   it("limits selection to two runs", () => {

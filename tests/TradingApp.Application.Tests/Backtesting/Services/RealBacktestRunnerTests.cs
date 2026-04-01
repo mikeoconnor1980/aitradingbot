@@ -146,7 +146,7 @@ public sealed class RealBacktestRunnerTests
             Symbol = "BTC",
             Intervals = ["15m", "1h", "4h"],
             StartDateUtc = 12 * OneHourMs,
-            EndDateUtc = (12 * OneHourMs) + (3 * FifteenMinutesMs),
+            EndDateUtc = (12 * OneHourMs) + (4 * FifteenMinutesMs),
             InitialCapital = 10_000m,
             FeeModel = FeeModel.Default,
             WarmupPeriod = 2,
@@ -160,7 +160,8 @@ public sealed class RealBacktestRunnerTests
             CreateCandle("15m", config.StartDateUtc - FifteenMinutesMs, 100m, 100.5m, 99.8m, 100m),
             CreateCandle("15m", config.StartDateUtc, 100m, 100.2m, 99.9m, 100m),
             CreateCandle("15m", config.StartDateUtc + FifteenMinutesMs, 100m, 100.4m, 99.8m, 100.2m),
-            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 100.3m, 101.5m, 100.1m, 101.1m),
+            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 100.3m, 101.5m, 100.1m, 101.3m),
+            CreateCandle("15m", config.StartDateUtc + (3 * FifteenMinutesMs), 101.3m, 101.6m, 101.0m, 101.4m),
         ]);
 
         SetupCandles("1h",
@@ -187,7 +188,170 @@ public sealed class RealBacktestRunnerTests
         result.GridCycleLog.Should().ContainSingle();
         result.GridCycleLog![0].LevelsPlaced.Should().Be(2);
         result.GridCycleLog[0].LevelsFilled.Should().Be(1);
+        result.GridCycleLog[0].ExitReason.Should().Be("TakeProfit");
         result.OrderEventLog.Should().Contain(entry => entry.EventType == OrderEventType.Placed && entry.OrderType == OrderType.Market.ToString() && entry.Side == OrderSide.Buy.ToString());
+        result.OrderEventLog.Should().Contain(entry => entry.EventType == OrderEventType.Cancelled && entry.CancellationReason == CancellationReason.TakeProfitTriggered);
+    }
+
+    [TestMethod]
+    public async Task GivenMultiLevelGrid_WhenPartialFillsAccumulate_ThenLadderRemainsActiveUntilTakeProfitClosesCycle()
+    {
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = (12 * OneHourMs) + (7 * FifteenMinutesMs),
+            InitialCapital = 10_000m,
+            FeeModel = FeeModel.Default,
+            WarmupPeriod = 2,
+            StrategyConfigJson = "{\"gridLevels\":5,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
+            EnableAuditLog = true,
+        };
+
+        SetupCandles("15m",
+        [
+            CreateCandle("15m", config.StartDateUtc - (2 * FifteenMinutesMs), 100m, 101m, 99.5m, 100m),
+            CreateCandle("15m", config.StartDateUtc - FifteenMinutesMs, 100m, 100.5m, 99.8m, 100m),
+            CreateCandle("15m", config.StartDateUtc, 100m, 100.2m, 99.9m, 100m),
+            CreateCandle("15m", config.StartDateUtc + FifteenMinutesMs, 100m, 100.1m, 99.4m, 99.6m),
+            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 99.6m, 99.7m, 98.4m, 98.6m),
+            CreateCandle("15m", config.StartDateUtc + (3 * FifteenMinutesMs), 98.7m, 99.5m, 98.5m, 99.4m),
+            CreateCandle("15m", config.StartDateUtc + (4 * FifteenMinutesMs), 99.4m, 100.5m, 99.3m, 100.2m),
+            CreateCandle("15m", config.StartDateUtc + (5 * FifteenMinutesMs), 100.2m, 100.4m, 99.9m, 100.1m),
+        ]);
+
+        SetupCandles("1h",
+        [
+            CreateCandle("1h", 10 * OneHourMs, 100m, 101m, 98m, 100m),
+            CreateCandle("1h", 11 * OneHourMs, 100m, 101m, 98m, 100m),
+            CreateCandle("1h", 12 * OneHourMs, 100m, 101m, 98m, 100m),
+            CreateCandle("1h", 13 * OneHourMs, 99m, 101m, 98m, 100m),
+        ]);
+
+        SetupCandles("4h",
+        [
+            CreateCandle("4h", OneHourMs * 4, 100m, 101m, 98m, 100m),
+            CreateCandle("4h", OneHourMs * 8, 100m, 101m, 98m, 100m),
+            CreateCandle("4h", OneHourMs * 12, 100m, 101m, 98m, 100m),
+        ]);
+
+        var result = await _sut.RunAsync(config);
+
+        result.GridCycleLog.Should().ContainSingle();
+        result.GridCycleLog![0].LevelsPlaced.Should().Be(5);
+        result.GridCycleLog[0].LevelsFilled.Should().Be(3);
+        result.GridCycleLog[0].ExitReason.Should().Be("TakeProfit");
+        result.TradeLog.Should().HaveCount(3);
+        result.TradeLog.Should().OnlyContain(trade => trade.ExitTimeUtc.HasValue);
+        result.TradeLog.Should().OnlyContain(trade => trade.TradeType == TradeType.GridFill);
+        result.TotalPnL.Should().BeGreaterThan(0m);
+        result.OrderEventLog!.Count(entry => entry.EventType == OrderEventType.Cancelled && entry.CancellationReason == CancellationReason.TakeProfitTriggered).Should().Be(2);
+        result.OrderEventLog!.Count(entry => entry.EventType == OrderEventType.Filled && entry.Side == OrderSide.Buy.ToString()).Should().Be(3);
+    }
+
+    [TestMethod]
+    public async Task GivenMultiLevelGrid_WhenStopLossTriggersAfterPartialFill_ThenRemainingLevelsAreCancelledAndCycleCloses()
+    {
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = (12 * OneHourMs) + (5 * FifteenMinutesMs),
+            InitialCapital = 10_000m,
+            FeeModel = FeeModel.Default,
+            WarmupPeriod = 2,
+            StrategyConfigJson = "{\"gridLevels\":5,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":0.4}",
+            EnableAuditLog = true,
+        };
+
+        SetupCandles("15m",
+        [
+            CreateCandle("15m", config.StartDateUtc - (2 * FifteenMinutesMs), 100m, 101m, 99.5m, 100m),
+            CreateCandle("15m", config.StartDateUtc - FifteenMinutesMs, 100m, 100.5m, 99.8m, 100m),
+            CreateCandle("15m", config.StartDateUtc, 100m, 100.2m, 99.9m, 100m),
+            CreateCandle("15m", config.StartDateUtc + FifteenMinutesMs, 100m, 100.1m, 99.4m, 99.6m),
+            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 99.6m, 99.7m, 99.05m, 99.08m),
+            CreateCandle("15m", config.StartDateUtc + (3 * FifteenMinutesMs), 99.08m, 99.2m, 98.9m, 98.95m),
+        ]);
+
+        SetupCandles("1h",
+        [
+            CreateCandle("1h", 10 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 11 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 12 * OneHourMs, 100m, 101m, 98.9m, 99.1m),
+        ]);
+
+        SetupCandles("4h",
+        [
+            CreateCandle("4h", OneHourMs * 4, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", OneHourMs * 8, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", OneHourMs * 12, 100m, 101m, 98.9m, 99.1m),
+        ]);
+
+        var result = await _sut.RunAsync(config);
+
+        result.TotalPnL.Should().BeLessThan(0m);
+        result.GridCycleLog.Should().ContainSingle();
+        result.GridCycleLog![0].LevelsPlaced.Should().Be(5);
+        result.GridCycleLog[0].LevelsFilled.Should().Be(1);
+        result.GridCycleLog[0].ExitReason.Should().Be("StopLoss");
+        result.GridCycleLog[0].StopLossPrice.Should().NotBeNull();
+        result.OrderEventLog!.Count(entry => entry.EventType == OrderEventType.Cancelled && entry.CancellationReason == CancellationReason.StopLossTriggered).Should().Be(4);
+        result.OrderEventLog.Should().Contain(entry => entry.EventType == OrderEventType.Placed && entry.OrderType == OrderType.Market.ToString() && entry.Side == OrderSide.Sell.ToString());
+    }
+
+    [TestMethod]
+    public async Task GivenMultiLevelGrid_WhenAllLevelsFill_ThenControllerPlacesSingleLimitTakeProfitForTheFullPosition()
+    {
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = (12 * OneHourMs) + (5 * FifteenMinutesMs),
+            InitialCapital = 10_000m,
+            FeeModel = FeeModel.Default,
+            WarmupPeriod = 2,
+            StrategyConfigJson = "{\"gridLevels\":3,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
+            EnableAuditLog = true,
+        };
+
+        SetupCandles("15m",
+        [
+            CreateCandle("15m", config.StartDateUtc - (2 * FifteenMinutesMs), 100m, 101m, 99.5m, 100m),
+            CreateCandle("15m", config.StartDateUtc - FifteenMinutesMs, 100m, 100.5m, 99.8m, 100m),
+            CreateCandle("15m", config.StartDateUtc, 100m, 100.2m, 99.9m, 100m),
+            CreateCandle("15m", config.StartDateUtc + FifteenMinutesMs, 100m, 100.1m, 98.4m, 98.8m),
+            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 98.8m, 100.5m, 98.7m, 100.1m),
+            CreateCandle("15m", config.StartDateUtc + (3 * FifteenMinutesMs), 100.1m, 100.4m, 99.9m, 100.2m),
+        ]);
+
+        SetupCandles("1h",
+        [
+            CreateCandle("1h", 10 * OneHourMs, 100m, 101m, 98m, 100m),
+            CreateCandle("1h", 11 * OneHourMs, 100m, 101m, 98m, 100m),
+            CreateCandle("1h", 12 * OneHourMs, 100m, 101m, 98m, 100m),
+        ]);
+
+        SetupCandles("4h",
+        [
+            CreateCandle("4h", OneHourMs * 4, 100m, 101m, 98m, 100m),
+            CreateCandle("4h", OneHourMs * 8, 100m, 101m, 98m, 100m),
+            CreateCandle("4h", OneHourMs * 12, 100m, 101m, 98m, 100m),
+        ]);
+
+        var result = await _sut.RunAsync(config);
+
+        result.GridCycleLog.Should().ContainSingle();
+        result.GridCycleLog![0].LevelsPlaced.Should().Be(3);
+        result.GridCycleLog[0].LevelsFilled.Should().Be(3);
+        result.GridCycleLog[0].ExitReason.Should().Be("TakeProfit");
+        result.GridCycleLog[0].StopLossPrice.Should().BeNull();
+        result.OrderEventLog.Should().Contain(entry => entry.EventType == OrderEventType.Placed && entry.OrderType == OrderType.Limit.ToString() && entry.Side == OrderSide.Sell.ToString());
+        result.OrderEventLog!.Count(entry => entry.EventType == OrderEventType.Filled && entry.Side == OrderSide.Buy.ToString()).Should().Be(3);
+        result.TotalPnL.Should().BeGreaterThan(0m);
     }
 
     private void SetupCandles(string interval, IReadOnlyList<Candle> candles)

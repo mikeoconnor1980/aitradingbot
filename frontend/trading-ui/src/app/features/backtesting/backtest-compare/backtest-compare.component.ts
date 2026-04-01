@@ -54,12 +54,12 @@ export class BacktestCompareComponent implements OnChanges {
   private _buildComparisonRows(): void {
     this.comparisonRows = [
       this._numericRow("Total PnL", this.resultA.totalPnl, this.resultB.totalPnl, "$", "higher"),
-      this._numericRow("Win Rate", this.resultA.winRate, this.resultB.winRate, "%", "higher"),
+      this._numericRow("Lot Win Rate", this.resultA.winRate, this.resultB.winRate, "%", "higher"),
       this._numericRow("Max Drawdown", this.resultA.maxDrawdown, this.resultB.maxDrawdown, "$", "closer-to-zero"),
-      this._numericRow("Total Trades", this.resultA.totalTrades, this.resultB.totalTrades, "", "neutral"),
-      this._numericRow("Winning Trades", this.resultA.winningTrades, this.resultB.winningTrades, "", "higher"),
-      this._numericRow("Losing Trades", this.resultA.losingTrades, this.resultB.losingTrades, "", "lower"),
-      this._numericRow("Avg Trade PnL", this.resultA.averageTradePnl, this.resultB.averageTradePnl, "$", "higher"),
+      this._numericRow("Trade Lots", this.resultA.totalTrades, this.resultB.totalTrades, "", "neutral"),
+      this._numericRow("Winning Lots", this.resultA.winningTrades, this.resultB.winningTrades, "", "higher"),
+      this._numericRow("Losing Lots", this.resultA.losingTrades, this.resultB.losingTrades, "", "lower"),
+      this._numericRow("Avg Lot PnL", this.resultA.averageTradePnl, this.resultB.averageTradePnl, "$", "higher"),
       this._durationRow("Avg Hold Time", this.resultA.averageHoldTimeMinutes, this.resultB.averageHoldTimeMinutes),
       this._numericRow("Hedges Opened", this.resultA.hedgesOpened, this.resultB.hedgesOpened, "", "neutral"),
       this._numericRow("Total Fees", this.resultA.totalFeesPaid, this.resultB.totalFeesPaid, "$", "lower")
