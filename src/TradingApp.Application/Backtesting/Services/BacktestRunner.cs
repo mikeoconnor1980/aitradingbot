@@ -557,7 +557,17 @@ public sealed class BacktestRunner : IBacktestRunner
             trackedCycles[fill.GridCycleId] = trackingState;
         }
 
-        if (fill.IsMaker)
+        if (fill.CloseReason == CancellationReason.TakeProfitTriggered)
+        {
+            trackingState.ExitReason = "TakeProfit";
+            trackingState.TakeProfitPrice = fill.FillPrice;
+        }
+        else if (fill.CloseReason == CancellationReason.StopLossTriggered)
+        {
+            trackingState.ExitReason = "StopLoss";
+            trackingState.StopLossPrice = fill.FillPrice;
+        }
+        else if (fill.IsMaker)
         {
             trackingState.ExitReason = "TakeProfit";
             trackingState.TakeProfitPrice = fill.FillPrice;

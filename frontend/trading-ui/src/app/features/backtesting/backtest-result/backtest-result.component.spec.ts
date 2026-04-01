@@ -59,10 +59,17 @@ describe("BacktestResultComponent", () => {
 
   it("should render the metric cards", () => {
     const cards = fixture.nativeElement.querySelectorAll(".backtest-result__card");
+    const content = fixture.nativeElement.textContent;
 
     expect(cards.length).toBe(10);
-    expect(fixture.nativeElement.textContent).toContain("Total PnL");
-    expect(fixture.nativeElement.textContent).toContain("Avg Hold Time");
+    expect(content).toContain("Total PnL");
+    expect(content).toContain("Lot Win Rate");
+    expect(content).toContain("Trade Lots");
+    expect(content).toContain("Avg Lot PnL");
+    expect(content).toContain("Winning Lots");
+    expect(content).toContain("Losing Lots");
+    expect(content).toContain("Avg Hold Time");
+    expect(content).toContain("Trade metrics are counted per trade lot");
   });
 
   it("should colour positive pnl values as profit", () => {

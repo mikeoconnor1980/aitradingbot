@@ -40,6 +40,7 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
             Size = order.Size,
             TradeType = order.TradeType,
             GridCycleId = order.GridCycleId,
+            CloseReason = order.CloseReason,
             PlacedAtUtc = _currentTimestampUtc
         });
 
@@ -145,6 +146,7 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
             Symbol = order.Symbol,
             TradeType = order.TradeType,
             GridCycleId = order.GridCycleId,
+            CloseReason = order.CloseReason,
             IsMaker = isMaker
         };
     }

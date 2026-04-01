@@ -72,12 +72,12 @@
         </ng-container>
 
         <ng-container matColumnDef="totalTrades">
-          <th mat-header-cell *matHeaderCellDef>Trades</th>
+          <th mat-header-cell *matHeaderCellDef>Trade Lots</th>
           <td mat-cell *matCellDef="let row">{{ row.totalTrades }}</td>
         </ng-container>
 
         <ng-container matColumnDef="winRate">
-          <th mat-header-cell *matHeaderCellDef>Win Rate</th>
+          <th mat-header-cell *matHeaderCellDef>Lot Win Rate</th>
           <td mat-cell *matCellDef="let row">{{ row.winRate | number: "1.1-1" }}%</td>
         </ng-container>
 

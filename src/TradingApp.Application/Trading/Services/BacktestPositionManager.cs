@@ -145,9 +145,10 @@ public sealed class BacktestPositionManager : IPositionManager
         CancellationToken cancellationToken)
     {
         var orderType = Enum.Parse<OrderType>(GetString(signal.Parameters, "orderType"), ignoreCase: true);
-        var cancellationReason = orderType == OrderType.Market
-            ? CancellationReason.StopLossTriggered
-            : CancellationReason.PositionOpened;
+        var cancellationReason = TryGetCancellationReason(signal.Parameters) ??
+            (orderType == OrderType.Market
+                ? CancellationReason.StopLossTriggered
+                : CancellationReason.TakeProfitTriggered);
         var gridCycleId = GetGridCycleId(signal.Parameters);
 
         await CancelOpenOrdersAsync(
@@ -176,7 +177,8 @@ public sealed class BacktestPositionManager : IPositionManager
                 Price = targetPrice,
                 Size = size,
                 TradeType = TradeType.TakeProfit,
-                GridCycleId = gridCycleId
+                GridCycleId = gridCycleId,
+                CloseReason = cancellationReason
             },
             gridCycleId,
             cancellationToken);
@@ -291,6 +293,17 @@ public sealed class BacktestPositionManager : IPositionManager
         }
 
         return "default";
+    }
+
+    private static CancellationReason? TryGetCancellationReason(IReadOnlyDictionary<string, object>? parameters)
+    {
+        var value = GetOptionalString(parameters, "cancellationReason");
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return Enum.Parse<CancellationReason>(value, ignoreCase: true);
     }
 
     private static object GetRequiredValue(IReadOnlyDictionary<string, object>? parameters, string key)

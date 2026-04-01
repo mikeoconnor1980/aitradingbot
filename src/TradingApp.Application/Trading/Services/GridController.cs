@@ -36,12 +36,65 @@ public sealed class GridController : IGridController
             var stopLossPercent = Math.Abs(config.StopLossPercent);
             var takeProfitPercent = Math.Abs(config.TakeProfitPercent);
             var stopLossTrigger = positionState.AverageEntryPrice * (1m - (stopLossPercent / 100m));
+            var takeProfitTrigger = positionState.AverageEntryPrice * (1m + (takeProfitPercent / 100m));
             var shouldStopOut = stopLossPercent > 0m && context.CurrentCandle.Close <= stopLossTrigger;
-            var orderType = shouldStopOut ? OrderType.Market : OrderType.Limit;
-            var targetPrice = shouldStopOut
-                ? context.CurrentCandle.Close
-                : positionState.AverageEntryPrice * (1m + (takeProfitPercent / 100m));
             var gridCycleId = gridState.GridCycleId ?? "default";
+
+            if (shouldStopOut)
+            {
+                gridState.Lifecycle = GridLifecycle.Closing;
+
+                return Task.FromResult<IReadOnlyList<TradingSignal>>(
+                [
+                    new TradingSignal
+                    {
+                        SignalType = "TakeProfit",
+                        Symbol = context.Symbol,
+                        Reason = "Stop loss triggered.",
+                        Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["targetPrice"] = context.CurrentCandle.Close,
+                            ["size"] = Math.Abs(positionState.Size),
+                            ["orderType"] = OrderType.Market.ToString(),
+                            ["gridCycleId"] = gridCycleId,
+                            ["cancellationReason"] = CancellationReason.StopLossTriggered.ToString()
+                        }
+                    }
+                ]);
+            }
+
+            if (gridState.Lifecycle == GridLifecycle.Closing)
+            {
+                return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
+            }
+
+            if (gridState.Lifecycle == GridLifecycle.PartiallyFilled)
+            {
+                if (takeProfitPercent > 0m && context.CurrentCandle.Close >= takeProfitTrigger)
+                {
+                    gridState.Lifecycle = GridLifecycle.Closing;
+
+                    return Task.FromResult<IReadOnlyList<TradingSignal>>(
+                    [
+                        new TradingSignal
+                        {
+                            SignalType = "TakeProfit",
+                            Symbol = context.Symbol,
+                            Reason = "Take profit triggered (partial fill).",
+                            Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                            {
+                                ["targetPrice"] = context.CurrentCandle.Close,
+                                ["size"] = Math.Abs(positionState.Size),
+                                ["orderType"] = OrderType.Market.ToString(),
+                                ["gridCycleId"] = gridCycleId,
+                                ["cancellationReason"] = CancellationReason.TakeProfitTriggered.ToString()
+                            }
+                        }
+                    ]);
+                }
+
+                return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
+            }
 
             gridState.Lifecycle = GridLifecycle.Closing;
 
@@ -51,13 +104,14 @@ public sealed class GridController : IGridController
                 {
                     SignalType = "TakeProfit",
                     Symbol = context.Symbol,
-                    Reason = shouldStopOut ? "Stop loss triggered." : "Take profit active.",
+                    Reason = "Take profit active.",
                     Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
                     {
-                        ["targetPrice"] = targetPrice,
+                        ["targetPrice"] = takeProfitTrigger,
                         ["size"] = Math.Abs(positionState.Size),
-                        ["orderType"] = orderType.ToString(),
-                        ["gridCycleId"] = gridCycleId
+                        ["orderType"] = OrderType.Limit.ToString(),
+                        ["gridCycleId"] = gridCycleId,
+                        ["cancellationReason"] = CancellationReason.TakeProfitTriggered.ToString()
                     }
                 }
             ]);

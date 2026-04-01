@@ -3,7 +3,7 @@ namespace TradingApp.Application.Backtesting.Models;
 public enum CancellationReason
 {
     GridRedeployed,
-    PositionOpened,
+    TakeProfitTriggered,
     StopLossTriggered,
     ManualCancel
 }

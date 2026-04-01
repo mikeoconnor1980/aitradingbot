@@ -11,11 +11,14 @@ verified by a human.
 The backtest replays historical 15-minute candles through the **exact same** strategy
 pipeline used in live trading. On every candle close it asks: "Is there a setup?" and
 "Do I have an open position?". If a setup exists and no grid is active, it deploys a
-grid of limit-buy orders below the current price. If a position is open, it places a
-take-profit or stop-loss order. A `SimulatedExecutionEngine` fills those orders when
-historical price reaches the order levels. Fees and slippage are deducted at fill time.
-At the end of the replay, metrics (PnL, win rate, drawdown, etc.) are calculated from
-the trade log and equity curve.
+grid of limit-buy orders below the current price. If the first levels start filling,
+the remaining ladder stays active so deeper pullbacks can improve average entry. The
+controller only transitions to closing when stop loss triggers, when a partially-filled
+grid reaches candle-close take profit, or when a fully-filled grid places its normal
+take-profit order. A `SimulatedExecutionEngine` fills those orders when historical
+price reaches the order levels. Fees and slippage are deducted at fill time. At the end
+of the replay, metrics (PnL, win rate, drawdown, etc.) are calculated from the trade
+log and equity curve.
 
 **Key guarantee:** Because `GridController`, `StrategyScheduler`, `RiskEngine`, and
 `PositionManager` are the same classes used in live mode, a passing backtest proves the
@@ -129,12 +132,21 @@ FUNCTION ProcessCandle(evaluation, context, gridState, position, config):
 
         IF config.StopLoss > 0 AND candle.Close ≤ stopPrice:
             gridState.Lifecycle = Closing
-            EMIT TakeProfit(type=Market, price=candle.Close, size=position.Size)
-            # Market order → fills immediately on next candle at Close
-        ELSE:
+      EMIT exit(type=Market, reason=StopLoss, size=position.Size)
+      RETURN
+
+    IF gridState.Lifecycle == Closing:
+      RETURN
+
+    IF gridState.Lifecycle == PartiallyFilled:
+      IF candle.Close ≥ tpPrice:
+        gridState.Lifecycle = Closing
+        EMIT exit(type=Market, reason=TakeProfit, size=position.Size)
+      RETURN
+
+    # Fully-filled / fallback open-position path
             gridState.Lifecycle = Closing
-            EMIT TakeProfit(type=Limit, price=tpPrice, size=position.Size)
-            # Limit order → fills when candle.High ≥ tpPrice
+      EMIT exit(type=Limit, reason=TakeProfit, price=tpPrice, size=position.Size)
         RETURN
 
     # ── BRANCH B: No position, no setup detected ──
@@ -199,9 +211,9 @@ Formula per level: `price = anchorPrice × (1 − (gridSpacing% / 100) × level)
 
 ## 6. How the Buy/Sell Mechanism Actually Works
 
-> **One sentence answer:** The grid places **10 separate buy orders** at different
-> prices, but when any of them fill it places **1 single sell order** for the whole
-> position. It does NOT place 10 sells.
+> **One sentence answer:** The grid places multiple buy orders, keeps the remaining
+> ladder active after partial fills, and only places the single closing sell when an
+> explicit exit condition is reached.
 
 ---
 
@@ -209,197 +221,118 @@ Formula per level: `price = anchorPrice × (1 − (gridSpacing% / 100) × level)
 
 | Rule | Detail |
 |------|--------|
-| **Buys** | 10 individual limit buy orders, each at a progressively lower price |
-| **Sells** | Always exactly **1** sell order covering the **total accumulated size** |
-| **TP price** | Calculated from the **weighted-average entry** of all fills, NOT per-level |
-| **Timing** | The sell is placed on the **very next candle** after the first buy fills |
-| **Remaining buys** | All unfilled buy orders are **cancelled** when the sell is placed |
+| **Buys** | One limit buy per ladder level, each at a progressively lower price |
+| **Partial fills** | Remaining buy levels stay open after the first fill so the average entry can keep improving |
+| **Partial-fill TP** | Checked by the controller on candle close using the current weighted-average entry |
+| **Fully-filled TP** | Once all levels fill, the controller places one limit sell for the whole position |
+| **Stop loss** | Checked from any open-position state and closes the whole position with a market order |
+| **Closing sell** | Always exactly **1** sell order covering the full accumulated size |
+| **Cancellation timing** | Unfilled buy levels are cancelled only when TP or SL actually transitions the cycle into `Closing` |
 
 ---
 
-### 6.2 Worked Example A — One Level Fills (Most Common)
+### 6.2 Worked Example A — Ladder Stays Open After the First Fill
 
-**Config:** anchor=$100,000, gridLevels=10, gridSpacing=0.5%, positionSize=$100, TP=2%, SL=5%
-
-**What the engine does, candle by candle:**
+**Config:** anchor=$100,000, gridLevels=5, gridSpacing=0.5%, positionSize=$100, TP=1%, SL=5%
 
 ```
-CANDLE 1 (12:00am) — Close: $100,200
-  StrategyEngine: SetupDetected = true, no position open
-  GridController:  emit DeployGrid
-  PositionManager: place 10 limit buy orders:
-    ┌─────────┬───────────┬────────────┐
-    │  Order  │   Price   │ Size (BTC) │
-    ├─────────┼───────────┼────────────┤
-    │  Buy 1  │ $99,500   │ 0.00100503 │
-    │  Buy 2  │ $99,000   │ 0.00101010 │
-    │  Buy 3  │ $98,500   │ 0.00101523 │
-    │  Buy 4  │ $98,000   │ 0.00102041 │
-    │  Buy 5  │ $97,500   │ 0.00102564 │
-    │  Buy 6  │ $97,000   │ 0.00103093 │
-    │  Buy 7  │ $96,500   │ 0.00103627 │
-    │  Buy 8  │ $96,000   │ 0.00104167 │
-    │  Buy 9  │ $95,500   │ 0.00104712 │
-    │  Buy 10 │ $95,000   │ 0.00105263 │
-    └─────────┴───────────┴────────────┘
-  Open orders: 10 buys.  Position: FLAT.
+CANDLE 1 — Close: $100,000
+  Grid deploys five buys at: $99,500 / $99,000 / $98,500 / $98,000 / $97,500
 
-CANDLE 2 (12:15am) — Open: $100,150, High: $100,300, Low: $100,050, Close: $100,100
-  Fill check: Low ($100,050) > all order prices → nothing fills.
-  Open orders: 10 buys.  Position: FLAT.
+CANDLE 2 — Low: $99,400, Close: $99,600
+  Buy 1 fills at $99,500
+  Position size opens, avg entry = $99,500
+  GridState = PartiallyFilled
+  Candle close ($99,600) is still below TP ($100,495)
+  Result: Buys 2-5 stay open. No sell is placed yet.
 
-CANDLE 3 (12:30am) — Open: $100,000, High: $100,100, Low: $99,400, Close: $99,600
-  Fill check: Low ($99,400) ≤ Buy 1 price ($99,500) → BUY 1 FILLS ✓
-              Low ($99,400) ≤ Buy 2 price ($99,000)? No → skip
-  ┌────────────────────────────────────────────────────────────┐
-  │ Position after fill:                                       │
-  │   Size         = 0.00100503 BTC                            │
-  │   Avg Entry    = $99,500.00                                │
-  │   Unrealised   = ($99,600 − $99,500) × 0.00100503 = +$0.10│
-  └────────────────────────────────────────────────────────────┘
-  Strategy evaluation runs (same candle):
-    GridController sees position.IsOpen = true
-    → Calculates TP price: $99,500 × 1.02 = $101,490.00
-    → Emits TakeProfit signal (size=0.00100503, price=$101,490, type=Limit)
-    PositionManager:
-      1. CANCELS Buy 2 through Buy 10 (9 unfilled orders removed)
-      2. Places ONE limit sell: Sell 0.00100503 BTC @ $101,490
-  Open orders: 1 sell.  Position: LONG 0.00100503 BTC.
+CANDLE 3 — Low: $98,400, Close: $98,600
+  Buy 2 fills at $99,000
+  Buy 3 fills at $98,500
+  Avg entry improves to about $98,999
+  Candle close ($98,600) is still below TP (~$99,989)
+  Result: Buys 4-5 still remain active.
 
-CANDLE 4 (12:45am) — Close: $99,800
-  Fill check: High ($99,900) < Sell price ($101,490) → sell doesn't fill.
-  GridController sees position still open → emits TakeProfit again
-    (same price, same size — sell order gets replaced with identical one)
-  Open orders: 1 sell.  Position: LONG 0.00100503 BTC.
+CANDLE 4 — Close: $100,200
+  Candle close is now above the partial-fill TP trigger
+  GridController transitions to Closing
+  PositionManager cancels the two remaining buy orders
+  PositionManager places ONE market sell for the full accumulated position
 
-  ... several candles pass, price stays below $101,490 ...
-
-CANDLE 12 (3:00am) — Open: $101,200, High: $101,550, Low: $101,100, Close: $101,400
-  Fill check: High ($101,550) ≥ Sell price ($101,490) → SELL FILLS ✓
-  ┌────────────────────────────────────────────────────────────┐
-  │ Position settlement:                                       │
-  │   Realised PnL = ($101,490 − $99,500) × 0.00100503        │
-  │                = $1,990 × 0.00100503                       │
-  │                = $2.00                                     │
-  │   Size         = 0 (FLAT)                                  │
-  │   Grid cycle   → CLOSED                                    │
-  └────────────────────────────────────────────────────────────┘
-  Open orders: 0.  Position: FLAT.
-  GridController: lifecycle = Closed → ready for next cycle.
-
-CANDLE 13 (3:15am) — New grid deploys, cycle repeats from the top.
+CANDLE 5 — Market sell fills at candle close
+  Position closes, lifecycle moves to Closed
 ```
 
-**Result of this cycle: +$2.00 profit** (before fees).
-This is the pattern you see repeated in most backtest trade log rows.
+**Result:** three grid levels participate in the cycle, the average entry improves, and
+the unfilled ladder is only cancelled at the moment take profit is actually triggered.
 
 ---
 
-### 6.3 Worked Example B — Three Levels Fill on One Candle
-
-Same config, but price drops sharply.
-
-```
-CANDLE 1 (12:00am) — Close: $100,000
-  Grid deploys: 10 buy orders (same table as above).
-
-CANDLE 2 (12:15am) — Open: $100,000, High: $100,050, Low: $98,200, Close: $98,500
-  Fill check (buys processed in order):
-    Buy 1: Low ($98,200) ≤ $99,500 → FILLS at $99,500  ✓
-    Buy 2: Low ($98,200) ≤ $99,000 → FILLS at $99,000  ✓
-    Buy 3: Low ($98,200) ≤ $98,500 → FILLS at $98,500  ✓
-    Buy 4: Low ($98,200) ≤ $98,000? No → skip
-    Buy 5–10: skip
-
-  Position is built up fill by fill (weighted average):
-  ┌─────────┬─────────────┬──────────────┬────────────────┐
-  │  Fill   │  Fill Price  │ Running Size │ Running AvgEnt │
-  ├─────────┼─────────────┼──────────────┼────────────────┤
-  │  Buy 1  │  $99,500     │ 0.00100503   │ $99,500.00     │
-  │  Buy 2  │  $99,000     │ 0.00201513   │ $99,249.38     │
-  │  Buy 3  │  $98,500     │ 0.00303036   │ $98,999.01     │
-  └─────────┴─────────────┴──────────────┴────────────────┘
-
-  Strategy evaluation runs:
-    GridController sees position.IsOpen = true
-    → TP price: $98,999.01 × 1.02 = $100,978.99
-    → Emits TakeProfit (size=0.00303036, price=$100,978.99, type=Limit)
-    PositionManager:
-      1. CANCELS Buy 4 through Buy 10 (7 unfilled buys removed)
-      2. Places ONE limit sell: Sell 0.00303036 BTC @ $100,978.99
-  Open orders: 1 sell.  Position: LONG 0.00303036 BTC.
-
-  ... price recovers over several candles ...
-
-CANDLE 20 — High: $101,100 ≥ $100,978.99 → SELL FILLS ✓
-  ┌────────────────────────────────────────────────────────────┐
-  │ Position settlement:                                       │
-  │   Realised PnL = ($100,978.99 − $98,999.01) × 0.00303036  │
-  │                = $1,979.98 × 0.00303036                    │
-  │                ≈ $6.00                                     │
-  │   Size         = 0 (FLAT)                                  │
-  └────────────────────────────────────────────────────────────┘
-```
-
-**Result: +$6.00 profit** (~$2.00 per filled level × 3 levels, before fees).
-
----
-
-### 6.4 Worked Example C — Stop Loss
-
-Same config, but price crashes and doesn't recover.
+### 6.3 Worked Example B — Fully Filled Grid Uses the Normal Limit TP Flow
 
 ```
 CANDLE 1 — Grid deploys.
-CANDLE 3 — Buy 1 fills at $99,500. TP sell placed @ $101,490.
 
-  ... price keeps falling ...
+CANDLE 2 — Price trades down through every ladder level.
+  All buy levels fill on the same candle.
+  GridState = FullyFilled.
 
-CANDLE 10 — Close: $94,400
-  GridController checks stop loss:
-    stopTrigger = $99,500 × (1 − 5/100) = $94,525
-    Close ($94,400) ≤ $94,525 → STOP LOSS TRIGGERED
-  → Emits TakeProfit with orderType=Market (not Limit)
-  PositionManager:
-    1. Cancels any open orders
-    2. Places ONE market sell: Sell 0.00100503 BTC at market
+Same candle close:
+  GridController sees a fully filled position.
+  It transitions to Closing and emits one limit take-profit order for the full size.
 
-CANDLE 11 — Market order fills at candle Close (say $94,200)
-  ┌────────────────────────────────────────────────────────────┐
-  │ Position settlement:                                       │
-  │   Realised PnL = ($94,200 − $99,500) × 0.00100503         │
-  │                = −$5,300 × 0.00100503                      │
-  │                = −$5.33                                    │
-  │   Size         = 0 (FLAT)                                  │
-  └────────────────────────────────────────────────────────────┘
+Later candle:
+  High reaches the limit TP price.
+  The sell fills as maker liquidity and the cycle closes.
 ```
 
-**Result: −$5.33 loss.** This matches the negative PnL trades you see in backtests.
+**Result:** a fully filled grid still exits with one sell order, but unlike a partial
+fill it uses the standing limit take-profit order immediately.
 
 ---
 
-### 6.5 Visual Summary — One Complete Cycle
+### 6.4 Worked Example C — Stop Loss From a Partial Fill
+
+```
+CANDLE 1 — Grid deploys.
+
+CANDLE 2 — Buy 1 fills at $99,500.
+  GridState = PartiallyFilled.
+
+CANDLE 3 — Close drops below the stop trigger while the next ladder level is still unfilled.
+  GridController transitions to Closing.
+  PositionManager cancels the remaining buy orders.
+  PositionManager places ONE market sell for the open size.
+
+CANDLE 4 — Market sell fills at candle close.
+  Position closes at a loss and lifecycle becomes Closed.
+```
+
+**Result:** stop loss is available from the partially-filled state, and the audit log can
+distinguish this path from partial-fill take profit even though both use market exits.
+
+---
+
+### 6.5 Visual Summary — Partial Fill Lifecycle
 
 ```
 Price
   ▲
-  │
-  │  $101,490 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ TP SELL fills here ───── ⑤
-  │                                        ╱
-  │  $100,000 ── Grid deploys ── ①      ╱
-  │                  ╲                 ╱
-  │   $99,500 ─ ─ ─ ─ BUY fills ── ② ── ③ cancel remaining buys
-  │                                      ④ place ONE sell @ TP
-  │
-  │   $95,000 ── (Level 10 — never reached)
-  │
+  │  $100,000 ── Grid deploys ── ①
+  │                  ╲
+  │   $99,500 ─ ─ ─ ─ Buy 1 fills ── ②
+  │                  ╱            remaining buys stay open
+  │   $99,000 ─ ─ ─ ─ Buy 2 fills ── ③
+  │   $98,500 ─ ─ ─ ─ Buy 3 fills ── ④
+  │                                      candle close reaches TP
+  │  $100,000 ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ⑤ cancel remaining buys + place one sell
+  │                                      next candle fills exit
   └──────────────────────────────────────────────────────► Time
 
-  ① Deploy: 10 buy orders placed below anchor
-  ② Fill:   Price dips, Level 1 fills
-  ③ Cancel: Levels 2-10 cancelled immediately
-  ④ Sell:   ONE sell order placed at avg entry × 1.02
-  ⑤ Close:  Sell fills → profit, cycle complete
+  ① Deploy: ladder orders are placed below anchor
+  ② Partial fill: first level opens the position
+  ③-④ Accumulate: deeper levels can still fill on later candles
+  ⑤ Close: TP/SL cancels residual ladder orders and exits the whole position
 ```
 
 ---
@@ -601,7 +534,7 @@ State transitions in code:
 | Buys processed before sells per candle | Prevents same-candle entry+exit but may miss intra-candle nuance | Acceptable for 15m granularity |
 | Slippage rate defaults to 0 | Results may look better than reality | Set non-zero slippage for realistic tests |
 | Trade log FIFO pairing is one-to-one | When multiple grid levels fill, only the first entry gets paired with TP in the log; remaining entries show as open. Total `RealisedPnL` on the position is still correct. | Split TP fill across all open entries proportionally |
-| Grid cancels unfilled levels immediately on first fill | Deeper grid levels rarely fill (TP/SL placed on the very next candle after first fill) | Consider a "hold grid open" mode that waits N candles before placing TP |
+| Partial-fill TP waits for candle close | Intrabar spikes above TP do not exit unless the candle also closes above the trigger | Add optional resting TP orders for partial fills if intrabar precision becomes important |
 
 ---
 

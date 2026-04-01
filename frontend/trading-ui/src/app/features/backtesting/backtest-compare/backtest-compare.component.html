@@ -63,6 +63,9 @@
       <mat-card-title>Metrics Comparison</mat-card-title>
     </mat-card-header>
     <mat-card-content>
+      <p class="backtest-compare__section-copy">
+        Trade metrics below are counted per trade lot. Each filled grid level contributes its own lot-level outcome.
+      </p>
       <div class="backtest-compare__table-wrapper">
         <table mat-table [dataSource]="comparisonRows" class="backtest-compare__table">
           <ng-container matColumnDef="metric">
