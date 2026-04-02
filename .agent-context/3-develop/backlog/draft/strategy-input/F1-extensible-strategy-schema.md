@@ -4,6 +4,7 @@
 **Status:** Draft
 **Iteration:** Backlog
 **Created:** 2026-04-02
+**Last Updated:** 2026-04-02
 **PRD:** [02-strategy-input-pipeline.md](../../../prd-draft/02-strategy-input-pipeline.md)
 **Reference:** [strategy-builder-ui-detailed.md](../../1-discover/prd/strategy-builder-ui-detailed.md)
 **Implementation Phase:** 1a (Foundation)
@@ -48,35 +49,61 @@ The transitional `StrategyConfig` from F0 carries only grid fields. The UI spec 
 - [ ] **Grid section** (required when `strategyMode = grid`): `levels`, `spacing`, `entryMode`, `anchorPrice`, `breakdownThreshold`
 - [ ] **Trend filter section** (optional, all modes): `enabled`, `type`, `fastPeriod`, `slowPeriod`, `operator`, `appliesTo` — structurally present but **not evaluated in v1**
 - [ ] **Entry conditions section** (required when `strategyMode = signal`, ignored for grid): `entryLogic` (all/any), `entryConditions` array with `id`, `enabled`, `type`, `label`, `params` — structurally present but **not evaluated in v1**
-- [ ] **Exit rules** (required for all modes): `takeProfit` (enabled, type, value), `stopLoss` (enabled, type, value, lookback). v1 supports `fixed_percent` and `swing_low` types only; other types are valid enum values but the engine falls back to defaults
+- [ ] **Exit rules** (required for all modes): `takeProfit` (enabled, type, value), `stopLoss` (enabled, type, value, lookback). Flat structure — `value` and `lookback` are nullable; `lookback` is only used for `swing_low` type. v1 supports `fixed_percent` and `swing_low` types only; other types are valid enum values but the engine falls back to defaults
 - [ ] **Risk management** (required for all modes): `positionSizeType`, `positionSizeValue`, `leverage`, `maxOpenTrades`, `cooldownValue`, `cooldownUnit`, `allowSameCandleReentry`
 - [ ] **Metadata** (optional): `tags`, `notes`
 - [ ] **Source metadata**: `entryPoint` (ui_builder/natural_language/pine_import/migration), `summary`
 
 #### C# Models
 
-- [ ] `StrategyConfig` class in `TradingApp.Application/StrategyAuthoring/Models/` — full schema, supersedes the transitional type from F0
+- [ ] `StrategyConfig` class in `TradingApp.Application/StrategyAuthoring/Models/` implementing `IStrategyConfig` (marker interface from F0 in Domain) — full schema, replaces F0's `GridStrategyConfig` record entirely
 - [ ] Sub-models: `GridConfig`, `TrendFilterConfig`, `EntryConditionConfig`, `ExitConfig`, `ExitRuleConfig`, `RiskConfig`, `StrategyMetadata`, `SourceMetadata`
 - [ ] Enums: `StrategyMode`, `Direction`, `TrendFilterType`, `TrendOperator`, `EntryConditionType`, `EntryLogic`, `ExitRuleType`, `PositionSizeType`, `CooldownUnit`, `StrategyEntryPoint`
-- [ ] Entry condition `params` — typed per condition type (e.g., `RsiParams`, `PriceVsEmaParams`, `MacdParams`) with a base type for unknown/future condition types
-- [ ] All interfaces updated: `IStrategyEngine`, `IGridController`, `StrategyScheduler`, `BacktestRunner` use the new full `StrategyConfig`
+- [ ] Entry condition `params` — typed per condition type (e.g., `RsiParams`, `PriceVsEmaParams`, `MacdParams`) with a base type for unknown/future condition types. Custom `JsonConverter` using the `type` discriminator handles polymorphic deserialization.
+- [ ] `ExitRuleConfig` — flat structure with nullable `value` and `lookback` fields. `lookback` is null/ignored unless `type = swing_low`. No typed params for exits in v1.
+- [ ] F0's `GridStrategyConfig` record in Domain is removed; all consumers now use the full `StrategyConfig`
+- [ ] Pipeline interfaces (`IStrategyEngine`, `IGridController`, `StrategyScheduler`, `BacktestRunner`) continue to accept `IStrategyConfig`; `StrategyConfig` flows through as the concrete implementation
 - [ ] `GridStrategyEngine` reads grid fields from `config.Grid.*`; TP/SL from `config.Exit.*`
 - [ ] `GridController` reads grid fields from `config.Grid.*`; TP/SL from `config.Exit.*`
 
+#### ExecutionConfig / Risk Ownership
+
+- [ ] `StrategyConfig.Risk` is the single source of truth for user-facing risk parameters: `positionSizeType`, `positionSizeValue`, `leverage`, `maxOpenTrades`, `cooldownValue`, `cooldownUnit`, `allowSameCandleReentry`
+- [ ] F0's `ExecutionConfig` shrinks to contain only `FeeModel` (makerFee, takerFee, slippage) — exchange/simulation execution context with no duplication
+- [ ] `BacktestConfig` references `StrategyConfig` (as `IStrategyConfig`) for strategy + risk params, and `ExecutionConfig` for fees only
+
 #### Validation Pipeline
 
-- [ ] `IStrategyValidator` with `Validate(StrategyConfig) → ValidationResult`
+- [ ] `IStrategyValidator` with `Validate(StrategyConfig) → ValidationResult` in `TradingApp.Application/StrategyAuthoring/Validation/`
 - [ ] **Level 1 — Schema validation**: Required fields present, correct types, enum values valid, `schemaVersion` present
 - [ ] **Level 2 — Business rules**: `strategyName` required (max 100), grid levels > 0, spacing > 0, TP/SL values > 0 when enabled, position size > 0, leverage ≥ 1, RSI 0–100, periods > 0
 - [ ] **Level 3 — Cross-field consistency**: `strategyMode = grid` → grid section required; `strategyMode = signal` → entry conditions required; direction vs trend filter `appliesTo`
 - [ ] `ValidationError` with `severity` (error/warning/info), `fieldPath`, `code`, `message`
 - [ ] Validation rules from the UI spec's validation table are implemented
+- [ ] FluentValidation at the API boundary coexists with `IStrategyValidator` — FluentValidation handles request-level validation, `IStrategyValidator` handles domain-level business and cross-field rules
+
+#### API Endpoint
+
+- [ ] `POST /api/strategies/validate` — accepts a `StrategyConfig` JSON body, runs the full 3-level validation pipeline, returns `ValidationResult` with all errors/warnings/info messages
+- [ ] `RunBacktestRequest` updated to send the full `StrategyConfig` shape + `ExecutionConfig` (fees only)
 
 #### Serialization
 
-- [ ] C# model ↔ JSON ↔ TypeScript model produce identical output
+- [ ] C# model ↔ JSON round-trip produces identical output
 - [ ] `System.Text.Json` with camelCase naming, string enum serialization
 - [ ] Optional sections serialize as `null` when not configured (not omitted)
+- [ ] Custom `JsonConverter` for `EntryConditionConfig.Params` polymorphic deserialization using the `type` discriminator field
+
+#### Database Changes
+
+- [ ] `BacktestRun.StrategyConfigJson` column updated to store the new full `StrategyConfig` JSON shape
+- [ ] Old backtest records cleaned out — clean break, no migration of F0-shaped data
+- [ ] `BacktestRunResponseMapper` updated to deserialize from the new schema shape
+
+#### Angular (Deferred)
+
+- Angular TypeScript model and `BacktestService` updates are deferred to F2 (Strategy Builder UI)
+- Temporary breakage of the existing backtest UI between F1 and F2 is accepted
 
 ### Non-Functional Requirements
 
@@ -200,15 +227,26 @@ Adding a new condition type (e.g., Bollinger) requires:
 - Trend filter evaluation (F5)
 - Advanced exit types engine support (future)
 - Strategy versioning (F3)
+- Angular TypeScript model updates (deferred to F2)
+- Typed params for exit rules (flat nullable fields sufficient for v1)
 
 ---
 
-## Open Questions
+## Decisions Log
 
-| # | Question | Status |
-|---|----------|--------|
+| # | Question | Decision |
+|---|----------|----------|
 | 1 | Should `entryConditions[].params` be typed per condition or a generic dictionary? | **Typed records.** `RsiParams`, `PriceVsEmaParams`, `MacdParams` etc. with a `Dictionary<string, object>` fallback for unknown types. Custom `JsonConverter` handles polymorphic deserialization via the `type` discriminator. |
 | 2 | Should the validator warn about unsupported features in v1 (e.g., signal mode, trend filter)? | **Yes — info-level messages.** "Trend filter configured but not yet evaluated by the engine" and "Signal mode strategies are not yet supported for execution." These are informational, not blocking. |
+| 3 | `IStrategyConfig` relationship | **StrategyConfig implements IStrategyConfig.** The marker interface from F0 (in Domain) is preserved. Pipeline interfaces continue to accept `IStrategyConfig`. The concrete `StrategyConfig` lives in `TradingApp.Application`. |
+| 4 | ExecutionConfig / Risk ownership | **StrategyConfig.Risk owns user-facing risk params** (leverage, positionSize, maxOpenTrades, cooldown). **ExecutionConfig shrinks to FeeModel only** (makerFee, takerFee, slippage). No duplication. |
+| 5 | F0's GridStrategyConfig fate | **Replaced entirely.** F0's `GridStrategyConfig` record in Domain is removed. All consumers use the full `StrategyConfig` with `strategyMode = grid`. |
+| 6 | Exit rule params approach | **Flat structure.** `ExitRuleConfig` uses nullable `value` and `lookback` fields. `lookback` is null/ignored unless `type = swing_low`. No typed params for exits in v1. |
+| 7 | DB impact for old backtest records | **Clean break.** Old backtest records cleaned out. No migration of F0-shaped data. |
+| 8 | Polymorphic deserialization for entry condition params | **Custom `JsonConverter`** using the entry condition `type` field as discriminator. |
+| 9 | Validation architecture | **FluentValidation + IStrategyValidator coexist.** FluentValidation at API boundary for request validation; `IStrategyValidator` in Application layer for 3-level business/cross-field validation. |
+| 10 | Validation API endpoint | **New `POST /api/strategies/validate` endpoint** for the Strategy Builder UI to call during authoring. |
+| 11 | Angular updates | **Deferred to F2.** Temporary breakage of backtest UI between F1 and F2 is accepted. |
 
 ---
 
@@ -225,8 +263,12 @@ Adding a new condition type (e.g., Bollinger) requires:
 - [ ] **Given** a `StrategyConfig` with an RSI entry condition, **When** serialized to JSON and back, **Then** the `RsiParams` are correctly round-tripped
 - [ ] **Given** all existing tests, **When** run after updating to the new type, **Then** all pass
 
+- [ ] **Given** a `POST /api/strategies/validate` request with an invalid config, **When** the endpoint runs, **Then** it returns all validation errors/warnings/info grouped by level
+- [ ] **Given** `ExecutionConfig` after F1, **When** inspected, **Then** it contains only `FeeModel` (no leverage or positionSize)
+- [ ] **Given** `StrategyConfig.Risk` with `leverage = 0`, **When** Level 2 validation runs, **Then** error: leverage must be ≥ 1
+
 ### Release Notes Information
 
 - **Heading**: Extensible Strategy Schema
 - **Release Note Summary**: New versioned strategy schema supporting grid strategies now and composable conditions (RSI, EMA, MACD) in the future.
-- **Breaking Change**: Yes — `StrategyConfig` type changes from transitional to full schema. All consumers updated.
+- **Breaking Change**: Yes — `StrategyConfig` type changes from transitional to full schema. `ExecutionConfig` trimmed to FeeModel only. All consumers updated.
