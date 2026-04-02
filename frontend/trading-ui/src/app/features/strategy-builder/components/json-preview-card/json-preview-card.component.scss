@@ -1,0 +1,17 @@
+.json-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  &__content {
+    margin: 1rem 0 0;
+    padding: 1rem;
+    overflow: auto;
+    max-height: 24rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 0.85rem;
+    background: var(--colour-surface-alt);
+    color: var(--colour-text-primary);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+}

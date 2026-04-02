@@ -11,6 +11,10 @@ public sealed class BacktestRunRepositoryTests
     private SqliteConnection _connection = null!;
     private DbContextOptions<TradingAppDbContext> _contextOptions = null!;
 
+    private const string StrategyConfigJson = """{"schemaVersion":1,"strategyMode":"grid","strategyName":"Test","exchange":"Hyperliquid","market":"BTC-USD","timeframe":"15m","direction":"long","enabled":true,"grid":{"levels":10,"spacing":0.5,"entryMode":"AutoFromSignalCandle","breakdownThreshold":1.5},"exit":{"takeProfit":{"enabled":true,"type":"fixed_percent","value":2},"stopLoss":{"enabled":true,"type":"fixed_percent","value":6}},"risk":{"positionSizeType":"percent_wallet","positionSizeValue":5,"leverage":1,"maxOpenTrades":1}}""";
+    private const string QueuedStrategyConfigJson = """{"schemaVersion":1,"strategyMode":"grid","strategyName":"Queued","exchange":"Hyperliquid","market":"BTC-USD","timeframe":"15m","direction":"long","enabled":true,"grid":{"levels":5,"spacing":0.5,"entryMode":"AutoFromSignalCandle","breakdownThreshold":1.5},"exit":{"takeProfit":{"enabled":true,"type":"fixed_percent","value":2},"stopLoss":{"enabled":true,"type":"fixed_percent","value":6}},"risk":{"positionSizeType":"percent_wallet","positionSizeValue":5,"leverage":1,"maxOpenTrades":1}}""";
+    private const string ExecutionConfigJson = """{"feeModel":{"makerFeeRate":0.0001,"takerFeeRate":0.00035,"slippageRate":0}}""";
+
     [TestInitialize]
     public void Setup()
     {
@@ -41,7 +45,8 @@ public sealed class BacktestRunRepositoryTests
             intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
             startDateUtc: 1704067200000,
             endDateUtc: 1735689599000,
-            strategyConfigJson: "{\"gridLevels\":10}",
+            strategyConfigJson: StrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
             initialCapital: 10000m,
             candlesReplayed: 35040,
             elapsedMs: 12500,
@@ -73,7 +78,8 @@ public sealed class BacktestRunRepositoryTests
         result.IntervalsJson.Should().Be("[\"15m\",\"1h\",\"4h\"]");
         result.StartDateUtc.Should().Be(1704067200000);
         result.EndDateUtc.Should().Be(1735689599000);
-        result.StrategyConfigJson.Should().Be("{\"gridLevels\":10}");
+        result.StrategyConfigJson.Should().Be(StrategyConfigJson);
+        result.ExecutionConfigJson.Should().Be(ExecutionConfigJson);
         result.InitialCapital.Should().Be(10000m);
         result.CandlesReplayed.Should().Be(35040);
         result.ElapsedMs.Should().Be(12500);
@@ -99,7 +105,8 @@ public sealed class BacktestRunRepositoryTests
             intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
             startDateUtc: 1000,
             endDateUtc: 2000,
-            strategyConfigJson: "{\"gridLevels\":5}",
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
             initialCapital: 10000m,
             auditLogEnabled: true);
 
@@ -148,7 +155,8 @@ public sealed class BacktestRunRepositoryTests
             intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
             startDateUtc: 1000,
             endDateUtc: 2000,
-            strategyConfigJson: "{\"gridLevels\":5}",
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
             initialCapital: 10000m,
             auditLogEnabled: false);
 

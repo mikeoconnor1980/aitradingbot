@@ -1,0 +1,35 @@
+.exit-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  &__grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  &__section {
+    padding: 1rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 0.85rem;
+    background: var(--colour-surface-alt);
+  }
+
+  &__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+  }
+
+  &__fields {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+}

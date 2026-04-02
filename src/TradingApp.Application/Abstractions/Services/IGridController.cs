@@ -1,4 +1,5 @@
 using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Abstractions.Services;
 
@@ -12,6 +13,6 @@ public interface IGridController
         MarketContext context,
         GridState gridState,
         PositionState positionState,
-        string strategyConfigJson,
+        IStrategyConfig strategyConfig,
         CancellationToken cancellationToken = default);
 }

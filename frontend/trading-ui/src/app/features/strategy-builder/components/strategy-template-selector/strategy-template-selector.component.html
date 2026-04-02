@@ -1,0 +1,26 @@
+<mat-card class="template-selector">
+  <mat-card-header>
+    <mat-card-title>Strategy Template</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="template-selector__grid">
+      @for (template of templates; track template.id) {
+        <button
+          type="button"
+          class="template-selector__item"
+          [class.template-selector__item--selected]="selectedTemplateId === template.id"
+          [class.template-selector__item--disabled]="!template.available"
+          [disabled]="!template.available"
+          [attr.aria-pressed]="selectedTemplateId === template.id"
+          (click)="selectTemplate(template)"
+        >
+          <span class="template-selector__label">{{ template.label }}</span>
+          @if (!template.available) {
+            <span class="template-selector__badge">Coming soon</span>
+          }
+        </button>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

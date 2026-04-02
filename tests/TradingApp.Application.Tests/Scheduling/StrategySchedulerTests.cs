@@ -1,14 +1,41 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Scheduling;
 using TradingApp.Application.Scheduling.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Tests.Scheduling;
 
 [TestClass]
 public sealed class StrategySchedulerTests
 {
+    private static readonly StrategyConfig TestConfig = new()
+    {
+        SchemaVersion = 1,
+        StrategyMode = StrategyMode.Grid,
+        StrategyName = "Test Grid",
+        Market = "BTC-USD",
+        Grid = new GridConfig
+        {
+            Levels = 5,
+            Spacing = 0.5m,
+            BreakdownThreshold = 3m,
+        },
+        Exit = new ExitConfig
+        {
+            TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 2m },
+            StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 5m },
+        },
+        Risk = new RiskConfig
+        {
+            PositionSizeValue = 100m,
+            Leverage = 1m,
+            MaxOpenTrades = 1,
+        },
+    };
+
     private Mock<IMarketContextBuilder> _contextBuilderMock = default!;
     private Mock<IStrategyEngine> _strategyEngineMock = default!;
     private Mock<IGridController> _gridControllerMock = default!;
@@ -31,7 +58,7 @@ public sealed class StrategySchedulerTests
             _gridControllerMock.Object,
             _riskEngineMock.Object,
             _positionManagerMock.Object,
-            "{}");
+            TestConfig);
 
         _contextBuilderMock
             .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
@@ -46,7 +73,7 @@ public sealed class StrategySchedulerTests
             });
 
         _strategyEngineMock
-            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrategyEvaluation { SetupDetected = true });
 
         _gridControllerMock
@@ -55,7 +82,7 @@ public sealed class StrategySchedulerTests
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
-                It.IsAny<string>(),
+                It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
@@ -72,13 +99,13 @@ public sealed class StrategySchedulerTests
         await _sut.HandleCandleClosedAsync(evt, null, null);
 
         _contextBuilderMock.Verify(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()), Times.Never);
-        _strategyEngineMock.Verify(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _strategyEngineMock.Verify(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()), Times.Never);
         _gridControllerMock.Verify(controller => controller.ProcessAsync(
             It.IsAny<StrategyEvaluation>(),
             It.IsAny<MarketContext>(),
             It.IsAny<GridState>(),
             It.IsAny<PositionState>(),
-            It.IsAny<string>(),
+            It.IsAny<IStrategyConfig>(),
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -113,7 +140,7 @@ public sealed class StrategySchedulerTests
             .Returns(marketContext);
 
         _strategyEngineMock
-            .Setup(engine => engine.EvaluateAsync(marketContext, "{}", cancellationToken))
+            .Setup(engine => engine.EvaluateAsync(marketContext, TestConfig, cancellationToken))
             .Callback(() => callOrder.Add("strategy"))
             .ReturnsAsync(evaluation);
 
@@ -123,7 +150,7 @@ public sealed class StrategySchedulerTests
                 marketContext,
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
-                "{}",
+                TestConfig,
                 cancellationToken))
             .Callback(() => callOrder.Add("grid"))
             .ReturnsAsync(signals);
@@ -152,7 +179,7 @@ public sealed class StrategySchedulerTests
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
-                It.IsAny<string>(),
+                It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
@@ -180,7 +207,7 @@ public sealed class StrategySchedulerTests
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
-                It.IsAny<string>(),
+                It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(signals);
 

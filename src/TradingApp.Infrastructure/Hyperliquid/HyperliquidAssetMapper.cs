@@ -47,6 +47,16 @@ public static class HyperliquidAssetMapper
         return CoinToDisplay.ContainsKey(coin);
     }
 
+    public static IReadOnlyCollection<string> GetSupportedCoins()
+    {
+        return CoinToDisplay.Keys.OrderBy(coin => coin).ToArray();
+    }
+
+    public static IReadOnlyCollection<string> GetSupportedTimeframes()
+    {
+        return TimeframeToIntervalMs.Keys.ToArray();
+    }
+
     public static string ToDisplayName(string coin)
     {
         return CoinToDisplay.TryGetValue(coin, out var displayName)

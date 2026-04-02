@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -7,6 +8,9 @@ using TradingApp.Application.Abstractions.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
+using TradingApp.Domain.Trading;
 using TradingApp.Infrastructure.Binance;
 
 namespace TradingApp.Api.Controllers;
@@ -27,20 +31,69 @@ public sealed class BacktestsController : ApiController
     {
         ValidateRequest(request);
 
-        var strategyConfig = new GridStrategyConfig
+        var strategyConfig = new StrategyConfig
         {
-            GridLevels = request.StrategyConfig.GridLevels,
-            EntryMode = request.StrategyConfig.EntryMode,
-            ManualAnchorPrice = request.StrategyConfig.ManualAnchorPrice,
-            GridSpacing = request.StrategyConfig.GridSpacing,
-            TakeProfitPercent = request.StrategyConfig.TakeProfitPercent,
-            BreakdownThreshold = request.StrategyConfig.BreakdownThreshold,
-            MakerFee = request.StrategyConfig.MakerFee,
-            TakerFee = request.StrategyConfig.TakerFee,
-            Slippage = request.StrategyConfig.Slippage,
-            PositionSize = request.StrategyConfig.PositionSize,
-            Leverage = request.StrategyConfig.Leverage,
-            StopLossPercent = request.StrategyConfig.StopLossPercent,
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Grid,
+            StrategyName = request.StrategyConfig.StrategyName,
+            Exchange = "Hyperliquid",
+            Market = request.StrategyConfig.Market,
+            Timeframe = request.StrategyConfig.Timeframe,
+            Direction = ParseSchemaEnum(request.StrategyConfig.Direction, Direction.Long),
+            Enabled = request.StrategyConfig.Enabled,
+            Grid = request.StrategyConfig.Grid is not null
+                ? new GridConfig
+                {
+                    Levels = request.StrategyConfig.Grid.Levels,
+                    Spacing = request.StrategyConfig.Grid.Spacing,
+                    EntryMode = NormalizeEntryMode(request.StrategyConfig.Grid.EntryMode),
+                    AnchorPrice = request.StrategyConfig.Grid.AnchorPrice,
+                    BreakdownThreshold = request.StrategyConfig.Grid.BreakdownThreshold,
+                }
+                : null,
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = request.StrategyConfig.Exit.TakeProfit.Enabled,
+                    Type = ParseSchemaEnum(request.StrategyConfig.Exit.TakeProfit.Type, ExitRuleType.FixedPercent),
+                    Value = request.StrategyConfig.Exit.TakeProfit.Value,
+                    Lookback = request.StrategyConfig.Exit.TakeProfit.Lookback,
+                },
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = request.StrategyConfig.Exit.StopLoss.Enabled,
+                    Type = ParseSchemaEnum(request.StrategyConfig.Exit.StopLoss.Type, ExitRuleType.FixedPercent),
+                    Value = request.StrategyConfig.Exit.StopLoss.Value,
+                    Lookback = request.StrategyConfig.Exit.StopLoss.Lookback,
+                },
+                ExitOnOppositeSignal = request.StrategyConfig.Exit.ExitOnOppositeSignal,
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeType = ParseSchemaEnum(request.StrategyConfig.Risk.PositionSizeType, PositionSizeType.PercentWallet),
+                PositionSizeValue = request.StrategyConfig.Risk.PositionSizeValue,
+                Leverage = request.StrategyConfig.Risk.Leverage,
+                MaxOpenTrades = request.StrategyConfig.Risk.MaxOpenTrades,
+                CooldownValue = request.StrategyConfig.Risk.CooldownValue,
+                CooldownUnit = ParseSchemaEnum(request.StrategyConfig.Risk.CooldownUnit, CooldownUnit.Candles),
+                AllowSameCandleReentry = request.StrategyConfig.Risk.AllowSameCandleReentry,
+            },
+            Source = new SourceMetadata
+            {
+                EntryPoint = StrategyEntryPoint.UiBuilder,
+                Summary = $"Backtest: {request.StrategyConfig.StrategyName}",
+            },
+        };
+
+        var executionConfig = new ExecutionConfig
+        {
+            FeeModel = new FeeModel
+            {
+                MakerFeeRate = request.ExecutionConfig.MakerFee,
+                TakerFeeRate = request.ExecutionConfig.TakerFee,
+                SlippageRate = request.ExecutionConfig.Slippage,
+            },
         };
 
         var result = await Mediator.Send(
@@ -50,6 +103,7 @@ public sealed class BacktestsController : ApiController
                 request.StartDate!.Value,
                 request.EndDate!.Value,
                 strategyConfig,
+                executionConfig,
                 request.InitialCapital!.Value,
                 request.EnableAuditLog),
             cancellationToken);
@@ -184,16 +238,57 @@ public sealed class BacktestsController : ApiController
             throw new DomainException("endDate must be after startDate");
         }
 
-        if (!BacktestEntryModes.IsValid(request.StrategyConfig.EntryMode))
+        if (request.StrategyConfig.Grid is null)
         {
-            throw new DomainException($"entryMode must be one of: {BacktestEntryModes.AutoFromSignalCandle}, {BacktestEntryModes.InitialMarketThenGrid}, {BacktestEntryModes.WaitForLimitPrice}");
+            throw new DomainException("grid configuration is required");
         }
 
-        if (string.Equals(request.StrategyConfig.EntryMode, BacktestEntryModes.WaitForLimitPrice, StringComparison.Ordinal) &&
-            request.StrategyConfig.ManualAnchorPrice is null)
+        var entryMode = NormalizeEntryMode(request.StrategyConfig.Grid.EntryMode);
+
+        if (!EntryModes.IsValid(entryMode))
+        {
+            throw new DomainException($"entryMode must be one of: {EntryModes.AutoFromSignalCandle}, {EntryModes.InitialMarketThenGrid}, {EntryModes.WaitForLimitPrice}");
+        }
+
+        if (string.Equals(entryMode, EntryModes.WaitForLimitPrice, StringComparison.Ordinal)
+            && request.StrategyConfig.Grid.AnchorPrice is null)
         {
             throw new DomainException("manualAnchorPrice is required when entryMode is WaitForLimitPrice");
         }
+    }
+
+    private static TEnum ParseSchemaEnum<TEnum>(string? value, TEnum fallback)
+        where TEnum : struct, Enum
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<TEnum>($"\"{value}\"", StrategyJsonOptions.Default);
+        }
+        catch (JsonException)
+        {
+            return fallback;
+        }
+    }
+
+    private static string NormalizeEntryMode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return EntryModes.AutoFromSignalCandle;
+        }
+
+        return value switch
+        {
+            "auto_from_signal_candle" => EntryModes.AutoFromSignalCandle,
+            "initial_market_then_grid" => EntryModes.InitialMarketThenGrid,
+            "wait_for_limit_price" => EntryModes.WaitForLimitPrice,
+            _ => value,
+        };
     }
 
     private const string GetBacktestByIdRouteName = "GetBacktestById";

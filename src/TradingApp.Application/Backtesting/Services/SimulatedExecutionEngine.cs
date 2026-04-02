@@ -2,6 +2,8 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Backtesting.Services;
 

@@ -89,20 +89,20 @@ Fields:
 Id  
 UserId  
 Name  
-StrategyType  
-CreatedAt  
-IsActive
+StrategyType (always `"GridStrategy"` in v1)  
+ConfigJson (serialized `StrategyConfig`; see [Strategy Config Schema](13-strategy-config-schema.md))  
+Version (starts at 1; incremented on each `Update()`)  
+IsActive (soft-delete flag)  
+CreatedAtUtc (Unix milliseconds)  
+UpdatedAtUtc (Unix milliseconds)
 
----
+Behavior:
 
-# StrategyConfig
+- `Strategy.Create(userId, name, strategyType, configJson)` — static factory; validates all inputs; sets `Version = 1`, `IsActive = true`
+- `Strategy.Update(name, configJson)` — increments `Version`, updates `UpdatedAtUtc`
+- `Strategy.SoftDelete()` — sets `IsActive = false`; active queries exclude soft-deleted records
 
-Stores JSON configuration for the strategy.
-
-Fields:
-
-StrategyId  
-ConfigJson
+File: `src/TradingApp.Domain/Entities/Strategy.cs`
 
 ---
 
@@ -189,6 +189,7 @@ Symbol
 IntervalsJson (serialised `string[]`)
 StartDateUtc / EndDateUtc (Unix ms)
 StrategyConfigJson
+ExecutionConfigJson
 InitialCapital
 CandlesReplayed
 ElapsedMs
@@ -213,3 +214,20 @@ Key design patterns:
 - No `UserId` — not tenant-scoped
 
 File: `src/TradingApp.Domain/Entities/BacktestRun.cs`
+
+---
+
+# Domain Trading Types
+
+Typed value objects in `src/TradingApp.Domain/Trading/` that represent strategy configuration and execution parameters. These are used throughout the pipeline (live and backtest) instead of raw JSON strings.
+
+| Type | Kind | Purpose | File |
+|------|------|---------|------|
+| `IStrategyConfig` | Marker interface | Common type accepted by `IStrategyEngine` and `IGridController` | `src/TradingApp.Domain/Trading/IStrategyConfig.cs` |
+| `GridStrategyConfig` | Sealed record | Typed config for the grid strategy: `GridLevels`, `GridSpacing`, `TakeProfitPercent`, `StopLossPercent`, `BreakdownThreshold`, `EntryMode`, `ManualAnchorPrice`, `PositionSize` | `src/TradingApp.Domain/Trading/GridStrategyConfig.cs` |
+| `ExecutionConfig` | Sealed record | Execution parameters shared across live and backtest: `FeeModel` + `Leverage` (default 1×). `FeeModel.Default` provides standard Hyperliquid rates | `src/TradingApp.Domain/Trading/ExecutionConfig.cs` |
+| `FeeModel` | Sealed record | Maker/taker fee rates and slippage. `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`. Default: maker 0.0001, taker 0.00035 | `src/TradingApp.Domain/Trading/FeeModel.cs` |
+| `EntryModes` | Static class | Constants for grid anchor price mode: `AutoFromSignalCandle`, `Manual` | `src/TradingApp.Domain/Trading/EntryModes.cs` |
+| `OrderSide` | Enum | `Buy` / `Sell` | `src/TradingApp.Domain/Enums/OrderSide.cs` |
+
+`StrategyScheduler` holds a typed `IStrategyConfig` instance (not a JSON string) and passes it directly to `IStrategyEngine.EvaluateAsync` and `IGridController.ProcessAsync`.

@@ -98,12 +98,12 @@ The replay must preserve time order.
 | `StartDateUtc` | `long` | — | Unix ms — start of evaluation period (after warmup) |
 | `EndDateUtc` | `long` | — | Unix ms — end of evaluation period |
 | `InitialCapital` | `decimal` | — | Starting equity for PnL simulation |
-| `FeeModel` | `FeeModel` | — | Maker/taker rates and slippage |
+| `Strategy` | `IStrategyConfig` | — | Typed strategy config passed to the pipeline. In v1, always a `StrategyConfig` (`src/TradingApp.Application/StrategyAuthoring/Models/StrategyConfig.cs`). |
+| `Execution` | `ExecutionConfig` | — | Fee model for this run (see `FeeModel.Default`). Leverage is in `StrategyConfig.Risk.Leverage`. |
 | `WarmupPeriod` | `int` | `200` | 15m candles fed to indicator state before evaluation starts |
-| `StrategyConfigJson` | `string` | — | Serialised strategy config passed to `IStrategyEngine` |
 | `EnableAuditLog` | `bool` | `true` | When `true`, per-candle, order-event, and grid-cycle audit entries are collected and persisted as JSON blob columns on `BacktestRun` |
 
-`FeeModel` (`src/TradingApp.Application/Backtesting/Models/FeeModel.cs`): `MakerFeeRate` (default 0.0001), `TakerFeeRate` (default 0.00035), `SlippageRate` (default 0). Provides `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`.
+`FeeModel` (`src/TradingApp.Domain/Trading/FeeModel.cs`): `MakerFeeRate` (default 0.0001), `TakerFeeRate` (default 0.00035), `SlippageRate` (default 0). Use `FeeModel.Default` for standard Hyperliquid rates. Provides `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`. Owned by `ExecutionConfig` — not a direct field on `BacktestConfig`.
 
 ---
 
@@ -202,7 +202,7 @@ Completed runs are persisted as `BacktestRun` domain entities immediately after 
 
 - Created via `BacktestRun.CreateQueued(...)` for the async background path (status: `Queued → Running → Completed/Failed`) or `BacktestRun.Create(...)` for direct creation with final metrics
 - Summary metrics (TotalTrades, WinRate, TotalPnl, MaxDrawdown, etc.) stored as scalar columns
-- JSON blob columns: `StrategyConfigJson`, `TradesJson`, `IntervalsJson`, `EquityTimeSeriesJson`
+- JSON blob columns: `StrategyConfigJson`, `ExecutionConfigJson`, `TradesJson`, `IntervalsJson`, `EquityTimeSeriesJson`
 - Audit log blob columns (nullable): `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson` — populated only when `AuditLogEnabled = true`
 - `AuditLogEnabled` (bool) — records whether audit data was collected for this run; controls whether the debug endpoint returns data
 - **Not tenant-scoped** — runs are keyed by a generated Guid with no UserId

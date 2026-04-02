@@ -1,0 +1,67 @@
+.strategy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--colour-muted);
+    line-height: 1.5;
+  }
+
+  &__state,
+  &__table-card {
+    background: var(--colour-surface-dark);
+    border: 1px solid var(--colour-border-subtle);
+  }
+
+  &__state {
+    p {
+      margin: 0;
+      color: var(--colour-muted);
+      line-height: 1.6;
+    }
+  }
+
+  &__state--loading .mat-mdc-card-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    min-width: 920px;
+  }
+
+  &__actions {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .strategy-list {
+    &__header {
+      align-items: stretch;
+    }
+  }
+}

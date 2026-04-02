@@ -9,7 +9,10 @@ using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Api.Services;
 
@@ -164,34 +167,30 @@ public sealed class BacktestProcessorService : BackgroundService
         });
     }
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
-
     private static BacktestConfig BuildConfig(BacktestRun run)
     {
-        var strategyConfig = JsonSerializer.Deserialize<GridStrategyConfig>(
+        var strategyConfig = JsonSerializer.Deserialize<StrategyConfig>(
             run.StrategyConfigJson,
-            JsonOptions)
+            StrategyJsonOptions.Default)
             ?? throw new InvalidOperationException("Failed to deserialize strategy config.");
+
+        var executionConfig = JsonSerializer.Deserialize<ExecutionConfig>(
+            run.ExecutionConfigJson,
+            StrategyJsonOptions.Default)
+            ?? throw new InvalidOperationException("Failed to deserialize execution config.");
 
         return new BacktestConfig
         {
             Symbol = run.Symbol,
             Intervals = JsonSerializer.Deserialize<string[]>(
                 run.IntervalsJson,
-                JsonOptions) ?? [],
+                StrategyJsonOptions.Default)
+                ?? throw new InvalidOperationException("Failed to deserialize intervals."),
             StartDateUtc = run.StartDateUtc,
             EndDateUtc = run.EndDateUtc,
             InitialCapital = run.InitialCapital,
-            FeeModel = new FeeModel
-            {
-                MakerFeeRate = strategyConfig.MakerFee,
-                TakerFeeRate = strategyConfig.TakerFee,
-                SlippageRate = strategyConfig.Slippage,
-            },
-            StrategyConfigJson = run.StrategyConfigJson,
+            Strategy = strategyConfig,
+            Execution = executionConfig,
             EnableAuditLog = run.AuditLogEnabled,
         };
     }

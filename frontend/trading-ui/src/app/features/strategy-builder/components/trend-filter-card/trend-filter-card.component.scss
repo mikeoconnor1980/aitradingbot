@@ -1,0 +1,11 @@
+.disabled-card {
+  background: var(--colour-surface-dark);
+  border: 1px dashed var(--colour-border-subtle);
+  opacity: 0.7;
+
+  &__message {
+    margin: 0;
+    color: var(--colour-muted);
+    font-style: italic;
+  }
+}

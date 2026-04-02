@@ -70,10 +70,19 @@ describe("BacktestFormComponent", () => {
       intervals: ["15m", "1h", "4h"],
       initialCapital: 10000,
       strategyConfig: jasmine.objectContaining({
-        gridLevels: 10,
-        entryMode: "WaitForLimitPrice",
-        manualAnchorPrice: 42000,
-        leverage: 3
+        market: "BTC",
+        grid: jasmine.objectContaining({
+          levels: 10,
+          entryMode: "WaitForLimitPrice",
+          anchorPrice: 42000
+        }),
+        risk: jasmine.objectContaining({
+          leverage: 3,
+          positionSizeValue: 100
+        })
+      }),
+      executionConfig: jasmine.objectContaining({
+        slippage: 0
       })
     }));
   });
@@ -91,8 +100,10 @@ describe("BacktestFormComponent", () => {
 
     expect(component.runBacktest.emit).toHaveBeenCalledWith(jasmine.objectContaining({
       strategyConfig: jasmine.objectContaining({
-        entryMode: "InitialMarketThenGrid",
-        manualAnchorPrice: null
+        grid: jasmine.objectContaining({
+          entryMode: "InitialMarketThenGrid",
+          anchorPrice: null
+        })
       })
     }));
   });
@@ -132,18 +143,43 @@ describe("BacktestFormComponent", () => {
       startDate: "2024-02-01T00:00:00Z",
       endDate: "2024-02-29T00:00:00Z",
       strategyConfig: {
-        gridLevels: 7,
-        entryMode: "WaitForLimitPrice",
-        manualAnchorPrice: 152.25,
-        gridSpacing: 0.35,
-        takeProfitPercent: 1.5,
-        breakdownThreshold: -2.5,
-        makerFee: 0.0001,
-        takerFee: 0.00035,
-        slippage: 0.00005,
-        positionSize: 250,
-        leverage: 5,
-        stopLossPercent: 4
+        schemaVersion: 1,
+        strategyMode: "grid",
+        strategyName: "Backtest",
+        exchange: "Hyperliquid",
+        market: "SOL",
+        timeframe: "15m",
+        direction: "long",
+        enabled: true,
+        grid: {
+          levels: 7,
+          entryMode: "WaitForLimitPrice",
+          anchorPrice: 152.25,
+          spacing: 0.35,
+          breakdownThreshold: -2.5
+        },
+        exit: {
+          takeProfit: { enabled: true, type: "fixed_percent", value: 1.5 },
+          stopLoss: { enabled: true, type: "fixed_percent", value: 4 },
+          exitOnOppositeSignal: false
+        },
+        risk: {
+          positionSizeType: "fixed_notional",
+          positionSizeValue: 250,
+          leverage: 5,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false
+        },
+        source: { entryPoint: "ui_builder", summary: "Backtest: SOL" }
+      },
+      executionConfig: {
+        feeModel: {
+          makerFeeRate: 0.0001,
+          takerFeeRate: 0.00035,
+          slippageRate: 0.00005
+        }
       },
       initialCapital: 25000,
       status: "Completed",
@@ -176,6 +212,8 @@ describe("BacktestFormComponent", () => {
     expect(component.form.controls.gridLevels.value).toBe(7);
     expect(component.form.controls.entryMode.value).toBe("WaitForLimitPrice");
     expect(component.form.controls.manualAnchorPrice.value).toBe(152.25);
+    expect(component.form.controls.makerFee.value).toBe(0.0001);
+    expect(component.form.controls.leverage.value).toBe(5);
     expect(component.form.controls.initialCapital.value).toBe(25000);
   });
 

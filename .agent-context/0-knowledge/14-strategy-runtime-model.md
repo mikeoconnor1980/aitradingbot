@@ -52,19 +52,19 @@ Multiple strategies may exist but typically only one is active.
 
 # StrategyConfig
 
-JSON configuration stored in the database.
+JSON configuration stored in the database column `StrategyConfig.ConfigJson`.
+At runtime, the JSON is deserialized into `TradingApp.Application.StrategyAuthoring.Models.StrategyConfig`
+using `StrategyJsonOptions.Default` and passed through the pipeline as `IStrategyConfig`.
 
-Example fields:
+Key top-level fields used at runtime:
+- `strategyMode` — discriminator (`grid` or `signal`)
+- `market` — trading symbol
+- `grid` — grid parameters (GridConfig)
+- `exit` — take profit and stop loss rules (ExitConfig)
+- `risk` — leverage, sizing, cooldown (RiskConfig)
+- `entryConditions` — typed entry conditions for signal mode
 
-trend  
-bias  
-entry  
-grid  
-exit  
-hedge  
-risk
-
-This configuration is interpreted by the strategy plugin.
+See [Strategy Config Schema](13-strategy-config-schema.md) for full schema and sub-model reference.
 
 ---
 
@@ -188,9 +188,9 @@ All of these are shared between live trading and backtesting:
 
 | Interface | Key Method(s) | Purpose |
 |-----------|--------------|----------|
-| `IStrategyEngine` | `EvaluateAsync(MarketContext, string configJson) → StrategyEvaluation` | Detects valid setups |
+| `IStrategyEngine` | `EvaluateAsync(MarketContext, IStrategyConfig) → StrategyEvaluation` | Detects valid setups |
 | `IMarketContextBuilder` | `UpdateIndicators(Candle)` + `Build(trigger, 1h?, 4h?) → MarketContext` | Builds shared market context |
-| `IGridController` | `ProcessAsync(evaluation, context, gridState, positionState, configJson) → IReadOnlyList<TradingSignal>` | Grid lifecycle + signal emission |
+| `IGridController` | `ProcessAsync(evaluation, context, gridState, positionState, IStrategyConfig) → IReadOnlyList<TradingSignal>` | Grid lifecycle + signal emission |
 | `IRiskEngine` | `ValidateAsync(signals) → IReadOnlyList<TradingSignal>` | Filters signals against risk limits |
 | `IPositionManager` | `ExecuteSignalsAsync(approvedSignals)` | Routes approved signals to `IExecutionEngine` |
 | `IExecutionEngine` | `PlaceOrderAsync`, `CancelOrderAsync`, `CancelAllOrdersAsync` | Execution boundary (live vs. simulated) |

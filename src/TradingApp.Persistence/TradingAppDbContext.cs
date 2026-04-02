@@ -13,6 +13,7 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<Candle> Candles => Set<Candle>();
     public DbSet<FundingRate> FundingRates => Set<FundingRate>();
     public DbSet<BacktestRun> BacktestRuns => Set<BacktestRun>();
+    public DbSet<Strategy> Strategies => Set<Strategy>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -98,6 +99,9 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(backtestRun => backtestRun.StrategyConfigJson)
                 .IsRequired();
 
+            entity.Property(backtestRun => backtestRun.ExecutionConfigJson)
+                .IsRequired();
+
             entity.Property(backtestRun => backtestRun.TradesJson)
                 .IsRequired();
 
@@ -135,6 +139,51 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.Property(backtestRun => backtestRun.TotalFeesPaid)
                 .HasConversion<double>();
+        });
+
+        modelBuilder.Entity<Strategy>(entity =>
+        {
+            entity.ToTable("Strategies");
+
+            entity.HasKey(strategy => strategy.Id);
+
+            entity.Property(strategy => strategy.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(strategy => strategy.UserId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.Name)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.StrategyType)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.ConfigJson)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.Version)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.IsActive)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.UpdatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(strategy => new { strategy.UserId, strategy.IsActive })
+                .HasDatabaseName("IX_Strategies_UserId_IsActive");
+
+            entity.HasIndex(strategy => new { strategy.UserId, strategy.Name })
+                .IsUnique()
+                .HasDatabaseName("IX_Strategies_UserId_Name")
+                .HasFilter("[IsActive] = 1");
         });
     }
 }

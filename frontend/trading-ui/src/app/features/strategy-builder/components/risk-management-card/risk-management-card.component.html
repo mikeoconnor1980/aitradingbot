@@ -1,0 +1,65 @@
+<mat-card class="risk-card" [formGroup]="group">
+  <mat-card-header>
+    <mat-card-title>Risk Management</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="risk-card__grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Position size type</mat-label>
+        <mat-select formControlName="positionSizeType">
+          <mat-option value="percent_wallet">Percent of wallet</mat-option>
+          <mat-option value="fixed_notional">Fixed notional</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Position size value</mat-label>
+        <input matInput type="number" formControlName="positionSizeValue" min="0.01" max="100" step="0.01" />
+        @if (hasError("positionSizeValue", "required")) {
+          <mat-error>Position size is required.</mat-error>
+        }
+        @if (hasError("positionSizeValue", "min") || hasError("positionSizeValue", "max")) {
+          <mat-error>Position size must be between 0.01 and 100.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Leverage</mat-label>
+        <input matInput type="number" formControlName="leverage" min="1" max="50" step="1" />
+        @if (hasError("leverage", "required")) {
+          <mat-error>Leverage is required.</mat-error>
+        }
+        @if (hasError("leverage", "min") || hasError("leverage", "max")) {
+          <mat-error>Leverage must be between 1 and 50.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Max open trades</mat-label>
+        <input matInput type="number" formControlName="maxOpenTrades" min="1" max="10" step="1" />
+        @if (hasError("maxOpenTrades", "required")) {
+          <mat-error>Max open trades is required.</mat-error>
+        }
+        @if (hasError("maxOpenTrades", "min") || hasError("maxOpenTrades", "max")) {
+          <mat-error>Max open trades must be between 1 and 10.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cooldown value</mat-label>
+        <input matInput type="number" formControlName="cooldownValue" min="0" step="1" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Cooldown unit</mat-label>
+        <mat-select formControlName="cooldownUnit">
+          <mat-option value="candles">Candles</mat-option>
+          <mat-option value="minutes">Minutes</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-checkbox formControlName="allowSameCandleReentry">Allow same candle re-entry</mat-checkbox>
+    </div>
+  </mat-card-content>
+</mat-card>
