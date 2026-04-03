@@ -54,20 +54,31 @@ public sealed class OpenAiCompatibleLlmClient : ILlmClient
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var truncatedBody = errorBody.Length > 500 ? errorBody[..500] + "..." : errorBody;
 
             _logger.LogWarning(
                 "LLM request failed. StatusCode={StatusCode}, Body={Body}",
                 (int)response.StatusCode,
-                errorBody);
+                truncatedBody);
 
             throw new HttpRequestException(
-                $"LLM request failed with status code {(int)response.StatusCode}: {errorBody}",
+                $"LLM request failed with status code {(int)response.StatusCode}: {truncatedBody}",
                 null,
                 response.StatusCode);
         }
 
-        var result = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(
-            cancellationToken: cancellationToken);
+        ChatCompletionResponse? result;
+
+        try
+        {
+            result = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(
+                cancellationToken: cancellationToken);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize LLM response.");
+            throw new InvalidOperationException("LLM returned an unparseable response.", ex);
+        }
 
         if (result?.Choices is not { Count: > 0 })
         {

@@ -63,7 +63,7 @@ internal static class StrategyInterpreterPrompt
         Supported signal condition params:
         - rsi: { "period": <int>, "operator": "lt" | "lte" | "gt" | "gte", "value": <decimal> }
         - price_vs_ema: { "period": <int>, "operator": "above" | "below" | "cross_above" | "cross_below" | "near" | "touch", "distanceType": "percent" | "absolute" | "atr_multiple", "distanceValue": <decimal|null> }
-        - macd: { "fastPeriod": <int>, "slowPeriod": <int>, "signalPeriod": <int>, "operator": "cross_above" | "cross_below" | "gt" | "lt" }
+        - macd: { "fastPeriod": <int>, "slowPeriod": <int>, "signalPeriod": <int>, "operator": "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling" }
 
         Rules:
         1. Grid keywords such as grid, levels, spacing, ladder, range imply strategyMode = "grid".

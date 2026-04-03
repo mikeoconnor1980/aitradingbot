@@ -1,6 +1,6 @@
 # Strategy Customisation
 
-Users can create their own strategy instances using the GridStrategy plugin.
+Users can create their own strategy instances using the GridStrategy plugin — either via form-based configuration or by describing their intent in natural language (see [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md)).
 
 Each user strategy consists of:
 
@@ -61,6 +61,12 @@ The worker loads the active strategy configuration at startup.
 | `DELETE` | `/api/strategies/{id}` | Soft-deletes (`IsActive = false`) |
 | `POST` | `/api/strategies/validate` | Runs `CompositeStrategyValidator` without persisting |
 
+### Strategy Interpretation (F9)
+
+| Method | Endpoint | Notes |
+|--------|----------|-------|
+| `POST` | `/api/strategies/interpret` | Interprets natural language input → `StrategyIntentDto` with config, confidence, assumptions; rate-limited 10 req/min/IP |
+
 Duplicate strategy names (per user) return HTTP 409.
 
 ### Revision History (F3)
@@ -80,6 +86,7 @@ Every create, update, and restore operation automatically generates a `StrategyR
 - Full JSON snapshot of the config at that point
 - Auto-generated change summary (field-level diff)
 - Source metadata (`Ui`, `Api`, `Import`, or `Restore`)
+- Original natural language input (`SourceMetadata.SourceText`) if created via `/api/strategies/interpret`
 
 Repository: `IStrategyRepository` / `IStrategyRevisionRepository`
 

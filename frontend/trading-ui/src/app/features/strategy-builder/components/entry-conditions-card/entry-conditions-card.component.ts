@@ -101,6 +101,10 @@ export class EntryConditionsCardComponent {
     }
 
     if (String(values["type"] ?? "rsi") === "macd") {
+      if (this.hasMacdCondition) {
+        return;
+      }
+
       this.conditions.insert(index + 1, this._conditionFactory.createMacdCondition({
         enabled: values["enabled"] as boolean,
         label: values["label"] as string,

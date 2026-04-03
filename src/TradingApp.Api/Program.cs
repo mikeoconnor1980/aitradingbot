@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
@@ -172,16 +174,25 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     options.AddPolicy("interpret-strategy", httpContext =>
     {
-        var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].ToString();
-        var partitionKey = !string.IsNullOrWhiteSpace(forwardedFor)
-            ? forwardedFor.Split(',', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)[0]
-            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString();
+
+        if (partitionKey is null)
+        {
+            return RateLimitPartition.GetNoLimiter("unknown");
+        }
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey,
@@ -228,6 +239,7 @@ app.Logger.LogInformation(
     signer.WalletAddress);
 
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseForwardedHeaders();
 app.UseCors();
 app.UseRateLimiter();
 app.MapControllers();

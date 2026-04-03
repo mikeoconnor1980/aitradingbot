@@ -27,7 +27,10 @@ Two-page feature under `frontend/trading-ui/src/app/features/strategy-builder/`.
 | `ExitRulesCardComponent` | Take profit / stop loss rules |
 | `RiskManagementCardComponent` | Position sizing, leverage, cooldown |
 | `TrendFilterCardComponent` | Optional macro filter (not active in v1) |
-| `EntryConditionsCardComponent` | Signal-mode entry conditions |
+| `EntryConditionsCardComponent` | Signal-mode entry conditions; renders per-condition sub-components based on `type` |
+| `RsiConditionItemComponent` | RSI condition card (`rsi-condition-item/`) |
+| `PriceVsEmaConditionItemComponent` | Price vs EMA condition card (`price-vs-ema-condition-item/`) |
+| `MacdConditionItemComponent` | MACD condition card (`macd-condition-item/`); inputs: fastPeriod, slowPeriod, signalPeriod, operator |
 | `PreviewSummaryCardComponent` | Read-only config summary |
 | `ValidationCardComponent` | Server-side validation results |
 | `JsonPreviewCardComponent` | Live JSON preview of config |
@@ -41,6 +44,8 @@ Services (all `providedIn: 'root'`):
 | `StrategyMapperService` | Converts reactive form values → `StrategyConfig` |
 | `StrategyValidationService` | Client-side validation rules |
 | `ConditionFactoryService` | Creates typed `FormGroup` instances for each entry condition type; extensible for future condition types |
+
+**Signal Templates** — `STRATEGY_TEMPLATES` (`strategy-builder/models/strategy.model.ts`) defines available templates. The helper `_isSignalTemplate(templateId)` exists in 4 locations (builder page, mapper service, validation service, preview-summary card) and must be updated when a new signal-mode template is added. Current signal template IDs: `custom_signal`, `ema_pullback`, `macd_cross`.
 
 Route guard: `unsavedChangesGuard` (`CanDeactivateFn`) — prompts confirmation dialog when form is dirty.
 

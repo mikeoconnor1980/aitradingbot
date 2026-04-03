@@ -26,7 +26,7 @@ The schema is versioned (`SchemaVersion`) and extensible via the `StrategyMode` 
 | `exit` | `ExitConfig` | yes | Take profit and stop loss rules |
 | `risk` | `RiskConfig` | yes | Leverage, sizing, cooldown |
 | `metadata` | `StrategyMetadata?` | no | Authoring metadata |
-| `source` | `SourceMetadata?` | no | Import/template provenance |
+| `source` | `SourceMetadata?` | no | Import/template provenance; includes original NL input if created via interpretation |
 
 All enums serialize as `snake_case_lower` strings.
 
@@ -164,9 +164,22 @@ Supported param types:
 
 | `type` | Params class | Key fields |
 |--------|-------------|------------|
-| `rsi` | `RsiParams` | `period`, `operator`, `value` |
-| `price_vs_ema` | `PriceVsEmaParams` | `emaPeriod`, `operator` |
-| `macd` | `MacdParams` | `fastPeriod`, `slowPeriod`, `signalPeriod`, `operator` |
+| `rsi` | `RsiParams` | `period` (2–200), `operator` (`lt`, `lte`, `gt`, `gte`, `cross_above`, `cross_below`), `value` |
+| `price_vs_ema` | `PriceVsEmaParams` | `emaPeriod`, `operator` (`above`, `below`, `cross_above`, `cross_below`, `near`, `touch`) |
+| `macd` | `MacdParams` | `fastPeriod` (2–50), `slowPeriod` (5–200), `signalPeriod` (2–50), `operator` (see below); max 1 per strategy |
+
+MACD operators:
+
+| Operator | Condition |
+|----------|-----------|
+| `cross_above_signal` | MACD line crossed above signal line on this candle |
+| `cross_below_signal` | MACD line crossed below signal line on this candle |
+| `above_zero` | MACD line is above zero |
+| `below_zero` | MACD line is below zero |
+| `histogram_rising` | Histogram is rising vs. previous candle |
+| `histogram_falling` | Histogram is falling vs. previous candle |
+
+`BusinessRuleValidator` enforces: `fastPeriod < slowPeriod`; all periods within their ranges; at most one `macd` condition per strategy config.
 
 Custom `EntryConditionConfigConverter` + `EntryConditionParamsConverter` handle polymorphic JSON deserialization using the `type` field as discriminator. Files: `src/TradingApp.Application/StrategyAuthoring/Serialization/`.
 
@@ -199,9 +212,19 @@ Files: `src/TradingApp.Application/StrategyAuthoring/Validation/`
 
 ## Adding New Entry Condition Types
 
-1. Add enum value to `EntryConditionType`
+**Backend**
+1. Add enum value to `EntryConditionType` (`src/TradingApp.Application/StrategyAuthoring/Models/`)
 2. Create `{Name}Params` record implementing `IEntryConditionParams`
 3. Register type in `EntryConditionParamsConverter` switch
-4. Add `BusinessRuleValidator` checks for the new params
+4. Add `BusinessRuleValidator` checks (range constraints, cross-field rules)
+5. Create `{Name}ConditionHandler : IConditionHandler` in `src/TradingApp.Application/StrategyAuthoring/Services/`
+6. Register handler in `Program.cs` (`builder.Services.AddScoped<IConditionHandler, {Name}ConditionHandler>()`)
+7. Update `StrategyInterpreterPrompt.cs` with correct operator strings for the new type
+
+**Frontend**
+8. Add `{name}-condition-item` component under `strategy-builder/components/`
+9. Register the type in `ConditionFactoryService` to create its typed `FormGroup`
+10. Add the condition item to `EntryConditionsCardComponent` switch/dispatch
+11. Add a `STRATEGY_TEMPLATES` entry (if applicable) and update `_isSignalTemplate()` in all 4 locations
 
 The schema should remain backward compatible.

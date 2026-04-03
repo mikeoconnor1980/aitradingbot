@@ -9,7 +9,7 @@ import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { ActivatedRoute, Router } from "@angular/router";
-import { debounceTime, map, of, startWith, switchMap } from "rxjs";
+import { debounceTime, map, of, startWith, switchMap, tap } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { NotificationService } from "../../core/services/notification.service";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
@@ -344,16 +344,20 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   private _setupValidationStream(): void {
     this.form.valueChanges.pipe(
-      startWith(this.form.getRawValue()),
+      startWith(null),
       debounceTime(250),
-      map((value) => {
-        const rawValue = value as Record<string, unknown>;
+      map(() => this.form.getRawValue() as Record<string, unknown>),
+      tap((rawValue) => {
         this.clientErrors = this._strategyValidator.validate(rawValue);
 
         if (this.clientErrors.length > 0 || this.form.invalid) {
           this.serverErrors = [];
           this.serverWarnings = [];
           this.serverInfoMessages = [];
+        }
+      }),
+      map((rawValue) => {
+        if (this.clientErrors.length > 0 || this.form.invalid) {
           return null;
         }
 

@@ -1,5 +1,14 @@
 # LLM Context & Sentiment Architecture
 
+The system supports two complementary LLM integration patterns:
+
+1. **LLM as Context Provider** (this document) — Generates qualitative market signals (sentiment, macro regime, event risk); influences risk behaviour
+2. **LLM as Strategy Interpreter** (see [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md)) — Converts natural language strategy descriptions to executable `StrategyConfig`; runs on-demand during strategy authoring
+
+Both use `OpenAiCompatibleLlmClient` (in `TradingApp.AI`) to support multiple LLM providers (Gemini, Ollama, etc.).
+
+---
+
 This document describes how an LLM can be integrated into the trading system as a contextual signal provider.
 
 The LLM is used to generate qualitative market context such as sentiment, macro regime classification, and event risk levels.

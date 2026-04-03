@@ -37,6 +37,7 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 | 17 | [LLM Context & Sentiment](17-llm-context-sentiment-architecture.md) | LLM integration as context provider |
 | 18 | [Backtesting Architecture](18-backtesting-architecture.md) | Replay engine, simulated execution |
 | 19 | [Scheduling Architecture](19-scheduling-architecture.md) | CandleClock, StrategyScheduler, per-user fan-out |
+| 24 | [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md) | NL→StrategyConfig via LLM; F9 implementation |
 
 ## Architecture & Planning
 

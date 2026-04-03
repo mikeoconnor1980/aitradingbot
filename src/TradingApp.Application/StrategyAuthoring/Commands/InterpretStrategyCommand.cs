@@ -21,6 +21,7 @@ public sealed class InterpretStrategyCommandHandler
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.UserText);
 
         return await _interpreter.InterpretAsync(request.UserText, cancellationToken);
     }
