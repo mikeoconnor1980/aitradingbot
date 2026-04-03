@@ -43,6 +43,10 @@
     mat-form-field {
       flex: 1 1 12rem;
     }
+
+    app-info-popover[matSuffix] {
+      margin-right: 0.15rem;
+    }
   }
 }
 

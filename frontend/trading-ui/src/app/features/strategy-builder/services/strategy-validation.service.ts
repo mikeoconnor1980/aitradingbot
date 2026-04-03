@@ -113,6 +113,12 @@ export class StrategyValidationService {
 
     conditions.forEach((condition, index) => {
       const type = String(condition["type"] ?? "rsi");
+
+      if (type === "macd") {
+        this._validateMacdCondition(condition, index, errors);
+        return;
+      }
+
       const period = Number(condition["period"] ?? 0);
 
       if (period < 1) {
@@ -165,12 +171,44 @@ export class StrategyValidationService {
       ].join("|");
     }
 
+    if (type === "macd") {
+      return [
+        type,
+        String(condition["fastPeriod"] ?? ""),
+        String(condition["slowPeriod"] ?? ""),
+        String(condition["signalPeriod"] ?? ""),
+        String(condition["operator"] ?? ""),
+      ].join("|");
+    }
+
     return [
       type,
       String(condition["period"] ?? ""),
       String(condition["operator"] ?? ""),
       String(condition["value"] ?? ""),
     ].join("|");
+  }
+
+  private _validateMacdCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const fastPeriod = Number(condition["fastPeriod"] ?? 0);
+    const slowPeriod = Number(condition["slowPeriod"] ?? 0);
+    const signalPeriod = Number(condition["signalPeriod"] ?? 0);
+
+    if (fastPeriod < 2 || fastPeriod > 50) {
+      errors.push(this._error(`entryConditions[${index}].params.fastPeriod`, "RANGE", "Fast period must be between 2 and 50."));
+    }
+
+    if (slowPeriod < 5 || slowPeriod > 200) {
+      errors.push(this._error(`entryConditions[${index}].params.slowPeriod`, "RANGE", "Slow period must be between 5 and 200."));
+    }
+
+    if (signalPeriod < 2 || signalPeriod > 50) {
+      errors.push(this._error(`entryConditions[${index}].params.signalPeriod`, "RANGE", "Signal period must be between 2 and 50."));
+    }
+
+    if (fastPeriod >= slowPeriod) {
+      errors.push(this._error(`entryConditions[${index}].params.fastPeriod`, "RANGE", "Fast period must be less than slow period."));
+    }
   }
 
   private _validatePriceVsEmaCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
@@ -198,7 +236,7 @@ export class StrategyValidationService {
   }
 
   private _isSignalTemplate(templateId: string): boolean {
-    return templateId === "custom_signal" || templateId === "ema_pullback";
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   public validateServer(config: StrategyConfig, context?: HttpContext): Observable<ServerValidationResult> {

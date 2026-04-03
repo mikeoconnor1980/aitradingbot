@@ -6,8 +6,10 @@ export interface MacdOperatorOption {
 }
 
 export const MACD_OPERATORS: MacdOperatorOption[] = [
-  { value: "cross_above", label: "MACD crosses above signal" },
-  { value: "cross_below", label: "MACD crosses below signal" },
-  { value: "gt", label: "MACD greater than signal" },
-  { value: "lt", label: "MACD less than signal" },
+  { value: "cross_above_signal", label: "Crosses above signal line" },
+  { value: "cross_below_signal", label: "Crosses below signal line" },
+  { value: "above_zero", label: "Above zero line" },
+  { value: "below_zero", label: "Below zero line" },
+  { value: "histogram_rising", label: "Histogram rising" },
+  { value: "histogram_falling", label: "Histogram falling" },
 ];

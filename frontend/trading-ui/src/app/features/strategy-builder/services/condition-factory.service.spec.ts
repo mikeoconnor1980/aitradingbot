@@ -81,7 +81,9 @@ describe("ConditionFactoryService", () => {
       expect(group.get("fastPeriod")?.value).toBe(12);
       expect(group.get("slowPeriod")?.value).toBe(26);
       expect(group.get("signalPeriod")?.value).toBe(9);
-      expect(group.get("operator")?.value).toBe("cross_above");
+      expect(group.get("operator")?.value).toBe("cross_above_signal");
+      expect(group.get("enabled")?.value).toBeTrue();
+      expect(group.get("label")?.value).toBe("");
     });
 
     it("should apply MACD overrides", () => {
@@ -89,15 +91,52 @@ describe("ConditionFactoryService", () => {
         fastPeriod: 8,
         slowPeriod: 21,
         signalPeriod: 5,
-        operator: "lt",
+        operator: "below_zero",
         label: "MACD bearish",
       });
 
       expect(group.get("fastPeriod")?.value).toBe(8);
       expect(group.get("slowPeriod")?.value).toBe(21);
       expect(group.get("signalPeriod")?.value).toBe(5);
-      expect(group.get("operator")?.value).toBe("lt");
+      expect(group.get("operator")?.value).toBe("below_zero");
       expect(group.get("label")?.value).toBe("MACD bearish");
+    });
+
+    it("should generate unique MACD IDs", () => {
+      const groupOne = service.createMacdCondition();
+      const groupTwo = service.createMacdCondition();
+
+      expect(groupOne.get("id")?.value).not.toBe(groupTwo.get("id")?.value);
+    });
+
+    it("should invalidate fast periods below 2", () => {
+      const group = service.createMacdCondition({ fastPeriod: 1 });
+
+      expect(group.get("fastPeriod")?.valid).toBeFalse();
+    });
+
+    it("should invalidate slow periods below 5", () => {
+      const group = service.createMacdCondition({ slowPeriod: 4 });
+
+      expect(group.get("slowPeriod")?.valid).toBeFalse();
+    });
+
+    it("should invalidate signal periods above 50", () => {
+      const group = service.createMacdCondition({ signalPeriod: 51 });
+
+      expect(group.get("signalPeriod")?.valid).toBeFalse();
+    });
+
+    it("should accept boundary MACD periods", () => {
+      const group = service.createMacdCondition({
+        fastPeriod: 2,
+        slowPeriod: 200,
+        signalPeriod: 50,
+      });
+
+      expect(group.get("fastPeriod")?.valid).toBeTrue();
+      expect(group.get("slowPeriod")?.valid).toBeTrue();
+      expect(group.get("signalPeriod")?.valid).toBeTrue();
     });
   });
 });

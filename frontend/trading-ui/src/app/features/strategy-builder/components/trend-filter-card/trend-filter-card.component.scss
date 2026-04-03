@@ -2,6 +2,14 @@
   background: var(--colour-surface-dark);
   border: 1px solid var(--colour-border-subtle);
 
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    line-height: 1.2;
+  }
+
   &__form {
     display: flex;
     flex-direction: column;
@@ -12,6 +20,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
+  }
+
+  app-info-popover[matSuffix] {
+    margin-right: 0.15rem;
   }
 
   &__message {

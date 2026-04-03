@@ -87,10 +87,10 @@ export class ConditionFactoryService {
       enabled: [overrides?.enabled ?? true],
       type: ["macd"],
       label: [overrides?.label ?? ""],
-      fastPeriod: [overrides?.fastPeriod ?? 12, [Validators.required, Validators.min(1)]],
-      slowPeriod: [overrides?.slowPeriod ?? 26, [Validators.required, Validators.min(1)]],
-      signalPeriod: [overrides?.signalPeriod ?? 9, [Validators.required, Validators.min(1)]],
-      operator: [overrides?.operator ?? "cross_above", Validators.required],
+      fastPeriod: [overrides?.fastPeriod ?? 12, [Validators.required, Validators.min(2), Validators.max(50)]],
+      slowPeriod: [overrides?.slowPeriod ?? 26, [Validators.required, Validators.min(5), Validators.max(200)]],
+      signalPeriod: [overrides?.signalPeriod ?? 9, [Validators.required, Validators.min(2), Validators.max(50)]],
+      operator: [overrides?.operator ?? "cross_above_signal", Validators.required],
     });
   }
 

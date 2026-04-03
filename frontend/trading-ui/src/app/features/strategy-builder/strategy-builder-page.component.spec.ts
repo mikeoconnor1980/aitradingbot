@@ -244,7 +244,7 @@ describe("StrategyBuilderPageComponent", () => {
               fastPeriod: 12,
               slowPeriod: 26,
               signalPeriod: 9,
-              operator: "cross_above",
+              operator: "cross_above_signal",
             },
           }
         ],
@@ -278,6 +278,6 @@ describe("StrategyBuilderPageComponent", () => {
     expect(component.isSignalMode).toBeTrue();
     expect(component.conditionsFormArray.length).toBe(1);
     expect(component.conditionsFormArray.at(0).get("type")?.value).toBe("macd");
-    expect(component.conditionsFormArray.at(0).get("operator")?.value).toBe("cross_above");
+    expect(component.conditionsFormArray.at(0).get("operator")?.value).toBe("cross_above_signal");
   });
 });

@@ -205,7 +205,7 @@ export class PreviewSummaryCardComponent {
   }
 
   private _isSignalTemplate(templateId: string): boolean {
-    return templateId === "custom_signal" || templateId === "ema_pullback";
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   private _formatNumber(value: unknown): string {

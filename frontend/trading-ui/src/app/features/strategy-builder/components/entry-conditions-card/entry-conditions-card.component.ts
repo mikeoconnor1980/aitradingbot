@@ -8,9 +8,9 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { MACD_OPERATORS, MacdOperatorOption } from "../../enums/macd-operator.enum";
 import { ConditionFactoryService } from "../../services/condition-factory.service";
 import { InfoPopoverComponent } from "../info-popover/info-popover.component";
+import { MacdConditionItemComponent } from "../macd-condition-item/macd-condition-item.component";
 import { PriceVsEmaConditionItemComponent } from "../price-vs-ema-condition-item/price-vs-ema-condition-item.component";
 import { RsiConditionItemComponent } from "../rsi-condition-item/rsi-condition-item.component";
 
@@ -30,6 +30,7 @@ import { RsiConditionItemComponent } from "../rsi-condition-item/rsi-condition-i
     InfoPopoverComponent,
     RsiConditionItemComponent,
     PriceVsEmaConditionItemComponent,
+    MacdConditionItemComponent,
   ],
   templateUrl: "./entry-conditions-card.component.html",
   styleUrl: "./entry-conditions-card.component.scss"
@@ -39,8 +40,6 @@ export class EntryConditionsCardComponent {
 
   @Input() public conditions: FormArray | null = null;
 
-  public readonly macdOperators: MacdOperatorOption[] = MACD_OPERATORS;
-
   public get conditionGroups(): FormGroup[] {
     return (this.conditions?.controls as FormGroup[]) ?? [];
   }
@@ -49,13 +48,12 @@ export class EntryConditionsCardComponent {
     return this.conditions !== null;
   }
 
-  public getConditionType(group: FormGroup): string {
-    return String(group.get("type")?.value ?? "rsi");
+  public get hasMacdCondition(): boolean {
+    return this.conditionGroups.some((group) => this.getConditionType(group) === "macd");
   }
 
-  public hasError(group: FormGroup, controlName: string, errorCode: string): boolean {
-    const control = group.get(controlName);
-    return Boolean(control?.hasError(errorCode) && (control.touched || control.dirty));
+  public getConditionType(group: FormGroup): string {
+    return String(group.get("type")?.value ?? "rsi");
   }
 
   public onAddRsi(): void {
@@ -75,7 +73,7 @@ export class EntryConditionsCardComponent {
   }
 
   public onAddMacd(): void {
-    if (this.conditions === null) {
+    if (this.conditions === null || this.hasMacdCondition) {
       return;
     }
 
@@ -109,7 +107,7 @@ export class EntryConditionsCardComponent {
         fastPeriod: values["fastPeriod"] as number,
         slowPeriod: values["slowPeriod"] as number,
         signalPeriod: values["signalPeriod"] as number,
-        operator: values["operator"] as "cross_above" | "cross_below" | "gt" | "lt",
+        operator: values["operator"] as "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling",
       }));
       return;
     }

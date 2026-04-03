@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260403-macd-condition-handler-ui-changes.md"
-currentAgent: "Plan Implementer"
+currentAgent: "None"
 agentStartedAt: "2026-04-03T19:45:18Z"
-status: "in-progress"
-lastUpdated: "2026-04-03T19:45:18Z"
+status: "implemented"
+lastUpdated: "2026-04-03T20:03:38Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -100,48 +100,48 @@ Backend infrastructure already scaffolded by F5/F6.5:
 - [x] Task 1.6: Run all backend tests and architecture tests
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-01-details.md#task-16-run-all-backend-tests
 
-### [ ] Phase 2: Frontend — Models, Services & Validation
+### [x] Phase 2: Frontend — Models, Services & Validation
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Update `MacdOperator` type and add `MACD Cross` template to `strategy.model.ts`
+- [x] Task 2.1: Update `MacdOperator` type and add `MACD Cross` template to `strategy.model.ts`
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-21-update-macdoperator-type-and-add-macd-cross-template
 
-- [ ] Task 2.2: Create `macd-operator.enum.ts` operator enum file
+- [x] Task 2.2: Create `macd-operator.enum.ts` operator enum file
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-22-create-macd-operator-enum-file
 
-- [ ] Task 2.3: Add `createMacdCondition()` to `ConditionFactoryService`
+- [x] Task 2.3: Add `createMacdCondition()` to `ConditionFactoryService`
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-23-add-createmacdcondition-to-conditionfactoryservice
 
-- [ ] Task 2.4: Add MACD branch to `StrategyMapperService`
+- [x] Task 2.4: Add MACD branch to `StrategyMapperService`
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-24-add-macd-branch-to-strategymapperservice
 
-- [ ] Task 2.5: Add MACD validation to `StrategyValidationService`
+- [x] Task 2.5: Add MACD validation to `StrategyValidationService`
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-25-add-macd-validation-to-strategyvalidationservice
 
-- [ ] Task 2.6: Update `_isSignalTemplate()` in all 4 locations
+- [x] Task 2.6: Update `_isSignalTemplate()` in all 4 locations
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-26-update-issignaltemplate-in-all-4-locations
 
-- [ ] Task 2.7: Add unit tests for MACD factory and mapper
+- [x] Task 2.7: Add unit tests for MACD factory and mapper
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-27-add-unit-tests-for-macd-factory-and-mapper
 
-- [ ] Task 2.8: Run frontend build and lint
+- [x] Task 2.8: Run frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-02-details.md#task-28-run-frontend-build-and-lint
 
-### [ ] Phase 3: Frontend — MACD Condition Card + Template Integration
+### [x] Phase 3: Frontend — MACD Condition Card + Template Integration
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 3.1: Create `MacdConditionItemComponent` (TS, HTML, SCSS)
+- [x] Task 3.1: Create `MacdConditionItemComponent` (TS, HTML, SCSS)
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-03-details.md#task-31-create-macdconditionitemcomponent
 
-- [ ] Task 3.2: Update `EntryConditionsCardComponent` — add MACD dispatch, button, duplicate
+- [x] Task 3.2: Update `EntryConditionsCardComponent` — add MACD dispatch, button, duplicate
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-03-details.md#task-32-update-entryconditionscardcomponent
 
-- [ ] Task 3.3: Update `strategy-builder-page.component.ts` — load MACD conditions + MACD Cross template
+- [x] Task 3.3: Update `strategy-builder-page.component.ts` — load MACD conditions + MACD Cross template
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-03-details.md#task-33-update-strategy-builder-page
 
-- [ ] Task 3.4: Run frontend build and lint
+- [x] Task 3.4: Run frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260403-macd-condition-handler-ui-phase-03-details.md#task-34-run-frontend-build-and-lint
 
 ## Scoping Summary
@@ -190,4 +190,4 @@ Backend infrastructure already scaffolded by F5/F6.5:
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-04-03T17:50:12Z | 2026-04-03T19:02:25Z |
 | Plan Reviewer | plan-reviewed | 2026-04-03T19:05:54Z | 2026-04-03T19:14:12Z |
-| Plan Implementer | in-progress | 2026-04-03T19:45:18Z | - |
+| Plan Implementer | implemented | 2026-04-03T19:45:18Z | 2026-04-03T20:03:38Z |

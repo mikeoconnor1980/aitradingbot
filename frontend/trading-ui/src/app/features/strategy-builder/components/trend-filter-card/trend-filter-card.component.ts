@@ -6,6 +6,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
+import { InfoPopoverComponent } from "../info-popover/info-popover.component";
 import { TrendFilterType, TrendOperator } from "../../models/strategy.model";
 import { TREND_FILTER_OPERATORS, TrendFilterOperatorOption } from "../../enums/trend-filter-operator.enum";
 
@@ -19,6 +20,7 @@ import { TREND_FILTER_OPERATORS, TrendFilterOperatorOption } from "../../enums/t
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    InfoPopoverComponent,
   ],
   templateUrl: "./trend-filter-card.component.html",
   styleUrl: "./trend-filter-card.component.scss"

@@ -7,7 +7,7 @@ export type EntryMode = "auto_from_signal_candle" | "manual";
 export type EntryLogic = "all" | "any";
 export type EntryConditionType = "rsi" | "price_vs_ema" | "macd";
 export type RsiOperator = "lt" | "lte" | "gt" | "gte" | "cross_above" | "cross_below";
-export type MacdOperator = "cross_above" | "cross_below" | "gt" | "lt";
+export type MacdOperator = "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling";
 export type TrendFilterType = "ema_cross" | "sma_cross" | "price_above_ema";
 export type TrendOperator = "gt" | "lt" | "gte" | "lte" | "cross_above" | "cross_below" | "above" | "below";
 export type PriceVsEmaOperator = "near" | "above" | "below" | "cross_above" | "cross_below" | "touch";
@@ -193,6 +193,7 @@ export const STRATEGY_TEMPLATES: StrategyTemplate[] = [
   { id: "grid", label: "Grid", available: true },
   { id: "custom_signal", label: "Custom Signal", available: true },
   { id: "ema_pullback", label: "EMA Pullback", available: true },
+  { id: "macd_cross", label: "MACD Cross", available: true },
   { id: "rsi_reversal", label: "RSI Reversal", available: false },
   { id: "blank", label: "Blank", available: true },
 ];

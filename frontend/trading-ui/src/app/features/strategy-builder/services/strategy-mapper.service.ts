@@ -140,7 +140,7 @@ export class StrategyMapperService {
         fastPeriod: Number(condition["fastPeriod"] ?? 12),
         slowPeriod: Number(condition["slowPeriod"] ?? 26),
         signalPeriod: Number(condition["signalPeriod"] ?? 9),
-        operator: String(condition["operator"] ?? "cross_above") as MacdOperator,
+        operator: String(condition["operator"] ?? "cross_above_signal") as MacdOperator,
       };
     }
 
@@ -152,7 +152,7 @@ export class StrategyMapperService {
   }
 
   private _isSignalTemplate(templateId: string): boolean {
-    return templateId === "custom_signal" || templateId === "ema_pullback";
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   private _toNullableNumber(value: unknown): number | null {

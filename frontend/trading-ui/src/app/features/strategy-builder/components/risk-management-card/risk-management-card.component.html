@@ -17,11 +17,21 @@
           <mat-option value="percent_wallet">Percent of wallet</mat-option>
           <mat-option value="fixed_notional">Fixed notional</mat-option>
         </mat-select>
+        <app-info-popover
+          matSuffix
+          title="Position Size Type"
+          description="Position size type controls how trade exposure is measured. Percent of wallet scales each trade relative to account size, while fixed notional keeps each trade at a fixed currency amount."
+        />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Position size value</mat-label>
         <input matInput type="number" formControlName="positionSizeValue" min="0.01" max="100" step="0.01" />
+        <app-info-popover
+          matSuffix
+          title="Position Size Value"
+          description="Position size value sets the actual exposure amount for each entry. Use smaller values for tighter risk control and larger values only when the strategy has room to absorb drawdown."
+        />
         @if (hasError("positionSizeValue", "required")) {
           <mat-error>Position size is required.</mat-error>
         }
@@ -33,6 +43,11 @@
       <mat-form-field appearance="outline">
         <mat-label>Leverage</mat-label>
         <input matInput type="number" formControlName="leverage" min="1" max="50" step="1" />
+        <app-info-popover
+          matSuffix
+          title="Leverage"
+          description="Leverage multiplies position exposure beyond the underlying wallet allocation. Higher leverage increases both potential return and liquidation risk, so it should stay aligned with the strategy's stop loss and volatility."
+        />
         @if (hasError("leverage", "required")) {
           <mat-error>Leverage is required.</mat-error>
         }
@@ -44,6 +59,11 @@
       <mat-form-field appearance="outline">
         <mat-label>Max open trades</mat-label>
         <input matInput type="number" formControlName="maxOpenTrades" min="1" max="10" step="1" />
+        <app-info-popover
+          matSuffix
+          title="Max Open Trades"
+          description="Max open trades limits how many positions or grid cycles the strategy can have active at the same time. Lower values reduce overlapping risk and capital fragmentation."
+        />
         @if (hasError("maxOpenTrades", "required")) {
           <mat-error>Max open trades is required.</mat-error>
         }
@@ -55,6 +75,11 @@
       <mat-form-field appearance="outline">
         <mat-label>Cooldown value</mat-label>
         <input matInput type="number" formControlName="cooldownValue" min="0" step="1" />
+        <app-info-popover
+          matSuffix
+          title="Cooldown Value"
+          description="Cooldown value sets how long the strategy waits after a trade or completed cycle before it can enter again. A value of 0 allows immediate reuse of the next valid signal."
+        />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -63,6 +88,11 @@
           <mat-option value="candles">Candles</mat-option>
           <mat-option value="minutes">Minutes</mat-option>
         </mat-select>
+        <app-info-popover
+          matSuffix
+          title="Cooldown Unit"
+          description="Cooldown unit defines whether the cooldown is measured in strategy candles or elapsed clock minutes. Candle-based cooldowns stay aligned with deterministic candle-close execution."
+        />
       </mat-form-field>
 
       <mat-checkbox formControlName="allowSameCandleReentry">Allow same candle re-entry</mat-checkbox>

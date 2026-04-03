@@ -76,6 +76,38 @@ describe("StrategyMapperService", () => {
       lookback: 5,
     });
   });
+
+  it("should map MACD condition params for signal mode", () => {
+    const config = service.mapFormToConfig({
+      ...buildSignalFormValue(),
+      templateId: "macd_cross",
+      conditions: [{
+        id: "cond-1",
+        enabled: true,
+        type: "macd",
+        label: "MACD bullish crossover",
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        operator: "cross_above_signal",
+      }],
+    });
+    const condition = config.entryConditions?.[0];
+
+    expect(config.strategyMode).toBe("signal");
+    expect(condition).toEqual({
+      id: "cond-1",
+      enabled: true,
+      type: "macd",
+      label: "MACD bullish crossover",
+      params: {
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        operator: "cross_above_signal",
+      },
+    });
+  });
 });
 
 function buildGridFormValue(): Record<string, unknown> {

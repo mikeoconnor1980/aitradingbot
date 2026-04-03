@@ -163,6 +163,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
       if (templateId === "ema_pullback") {
         this._applyEmaPullbackTemplate();
+      } else if (templateId === "macd_cross") {
+        this._applyMacdCrossTemplate();
       }
 
       return;
@@ -510,6 +512,53 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     this.form.updateValueAndValidity();
   }
 
+  private _applyMacdCrossTemplate(): void {
+    this.form.patchValue({
+      direction: "long",
+    });
+
+    const trendFilterGroup = this.form.get("trendFilter") as FormGroup | null;
+    trendFilterGroup?.patchValue({
+      enabled: false,
+      type: "ema_cross",
+      period: 200,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    });
+
+    const conditionsArray = this.conditionsFormArray;
+    conditionsArray.clear();
+    conditionsArray.push(this._conditionFactory.createMacdCondition({
+      label: "MACD Bullish Cross",
+      fastPeriod: 12,
+      slowPeriod: 26,
+      signalPeriod: 9,
+      operator: "cross_above_signal",
+    }));
+
+    const exitGroup = this.form.get("exit") as FormGroup;
+    exitGroup.patchValue({
+      takeProfit: {
+        enabled: true,
+        type: "fixed_percent",
+        value: 2,
+      },
+      stopLoss: {
+        enabled: true,
+        type: "fixed_percent",
+        value: 1.5,
+      },
+    });
+
+    trendFilterGroup?.markAsDirty();
+    conditionsArray.markAsDirty();
+    exitGroup.markAsDirty();
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
   private _addLoadedCondition(condition: EntryConditionConfig): void {
     if (condition.type === "price_vs_ema") {
       const params = condition.params as PriceVsEmaParams;
@@ -558,7 +607,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   private _isSignalTemplate(templateId: string): boolean {
-    return templateId === "custom_signal" || templateId === "ema_pullback";
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   private _applyServerSaveError(error: HttpErrorResponse): void {

@@ -43,6 +43,31 @@ export class MacdConditionItemComponent {
     return Boolean(control?.hasError(errorCode) && (control.touched || control.dirty));
   }
 
+  public hasFastPeriodOrderingError(): boolean {
+    const fastPeriodControl = this.group.get("fastPeriod");
+    const slowPeriodControl = this.group.get("slowPeriod");
+    if (fastPeriodControl === null || slowPeriodControl === null) {
+      return false;
+    }
+
+    if (
+      fastPeriodControl.hasError("required") ||
+      fastPeriodControl.hasError("min") ||
+      fastPeriodControl.hasError("max") ||
+      slowPeriodControl.hasError("required") ||
+      slowPeriodControl.hasError("min") ||
+      slowPeriodControl.hasError("max")
+    ) {
+      return false;
+    }
+
+    const fastPeriod = Number(fastPeriodControl.value ?? 0);
+    const slowPeriod = Number(slowPeriodControl.value ?? 0);
+    const hasInteracted = fastPeriodControl.touched || fastPeriodControl.dirty || slowPeriodControl.touched || slowPeriodControl.dirty;
+
+    return hasInteracted && fastPeriod >= slowPeriod;
+  }
+
   public onDuplicate(): void {
     this.duplicate.emit();
   }
