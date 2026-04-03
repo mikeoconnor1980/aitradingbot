@@ -61,7 +61,7 @@ export class BacktestResultComponent {
   }
 
   public get entryModeLabel(): string {
-    switch (this.result.strategyConfig.entryMode) {
+    switch (this.result.strategyConfig.grid?.entryMode) {
       case "WaitForLimitPrice":
         return "Wait for limit price";
       case "InitialMarketThenGrid":
@@ -72,9 +72,35 @@ export class BacktestResultComponent {
   }
 
   public get limitPriceLabel(): string {
-    return this.result.strategyConfig.entryMode === "WaitForLimitPrice" && this.result.strategyConfig.manualAnchorPrice !== null && this.result.strategyConfig.manualAnchorPrice !== undefined
-      ? `$${this.result.strategyConfig.manualAnchorPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const anchorPrice = this.result.strategyConfig.grid?.anchorPrice;
+
+    return this.result.strategyConfig.grid?.entryMode === "WaitForLimitPrice" && anchorPrice !== null && anchorPrice !== undefined
+      ? `$${anchorPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "—";
+  }
+
+  public get gridLevels(): number {
+    return this.result.strategyConfig.grid?.levels ?? 0;
+  }
+
+  public get gridSpacing(): number {
+    return this.result.strategyConfig.grid?.spacing ?? 0;
+  }
+
+  public get takeProfitPercent(): number {
+    return this.result.strategyConfig.exit.takeProfit.value ?? 0;
+  }
+
+  public get positionSize(): number {
+    return this.result.strategyConfig.risk.positionSizeValue;
+  }
+
+  public get leverage(): number {
+    return this.result.strategyConfig.risk.leverage ?? this.result.executionConfig.leverage ?? 1;
+  }
+
+  public get stopLossPercent(): number {
+    return this.result.strategyConfig.exit.stopLoss.value ?? 0;
   }
 
   public getPnlClass(value: number): string {

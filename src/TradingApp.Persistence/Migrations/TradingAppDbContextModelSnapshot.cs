@@ -54,6 +54,10 @@ namespace TradingApp.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ExecutionConfigJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("GridCycleLogJson")
                         .HasColumnType("TEXT");
 
@@ -201,6 +205,55 @@ namespace TradingApp.Persistence.Migrations
                         .HasDatabaseName("IX_FundingRates_Symbol_Timestamp");
 
                     b.ToTable("FundingRates", (string)null);
+                });
+
+            modelBuilder.Entity("TradingApp.Domain.Entities.Strategy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConfigJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAtUtc")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StrategyType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("UpdatedAtUtc")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsActive")
+                        .HasDatabaseName("IX_Strategies_UserId_IsActive");
+
+                    b.HasIndex("UserId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Strategies_UserId_Name")
+                        .HasFilter("[IsActive] = 1");
+
+                    b.ToTable("Strategies", (string)null);
                 });
 #pragma warning restore 612, 618
         }

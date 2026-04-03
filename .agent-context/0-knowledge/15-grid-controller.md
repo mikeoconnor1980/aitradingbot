@@ -43,7 +43,7 @@ Task<IReadOnlyList<TradingSignal>> ProcessAsync(
     MarketContext context,
     GridState gridState,
     PositionState positionState,
-    string strategyConfigJson,
+    IStrategyConfig strategyConfig,
     CancellationToken cancellationToken = default);
 ```
 
@@ -111,7 +111,7 @@ Operational flow with the current backtest/live runtime:
 | `context` | `MarketContext` | Trigger candle + HTF candles + `IndicatorSnapshot` |
 | `gridState` | `GridState` | Current lifecycle, cycle ID, fill counts |
 | `positionState` | `PositionState` | Symbol, size, entry price, unrealised PnL |
-| `strategyConfigJson` | `string` | Configuration forwarded from `StrategyScheduler` |
+| `strategyConfig` | `IStrategyConfig` | Typed strategy config forwarded from `StrategyScheduler` |
 
 ---
 

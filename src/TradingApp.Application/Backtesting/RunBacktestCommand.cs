@@ -2,7 +2,9 @@ using System.Text.Json;
 using TradingApp.Application.Abstractions.Commands;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Backtesting;
 
@@ -11,7 +13,8 @@ public sealed record RunBacktestCommand(
     string[] Intervals,
     DateTime StartDate,
     DateTime EndDate,
-    GridStrategyConfig StrategyConfig,
+    StrategyConfig StrategyConfig,
+    ExecutionConfig ExecutionConfig,
     decimal InitialCapital,
     bool EnableAuditLog) : Command<BacktestRunResponse>;
 
@@ -33,6 +36,7 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Symbol);
         ArgumentNullException.ThrowIfNull(request.Intervals);
         ArgumentNullException.ThrowIfNull(request.StrategyConfig);
+        ArgumentNullException.ThrowIfNull(request.ExecutionConfig);
 
         var startDateUtc = request.StartDate.Kind == DateTimeKind.Unspecified
             ? DateTime.SpecifyKind(request.StartDate, DateTimeKind.Utc)
@@ -41,6 +45,7 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
             ? DateTime.SpecifyKind(request.EndDate, DateTimeKind.Utc)
             : request.EndDate.ToUniversalTime();
         var strategyConfigJson = BacktestRunResponseMapper.SerializeStrategyConfig(request.StrategyConfig);
+        var executionConfigJson = BacktestRunResponseMapper.SerializeExecutionConfig(request.ExecutionConfig);
 
         var backtestRun = BacktestRun.CreateQueued(
             symbol: request.Symbol,
@@ -48,6 +53,7 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
             startDateUtc: new DateTimeOffset(startDateUtc).ToUnixTimeMilliseconds(),
             endDateUtc: new DateTimeOffset(endDateUtc).ToUnixTimeMilliseconds(),
             strategyConfigJson: strategyConfigJson,
+            executionConfigJson: executionConfigJson,
             initialCapital: request.InitialCapital,
             auditLogEnabled: request.EnableAuditLog);
 

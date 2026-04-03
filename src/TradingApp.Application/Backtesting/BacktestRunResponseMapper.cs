@@ -1,22 +1,28 @@
 using System.Text.Json;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Backtesting;
 
 public static class BacktestRunResponseMapper
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = StrategyJsonOptions.Default;
 
-    public static string SerializeStrategyConfig(GridStrategyConfig strategyConfig)
+    public static string SerializeStrategyConfig(StrategyConfig strategyConfig)
     {
         ArgumentNullException.ThrowIfNull(strategyConfig);
 
         return JsonSerializer.Serialize(strategyConfig, JsonOptions);
+    }
+
+    public static string SerializeExecutionConfig(ExecutionConfig executionConfig)
+    {
+        ArgumentNullException.ThrowIfNull(executionConfig);
+
+        return JsonSerializer.Serialize(executionConfig, JsonOptions);
     }
 
     public static string SerializeTrades(IReadOnlyList<BacktestTrade> trades)
@@ -58,8 +64,10 @@ public static class BacktestRunResponseMapper
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        var strategyConfig = JsonSerializer.Deserialize<GridStrategyConfig>(entity.StrategyConfigJson, JsonOptions)
+        var strategyConfig = JsonSerializer.Deserialize<StrategyConfig>(entity.StrategyConfigJson, JsonOptions)
             ?? throw new JsonException("Stored strategy config is invalid.");
+        var executionConfig = JsonSerializer.Deserialize<ExecutionConfig>(entity.ExecutionConfigJson, JsonOptions)
+            ?? throw new JsonException("Stored execution config is invalid.");
         var trades = JsonSerializer.Deserialize<List<BacktestTrade>>(entity.TradesJson, JsonOptions)
             ?? [];
         var equityTimeSeries = string.IsNullOrWhiteSpace(entity.EquityTimeSeriesJson)
@@ -76,6 +84,7 @@ public static class BacktestRunResponseMapper
             StartDate = DateTimeOffset.FromUnixTimeMilliseconds(entity.StartDateUtc).UtcDateTime,
             EndDate = DateTimeOffset.FromUnixTimeMilliseconds(entity.EndDateUtc).UtcDateTime,
             StrategyConfig = strategyConfig,
+            ExecutionConfig = executionConfig,
             InitialCapital = entity.InitialCapital,
             Status = entity.Status.ToString(),
             Progress = entity.Progress,

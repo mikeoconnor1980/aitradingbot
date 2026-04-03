@@ -1,0 +1,3 @@
+namespace TradingApp.Application.StrategyAuthoring.Models;
+
+public interface IEntryConditionParams;

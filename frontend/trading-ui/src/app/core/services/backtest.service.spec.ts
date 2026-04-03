@@ -36,18 +36,41 @@ describe("BacktestService", () => {
       endDate: "2024-12-31T23:59:59Z",
       initialCapital: 10000,
       strategyConfig: {
-        gridLevels: 10,
-        entryMode: "WaitForLimitPrice",
-        manualAnchorPrice: 42000,
-        gridSpacing: 0.5,
-        takeProfitPercent: 1,
-        breakdownThreshold: -3,
+        schemaVersion: 1,
+        strategyMode: "grid",
+        strategyName: "Backtest",
+        exchange: "Hyperliquid",
+        market: "BTC",
+        timeframe: "15m",
+        direction: "long",
+        enabled: true,
+        grid: {
+          levels: 10,
+          entryMode: "WaitForLimitPrice",
+          anchorPrice: 42000,
+          spacing: 0.5,
+          breakdownThreshold: -3
+        },
+        exit: {
+          takeProfit: { enabled: true, type: "fixed_percent", value: 1 },
+          stopLoss: { enabled: true, type: "fixed_percent", value: 5 },
+          exitOnOppositeSignal: false
+        },
+        risk: {
+          positionSizeType: "fixed_notional",
+          positionSizeValue: 100,
+          leverage: 3,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false
+        },
+        source: { entryPoint: "ui_builder", summary: "Backtest: BTC" }
+      },
+      executionConfig: {
         makerFee: 0.0001,
         takerFee: 0.00035,
-        slippage: 0,
-        positionSize: 100,
-        leverage: 3,
-        stopLossPercent: 5
+        slippage: 0
       }
     };
     const mockResult: BacktestResult = {
@@ -57,6 +80,14 @@ describe("BacktestService", () => {
       startDate: "2024-01-01T00:00:00Z",
       endDate: "2024-12-31T23:59:59Z",
       strategyConfig: request.strategyConfig,
+      executionConfig: {
+        feeModel: {
+          makerFeeRate: 0.0001,
+          takerFeeRate: 0.00035,
+          slippageRate: 0
+        },
+        leverage: 3
+      },
       initialCapital: 10000,
       status: "Completed",
       progress: 100,
@@ -97,18 +128,44 @@ describe("BacktestService", () => {
       startDate: "2024-01-01T00:00:00Z",
       endDate: "2024-01-31T00:00:00Z",
       strategyConfig: {
-        gridLevels: 10,
-        entryMode: "AutoFromSignalCandle",
-        manualAnchorPrice: null,
-        gridSpacing: 0.5,
-        takeProfitPercent: 1,
-        breakdownThreshold: -3,
-        makerFee: 0.0001,
-        takerFee: 0.00035,
-        slippage: 0,
-        positionSize: 100,
-        leverage: 3,
-        stopLossPercent: 5
+        schemaVersion: 1,
+        strategyMode: "grid",
+        strategyName: "Backtest",
+        exchange: "Hyperliquid",
+        market: "BTC",
+        timeframe: "15m",
+        direction: "long",
+        enabled: true,
+        grid: {
+          levels: 10,
+          entryMode: "AutoFromSignalCandle",
+          anchorPrice: null,
+          spacing: 0.5,
+          breakdownThreshold: -3
+        },
+        exit: {
+          takeProfit: { enabled: true, type: "fixed_percent", value: 1 },
+          stopLoss: { enabled: true, type: "fixed_percent", value: 5 },
+          exitOnOppositeSignal: false
+        },
+        risk: {
+          positionSizeType: "fixed_notional",
+          positionSizeValue: 100,
+          leverage: 3,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false
+        },
+        source: { entryPoint: "ui_builder", summary: "Backtest: BTC" }
+      },
+      executionConfig: {
+        feeModel: {
+          makerFeeRate: 0.0001,
+          takerFeeRate: 0.00035,
+          slippageRate: 0
+        },
+        leverage: 3
       },
       initialCapital: 10000,
       status: "Completed",

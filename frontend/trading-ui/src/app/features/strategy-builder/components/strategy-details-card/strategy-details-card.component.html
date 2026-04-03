@@ -1,0 +1,60 @@
+<mat-card class="details-card" [formGroup]="group">
+  <mat-card-header>
+    <mat-card-title>Strategy Details</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="details-card__grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Strategy name</mat-label>
+        <input matInput formControlName="strategyName" maxlength="100" />
+        @if (hasError("strategyName", "required")) {
+          <mat-error>Strategy name is required.</mat-error>
+        }
+        @if (hasError("strategyName", "maxlength")) {
+          <mat-error>Strategy name must be 100 characters or fewer.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Exchange</mat-label>
+        <mat-select formControlName="exchange">
+          <mat-option value="Hyperliquid">Hyperliquid</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Market</mat-label>
+        <mat-select formControlName="market" panelClass="asset-select-panel">
+          @for (market of markets; track market) {
+            <mat-option [value]="market">{{ market }}</mat-option>
+          }
+        </mat-select>
+        @if (hasError("market", "required")) {
+          <mat-error>Market is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Timeframe</mat-label>
+        <mat-select formControlName="timeframe">
+          @for (timeframe of timeframes; track timeframe) {
+            <mat-option [value]="timeframe">{{ timeframe }}</mat-option>
+          }
+        </mat-select>
+        @if (hasError("timeframe", "required")) {
+          <mat-error>Timeframe is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Direction</mat-label>
+        <mat-select formControlName="direction">
+          <mat-option value="long">Long</mat-option>
+          <mat-option value="short">Short</mat-option>
+          <mat-option value="both">Both</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -279,26 +279,62 @@ export class BacktestFormComponent implements OnChanges {
     }
 
     const formValue = this.form.getRawValue();
+    const selectedIntervals = this.getSelectedIntervals();
+    const timeframe = selectedIntervals[0] ?? "15m";
 
     this.runBacktest.emit({
       symbol: formValue.symbol,
-      intervals: this.getSelectedIntervals(),
+      intervals: selectedIntervals,
       startDate: formValue.startDate!.toISOString(),
       endDate: formValue.endDate!.toISOString(),
       initialCapital: formValue.initialCapital,
       strategyConfig: {
-        gridLevels: formValue.gridLevels,
-        entryMode: formValue.entryMode,
-        manualAnchorPrice: formValue.entryMode === "WaitForLimitPrice" ? formValue.manualAnchorPrice : null,
-        gridSpacing: formValue.gridSpacing,
-        takeProfitPercent: formValue.takeProfitPercent,
-        breakdownThreshold: formValue.breakdownThreshold,
+        schemaVersion: 1,
+        strategyMode: "grid",
+        strategyName: "Backtest",
+        exchange: "Hyperliquid",
+        market: formValue.symbol,
+        timeframe,
+        direction: "long",
+        enabled: true,
+        grid: {
+          levels: formValue.gridLevels,
+          entryMode: formValue.entryMode,
+          anchorPrice: formValue.entryMode === "WaitForLimitPrice" ? formValue.manualAnchorPrice : null,
+          spacing: formValue.gridSpacing,
+          breakdownThreshold: formValue.breakdownThreshold
+        },
+        exit: {
+          takeProfit: {
+            enabled: true,
+            type: "fixed_percent",
+            value: formValue.takeProfitPercent
+          },
+          stopLoss: {
+            enabled: true,
+            type: "fixed_percent",
+            value: formValue.stopLossPercent
+          },
+          exitOnOppositeSignal: false
+        },
+        risk: {
+          positionSizeType: "fixed_notional",
+          positionSizeValue: formValue.positionSize,
+          leverage: formValue.leverage,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false
+        },
+        source: {
+          entryPoint: "ui_builder",
+          summary: `Backtest: ${formValue.symbol}`
+        }
+      },
+      executionConfig: {
         makerFee: formValue.makerFee,
         takerFee: formValue.takerFee,
-        slippage: formValue.slippage,
-        positionSize: formValue.positionSize,
-        leverage: formValue.leverage,
-        stopLossPercent: formValue.stopLossPercent
+        slippage: formValue.slippage
       }
     });
   }
@@ -348,6 +384,8 @@ export class BacktestFormComponent implements OnChanges {
   }
 
   private _prefillFromResult(result: BacktestResult): void {
+    const grid = result.strategyConfig.grid;
+
     this.form.patchValue({
       symbol: result.symbol,
       startDate: new Date(result.startDate),
@@ -355,18 +393,18 @@ export class BacktestFormComponent implements OnChanges {
       interval15m: result.intervals.includes("15m"),
       interval1h: result.intervals.includes("1h"),
       interval4h: result.intervals.includes("4h"),
-      gridLevels: result.strategyConfig.gridLevels,
-      entryMode: result.strategyConfig.entryMode ?? "AutoFromSignalCandle",
-      manualAnchorPrice: result.strategyConfig.manualAnchorPrice ?? null,
-      gridSpacing: result.strategyConfig.gridSpacing,
-      takeProfitPercent: result.strategyConfig.takeProfitPercent,
-      breakdownThreshold: result.strategyConfig.breakdownThreshold,
-      makerFee: result.strategyConfig.makerFee,
-      takerFee: result.strategyConfig.takerFee,
-      slippage: result.strategyConfig.slippage,
-      positionSize: result.strategyConfig.positionSize,
-      leverage: result.strategyConfig.leverage,
-      stopLossPercent: result.strategyConfig.stopLossPercent,
+      gridLevels: grid?.levels ?? 10,
+      entryMode: grid?.entryMode ?? "AutoFromSignalCandle",
+      manualAnchorPrice: grid?.anchorPrice ?? null,
+      gridSpacing: grid?.spacing ?? 0.5,
+      takeProfitPercent: result.strategyConfig.exit.takeProfit.value ?? 0,
+      breakdownThreshold: grid?.breakdownThreshold ?? 0,
+      makerFee: result.executionConfig.feeModel.makerFeeRate,
+      takerFee: result.executionConfig.feeModel.takerFeeRate,
+      slippage: result.executionConfig.feeModel.slippageRate,
+      positionSize: result.strategyConfig.risk.positionSizeValue,
+      leverage: result.strategyConfig.risk.leverage ?? result.executionConfig.leverage ?? 1,
+      stopLossPercent: result.strategyConfig.exit.stopLoss.value ?? 0,
       initialCapital: result.initialCapital
     });
   }
@@ -403,11 +441,11 @@ export class BacktestFormComponent implements OnChanges {
       gridSpacing: ["gridspacing"],
       takeProfitPercent: ["takeprofitpercent"],
       breakdownThreshold: ["breakdownthreshold"],
-      makerFee: ["makerfee"],
-      takerFee: ["takerfee"],
-      slippage: ["slippage"],
+      makerFee: ["makerfee", "executionconfig.makerfee"],
+      takerFee: ["takerfee", "executionconfig.takerfee"],
+      slippage: ["slippage", "executionconfig.slippage"],
       positionSize: ["positionsize"],
-      leverage: ["leverage"],
+      leverage: ["leverage", "executionconfig.leverage"],
       stopLossPercent: ["stoplosspercent"],
       initialCapital: ["initialcapital"]
     };

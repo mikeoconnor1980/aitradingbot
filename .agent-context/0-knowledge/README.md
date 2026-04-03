@@ -64,6 +64,12 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 |---|---|---|
 | 23 | [Binance Integration](23-binance-integration.md) | Binance USDⓈ-M Futures as historical data source — klines, mark price klines, funding rates |
 
+## Architecture Quality
+
+| # | Document | Description |
+|---|---|---|
+| 26 | [Architecture Review](26-architecture-review.md) | Design strengths, known risks, and prioritised mitigations for POC → production |
+
 ---
 
 ## Subfolders

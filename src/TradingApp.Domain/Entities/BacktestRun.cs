@@ -10,6 +10,7 @@ public sealed class BacktestRun
     public long StartDateUtc { get; private set; }
     public long EndDateUtc { get; private set; }
     public string StrategyConfigJson { get; private set; } = string.Empty;
+    public string ExecutionConfigJson { get; private set; } = string.Empty;
     public decimal InitialCapital { get; private set; }
     public BacktestStatus Status { get; private set; }
     public int Progress { get; private set; }
@@ -45,12 +46,14 @@ public sealed class BacktestRun
         long startDateUtc,
         long endDateUtc,
         string strategyConfigJson,
+        string executionConfigJson,
         decimal initialCapital,
         bool auditLogEnabled = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
         ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionConfigJson);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialCapital);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startDateUtc, endDateUtc);
 
@@ -62,6 +65,7 @@ public sealed class BacktestRun
             StartDateUtc = startDateUtc,
             EndDateUtc = endDateUtc,
             StrategyConfigJson = strategyConfigJson,
+            ExecutionConfigJson = executionConfigJson,
             InitialCapital = initialCapital,
             Status = BacktestStatus.Queued,
             Progress = 0,
@@ -142,6 +146,7 @@ public sealed class BacktestRun
         long startDateUtc,
         long endDateUtc,
         string strategyConfigJson,
+        string executionConfigJson,
         decimal initialCapital,
         int candlesReplayed,
         long elapsedMs,
@@ -165,6 +170,7 @@ public sealed class BacktestRun
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
         ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
+        ArgumentException.ThrowIfNullOrWhiteSpace(executionConfigJson);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialCapital);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startDateUtc, endDateUtc);
 
@@ -176,6 +182,7 @@ public sealed class BacktestRun
             StartDateUtc = startDateUtc,
             EndDateUtc = endDateUtc,
             StrategyConfigJson = strategyConfigJson,
+            ExecutionConfigJson = executionConfigJson,
             InitialCapital = initialCapital,
             Status = BacktestStatus.Completed,
             Progress = 100,

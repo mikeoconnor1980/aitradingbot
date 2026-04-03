@@ -1,3 +1,6 @@
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Domain.Trading;
+
 namespace TradingApp.Application.Backtesting.Models;
 
 public sealed class BacktestRunResponse
@@ -7,7 +10,8 @@ public sealed class BacktestRunResponse
     public required string[] Intervals { get; init; }
     public required DateTime StartDate { get; init; }
     public required DateTime EndDate { get; init; }
-    public required GridStrategyConfig StrategyConfig { get; init; }
+    public required StrategyConfig StrategyConfig { get; init; }
+    public required ExecutionConfig ExecutionConfig { get; init; }
     public required decimal InitialCapital { get; init; }
     public required string Status { get; init; }
     public required int Progress { get; init; }

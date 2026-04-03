@@ -10,6 +10,7 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.MarketData.Queries;
+using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
@@ -92,6 +93,10 @@ builder.Services.AddScoped<IGridController, GridController>();
 builder.Services.AddScoped<IRiskEngine, PassThroughRiskEngine>();
 builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
 builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
+builder.Services.AddSingleton<SchemaValidator>();
+builder.Services.AddSingleton<BusinessRuleValidator>();
+builder.Services.AddSingleton<CrossFieldValidator>();
+builder.Services.AddSingleton<IStrategyValidator, CompositeStrategyValidator>();
 builder.Services.AddHostedService<BacktestProcessorService>();
 builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>
 {
@@ -156,6 +161,12 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<HttpGlobalExceptionFilter>();
+})
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.SnakeCaseLower));
 });
 
 var app = builder.Build();

@@ -1,6 +1,6 @@
-namespace TradingApp.Application.Backtesting.Models;
+namespace TradingApp.Domain.Trading;
 
-public static class BacktestEntryModes
+public static class EntryModes
 {
     public const string AutoFromSignalCandle = "AutoFromSignalCandle";
     public const string InitialMarketThenGrid = "InitialMarketThenGrid";

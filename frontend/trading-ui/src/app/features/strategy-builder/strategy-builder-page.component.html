@@ -1,0 +1,58 @@
+<section class="builder-page">
+  <header class="builder-page__header">
+    <div>
+      <h2 class="builder-page__title">{{ pageTitle }}</h2>
+      <p class="builder-page__subtitle">{{ pageSubtitle }}</p>
+    </div>
+
+    <div class="builder-page__actions">
+      <button mat-stroked-button type="button" (click)="onCancel()">Cancel</button>
+      <button mat-raised-button color="primary" type="button" [disabled]="!canSave" (click)="onSave()">
+        @if (isSaving) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          <span>Save Strategy</span>
+        }
+      </button>
+    </div>
+  </header>
+
+  @if (isLoading) {
+    <mat-card class="builder-page__loading">
+      <mat-card-content>
+        <mat-spinner diameter="42"></mat-spinner>
+        <p>Loading strategy configuration...</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <div class="builder-page__layout">
+      <div class="builder-page__column builder-page__column--main">
+        <app-strategy-template-selector
+          [selectedTemplateId]="selectedTemplateId"
+          (templateSelected)="onTemplateSelected($event)"
+        />
+
+        <app-strategy-details-card [group]="form" />
+        <app-grid-config-card [group]="gridFormGroup" />
+        <app-exit-rules-card [group]="exitFormGroup" />
+        <app-risk-management-card [group]="riskFormGroup" />
+        <app-trend-filter-card />
+        <app-entry-conditions-card />
+      </div>
+
+      <div class="builder-page__column builder-page__column--side">
+        <app-preview-summary-card [formValue]="form.getRawValue()" />
+        <app-validation-card
+          [errors]="allErrors"
+          [warnings]="serverWarnings"
+          [infoMessages]="serverInfoMessages"
+        />
+        <app-json-preview-card [config]="currentConfig" />
+
+        @if (isValidating) {
+          <div class="builder-page__validating">Refreshing server validation...</div>
+        }
+      </div>
+    </div>
+  }
+</section>

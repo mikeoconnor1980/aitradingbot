@@ -71,18 +71,18 @@ export class BacktestCompareComponent implements OnChanges {
       { label: "Symbol", valueA: this.resultA.symbol, valueB: this.resultB.symbol },
       { label: "Intervals", valueA: this.resultA.intervals.join(", "), valueB: this.resultB.intervals.join(", ") },
       { label: "Initial Capital", valueA: this._formatCurrency(this.resultA.initialCapital), valueB: this._formatCurrency(this.resultB.initialCapital) },
-      { label: "Grid Levels", valueA: String(this.resultA.strategyConfig.gridLevels), valueB: String(this.resultB.strategyConfig.gridLevels) },
-      { label: "Entry Mode", valueA: this._formatEntryMode(this.resultA.strategyConfig.entryMode), valueB: this._formatEntryMode(this.resultB.strategyConfig.entryMode) },
-      { label: "Limit Price", valueA: this._formatLimitPrice(this.resultA.strategyConfig.entryMode, this.resultA.strategyConfig.manualAnchorPrice), valueB: this._formatLimitPrice(this.resultB.strategyConfig.entryMode, this.resultB.strategyConfig.manualAnchorPrice) },
-      { label: "Grid Spacing", valueA: this._formatPercent(this.resultA.strategyConfig.gridSpacing), valueB: this._formatPercent(this.resultB.strategyConfig.gridSpacing) },
-      { label: "Take Profit", valueA: this._formatPercent(this.resultA.strategyConfig.takeProfitPercent), valueB: this._formatPercent(this.resultB.strategyConfig.takeProfitPercent) },
-      { label: "Breakdown Threshold", valueA: this._formatPercent(this.resultA.strategyConfig.breakdownThreshold), valueB: this._formatPercent(this.resultB.strategyConfig.breakdownThreshold) },
-      { label: "Position Size", valueA: this._formatCurrency(this.resultA.strategyConfig.positionSize), valueB: this._formatCurrency(this.resultB.strategyConfig.positionSize) },
-      { label: "Leverage", valueA: `${this.resultA.strategyConfig.leverage}x`, valueB: `${this.resultB.strategyConfig.leverage}x` },
-      { label: "Stop Loss", valueA: this._formatPercent(this.resultA.strategyConfig.stopLossPercent), valueB: this._formatPercent(this.resultB.strategyConfig.stopLossPercent) },
-      { label: "Maker Fee", valueA: this._formatRate(this.resultA.strategyConfig.makerFee), valueB: this._formatRate(this.resultB.strategyConfig.makerFee) },
-      { label: "Taker Fee", valueA: this._formatRate(this.resultA.strategyConfig.takerFee), valueB: this._formatRate(this.resultB.strategyConfig.takerFee) },
-      { label: "Slippage", valueA: this._formatRate(this.resultA.strategyConfig.slippage), valueB: this._formatRate(this.resultB.strategyConfig.slippage) }
+      { label: "Grid Levels", valueA: String(this.resultA.strategyConfig.grid?.levels ?? 0), valueB: String(this.resultB.strategyConfig.grid?.levels ?? 0) },
+      { label: "Entry Mode", valueA: this._formatEntryMode(this.resultA.strategyConfig.grid?.entryMode), valueB: this._formatEntryMode(this.resultB.strategyConfig.grid?.entryMode) },
+      { label: "Limit Price", valueA: this._formatLimitPrice(this.resultA.strategyConfig.grid?.entryMode, this.resultA.strategyConfig.grid?.anchorPrice), valueB: this._formatLimitPrice(this.resultB.strategyConfig.grid?.entryMode, this.resultB.strategyConfig.grid?.anchorPrice) },
+      { label: "Grid Spacing", valueA: this._formatPercent(this.resultA.strategyConfig.grid?.spacing ?? 0), valueB: this._formatPercent(this.resultB.strategyConfig.grid?.spacing ?? 0) },
+      { label: "Take Profit", valueA: this._formatPercent(this.resultA.strategyConfig.exit.takeProfit.value ?? 0), valueB: this._formatPercent(this.resultB.strategyConfig.exit.takeProfit.value ?? 0) },
+      { label: "Breakdown Threshold", valueA: this._formatPercent(this.resultA.strategyConfig.grid?.breakdownThreshold ?? 0), valueB: this._formatPercent(this.resultB.strategyConfig.grid?.breakdownThreshold ?? 0) },
+      { label: "Position Size", valueA: this._formatCurrency(this.resultA.strategyConfig.risk.positionSizeValue), valueB: this._formatCurrency(this.resultB.strategyConfig.risk.positionSizeValue) },
+      { label: "Leverage", valueA: `${this.resultA.strategyConfig.risk.leverage}x`, valueB: `${this.resultB.strategyConfig.risk.leverage}x` },
+      { label: "Stop Loss", valueA: this._formatPercent(this.resultA.strategyConfig.exit.stopLoss.value ?? 0), valueB: this._formatPercent(this.resultB.strategyConfig.exit.stopLoss.value ?? 0) },
+      { label: "Maker Fee", valueA: this._formatRate(this.resultA.executionConfig.feeModel.makerFeeRate), valueB: this._formatRate(this.resultB.executionConfig.feeModel.makerFeeRate) },
+      { label: "Taker Fee", valueA: this._formatRate(this.resultA.executionConfig.feeModel.takerFeeRate), valueB: this._formatRate(this.resultB.executionConfig.feeModel.takerFeeRate) },
+      { label: "Slippage", valueA: this._formatRate(this.resultA.executionConfig.feeModel.slippageRate), valueB: this._formatRate(this.resultB.executionConfig.feeModel.slippageRate) }
     ];
 
     this.configDiffs = metrics.map((item) => ({

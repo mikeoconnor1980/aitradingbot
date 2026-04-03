@@ -4,6 +4,7 @@ using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.Scheduling.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Scheduling;
 
@@ -19,7 +20,7 @@ public sealed class StrategyScheduler
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
     private readonly IBacktestAuditCollector _auditCollector;
-    private readonly string _strategyConfigJson;
+    private readonly IStrategyConfig _strategyConfig;
     private readonly string _triggerTimeframe;
 
     private GridState _gridState = new();
@@ -31,7 +32,7 @@ public sealed class StrategyScheduler
         IGridController gridController,
         IRiskEngine riskEngine,
         IPositionManager positionManager,
-        string strategyConfigJson,
+        IStrategyConfig strategyConfig,
         string triggerTimeframe = "15m",
         IBacktestAuditCollector? auditCollector = null)
     {
@@ -40,11 +41,11 @@ public sealed class StrategyScheduler
         _gridController = gridController ?? throw new ArgumentNullException(nameof(gridController));
         _riskEngine = riskEngine ?? throw new ArgumentNullException(nameof(riskEngine));
         _positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
-        ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
+        ArgumentNullException.ThrowIfNull(strategyConfig);
         ArgumentException.ThrowIfNullOrWhiteSpace(triggerTimeframe);
 
         _auditCollector = auditCollector ?? NullBacktestAuditCollector.Instance;
-        _strategyConfigJson = strategyConfigJson;
+        _strategyConfig = strategyConfig;
         _triggerTimeframe = triggerTimeframe;
     }
 
@@ -68,7 +69,7 @@ public sealed class StrategyScheduler
 
         var evaluation = await _strategyEngine.EvaluateAsync(
             context,
-            _strategyConfigJson,
+            _strategyConfig,
             cancellationToken);
 
         var signals = await _gridController.ProcessAsync(
@@ -76,7 +77,7 @@ public sealed class StrategyScheduler
             context,
             _gridState,
             _positionState,
-            _strategyConfigJson,
+            _strategyConfig,
             cancellationToken);
 
         _auditCollector.LogCandleEvaluation(new CandleEvaluationEntry

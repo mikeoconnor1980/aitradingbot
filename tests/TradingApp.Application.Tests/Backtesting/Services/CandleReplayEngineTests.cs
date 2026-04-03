@@ -2,7 +2,9 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Tests.Backtesting.Services;
 
@@ -159,9 +161,20 @@ public sealed class CandleReplayEngineTests
             StartDateUtc = startDateUtc,
             EndDateUtc = endDateUtc,
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = new StrategyConfig
+            {
+                SchemaVersion = 1,
+                StrategyMode = StrategyMode.Grid,
+                StrategyName = "Test",
+                Market = "BTC-USD",
+                Grid = new GridConfig { Levels = 5, Spacing = 0.5m },
+                Risk = new RiskConfig { PositionSizeValue = 100m, Leverage = 1m, MaxOpenTrades = 1 },
+            },
+            Execution = new ExecutionConfig
+            {
+                FeeModel = FeeModel.Default,
+            },
             WarmupPeriod = warmupPeriod,
-            StrategyConfigJson = "{}"
         };
     }
 

@@ -1,4 +1,5 @@
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Domain.Enums;
 
 namespace TradingApp.Application.Trading.Models;
 

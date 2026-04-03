@@ -23,15 +23,15 @@ src/TradingApp.Application/
 │   ├── Commands/          # Command, Command<T>, CreateCommand base records + handler bases
 │   ├── Queries/           # Query<T> base record + QueryHandler base class
 │   ├── Configuration/     # Typed options (e.g., HyperliquidOptions)
-│   ├── Exceptions/        # DomainException (→400), NotFoundException (→404); mapped by HttpGlobalExceptionFilter
+│   ├── Exceptions/        # DomainException (→400), NotFoundException (→404), DuplicateStrategyNameException (→409); mapped by HttpGlobalExceptionFilter
 │   ├── Identity/          # AppIdentity (UserId, Email; static System identity)
-│   ├── Repositories/      # Repository interfaces (ICandleRepository, IFundingRateRepository, IBacktestRunRepository)
+│   ├── Repositories/      # Repository interfaces (ICandleRepository, IFundingRateRepository, IBacktestRunRepository, IStrategyRepository)
 │   └── Services/          # Pipeline interfaces (IStrategyEngine, IGridController, IRiskEngine, IPositionManager,
 │                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner) + infrastructure client contracts
 ├── Backtesting/           # Backtest CQRS handlers + engine
 │   ├── Models/            # Engine models: BacktestConfig, BacktestResult, BacktestTrade, FeeModel, SimulatedFill/Order/Position, ReplayData
 │   │                      # Response DTOs: BacktestRunResponse, BacktestRunSummary, BacktestTradeResponse,
-│   │                      #   CandleCoverageResponse, IntervalCoverage, GridStrategyConfig
+│   │                      #   CandleCoverageResponse, IntervalCoverage
 │   ├── Services/          # BacktestRunner, CandleReplayEngine, SimulatedExecutionEngine, BacktestMetricsCalculator
 │   ├── RunBacktestCommand.cs        # CQRS command + handler
 │   ├── GetBacktestResultQuery.cs    # CQRS query + handler
@@ -46,6 +46,18 @@ src/TradingApp.Application/
 │   └── Models/            # MarketContext, StrategyEvaluation, IndicatorSnapshot,
 │                          #   GridState, GridLifecycle, PositionState, TradingSignal,
 │                          #   OrderRequest, OrderSide, OrderType, TradeType
+├── StrategyAuthoring/     # Strategy CRUD and schema — models, CQRS, serialization, validation
+│   ├── Commands/          # CreateStrategyCommand, UpdateStrategyCommand, DeleteStrategyCommand (+ handlers)
+│   ├── Queries/           # GetStrategiesQuery (→ List<StrategySummaryDto>), GetStrategyByIdQuery (→ StrategyDto)
+│   ├── Models/            # StrategyConfig (implements IStrategyConfig), GridConfig, ExitConfig, RiskConfig,
+│   │                      #   TrendFilterConfig, EntryConditionConfig, typed params (RsiParams, PriceVsEmaParams,
+│   │                      #   MacdParams), enums (StrategyMode, EntryConditionType, Direction, EntryLogic, etc.)
+│   │                      #   DTOs: StrategyDto (full config + metadata), StrategySummaryDto (list view)
+│   ├── Serialization/     # StrategyJsonOptions (shared JsonSerializerOptions),
+│   │                      #   EntryConditionConfigConverter, EntryConditionParamsConverter (polymorphic)
+│   └── Validation/        # IStrategyValidator, CompositeStrategyValidator (chains 3 levels),
+│                          #   SchemaValidator, BusinessRuleValidator, CrossFieldValidator,
+│                          #   ValidationResult, ValidationError, ValidationSeverity
 └── {Feature}/             # CQRS feature folder, e.g. Health/, MarketData/
     ├── Models/            # DTOs returned by queries
     └── Queries/           # Query record + Handler in same file
@@ -60,6 +72,8 @@ MediatR is registered in the Api host to scan the Application assembly.
 ```
 src/TradingApp.Api/
 ├── Controllers/           # Feature controllers (inherit ApiController for MediatR features; ControllerBase for direct-service features)
+│                          # StrategiesController: full CRUD (GET, POST, PUT, DELETE /api/strategies) via MediatR + POST /api/strategies/validate (direct IStrategyValidator)
+│                          # ReferenceDataController: GET /api/reference-data/markets — returns supported markets and timeframes from HyperliquidAssetMapper
 ├── Hubs/
 │   └── MarketDataHub.cs          # SignalR hub for real-time market data relay; thin hub — all pushes come from IHubContext<MarketDataHub>
 ├── Infrastructure/

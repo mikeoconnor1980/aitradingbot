@@ -11,16 +11,37 @@ bot state
 
 ---
 
-# Strategy Configuration Screen
+# Strategy Builder
 
-Users can:
+Two-page feature under `frontend/trading-ui/src/app/features/strategy-builder/`.
 
-create strategy  
-rename strategy  
-edit parameters  
-activate strategy
+**Strategy List** (`/strategies`) — lists all user strategies. Shows market, timeframe, direction, version. Edit and delete actions per row.
 
-Configuration is saved as JSON.
+**Strategy Builder** (`/strategies/new`, `/strategies/:id/edit`) — reactive form with two-column card layout. Same component handles create and edit; route parameter `id` controls mode.
+
+| Card Component | Purpose |
+|---|---|
+| `StrategyTemplateSelectorComponent` | Select a starting template |
+| `StrategyDetailsCardComponent` | Name, market, timeframe, direction |
+| `GridConfigCardComponent` | Grid levels, spacing, entry mode, anchor price |
+| `ExitRulesCardComponent` | Take profit / stop loss rules |
+| `RiskManagementCardComponent` | Position sizing, leverage, cooldown |
+| `TrendFilterCardComponent` | Optional macro filter (not active in v1) |
+| `EntryConditionsCardComponent` | Signal-mode entry conditions |
+| `PreviewSummaryCardComponent` | Read-only config summary |
+| `ValidationCardComponent` | Server-side validation results |
+| `JsonPreviewCardComponent` | Live JSON preview of config |
+
+Services (all `providedIn: 'root'`):
+
+| Service | Responsibility |
+|---|---|
+| `StrategyApiService` | CRUD calls + validate against `/api/strategies` |
+| `ReferenceDataService` | GET `/api/reference-data/markets`; `shareReplay` cached |
+| `StrategyMapperService` | Converts reactive form values → `StrategyConfig` |
+| `StrategyValidationService` | Client-side validation rules |
+
+Route guard: `unsavedChangesGuard` (`CanDeactivateFn`) — prompts confirmation dialog when form is dirty.
 
 ---
 

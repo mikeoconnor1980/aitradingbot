@@ -1,4 +1,3 @@
-using System.Text.Json;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
@@ -6,6 +5,8 @@ using TradingApp.Application.Scheduling;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Backtesting.Services;
 
@@ -56,7 +57,7 @@ public sealed class BacktestRunner : IBacktestRunner
         IBacktestAuditCollector collector = auditCollector is not null
             ? auditCollector
             : NullBacktestAuditCollector.Instance;
-        var executionEngine = new SimulatedExecutionEngine(config.FeeModel);
+        var executionEngine = new SimulatedExecutionEngine(config.Execution.FeeModel);
         var replayEngine = new CandleReplayEngine(_candleRepository);
         var candleClock = new CandleClock();
         var metricsCalculator = new BacktestMetricsCalculator();
@@ -72,7 +73,7 @@ public sealed class BacktestRunner : IBacktestRunner
             _gridController,
             _riskEngine,
             positionManager,
-            config.StrategyConfigJson,
+            config.Strategy,
             auditCollector: collector);
 
         _executionContextAccessor.CurrentExecutionEngine = executionEngine;
@@ -259,7 +260,9 @@ public sealed class BacktestRunner : IBacktestRunner
     private static void ValidateConfig(BacktestConfig config)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(config.Symbol, nameof(config.Symbol));
-        ArgumentNullException.ThrowIfNull(config.FeeModel);
+        ArgumentNullException.ThrowIfNull(config.Strategy);
+        ArgumentNullException.ThrowIfNull(config.Execution);
+        ArgumentNullException.ThrowIfNull(config.Execution.FeeModel);
 
         if (config.StartDateUtc >= config.EndDateUtc)
         {
@@ -281,17 +284,6 @@ public sealed class BacktestRunner : IBacktestRunner
         EnsureRequiredInterval(config.Intervals, "15m");
         EnsureRequiredInterval(config.Intervals, "1h");
         EnsureRequiredInterval(config.Intervals, "4h");
-
-        ArgumentException.ThrowIfNullOrWhiteSpace(config.StrategyConfigJson, nameof(config.StrategyConfigJson));
-
-        try
-        {
-            using var _ = JsonDocument.Parse(config.StrategyConfigJson);
-        }
-        catch (JsonException exception)
-        {
-            throw new ArgumentException("Strategy config JSON is invalid.", nameof(config.StrategyConfigJson), exception);
-        }
 
         if (config.WarmupPeriod < 0)
         {

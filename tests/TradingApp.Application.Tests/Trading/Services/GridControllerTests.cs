@@ -1,7 +1,8 @@
-using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Tests.Trading.Services;
 
@@ -9,9 +10,30 @@ namespace TradingApp.Application.Tests.Trading.Services;
 public sealed class GridControllerTests
 {
     private const long CandleTimestamp = 1_000_000;
-    private const string DefaultConfigJson = """
-        {"gridLevels":5,"gridSpacing":0.5,"takeProfitPercent":1,"breakdownThreshold":2,"makerFee":0.0001,"takerFee":0.00035,"slippage":0,"positionSize":100,"leverage":3,"stopLossPercent":5}
-        """;
+    private static readonly StrategyConfig DefaultConfig = new()
+    {
+        SchemaVersion = 1,
+        StrategyMode = StrategyMode.Grid,
+        StrategyName = "Test Grid",
+        Market = "BTC-USD",
+        Grid = new GridConfig
+        {
+            Levels = 5,
+            Spacing = 0.5m,
+            BreakdownThreshold = 2m,
+        },
+        Exit = new ExitConfig
+        {
+            TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 1m },
+            StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 5m },
+        },
+        Risk = new RiskConfig
+        {
+            PositionSizeValue = 100m,
+            Leverage = 1m,
+            MaxOpenTrades = 1,
+        },
+    };
 
     private GridController _sut = default!;
 
@@ -29,7 +51,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 100m),
             CreateGridState(GridLifecycle.Inactive),
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().BeEmpty();
     }
@@ -44,7 +66,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 100m),
             gridState,
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         signals[0].SignalType.Should().Be("DeployGrid");
@@ -64,7 +86,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 100m),
             gridState,
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().BeEmpty();
         gridState.Lifecycle.Should().Be(GridLifecycle.PartiallyFilled);
@@ -80,7 +102,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 99m),
             gridState,
             CreatePositionState(size: 2m, averageEntryPrice: 99.5m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().BeEmpty();
         gridState.Lifecycle.Should().Be(GridLifecycle.PartiallyFilled);
@@ -96,7 +118,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 101m),
             gridState,
             CreatePositionState(size: 2m, averageEntryPrice: 99.5m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         var signal = signals[0];
@@ -118,7 +140,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 94m),
             gridState,
             CreatePositionState(size: 2m, averageEntryPrice: 100m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         var signal = signals[0];
@@ -139,7 +161,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 99.5m),
             gridState,
             CreatePositionState(size: 5m, averageEntryPrice: 99m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         var signal = signals[0];
@@ -161,7 +183,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 94m),
             gridState,
             CreatePositionState(size: 5m, averageEntryPrice: 100m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         signals[0].Parameters!["orderType"].Should().Be(OrderType.Market.ToString());
@@ -179,7 +201,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 100m),
             gridState,
             CreatePositionState(size: 5m, averageEntryPrice: 99m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().BeEmpty();
         gridState.Lifecycle.Should().Be(GridLifecycle.Closing);
@@ -195,7 +217,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 94m),
             gridState,
             CreatePositionState(size: 5m, averageEntryPrice: 100m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         signals[0].Parameters!["orderType"].Should().Be(OrderType.Market.ToString());
@@ -213,7 +235,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 100m),
             gridState,
             CreatePositionState(size: 1m, averageEntryPrice: 99m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         var signal = signals[0];
@@ -233,7 +255,7 @@ public sealed class GridControllerTests
             CreateMarketContext(close: 100m),
             gridState,
             CreatePositionState(size: 1m, averageEntryPrice: 99m),
-            DefaultConfigJson);
+            DefaultConfig);
 
         signals.Should().ContainSingle();
         var signal = signals[0];

@@ -1,6 +1,24 @@
 import { Routes } from "@angular/router";
+import { unsavedChangesGuard } from "./features/strategy-builder/guards/unsaved-changes.guard";
 
 export const routes: Routes = [
+  {
+    path: "strategies",
+    loadComponent: () => import("./features/strategy-builder/strategy-list-page.component").then((m) => m.StrategyListPageComponent),
+    title: "Strategies"
+  },
+  {
+    path: "strategies/new",
+    loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
+    canDeactivate: [unsavedChangesGuard],
+    title: "New Strategy"
+  },
+  {
+    path: "strategies/:id/edit",
+    loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
+    canDeactivate: [unsavedChangesGuard],
+    title: "Edit Strategy"
+  },
   {
     path: "market-data",
     loadComponent: () => import("./features/market-data/market-data.component").then((m) => m.MarketDataComponent),

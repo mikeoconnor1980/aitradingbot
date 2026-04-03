@@ -1,0 +1,10 @@
+.risk-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  &__grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+}

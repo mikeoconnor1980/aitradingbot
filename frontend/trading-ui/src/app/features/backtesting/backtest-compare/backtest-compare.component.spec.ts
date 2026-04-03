@@ -14,18 +14,44 @@ describe("BacktestCompareComponent", () => {
     startDate: "2024-01-01T00:00:00Z",
     endDate: "2024-01-31T00:00:00Z",
     strategyConfig: {
-      gridLevels: 10,
-      entryMode: "AutoFromSignalCandle",
-      manualAnchorPrice: null,
-      gridSpacing: 0.5,
-      takeProfitPercent: 1.2,
-      breakdownThreshold: 2,
-      makerFee: 0.0001,
-      takerFee: 0.00035,
-      slippage: 0,
-      positionSize: 100,
-      leverage: 3,
-      stopLossPercent: 5
+      schemaVersion: 1,
+      strategyMode: "grid",
+      strategyName: "Backtest",
+      exchange: "Hyperliquid",
+      market: "BTC",
+      timeframe: "15m",
+      direction: "long",
+      enabled: true,
+      grid: {
+        levels: 10,
+        entryMode: "AutoFromSignalCandle",
+        anchorPrice: null,
+        spacing: 0.5,
+        breakdownThreshold: 2
+      },
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 1.2 },
+        stopLoss: { enabled: true, type: "fixed_percent", value: 5 },
+        exitOnOppositeSignal: false
+      },
+      risk: {
+        positionSizeType: "fixed_notional",
+        positionSizeValue: 100,
+        leverage: 3,
+        maxOpenTrades: 1,
+        cooldownValue: 0,
+        cooldownUnit: "candles",
+        allowSameCandleReentry: false
+      },
+      source: { entryPoint: "ui_builder", summary: "Backtest: BTC" }
+    },
+    executionConfig: {
+      feeModel: {
+        makerFeeRate: 0.0001,
+        takerFeeRate: 0.00035,
+        slippageRate: 0
+      },
+      leverage: 3
     },
     initialCapital: 10000,
     status: "Completed",
@@ -58,18 +84,33 @@ describe("BacktestCompareComponent", () => {
     component = fixture.componentInstance;
     fixture.componentRef.setInput("resultA", createResult({ id: "run-a", totalPnl: 1200, maxDrawdown: -280 }));
     fixture.componentRef.setInput("resultB", createResult({ id: "run-b", totalPnl: 900, maxDrawdown: -420, strategyConfig: {
-      gridLevels: 12,
-      entryMode: "WaitForLimitPrice",
-      manualAnchorPrice: 41850,
-      gridSpacing: 0.75,
-      takeProfitPercent: 1.5,
-      breakdownThreshold: 2.5,
-      makerFee: 0.0001,
-      takerFee: 0.0004,
-      slippage: 0.0002,
-      positionSize: 125,
-      leverage: 4,
-      stopLossPercent: 4.5
+      ...createResult({}).strategyConfig,
+      grid: {
+        ...createResult({}).strategyConfig.grid!,
+        levels: 12,
+        entryMode: "WaitForLimitPrice",
+        anchorPrice: 41850,
+        spacing: 0.75,
+        breakdownThreshold: 2.5
+      },
+      exit: {
+        ...createResult({}).strategyConfig.exit,
+        takeProfit: { enabled: true, type: "fixed_percent", value: 1.5 },
+        stopLoss: { enabled: true, type: "fixed_percent", value: 4.5 },
+        exitOnOppositeSignal: false
+      },
+      risk: {
+        ...createResult({}).strategyConfig.risk,
+        positionSizeValue: 125,
+        leverage: 4
+      }
+    }, executionConfig: {
+      feeModel: {
+        makerFeeRate: 0.0001,
+        takerFeeRate: 0.0004,
+        slippageRate: 0.0002
+      },
+      leverage: 4
     } }));
     fixture.detectChanges();
   });
@@ -113,7 +154,10 @@ describe("BacktestCompareComponent", () => {
       id: "run-a",
       strategyConfig: {
         ...createResult({}).strategyConfig,
-        entryMode: "InitialMarketThenGrid"
+        grid: {
+          ...createResult({}).strategyConfig.grid!,
+          entryMode: "InitialMarketThenGrid"
+        }
       }
     }));
     fixture.detectChanges();

@@ -1,8 +1,8 @@
-using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Enums;
 
-namespace TradingApp.Application.Backtesting.Models;
+namespace TradingApp.Domain.Trading;
 
-public sealed class FeeModel
+public sealed record FeeModel
 {
     public decimal MakerFeeRate { get; init; } = 0.0001m;
     public decimal TakerFeeRate { get; init; } = 0.00035m;

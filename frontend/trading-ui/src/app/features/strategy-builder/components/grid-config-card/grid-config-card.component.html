@@ -1,0 +1,54 @@
+<mat-card class="grid-card" [formGroup]="group">
+  <mat-card-header>
+    <mat-card-title>Grid Config</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="grid-card__grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Levels</mat-label>
+        <input matInput type="number" formControlName="levels" min="1" max="50" step="1" />
+        @if (hasError("levels", "required")) {
+          <mat-error>Grid levels are required.</mat-error>
+        }
+        @if (hasError("levels", "min") || hasError("levels", "max")) {
+          <mat-error>Grid levels must be between 1 and 50.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Spacing %</mat-label>
+        <input matInput type="number" formControlName="spacing" min="0.01" max="10" step="0.01" />
+        @if (hasError("spacing", "required")) {
+          <mat-error>Grid spacing is required.</mat-error>
+        }
+        @if (hasError("spacing", "min") || hasError("spacing", "max")) {
+          <mat-error>Grid spacing must be between 0.01% and 10%.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Entry mode</mat-label>
+        <mat-select formControlName="entryMode">
+          <mat-option value="auto_from_signal_candle">Auto from signal candle</mat-option>
+          <mat-option value="manual">Manual anchor price</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      @if (showsAnchorPrice) {
+        <mat-form-field appearance="outline">
+          <mat-label>Anchor price</mat-label>
+          <input matInput type="number" formControlName="anchorPrice" min="0.00000001" step="0.01" />
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="outline">
+        <mat-label>Breakdown threshold %</mat-label>
+        <input matInput type="number" formControlName="breakdownThreshold" min="0" max="10" step="0.1" />
+        @if (hasError("breakdownThreshold", "min") || hasError("breakdownThreshold", "max")) {
+          <mat-error>Breakdown threshold must be between 0 and 10.</mat-error>
+        }
+      </mat-form-field>
+    </div>
+  </mat-card-content>
+</mat-card>

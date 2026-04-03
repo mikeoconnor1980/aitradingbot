@@ -3,6 +3,7 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Queries;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
 
 namespace TradingApp.Application.Backtesting;
 
@@ -10,11 +11,7 @@ public sealed record GetBacktestDebugQuery(Guid BacktestId, string CycleId) : Qu
 
 public sealed class GetBacktestDebugQueryHandler : QueryHandler<GetBacktestDebugQuery, BacktestDebugResponse?>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = StrategyJsonOptions.Default;
 
     private readonly IBacktestRunRepository _repository;
 

@@ -5,8 +5,11 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Tests.Backtesting.Services;
 
@@ -59,7 +62,7 @@ public sealed class BacktestRunnerTests
             });
 
         _strategyEngineMock
-            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrategyEvaluation { SetupDetected = false });
 
         _gridControllerMock
@@ -68,7 +71,7 @@ public sealed class BacktestRunnerTests
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
-                It.IsAny<string>(),
+                It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
@@ -126,14 +129,25 @@ public sealed class BacktestRunnerTests
     }
 
     [TestMethod]
-    public async Task GivenInvalidStrategyConfigJson_WhenRunAsync_ThenThrowsArgumentException()
+    public async Task GivenNullStrategyConfig_WhenRunAsync_ThenThrowsArgumentNullException()
     {
-        var config = CreateConfig(strategyConfigJson: "{");
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = 13 * OneHourMs,
+            InitialCapital = 10_000m,
+            Strategy = null!,
+            Execution = new ExecutionConfig
+            {
+                FeeModel = FeeModel.Default,
+            },
+        };
 
         var action = () => _sut.RunAsync(config);
 
-        await action.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Strategy config JSON is invalid.*");
+        await action.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [TestMethod]
@@ -256,7 +270,8 @@ public sealed class BacktestRunnerTests
         decimal initialCapital = 10_000m,
         int warmupPeriod = 2,
         IReadOnlyList<string>? intervals = null,
-        string strategyConfigJson = "{}",
+        IStrategyConfig? strategy = null,
+        ExecutionConfig? execution = null,
         bool enableAuditLog = true)
     {
         return new BacktestConfig
@@ -266,9 +281,35 @@ public sealed class BacktestRunnerTests
             StartDateUtc = startDateUtc,
             EndDateUtc = endDateUtc,
             InitialCapital = initialCapital,
-            FeeModel = FeeModel.Default,
+            Strategy = strategy ?? new StrategyConfig
+            {
+                SchemaVersion = 1,
+                StrategyMode = StrategyMode.Grid,
+                StrategyName = "Test",
+                Market = "BTC-USD",
+                Grid = new GridConfig
+                {
+                    Levels = 5,
+                    Spacing = 0.5m,
+                    BreakdownThreshold = 3m,
+                },
+                Exit = new ExitConfig
+                {
+                    TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 2m },
+                    StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 5m },
+                },
+                Risk = new RiskConfig
+                {
+                    PositionSizeValue = 100m,
+                    Leverage = 1m,
+                    MaxOpenTrades = 1,
+                },
+            },
+            Execution = execution ?? new ExecutionConfig
+            {
+                FeeModel = FeeModel.Default,
+            },
             WarmupPeriod = warmupPeriod,
-            StrategyConfigJson = strategyConfigJson,
             EnableAuditLog = enableAuditLog
         };
     }
