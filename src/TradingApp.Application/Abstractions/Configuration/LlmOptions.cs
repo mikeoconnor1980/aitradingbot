@@ -16,7 +16,8 @@ public sealed class LlmOptions
     [Required]
     public string ModelName { get; set; } = "gemini-2.0-flash";
 
-    public string? ApiKey { get; set; }
+    [Required]
+    public string ApiKey { get; set; } = string.Empty;
 
     [Range(1, 120)]
     public int TimeoutSeconds { get; set; } = 30;

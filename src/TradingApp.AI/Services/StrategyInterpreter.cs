@@ -121,16 +121,16 @@ public sealed class StrategyInterpreter : IStrategyInterpreter
                 if (httpRequestException.Message.Contains("quota", StringComparison.OrdinalIgnoreCase) ||
                     httpRequestException.Message.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "The configured Gemini API key has no available quota for gemini-2.0-flash. Check billing and quota limits, or switch the app to Ollama for local fallback.";
+                    return "The configured LLM API key has no available quota. Check billing and quota limits, or switch to a local provider such as Ollama.";
                 }
 
-                return "The Gemini API is rate-limiting requests right now. Please wait a moment and try again.";
+                return "The LLM provider is rate-limiting requests right now. Please wait a moment and try again.";
             }
 
             if (httpRequestException.StatusCode == HttpStatusCode.Unauthorized ||
                 httpRequestException.StatusCode == HttpStatusCode.Forbidden)
             {
-                return "The configured Gemini API key was rejected. Verify the key and API access for this project.";
+                return "The configured LLM API key was rejected. Verify the key and API access for this project.";
             }
 
             if (httpRequestException.StatusCode == HttpStatusCode.NotFound)
@@ -138,7 +138,7 @@ public sealed class StrategyInterpreter : IStrategyInterpreter
                 if (httpRequestException.Message.Contains("no longer available", StringComparison.OrdinalIgnoreCase) ||
                     httpRequestException.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "The configured Gemini model is not available for this project or API version. Update the app to a newer model such as gemini-2.5-flash or gemini-2.5-flash-lite.";
+                    return "The configured LLM model is not available. Verify the model name in configuration.";
                 }
             }
         }

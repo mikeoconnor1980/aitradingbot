@@ -9,6 +9,7 @@ Solution file: `TradingApp.sln`
 | `TradingApp.Infrastructure` | External service implementations (Hyperliquid client, signing) |
 | `TradingApp.Persistence` | EF Core context (`TradingAppDbContext`), repository implementations, and `PersistenceServiceExtensions` for DI and auto-migration |
 | `TradingApp.Api` | ASP.NET Core Web API host, controllers, DI composition root |
+| `TradingApp.AI` | LLM integration services (OpenAI-compatible client, strategy interpreter) |
 | `TradingApp.Worker` | .NET Worker Service host for background strategy execution |
 
 Domain, Application, and Persistence are tenant-aware. All data access is scoped by `UserId`.
@@ -27,7 +28,7 @@ src/TradingApp.Application/
 │   ├── Identity/          # AppIdentity (UserId, Email; static System identity)
 │   ├── Repositories/      # Repository interfaces (ICandleRepository, IFundingRateRepository, IBacktestRunRepository, IStrategyRepository)
 │   └── Services/          # Pipeline interfaces (IStrategyEngine, IGridController, IRiskEngine, IPositionManager,
-│                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner) + infrastructure client contracts
+│                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner, IStrategyInterpreter) + infrastructure client contracts
 ├── Backtesting/           # Backtest CQRS handlers + engine
 │   ├── Models/            # Engine models: BacktestConfig, BacktestResult, BacktestTrade, FeeModel, SimulatedFill/Order/Position, ReplayData
 │   │                      # Response DTOs: BacktestRunResponse, BacktestRunSummary, BacktestTradeResponse,
@@ -64,6 +65,23 @@ src/TradingApp.Application/
 ```
 
 MediatR is registered in the Api host to scan the Application assembly.
+
+---
+
+## AI Layer
+
+```
+src/TradingApp.AI/
+├── Models/                 # LLM request/response shapes (ChatMessage, ChatCompletionRequest/Response)
+├── Prompts/
+│   └── StrategyInterpreterPrompt.cs  # System prompt template for NL→StrategyConfig interpretation
+├── Services/
+│   ├── OpenAiCompatibleLlmClient.cs  # ILlmClient implementation; works with Gemini, Ollama, or any OpenAI-compatible endpoint
+│   └── StrategyInterpreter.cs        # IStrategyInterpreter implementation; calls LLM, parses response, returns StrategyIntentDto
+└── AiServiceExtensions.cs            # DI registration (AddAI); binds LlmOptions, registers typed HttpClient and services
+```
+
+Registered via `AiServiceExtensions.AddAI()` in the Api host DI composition root.
 
 ---
 

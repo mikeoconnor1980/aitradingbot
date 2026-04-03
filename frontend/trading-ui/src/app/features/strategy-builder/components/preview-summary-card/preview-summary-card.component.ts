@@ -1,6 +1,6 @@
 import { Component, Input, signal } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
-import { PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, TrendOperator } from "../../models/strategy.model";
+import { MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, TrendOperator } from "../../models/strategy.model";
 
 @Component({
   selector: "app-preview-summary-card",
@@ -153,6 +153,10 @@ export class PreviewSummaryCardComponent {
       return `price ${this._priceConditionOperatorText(operator)} the ${period} EMA`;
     }
 
+    if (type === "macd") {
+      return this._buildMacdConditionText(condition);
+    }
+
     const period = Number(condition["period"] ?? 14);
     const operator = String(condition["operator"] ?? "lt") as RsiOperator;
     const value = this._formatNumber(condition["value"]);
@@ -192,6 +196,23 @@ export class PreviewSummaryCardComponent {
     };
 
     return operatorMap[operator as Exclude<PriceVsEmaOperator, "near" | "touch">] ?? operator;
+  }
+
+  private _buildMacdConditionText(condition: Record<string, unknown>): string {
+    const fast = Number(condition["fastPeriod"] ?? 12);
+    const slow = Number(condition["slowPeriod"] ?? 26);
+    const signal = Number(condition["signalPeriod"] ?? 9);
+    const operator = String(condition["operator"] ?? "cross_above_signal") as MacdOperator;
+    const operatorMap: Record<MacdOperator, string> = {
+      cross_above_signal: "crosses above signal line",
+      cross_below_signal: "crosses below signal line",
+      above_zero: "is above zero",
+      below_zero: "is below zero",
+      histogram_rising: "histogram is rising",
+      histogram_falling: "histogram is falling",
+    };
+
+    return `MACD(${fast},${slow},${signal}) ${operatorMap[operator] ?? operator}`;
   }
 
   private _getConditions(formValue: Record<string, unknown>): Record<string, unknown>[] {
