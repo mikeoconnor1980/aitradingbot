@@ -70,6 +70,51 @@ All enums serialize as `snake_case_lower` strings.
 
 ---
 
+## Signal Mode Example
+
+```json
+{
+  "schemaVersion": 1,
+  "strategyMode": "signal",
+  "strategyName": "BTC RSI Signal",
+  "exchange": "Hyperliquid",
+  "market": "BTC",
+  "timeframe": "15m",
+  "direction": "long",
+  "enabled": true,
+  "entryLogic": "all",
+  "entryConditions": [
+    {
+      "id": "cond-1",
+      "enabled": true,
+      "type": "rsi",
+      "label": "RSI Oversold",
+      "params": {
+        "period": 14,
+        "operator": "lt",
+        "value": 40
+      }
+    }
+  ],
+  "exit": {
+    "takeProfit": { "type": "percent_from_entry", "value": 0.8 },
+    "stopLoss": { "type": "percent_from_entry", "value": 2.0 },
+    "exitOnOppositeSignal": false
+  },
+  "risk": {
+    "positionSizeType": "percent_of_equity",
+    "positionSizeValue": 10,
+    "leverage": 3,
+    "maxOpenTrades": 1,
+    "cooldownValue": 30,
+    "cooldownUnit": "minutes",
+    "allowSameCandleReentry": false
+  }
+}
+```
+
+---
+
 ## Sub-Model Reference
 
 ### GridConfig
@@ -119,7 +164,7 @@ Supported param types:
 
 | `type` | Params class | Key fields |
 |--------|-------------|------------|
-| `rsi` | `RsiParams` | `period`, `operator`, `threshold` |
+| `rsi` | `RsiParams` | `period`, `operator`, `value` |
 | `price_vs_ema` | `PriceVsEmaParams` | `emaPeriod`, `operator` |
 | `macd` | `MacdParams` | `fastPeriod`, `slowPeriod`, `signalPeriod`, `operator` |
 

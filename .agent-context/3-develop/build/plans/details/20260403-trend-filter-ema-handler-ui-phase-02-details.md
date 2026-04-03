@@ -274,26 +274,19 @@ public sealed class TrendFilterEvaluator : ITrendFilterEvaluator
         bool passed;
         string direction;
 
+        // NOTE: Full cross detection requires previous candle close, not yet in MarketContext.
+        // Approximation: compare current close vs current EMA, use previousEma as directional proxy.
+        // The implementer should add MarketContext.PreviousCandle for proper cross detection.
         if (crossAbove)
         {
-            // Previous: close was below EMA, Current: close is above EMA
-            // We use previousEma for the previous candle's reference
-            passed = previousEma.Value >= closePrice == false
-                     && closePrice > currentEma.Value;
-            // More precise: we need the previous candle's close price
-            // IndicatorContext stores indicator values but not candle prices
-            // Simplification: compare price vs EMA on current, and previous EMA vs current EMA trend
-            passed = closePrice > currentEma.Value && previousEma.Value > currentEma.Value == false;
+            passed = closePrice > currentEma.Value && previousEma.Value >= currentEma.Value;
             direction = "cross_above";
         }
         else
         {
-            passed = closePrice < currentEma.Value && previousEma.Value < currentEma.Value == false;
+            passed = closePrice < currentEma.Value && previousEma.Value <= currentEma.Value;
             direction = "cross_below";
         }
-
-        // Better implementation: store previous close in MarketContext or use a dedicated helper
-        // For now, approximate using IndicatorContext's previous EMA values
         var status = passed ? "filter passed" : "filter failed";
         return new TrendFilterResult
         {
@@ -556,7 +549,7 @@ public sealed class PriceVsEmaConditionHandler : IConditionHandler
 
 ---
 
-### Task 2.3: Wire TrendFilterEvaluator into CompositeStrategyEngine {#task-23-wire-trendfilterevaluator-into-compositesstrategyengine}
+### Task 2.3: Wire TrendFilterEvaluator into CompositeStrategyEngine {#task-23-wire-trendfilterevaluator-into-compositestrategyengine}
 
 Inject `ITrendFilterEvaluator` into `CompositeStrategyEngine` and call it before `ConditionEvaluator.Evaluate` in signal mode. If the trend filter fails, skip condition evaluation and return `SetupDetected = false`.
 
@@ -570,6 +563,8 @@ Inject `ITrendFilterEvaluator` into `CompositeStrategyEngine` and call it before
   - If trend filter fails: `SetupDetected = false`, conditions not evaluated
   - If trend filter passes or is disabled: conditions evaluated normally
   - `ConditionEvaluationResult.TrendFilterPassed` populated correctly
+
+**NOTE on TrendFilterPassed**: After evaluating the trend filter and before returning the `StrategyEvaluation`, the implementer must ensure `TrendFilterPassed` is propagated. When the trend filter passes and conditions are evaluated, set `result.TrendFilterPassed = trendResult.Passed` on the `ConditionEvaluationResult` (or pass it through to `StrategyEvaluation`). When the trend filter fails (early return), `TrendFilterPassed` is implicitly `false` via the `SetupDetected = false` return.
 
 #### Implementation Details
 
@@ -1194,8 +1189,10 @@ Update existing tests to account for `ITrendFilterEvaluator` injection in `Compo
 - **Files**:
   - `tests/TradingApp.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs` — update constructor, add trend filter tests
   - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — add PriceVsEma handler to evaluator setup
+  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — remove/update `TREND_FILTER_NOT_EVALUATED` test assertion (Task 2.4 removes this code)
 - **Success**:
   - All existing tests updated and pass
+  - `CrossFieldValidatorTests` updated to reflect removal of `TREND_FILTER_NOT_EVALUATED` info message
   - New tests: trend filter fails → SetupDetected = false, conditions not evaluated
   - New tests: trend filter passes → conditions evaluated normally
 - **Dependencies**:

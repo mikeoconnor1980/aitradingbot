@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260403-extract-indicator-calculators-changes.md"
-currentAgent: "None"
+currentAgent: "Plan Implementer"
 agentStartedAt: "2026-04-03T13:37:03Z"
-status: "plan-reviewed"
-lastUpdated: "2026-04-03T13:40:28Z"
+status: "implemented"
+lastUpdated: "2026-04-03T15:02:13Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -69,79 +69,79 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 - `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — existing tests to update
 - `TradingApp.sln` — solution file for project registration
 
-### [ ] Phase 1: Project Scaffolding + EMA and RSI Calculators with Tests
+### [x] Phase 1: Project Scaffolding + EMA and RSI Calculators with Tests
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [ ] Task 1.1: Create `TradingApp.Indicators` project and `TradingApp.Indicators.Tests` project
+- [x] Task 1.1: Create `TradingApp.Indicators` project and `TradingApp.Indicators.Tests` project
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-11-create-indicator-projects
 
-- [ ] Task 1.2: Add both projects to `TradingApp.sln`
+- [x] Task 1.2: Add both projects to `TradingApp.sln`
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-12-add-projects-to-solution
 
-- [ ] Task 1.3: Implement `EmaCalculator` with SMA-seeded algorithm
+- [x] Task 1.3: Implement `EmaCalculator` with SMA-seeded algorithm
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-13-implement-emacalculator
 
-- [ ] Task 1.4: Implement `EmaCalculatorTests` with TradingView-verified values
+- [x] Task 1.4: Implement `EmaCalculatorTests` with TradingView-verified values
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-14-implement-emacalculatortests
 
-- [ ] Task 1.5: Implement `RsiCalculator` with Wilder smoothing
+- [x] Task 1.5: Implement `RsiCalculator` with Wilder smoothing
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-15-implement-rsicalculator
 
-- [ ] Task 1.6: Implement `RsiCalculatorTests` with TradingView-verified values
+- [x] Task 1.6: Implement `RsiCalculatorTests` with TradingView-verified values
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-16-implement-rsicalculatortests
 
-- [ ] Task 1.7: Build solution and run all tests
+- [x] Task 1.7: Build solution and run all tests
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-17-build-and-run-tests
 
-### [ ] Phase 2: ATR, MACD, and Bollinger Bands Calculators with Tests
+### [x] Phase 2: ATR, MACD, and Bollinger Bands Calculators with Tests
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Implement `AtrCalculator` with Wilder-smoothed algorithm
+- [x] Task 2.1: Implement `AtrCalculator` with Wilder-smoothed algorithm
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-21-implement-atrcalculator
 
-- [ ] Task 2.2: Implement `AtrCalculatorTests` with verified values
+- [x] Task 2.2: Implement `AtrCalculatorTests` with verified values
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-22-implement-atrcalculatortests
 
-- [ ] Task 2.3: Implement `MacdCalculator` returning line, signal, and histogram
+- [x] Task 2.3: Implement `MacdCalculator` returning line, signal, and histogram
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-23-implement-macdcalculator
 
-- [ ] Task 2.4: Implement `MacdCalculatorTests` with TradingView-verified values
+- [x] Task 2.4: Implement `MacdCalculatorTests` with TradingView-verified values
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-24-implement-macdcalculatortests
 
-- [ ] Task 2.5: Implement `BollingerBandsCalculator` returning upper, middle, lower bands
+- [x] Task 2.5: Implement `BollingerBandsCalculator` returning upper, middle, lower bands
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-25-implement-bollingerbandscalculator
 
-- [ ] Task 2.6: Implement `BollingerBandsCalculatorTests` with verified values
+- [x] Task 2.6: Implement `BollingerBandsCalculatorTests` with verified values
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-26-implement-bollingerbandscalculatortests
 
-- [ ] Task 2.7: Build solution and run all tests
+- [x] Task 2.7: Build solution and run all tests
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-02-details.md#task-27-build-and-run-tests
 
-### [ ] Phase 3: Refactor BacktestMarketContextBuilder + Extend IndicatorContext for MACD
+### [x] Phase 3: Refactor BacktestMarketContextBuilder + Extend IndicatorContext for MACD
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [ ] Task 3.1: Extend `IndicatorContext` with MACD line, signal, and histogram storage
+- [x] Task 3.1: Extend `IndicatorContext` with MACD line, signal, and histogram storage
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-31-extend-indicatorcontext-for-macd
 
-- [ ] Task 3.2: Add `TradingApp.Indicators` project reference to `TradingApp.Application`
+- [x] Task 3.2: Add `TradingApp.Indicators` project reference to `TradingApp.Application`
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-32-add-indicators-project-reference
 
-- [ ] Task 3.3: Refactor `BacktestMarketContextBuilder` to delegate to new calculators
+- [x] Task 3.3: Refactor `BacktestMarketContextBuilder` to delegate to new calculators
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-33-refactor-backtestmarketcontextbuilder
 
-- [ ] Task 3.4: Add MACD case to `BuildIndicatorContext` switch
+- [x] Task 3.4: Add MACD case to `BuildIndicatorContext` switch
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-34-add-macd-case-to-buildindicatorcontext
 
-- [ ] Task 3.5: Update `BacktestMarketContextBuilderIndicatorTests` for refactored code
+- [x] Task 3.5: Update `BacktestMarketContextBuilderIndicatorTests` for refactored code
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-35-update-existing-tests
 
-- [ ] Task 3.6: Add MACD integration test for `BacktestMarketContextBuilder`
+- [x] Task 3.6: Add MACD integration test for `BacktestMarketContextBuilder`
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-36-add-macd-integration-test
 
-- [ ] Task 3.7: Build solution and run all tests
+- [x] Task 3.7: Build solution and run all tests
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-37-build-and-run-all-tests
 
 ## Scoping Summary
@@ -182,3 +182,4 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-04-03T12:45:15Z | 2026-04-03T13:35:31Z |
 | Plan Reviewer | plan-reviewed | 2026-04-03T13:37:03Z | 2026-04-03T13:40:28Z |
+| Plan Implementer | implemented | 2026-04-03T14:43:50Z | 2026-04-03T15:02:13Z |

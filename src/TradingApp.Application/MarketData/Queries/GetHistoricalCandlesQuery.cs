@@ -74,10 +74,12 @@ public sealed class GetHistoricalCandlesQueryHandler : QueryHandler<GetHistorica
             .OrderBy(candle => candle.Timestamp)
             .ToList();
 
-        return deduplicated
+        var mapped = deduplicated
             .Skip(Math.Max(0, deduplicated.Count - request.Limit))
             .Select(MapToDto)
             .ToList();
+
+        return GetCandlesQueryHandler.EnrichCandles(mapped);
     }
 
     private static string MapAssetToSymbol(string asset)

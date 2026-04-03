@@ -2,11 +2,16 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Indicators;
 
 namespace TradingApp.Application.Trading.Services;
 
 public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 {
+    private const int FastEmaPeriod = 20;
+    private const int SlowEmaPeriod = 50;
+    private const int TrendEmaPeriod = 200;
+
     private readonly List<Candle> _candles = [];
 
     public void UpdateIndicators(Candle candle)
@@ -28,7 +33,8 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
     {
         ArgumentNullException.ThrowIfNull(triggerCandle);
 
-        var indicatorContext = BuildIndicatorContext(requiredIndicators);
+        var closes = _candles.Select(candle => candle.Close).ToList();
+        var indicatorContext = BuildIndicatorContext(requiredIndicators, closes);
 
         return new MarketContext
         {
@@ -39,17 +45,19 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             LatestFourHourCandle = latestFourHourCandle,
             Indicators = new IndicatorSnapshot
             {
-                EmaFast = CalculateEma(9),
-                EmaSlow = CalculateEma(21),
-                EmaTrend = latestFourHourCandle?.Close ?? CalculateEma(55),
-                Rsi = CalculateRsi(14),
-                Atr = CalculateAtr(14)
+                EmaFast = EmaCalculator.Calculate(closes, FastEmaPeriod) ?? 0m,
+                EmaSlow = EmaCalculator.Calculate(closes, SlowEmaPeriod) ?? 0m,
+                EmaTrend = latestFourHourCandle?.Close ?? EmaCalculator.Calculate(closes, TrendEmaPeriod) ?? 0m,
+                Rsi = RsiCalculator.Calculate(closes, 14) ?? 50m,
+                Atr = AtrCalculator.Calculate(GetBars(), 14) ?? 0m
             },
             IndicatorContext = indicatorContext
         };
     }
 
-    private IndicatorContext? BuildIndicatorContext(IReadOnlyList<IndicatorRequirement>? requirements)
+    private IndicatorContext? BuildIndicatorContext(
+        IReadOnlyList<IndicatorRequirement>? requirements,
+        IReadOnlyList<decimal> closes)
     {
         if (requirements is null || requirements.Count == 0)
         {
@@ -57,6 +65,7 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
         }
 
         var context = new IndicatorContext();
+        IReadOnlyList<decimal> previousCloses = closes.Count > 1 ? closes.Take(closes.Count - 1).ToList() : [];
 
         foreach (var requirement in requirements)
         {
@@ -65,15 +74,38 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
                 case "RSI":
                     context.SetRsi(
                         requirement.Period,
-                        CalculateRsi(requirement.Period),
-                        CalculatePreviousRsi(requirement.Period));
+                        RsiCalculator.Calculate(closes, requirement.Period) ?? 50m,
+                        RsiCalculator.Calculate(previousCloses, requirement.Period));
                     break;
 
                 case "EMA":
                     context.SetEma(
                         requirement.Period,
-                        CalculateEma(requirement.Period),
-                        CalculatePreviousEma(requirement.Period));
+                        EmaCalculator.Calculate(closes, requirement.Period) ?? 0m,
+                        EmaCalculator.Calculate(previousCloses, requirement.Period));
+                    break;
+
+                case "MACD":
+                    var fast = requirement.FastPeriod ?? 12;
+                    var slow = requirement.SlowPeriod ?? 26;
+                    var signal = requirement.SignalPeriod ?? 9;
+                    var current = MacdCalculator.Calculate(closes, fast, slow, signal);
+                    var previous = MacdCalculator.Calculate(previousCloses, fast, slow, signal);
+
+                    if (current is not null)
+                    {
+                        context.SetMacd(
+                            fast,
+                            slow,
+                            signal,
+                            current.Line,
+                            current.Signal,
+                            current.Histogram,
+                            previous?.Line,
+                            previous?.Signal,
+                            previous?.Histogram);
+                    }
+
                     break;
             }
         }
@@ -81,134 +113,8 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
         return context;
     }
 
-    private decimal CalculateEma(int period)
+    private IReadOnlyList<(decimal High, decimal Low, decimal Close)> GetBars()
     {
-        if (_candles.Count == 0)
-        {
-            return 0m;
-        }
-
-        var closes = _candles.Select(candle => candle.Close).ToList();
-        var smoothing = 2m / (period + 1m);
-        var ema = closes[0];
-
-        for (var index = 1; index < closes.Count; index++)
-        {
-            ema = ((closes[index] - ema) * smoothing) + ema;
-        }
-
-        return ema;
-    }
-
-    private decimal CalculateRsi(int period)
-    {
-        if (_candles.Count < 2)
-        {
-            return 50m;
-        }
-
-        var startIndex = Math.Max(1, _candles.Count - period);
-        decimal gains = 0m;
-        decimal losses = 0m;
-
-        for (var index = startIndex; index < _candles.Count; index++)
-        {
-            var delta = _candles[index].Close - _candles[index - 1].Close;
-            if (delta >= 0)
-            {
-                gains += delta;
-            }
-            else
-            {
-                losses += Math.Abs(delta);
-            }
-        }
-
-        if (losses == 0m)
-        {
-            return 100m;
-        }
-
-        var relativeStrength = gains / losses;
-        return 100m - (100m / (1m + relativeStrength));
-    }
-
-    private decimal CalculatePreviousRsi(int period)
-    {
-        if (_candles.Count < 3)
-        {
-            return 50m;
-        }
-
-        var endIndex = _candles.Count - 1;
-        var startIndex = Math.Max(1, endIndex - period);
-        decimal gains = 0m;
-        decimal losses = 0m;
-
-        for (var index = startIndex; index < endIndex; index++)
-        {
-            var delta = _candles[index].Close - _candles[index - 1].Close;
-            if (delta >= 0)
-            {
-                gains += delta;
-            }
-            else
-            {
-                losses += Math.Abs(delta);
-            }
-        }
-
-        if (losses == 0m)
-        {
-            return 100m;
-        }
-
-        var relativeStrength = gains / losses;
-        return 100m - (100m / (1m + relativeStrength));
-    }
-
-    private decimal CalculatePreviousEma(int period)
-    {
-        if (_candles.Count < 2)
-        {
-            return 0m;
-        }
-
-        var closes = _candles.Take(_candles.Count - 1).Select(candle => candle.Close).ToList();
-        var smoothing = 2m / (period + 1m);
-        var ema = closes[0];
-
-        for (var index = 1; index < closes.Count; index++)
-        {
-            ema = ((closes[index] - ema) * smoothing) + ema;
-        }
-
-        return ema;
-    }
-
-    private decimal CalculateAtr(int period)
-    {
-        if (_candles.Count == 0)
-        {
-            return 0m;
-        }
-
-        var startIndex = Math.Max(0, _candles.Count - period);
-        decimal totalTrueRange = 0m;
-        var samples = 0;
-
-        for (var index = startIndex; index < _candles.Count; index++)
-        {
-            var candle = _candles[index];
-            var previousClose = index == 0 ? candle.Close : _candles[index - 1].Close;
-            var trueRange = Math.Max(
-                candle.High - candle.Low,
-                Math.Max(Math.Abs(candle.High - previousClose), Math.Abs(candle.Low - previousClose)));
-
-            totalTrueRange += trueRange;
-            samples++;
-        }
-
-        return samples == 0 ? 0m : totalTrueRange / samples;
+        return _candles.Select(candle => (candle.High, candle.Low, candle.Close)).ToList();
     }
 }

@@ -29,13 +29,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingApp.Api.Tests", "tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingApp.Persistence.Tests", "tests\TradingApp.Persistence.Tests\TradingApp.Persistence.Tests.csproj", "{9857C903-1D60-4240-AD51-50DD94BAD279}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingApp.Indicators", "src\TradingApp.Indicators\TradingApp.Indicators.csproj", "{2E2D56C5-9399-4969-9A0F-1B550B758C29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TradingApp.Indicators.Tests", "tests\TradingApp.Indicators.Tests\TradingApp.Indicators.Tests.csproj", "{DFBA3F46-A8E2-46EA-8637-3FD3C912B4F1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{8D3AAC2D-0777-41F8-AE71-AC0D28B82AF1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -82,6 +83,17 @@ Global
 		{9857C903-1D60-4240-AD51-50DD94BAD279}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9857C903-1D60-4240-AD51-50DD94BAD279}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9857C903-1D60-4240-AD51-50DD94BAD279}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E2D56C5-9399-4969-9A0F-1B550B758C29}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E2D56C5-9399-4969-9A0F-1B550B758C29}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E2D56C5-9399-4969-9A0F-1B550B758C29}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E2D56C5-9399-4969-9A0F-1B550B758C29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFBA3F46-A8E2-46EA-8637-3FD3C912B4F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFBA3F46-A8E2-46EA-8637-3FD3C912B4F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFBA3F46-A8E2-46EA-8637-3FD3C912B4F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFBA3F46-A8E2-46EA-8637-3FD3C912B4F1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8D3AAC2D-0777-41F8-AE71-AC0D28B82AF1} = {8EFC91D1-C9F7-4A74-84FE-088136B3CBA1}
@@ -95,5 +107,7 @@ Global
 		{F2D52413-5291-484B-92A5-3134E299E7F7} = {267CC078-C992-4791-BACE-16A1B052B962}
 		{46B9AE23-AE0C-4B0B-BA50-96354B6ADDFD} = {267CC078-C992-4791-BACE-16A1B052B962}
 		{9857C903-1D60-4240-AD51-50DD94BAD279} = {267CC078-C992-4791-BACE-16A1B052B962}
+		{2E2D56C5-9399-4969-9A0F-1B550B758C29} = {8EFC91D1-C9F7-4A74-84FE-088136B3CBA1}
+		{DFBA3F46-A8E2-46EA-8637-3FD3C912B4F1} = {267CC078-C992-4791-BACE-16A1B052B962}
 	EndGlobalSection
 EndGlobal

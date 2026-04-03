@@ -119,7 +119,7 @@ describe("StrategyBuilderPageComponent", () => {
 
   it("should not allow save for a clean valid form", () => {
     component.form.patchValue({ strategyName: "RSI Test" });
-    (component as any)._savedFormSnapshot = JSON.stringify(component.form.getRawValue());
+    (component as unknown as { _savedFormSnapshot: string })._savedFormSnapshot = JSON.stringify(component.form.getRawValue());
     component.form.markAsPristine();
 
     expect(component.form.valid).toBeTrue();

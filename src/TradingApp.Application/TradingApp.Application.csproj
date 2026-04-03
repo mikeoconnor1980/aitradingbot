@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TradingApp.Domain\TradingApp.Domain.csproj" />
+    <ProjectReference Include="..\TradingApp.Indicators\TradingApp.Indicators.csproj" />
   </ItemGroup>
 
   <ItemGroup>

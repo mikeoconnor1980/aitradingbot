@@ -45,6 +45,44 @@ public sealed class BacktestMarketContextBuilderIndicatorTests
         result.IndicatorContext.Should().BeNull();
     }
 
+    [TestMethod]
+    public void GivenMacdRequirement_WhenBuild_ThenMacdValuesArePopulated()
+    {
+        var sut = new BacktestMarketContextBuilder();
+        var candles = CreateCandles(40);
+
+        foreach (var candle in candles)
+        {
+            sut.UpdateIndicators(candle);
+        }
+
+        var result = sut.Build(
+            candles[^1],
+            null,
+            null,
+            [new IndicatorRequirement
+            {
+                Type = "MACD",
+                FastPeriod = 12,
+                SlowPeriod = 26,
+                SignalPeriod = 9
+            }]);
+
+        result.IndicatorContext.Should().NotBeNull();
+        result.IndicatorContext!.GetMacd(12, 26, 9).Should().NotBeNull();
+        result.IndicatorContext.GetMacdSignal(12, 26, 9).Should().NotBeNull();
+        result.IndicatorContext.GetMacdHistogram(12, 26, 9).Should().NotBeNull();
+        result.IndicatorContext.GetPreviousMacd(12, 26, 9).Should().NotBeNull();
+        result.IndicatorContext.GetPreviousMacdSignal(12, 26, 9).Should().NotBeNull();
+        result.IndicatorContext.GetPreviousMacdHistogram(12, 26, 9).Should().NotBeNull();
+
+        var line = result.IndicatorContext.GetMacd(12, 26, 9)!.Value;
+        var signal = result.IndicatorContext.GetMacdSignal(12, 26, 9)!.Value;
+        var histogram = result.IndicatorContext.GetMacdHistogram(12, 26, 9)!.Value;
+
+        histogram.Should().Be(line - signal);
+    }
+
     private static List<Candle> CreateCandles(int count)
     {
         var candles = new List<Candle>(count);

@@ -85,11 +85,17 @@ public sealed class MarketDataControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenController_WhenGetCandlesWithValidParams_ThenReturnsOk()
     {
-        var expected = new List<CandleDto>
-        {
-            new() { Timestamp = 1700000000000, Open = 50000m, High = 50100m, Low = 49900m, Close = 50050m, Volume = 100m },
-            new() { Timestamp = 1699999100000, Open = 49900m, High = 50000m, Low = 49800m, Close = 49950m, Volume = 90m },
-        };
+        var expected = Enumerable.Range(0, 60)
+            .Select(index => new CandleDto
+            {
+                Timestamp = 1_700_000_000_000 - (index * 900_000L),
+                Open = 50000m + index,
+                High = 50100m + index,
+                Low = 49900m + index,
+                Close = 50050m + index,
+                Volume = 100m + index,
+            })
+            .ToList();
 
         _restClientMock
             .Setup(c => c.GetCandlesAsync("BTC-PERP", "15m", null, It.IsAny<CancellationToken>()))
@@ -100,7 +106,11 @@ public sealed class MarketDataControllerTests : BaseControllerTests
         var response = await client.GetAsync($"{BaseUrl}/candles?asset=BTC-PERP&timeframe=15m");
 
         var result = await response.ReadAndAssertSuccessAsync<List<CandleDto>>();
-        result.Should().HaveCount(2);
+        result.Should().HaveCount(60);
+        result[0].Indicators.Should().NotBeNull();
+        result[0].Indicators!.EmaFast.Should().NotBeNull();
+        result[0].Indicators!.MacdLine.Should().NotBeNull();
+        result[0].Indicators!.BollingerUpper.Should().NotBeNull();
     }
 
     [TestMethod]

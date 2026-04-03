@@ -42,4 +42,29 @@ public sealed class IndicatorContextTests
 
         context.GetPreviousRsi(14).Should().BeNull();
     }
+
+    [TestMethod]
+    public void GivenMacdSet_WhenGetMacd_ThenReturnsLineSignalAndHistogramValues()
+    {
+        var context = new IndicatorContext();
+        context.SetMacd(12, 26, 9, 1.25m, 0.95m, 0.30m, 1.10m, 0.90m, 0.20m);
+
+        context.GetMacd(12, 26, 9).Should().Be(1.25m);
+        context.GetPreviousMacd(12, 26, 9).Should().Be(1.10m);
+        context.GetMacdSignal(12, 26, 9).Should().Be(0.95m);
+        context.GetPreviousMacdSignal(12, 26, 9).Should().Be(0.90m);
+        context.GetMacdHistogram(12, 26, 9).Should().Be(0.30m);
+        context.GetPreviousMacdHistogram(12, 26, 9).Should().Be(0.20m);
+    }
+
+    [TestMethod]
+    public void GivenMacdSignalAndHistogramNotSet_WhenGetMacdSignalAndHistogram_ThenReturnsNull()
+    {
+        var context = new IndicatorContext();
+
+        context.GetMacdSignal(12, 26, 9).Should().BeNull();
+        context.GetPreviousMacdSignal(12, 26, 9).Should().BeNull();
+        context.GetMacdHistogram(12, 26, 9).Should().BeNull();
+        context.GetPreviousMacdHistogram(12, 26, 9).Should().BeNull();
+    }
 }
