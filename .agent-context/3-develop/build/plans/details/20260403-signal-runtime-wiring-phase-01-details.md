@@ -24,6 +24,7 @@ Update the `HandleCandleClosedAsync` method to detect signal-mode strategies, ex
 - **Success**:
   - Signal-mode strategies receive a `MarketContext` with populated `IndicatorContext`
   - Grid-mode strategies continue to receive `IndicatorContext = null` (unchanged behavior)
+- **Important**: After this change, the scheduler always calls the 4-arg `Build` overload (with `null` requirements for grid mode). Existing test mock setups in `StrategySchedulerTests.Setup()` and `BacktestRunnerTests.Setup()` that only mock the 3-arg `Build` must be updated to also mock the 4-arg overload, otherwise they will return `null` `MarketContext` and fail.
 - **Dependencies**:
   - `IndicatorExtractor.Extract()` — already implemented in `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs`
 
@@ -65,10 +66,11 @@ using TradingApp.Application.StrategyAuthoring.Services;
 
 ### Task 1.2: Add signal-mode scheduler tests proving indicator requirements are passed to market-context builder {#task-12-add-signal-mode-scheduler-tests}
 
-Add tests to `StrategySchedulerTests` that verify:
-1. For signal-mode configs, the 4-arg `Build` overload is called with correct `IndicatorRequirement[]`
-2. For grid-mode configs, the 3-arg `Build` overload continues to be called (regression)
-3. Signal-mode evaluation receives a `MarketContext` with populated `IndicatorContext`
+Update the default mock setup in `StrategySchedulerTests` and add tests that verify:
+1. **Update default `[TestInitialize]` mock**: Replace the 3-arg `Build` mock with a 4-arg `Build` mock (accepting `IReadOnlyList<IndicatorRequirement>?`) so all existing tests continue to receive a valid `MarketContext`
+2. For signal-mode configs, the 4-arg `Build` overload is called with correct `IndicatorRequirement[]`
+3. For grid-mode configs, the 4-arg `Build` overload is called with `null` requirements (regression)
+4. Signal-mode evaluation receives a `MarketContext` with populated `IndicatorContext`
 
 - **Complexity**: Medium
 - **Risk Factors**: Must mock the 4-arg overload correctly; existing tests mock only 3-arg

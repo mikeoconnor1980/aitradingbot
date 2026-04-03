@@ -29,6 +29,7 @@ public sealed class GridControllerTests
         },
         Risk = new RiskConfig
         {
+            PositionSizeType = PositionSizeType.FixedNotional,
             PositionSizeValue = 100m,
             Leverage = 1m,
             MaxOpenTrades = 1,
@@ -264,6 +265,30 @@ public sealed class GridControllerTests
         gridState.Lifecycle.Should().Be(GridLifecycle.Closing);
     }
 
+    [TestMethod]
+    public async Task GivenPercentWalletSizing_WhenDeployingGrid_ThenUsesAccountEquityToResolveNotional()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.PercentWallet,
+                PositionSizeValue = 5m
+            }
+        };
+        var gridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m),
+            gridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Parameters!["notionalPerLevel"].Should().Be(500m);
+    }
+
     private static StrategyEvaluation CreateEvaluation(bool setupDetected = true)
     {
         return new StrategyEvaluation
@@ -299,7 +324,7 @@ public sealed class GridControllerTests
         };
     }
 
-    private static MarketContext CreateMarketContext(decimal close)
+    private static MarketContext CreateMarketContext(decimal close, decimal accountEquity = 0m)
     {
         return new MarketContext
         {
@@ -316,7 +341,8 @@ public sealed class GridControllerTests
                 close,
                 1_000m,
                 10),
-            Indicators = new IndicatorSnapshot()
+            Indicators = new IndicatorSnapshot(),
+            AccountEquity = accountEquity
         };
     }
 }

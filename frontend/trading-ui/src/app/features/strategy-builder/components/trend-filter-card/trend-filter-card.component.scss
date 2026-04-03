@@ -1,7 +1,18 @@
-.disabled-card {
+.trend-filter-card {
   background: var(--colour-surface-dark);
-  border: 1px dashed var(--colour-border-subtle);
-  opacity: 0.7;
+  border: 1px solid var(--colour-border-subtle);
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+  }
 
   &__message {
     margin: 0;

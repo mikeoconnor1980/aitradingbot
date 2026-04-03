@@ -1,9 +1,8 @@
----
 applyTo: ".agent-context/3-develop/build/changes/20260403-signal-runtime-wiring-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-04-03T14:47:31Z"
-status: "planned"
-lastUpdated: "2026-04-03T14:47:31Z"
+currentAgent: "Plan Implementer"
+agentStartedAt: "2026-04-03T16:02:11Z"
+status: "completed"
+lastUpdated: "2026-04-03T16:35:41Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -71,67 +70,67 @@ Wire signal-mode strategies into the shared scheduler/backtest pipeline so RSI e
 - `src/TradingApp.Application/Abstractions/Services/IGridController.cs` — `ProcessAsync` contract returning `IReadOnlyList<TradingSignal>`
 - `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — pipeline wiring tests, currently grid-mode only
 
-### [ ] Phase 1: Indicator Context Wiring in StrategyScheduler
+### [x] Phase 1: Indicator Context Wiring in StrategyScheduler
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 1.1: Update `StrategyScheduler.HandleCandleClosedAsync` to extract indicator requirements and call 4-arg `Build`
+- [x] Task 1.1: Update `StrategyScheduler.HandleCandleClosedAsync` to extract indicator requirements and call 4-arg `Build`
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-01-details.md#task-11-update-strategyschedulehandlecandleclosedasync
 
-- [ ] Task 1.2: Add signal-mode scheduler tests proving indicator requirements are passed to market-context builder
+- [x] Task 1.2: Add signal-mode scheduler tests proving indicator requirements are passed to market-context builder
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-01-details.md#task-12-add-signal-mode-scheduler-tests
 
-- [ ] Task 1.3: Run all existing scheduler and strategy tests to verify no grid-mode regression
+- [x] Task 1.3: Run all existing scheduler and strategy tests to verify no grid-mode regression
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-01-details.md#task-13-run-regression-tests
 
-### [ ] Phase 2: Signal Controller and Execution Branch
+### [x] Phase 2: Signal Controller and Execution Branch
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 2.1: Create `ISignalController` interface in `Abstractions/Services/`
+- [x] Task 2.1: Create `ISignalController` interface in `Abstractions/Services/`
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-21-create-isignalcontroller-interface
 
-- [ ] Task 2.2: Create `SignalController` implementation that emits `OpenPosition` and `TakeProfit` signals
+- [x] Task 2.2: Create `SignalController` implementation that emits `OpenPosition` and `TakeProfit` signals
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-22-create-signalcontroller-implementation
 
-- [ ] Task 2.3: Update `StrategyScheduler` to accept optional `ISignalController` and branch on `StrategyMode`
+- [x] Task 2.3: Update `StrategyScheduler` to accept optional `ISignalController` and branch on `StrategyMode`
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-23-update-strategyschedule-to-branch-on-strategymode
 
-- [ ] Task 2.4: Register `ISignalController` in DI (`Program.cs`)
+- [x] Task 2.4: Register `ISignalController` in DI (`Program.cs`)
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-24-register-isignalcontroller-in-di
 
-- [ ] Task 2.5: Add `SignalController` unit tests
+- [x] Task 2.5: Add `SignalController` unit tests
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-25-add-signalcontroller-unit-tests
 
-- [ ] Task 2.6: Add scheduler signal-mode branching tests
+- [x] Task 2.6: Add scheduler signal-mode branching tests
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-26-add-scheduler-signal-mode-branching-tests
 
-- [ ] Task 2.7: Run all tests to verify no regression
+- [x] Task 2.7: Run all tests to verify no regression
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-02-details.md#task-27-run-all-tests
 
-### [ ] Phase 3: Backtest Signal Execution and Trade Pairing
+### [x] Phase 3: Backtest Signal Execution and Trade Pairing
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 3.1: Add `TradeType.SignalEntry` enum value
+- [x] Task 3.1: Add `TradeType.SignalEntry` enum value
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-31-add-tradetypesignalentry
 
-- [ ] Task 3.2: Add `OpenPosition` signal handling in `BacktestPositionManager`
+- [x] Task 3.2: Add `OpenPosition` signal handling in `BacktestPositionManager`
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-32-add-openposition-signal-handling
 
-- [ ] Task 3.3: Update `BacktestRunner.RecordFill` and `IsCompatibleExit` for `SignalEntry → TakeProfit` pairing
+- [x] Task 3.3: Update `BacktestRunner.RecordFill` and `IsCompatibleExit` for `SignalEntry → TakeProfit` pairing
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-33-update-recordfill-and-iscompatibleexit
 
-- [ ] Task 3.4: Update `BacktestRunner` to pass `ISignalController` into `StrategyScheduler`
+- [x] Task 3.4: Update `BacktestRunner` to pass `ISignalController` into `StrategyScheduler`
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-34-update-backtestrunner-to-pass-isignalcontroller
 
-- [ ] Task 3.5: Add `BacktestPositionManager` tests for `OpenPosition` signal handling
+- [x] Task 3.5: Add `BacktestPositionManager` tests for `OpenPosition` signal handling
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-35-add-backtestpositionmanager-openposition-tests
 
-- [ ] Task 3.6: Add end-to-end backtest test for signal-mode strategy
+- [x] Task 3.6: Add end-to-end backtest test for signal-mode strategy
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-36-add-e2e-backtest-signal-mode-test
 
-- [ ] Task 3.7: Run all tests including full backtest suite to verify no regression
+- [x] Task 3.7: Run all tests including full backtest suite to verify no regression
   - Details: .agent-context/3-develop/build/plans/details/20260403-signal-runtime-wiring-phase-03-details.md#task-37-run-full-test-suite
 
 ## Scoping Summary
@@ -150,6 +149,7 @@ Wire signal-mode strategies into the shared scheduler/backtest pipeline so RSI e
 - `CandleEvaluationEntry` audit fields (`GridLifecycleState`, `GridCycleId`) will appear as `"Inactive"` / `null` for signal-mode — cosmetic, acceptable for now
 - The `BacktestsController.MapStrategyConfig` hardcoding `StrategyMode.Grid` for legacy REST path is out of scope — signal-mode backtests use the DB-saved config
 - No new API endpoints are added — signal-mode strategies backtest through the existing `POST /api/backtests` endpoint using the saved `StrategyConfig`
+- `OpenPosition` is a new signal type not yet documented in `16-signal-contracts.md` — knowledge doc update deferred to a follow-up task
 
 ## Dependencies
 
@@ -164,11 +164,13 @@ Wire signal-mode strategies into the shared scheduler/backtest pipeline so RSI e
 - Signal-mode strategies with RSI conditions evaluate successfully with populated `IndicatorContext` in both live scheduler and backtest paths
 - Signal-mode strategies can open and close positions via `OpenPosition` / `TakeProfit` signals without requiring `GridConfig`
 - Backtest of a signal strategy with passing RSI conditions records at least one trade
-- All existing grid-mode tests pass without modification
+- All existing grid-mode tests pass after updating test setup to supply the new `ISignalController` constructor parameter
 - Pipeline ordering is maintained: context → evaluate → signal-controller → risk → position-manager
 
 ## Agent Log
 
 | Agent | Status | Started | Completed |
 |-------|--------|---------|-----------|
-| Implementation Planner | planned | 2026-04-03T14:47:31Z | |
+| Implementation Planner | planned | 2026-04-03T14:47:31Z | 2026-04-03T15:10:00Z |
+| Plan Reviewer | plan-reviewed | 2026-04-03T15:52:59Z | 2026-04-03T15:57:44Z |
+| Plan Implementer | completed | 2026-04-03T16:02:11Z | 2026-04-03T16:35:41Z |

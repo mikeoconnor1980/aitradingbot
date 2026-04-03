@@ -25,7 +25,7 @@ import { StrategyTemplateSelectorComponent } from "./components/strategy-templat
 import { TrendFilterCardComponent } from "./components/trend-filter-card/trend-filter-card.component";
 import { ValidationCardComponent } from "./components/validation-card/validation-card.component";
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
-import { EntryConditionConfig, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
+import { EntryConditionConfig, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -109,7 +109,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   public get isSignalMode(): boolean {
-    return this.selectedTemplateId === "custom_signal";
+    return this._isSignalTemplate(this.selectedTemplateId);
   }
 
   public get currentConfig(): StrategyConfig {
@@ -128,6 +128,10 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     return this.form.get("risk") as FormGroup;
   }
 
+  public get trendFilterFormGroup(): FormGroup {
+    return this.form.get("trendFilter") as FormGroup;
+  }
+
   public get conditionsFormArray(): FormArray {
     return this.form.get("conditions") as FormArray;
   }
@@ -143,8 +147,13 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   public onTemplateSelected(templateId: string): void {
     this.form.patchValue({ templateId });
 
-    if (templateId === "custom_signal") {
+    if (this._isSignalTemplate(templateId)) {
       this.form.get("grid")?.disable();
+
+      if (templateId === "ema_pullback") {
+        this._applyEmaPullbackTemplate();
+      }
+
       return;
     }
 
@@ -256,6 +265,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           enabled: [true],
           type: ["fixed_percent"],
           value: [6, [Validators.min(0.01), Validators.max(50)]],
+          lookback: [null, [Validators.min(1)]],
         }),
         exitOnOppositeSignal: [false],
       }),
@@ -271,6 +281,15 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       metadata: this._fb.group({
         tags: [[]],
         notes: [""],
+      }),
+      trendFilter: this._fb.group({
+        enabled: [false],
+        type: ["ema_cross", Validators.required],
+        period: [200, [Validators.min(1)]],
+        fastPeriod: [50, [Validators.required, Validators.min(1)]],
+        slowPeriod: [200, [Validators.required, Validators.min(1)]],
+        operator: ["gt", Validators.required],
+        appliesTo: ["both", Validators.required],
       }),
       conditions: this._fb.array([]),
     });
@@ -338,6 +357,15 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           exit: strategy.config.exit,
           risk: strategy.config.risk,
           metadata: strategy.config.metadata ?? { tags: [], notes: "" },
+          trendFilter: strategy.config.trendFilter ?? {
+            enabled: false,
+            type: "ema_cross",
+            period: 200,
+            fastPeriod: 50,
+            slowPeriod: 200,
+            operator: "gt",
+            appliesTo: "both",
+          },
         });
 
         if (strategy.config.strategyMode === "signal") {
@@ -373,19 +401,96 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     }
   }
 
+  private _applyEmaPullbackTemplate(): void {
+    this.form.patchValue({
+      direction: "long",
+    });
+
+    const trendFilterGroup = this.form.get("trendFilter") as FormGroup | null;
+    if (trendFilterGroup !== null) {
+      trendFilterGroup.patchValue({
+        enabled: true,
+        type: "ema_cross",
+        period: 200,
+        fastPeriod: 50,
+        slowPeriod: 200,
+        operator: "gt",
+        appliesTo: "long",
+      });
+    }
+
+    const conditionsArray = this.conditionsFormArray;
+    conditionsArray.clear();
+    conditionsArray.push(this._conditionFactory.createPriceVsEmaCondition({
+      label: "Price near EMA 50",
+      period: 50,
+      operator: "near",
+      distanceType: "percent",
+      distanceValue: 0.25,
+    }));
+    conditionsArray.push(this._conditionFactory.createRsiCondition({
+      label: "RSI Oversold",
+      period: 14,
+      operator: "lt",
+      value: 40,
+    }));
+
+    const exitGroup = this.form.get("exit") as FormGroup;
+    exitGroup.patchValue({
+      takeProfit: {
+        enabled: true,
+        type: "fixed_percent",
+        value: 3,
+      },
+      stopLoss: {
+        enabled: true,
+        type: "swing_low",
+        value: null,
+        lookback: 5,
+      },
+    });
+
+    trendFilterGroup?.markAsDirty();
+    conditionsArray.markAsDirty();
+    exitGroup.markAsDirty();
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
   private _addLoadedCondition(condition: EntryConditionConfig): void {
+    if (condition.type === "price_vs_ema") {
+      const params = condition.params as PriceVsEmaParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createPriceVsEmaCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        period: params.period,
+        operator: params.operator,
+        distanceType: params.distanceType,
+        distanceValue: params.distanceValue,
+      }));
+      return;
+    }
+
     if (condition.type !== "rsi") {
       return;
     }
+
+    const params = condition.params as RsiParams;
 
     this.conditionsFormArray.push(this._conditionFactory.createRsiCondition({
       id: condition.id,
       enabled: condition.enabled,
       label: condition.label,
-      period: condition.params.period,
-      operator: condition.params.operator,
-      value: condition.params.value,
+      period: params.period,
+      operator: params.operator,
+      value: params.value,
     }));
+  }
+
+  private _isSignalTemplate(templateId: string): boolean {
+    return templateId === "custom_signal" || templateId === "ema_pullback";
   }
 
   private _applyServerSaveError(error: HttpErrorResponse): void {

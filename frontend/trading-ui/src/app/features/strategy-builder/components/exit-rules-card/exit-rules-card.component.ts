@@ -31,6 +31,11 @@ export class ExitRulesCardComponent implements OnInit {
   public ngOnInit(): void {
     this._syncDisabledState("takeProfit");
     this._syncDisabledState("stopLoss");
+    this._syncStopLossType();
+  }
+
+  public get isSwingLowStopLoss(): boolean {
+    return this.group.get("stopLoss.type")?.value === "swing_low";
   }
 
   private _syncDisabledState(groupName: string): void {
@@ -44,6 +49,11 @@ export class ExitRulesCardComponent implements OnInit {
     enabledControl.valueChanges
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((enabled: boolean) => {
+        if (groupName === "stopLoss") {
+          this._applyStopLossType(enabled);
+          return;
+        }
+
         if (enabled) {
           valueControl.enable();
           return;
@@ -52,9 +62,53 @@ export class ExitRulesCardComponent implements OnInit {
         valueControl.disable();
       });
 
+    if (groupName === "stopLoss") {
+      this._applyStopLossType(Boolean(enabledControl.value));
+      return;
+    }
+
     if (!enabledControl.value) {
       valueControl.disable();
     }
+  }
+
+  private _syncStopLossType(): void {
+    const typeControl = this.group.get("stopLoss.type");
+    const enabledControl = this.group.get("stopLoss.enabled");
+
+    if (typeControl === null || enabledControl === null) {
+      return;
+    }
+
+    typeControl.valueChanges
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => {
+        this._applyStopLossType(Boolean(enabledControl.value));
+      });
+  }
+
+  private _applyStopLossType(enabled: boolean): void {
+    const valueControl = this.group.get("stopLoss.value");
+    const lookbackControl = this.group.get("stopLoss.lookback");
+
+    if (valueControl === null || lookbackControl === null) {
+      return;
+    }
+
+    if (!enabled) {
+      valueControl.disable();
+      lookbackControl.disable();
+      return;
+    }
+
+    if (this.isSwingLowStopLoss) {
+      valueControl.disable();
+      lookbackControl.enable();
+      return;
+    }
+
+    valueControl.enable();
+    lookbackControl.disable();
   }
 
   public hasError(path: string, errorCode: string): boolean {

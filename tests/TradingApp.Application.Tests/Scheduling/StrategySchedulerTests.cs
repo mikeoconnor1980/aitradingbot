@@ -1,4 +1,7 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting;
+using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Scheduling;
 using TradingApp.Application.Scheduling.Models;
@@ -30,6 +33,44 @@ public sealed class StrategySchedulerTests
         },
         Risk = new RiskConfig
         {
+            PositionSizeType = PositionSizeType.FixedNotional,
+            PositionSizeValue = 100m,
+            Leverage = 1m,
+            MaxOpenTrades = 1,
+        },
+    };
+
+    private static readonly StrategyConfig SignalTestConfig = new()
+    {
+        SchemaVersion = 1,
+        StrategyMode = StrategyMode.Signal,
+        StrategyName = "Test RSI Signal",
+        Market = "BTC-USD",
+        EntryLogic = EntryLogic.All,
+        EntryConditions =
+        [
+            new EntryConditionConfig
+            {
+                Id = "rsi-entry",
+                Enabled = true,
+                Type = EntryConditionType.Rsi,
+                Label = "RSI(14) < 30",
+                Params = new RsiParams
+                {
+                    Period = 14,
+                    Operator = "lt",
+                    Value = 30m
+                }
+            }
+        ],
+        Exit = new ExitConfig
+        {
+            TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 2m },
+            StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 5m },
+        },
+        Risk = new RiskConfig
+        {
+            PositionSizeType = PositionSizeType.FixedNotional,
             PositionSizeValue = 100m,
             Leverage = 1m,
             MaxOpenTrades = 1,
@@ -39,6 +80,7 @@ public sealed class StrategySchedulerTests
     private Mock<IMarketContextBuilder> _contextBuilderMock = default!;
     private Mock<IStrategyEngine> _strategyEngineMock = default!;
     private Mock<IGridController> _gridControllerMock = default!;
+    private Mock<ISignalController> _signalControllerMock = default!;
     private Mock<IRiskEngine> _riskEngineMock = default!;
     private Mock<IPositionManager> _positionManagerMock = default!;
     private StrategyScheduler _sut = default!;
@@ -49,6 +91,7 @@ public sealed class StrategySchedulerTests
         _contextBuilderMock = new Mock<IMarketContextBuilder>();
         _strategyEngineMock = new Mock<IStrategyEngine>();
         _gridControllerMock = new Mock<IGridController>();
+        _signalControllerMock = new Mock<ISignalController>();
         _riskEngineMock = new Mock<IRiskEngine>();
         _positionManagerMock = new Mock<IPositionManager>();
 
@@ -58,11 +101,16 @@ public sealed class StrategySchedulerTests
             _gridControllerMock.Object,
             _riskEngineMock.Object,
             _positionManagerMock.Object,
-            TestConfig);
+            TestConfig,
+            signalController: _signalControllerMock.Object);
 
         _contextBuilderMock
-            .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
-            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour) => new MarketContext
+            .Setup(builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>()))
+            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _) => new MarketContext
             {
                 Symbol = trigger.Symbol,
                 TimestampUtc = trigger.Timestamp,
@@ -89,6 +137,15 @@ public sealed class StrategySchedulerTests
         _riskEngineMock
             .Setup(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        _signalControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
     }
 
     [TestMethod]
@@ -98,7 +155,11 @@ public sealed class StrategySchedulerTests
 
         await _sut.HandleCandleClosedAsync(evt, null, null);
 
-        _contextBuilderMock.Verify(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()), Times.Never);
+        _contextBuilderMock.Verify(builder => builder.Build(
+            It.IsAny<Candle>(),
+            It.IsAny<Candle?>(),
+            It.IsAny<Candle?>(),
+            It.IsAny<IReadOnlyList<IndicatorRequirement>?>()), Times.Never);
         _strategyEngineMock.Verify(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()), Times.Never);
         _gridControllerMock.Verify(controller => controller.ProcessAsync(
             It.IsAny<StrategyEvaluation>(),
@@ -135,7 +196,11 @@ public sealed class StrategySchedulerTests
         ];
 
         _contextBuilderMock
-            .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
+            .Setup(builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>()))
             .Callback(() => callOrder.Add("context"))
             .Returns(marketContext);
 
@@ -168,6 +233,153 @@ public sealed class StrategySchedulerTests
         await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null, cancellationToken);
 
         callOrder.Should().Equal("context", "strategy", "grid", "risk", "position");
+    }
+
+    [TestMethod]
+    public async Task GivenSignalModeConfig_WhenHandleCandleClosedAsync_ThenSignalControllerCalledNotGridController()
+    {
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            SignalTestConfig,
+            signalController: _signalControllerMock.Object);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _signalControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _gridControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenGridModeConfig_WhenHandleCandleClosedAsync_ThenGridControllerCalledNotSignalController()
+    {
+        await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _gridControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _signalControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenSignalModeConfig_WhenHandleCandleClosedAsync_ThenFourArgBuildCalledWithIndicatorRequirements()
+    {
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            SignalTestConfig);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _contextBuilderMock.Verify(
+            builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.Is<IReadOnlyList<IndicatorRequirement>?>(requirements =>
+                    requirements != null &&
+                    requirements.Count == 1 &&
+                    requirements[0].Type == "RSI" &&
+                    requirements[0].Period == 14)),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenGridModeConfig_WhenHandleCandleClosedAsync_ThenFourArgBuildCalledWithNullRequirements()
+    {
+        await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _contextBuilderMock.Verify(
+            builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.Is<IReadOnlyList<IndicatorRequirement>?>(requirements => requirements == null)),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenSignalModeWithRsi_WhenHandleCandleClosedAsync_ThenIndicatorContextPopulated()
+    {
+        var indicatorContext = new IndicatorContext();
+        indicatorContext.SetRsi(14, 25m);
+
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            SignalTestConfig);
+
+        _contextBuilderMock
+            .Setup(builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.Is<IReadOnlyList<IndicatorRequirement>?>(requirements =>
+                    requirements != null &&
+                    requirements.Count == 1 &&
+                    requirements[0].Type == "RSI" &&
+                    requirements[0].Period == 14)))
+            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _) => new MarketContext
+            {
+                Symbol = trigger.Symbol,
+                TimestampUtc = trigger.Timestamp,
+                CurrentCandle = trigger,
+                LatestOneHourCandle = oneHour,
+                LatestFourHourCandle = fourHour,
+                Indicators = new IndicatorSnapshot(),
+                IndicatorContext = indicatorContext
+            });
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _strategyEngineMock.Verify(
+            engine => engine.EvaluateAsync(
+                It.Is<MarketContext>(context =>
+                    context.IndicatorContext != null &&
+                    context.IndicatorContext.GetRsi(14).HasValue &&
+                    context.IndicatorContext.GetRsi(14)!.Value == 25m),
+                SignalTestConfig,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [TestMethod]
@@ -218,6 +430,36 @@ public sealed class StrategySchedulerTests
         await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
 
         _positionManagerMock.Verify(manager => manager.ExecuteSignalsAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenBacktestExecutionContext_WhenHandleCandleClosedAsync_ThenContextIncludesCurrentAccountEquity()
+    {
+        var accessor = new BacktestExecutionContextAccessor();
+        var executionEngine = new SimulatedExecutionEngine(new FeeModel());
+        accessor.CurrentExecutionEngine = executionEngine;
+        executionEngine.GetPosition().RealisedPnL = 125m;
+        executionEngine.GetPosition().UnrealisedPnL = -25m;
+
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            TestConfig,
+            signalController: _signalControllerMock.Object,
+            initialCapital: 10_000m,
+            executionContextAccessor: accessor);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _strategyEngineMock.Verify(
+            engine => engine.EvaluateAsync(
+                It.Is<MarketContext>(context => context.AccountEquity == 10_100m),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     private static CandleClosedEvent CreateEvent(string timeframe)

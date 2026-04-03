@@ -48,7 +48,7 @@
         }
         <app-exit-rules-card [group]="exitFormGroup" />
         <app-risk-management-card [group]="riskFormGroup" />
-        <app-trend-filter-card />
+        <app-trend-filter-card [group]="isSignalMode ? trendFilterFormGroup : null" />
       </div>
 
       <div class="builder-page__column builder-page__column--side">

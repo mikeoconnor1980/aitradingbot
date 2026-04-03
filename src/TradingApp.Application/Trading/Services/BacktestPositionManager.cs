@@ -44,6 +44,10 @@ public sealed class BacktestPositionManager : IPositionManager
                     await DeployGridAsync(executionEngine, signal, cancellationToken);
                     break;
 
+                case "OpenPosition":
+                    await OpenSignalPositionAsync(executionEngine, signal, cancellationToken);
+                    break;
+
                 case "TakeProfit":
                     await PlaceTakeProfitAsync(executionEngine, signal, cancellationToken);
                     break;
@@ -139,6 +143,35 @@ public sealed class BacktestPositionManager : IPositionManager
                 gridCycleId,
                 cancellationToken);
         }
+    }
+
+    private async Task OpenSignalPositionAsync(
+        Backtesting.Services.SimulatedExecutionEngine executionEngine,
+        TradingSignal signal,
+        CancellationToken cancellationToken)
+    {
+        var entryPrice = GetDecimal(signal.Parameters, "entryPrice");
+        var size = Math.Abs(GetDecimal(signal.Parameters, "size"));
+
+        if (size <= 0m)
+        {
+            return;
+        }
+
+        await PlaceAndLogOrderAsync(
+            executionEngine,
+            new OrderRequest
+            {
+                Symbol = signal.Symbol,
+                Side = OrderSide.Buy,
+                OrderType = OrderType.Market,
+                Price = entryPrice,
+                Size = size,
+                TradeType = TradeType.SignalEntry,
+                GridCycleId = "signal"
+            },
+            "signal",
+            cancellationToken);
     }
 
     private async Task PlaceTakeProfitAsync(

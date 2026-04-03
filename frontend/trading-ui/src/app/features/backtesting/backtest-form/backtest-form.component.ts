@@ -10,9 +10,9 @@ import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSelectModule } from "@angular/material/select";
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from "rxjs";
-import { BacktestEntryConditionConfig, BacktestRequest, BacktestResult, BacktestStrategyConfig } from "../../../core/models/backtest.model";
+import { BacktestEntryConditionConfig, BacktestRequest, BacktestResult, BacktestRsiParams, BacktestStrategyConfig } from "../../../core/models/backtest.model";
 import { NotificationService } from "../../../core/services/notification.service";
-import { EntryConditionConfig, StrategyConfig, StrategyDto, StrategySummaryDto } from "../../strategy-builder/models/strategy.model";
+import { EntryConditionConfig, RsiParams, StrategyConfig, StrategyDto, StrategySummaryDto } from "../../strategy-builder/models/strategy.model";
 import { StrategyApiService } from "../../strategy-builder/services/strategy-api.service";
 
 interface BacktestFormModel {
@@ -320,7 +320,8 @@ export class BacktestFormComponent implements OnInit, OnChanges {
 
   private _formatConditionSummary(condition: EntryConditionConfig | BacktestEntryConditionConfig): string {
     if (condition.type === "rsi") {
-      return `RSI(${condition.params.period}) ${this._describeRsiOperator(condition.params.operator)} ${condition.params.value}`;
+      const params = condition.params as RsiParams | BacktestRsiParams;
+      return `RSI(${params.period}) ${this._describeRsiOperator(params.operator)} ${params.value}`;
     }
 
     return condition.label.length > 0 ? condition.label : condition.type;

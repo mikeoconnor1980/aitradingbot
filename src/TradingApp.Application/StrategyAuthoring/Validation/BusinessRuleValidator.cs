@@ -156,15 +156,31 @@ public sealed class BusinessRuleValidator
                 }
             }
 
-            if (condition.Params is PriceVsEmaParams priceVsEma && priceVsEma.Period <= 0)
+            if (condition.Params is PriceVsEmaParams priceVsEma)
             {
-                result.Add(new ValidationError
+                if (priceVsEma.Period <= 0)
                 {
-                    Severity = ValidationSeverity.Error,
-                    FieldPath = $"entryConditions[{index}].params.period",
-                    Code = "EMA_PERIOD_INVALID",
-                    Message = "EMA period must be greater than 0.",
-                });
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.period",
+                        Code = "EMA_PERIOD_INVALID",
+                        Message = "EMA period must be greater than 0.",
+                    });
+                }
+
+                var normalizedOperator = priceVsEma.Operator.Trim().ToLowerInvariant();
+                if (normalizedOperator == "near"
+                    && (!priceVsEma.DistanceValue.HasValue || priceVsEma.DistanceValue.Value <= 0))
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.distanceValue",
+                        Code = "DISTANCE_VALUE_INVALID",
+                        Message = "Distance value must be greater than 0 when operator is 'near'.",
+                    });
+                }
             }
 
             if (condition.Params is MacdParams macd
@@ -188,26 +204,48 @@ public sealed class BusinessRuleValidator
             return;
         }
 
-        if (filter.FastPeriod <= 0)
+        switch (filter.Type)
         {
-            result.Add(new ValidationError
-            {
-                Severity = ValidationSeverity.Error,
-                FieldPath = "trendFilter.fastPeriod",
-                Code = "TREND_FAST_PERIOD_INVALID",
-                Message = "Trend filter fast period must be greater than 0.",
-            });
-        }
+            case TrendFilterType.EmaCross:
+            case TrendFilterType.EmaSingle:
+            case TrendFilterType.SmaCross:
+                if (filter.FastPeriod <= 0)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = "trendFilter.fastPeriod",
+                        Code = "TREND_FAST_PERIOD_INVALID",
+                        Message = "Trend filter fast period must be greater than 0.",
+                    });
+                }
 
-        if (filter.SlowPeriod <= 0)
-        {
-            result.Add(new ValidationError
-            {
-                Severity = ValidationSeverity.Error,
-                FieldPath = "trendFilter.slowPeriod",
-                Code = "TREND_SLOW_PERIOD_INVALID",
-                Message = "Trend filter slow period must be greater than 0.",
-            });
+                if (filter.SlowPeriod <= 0)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = "trendFilter.slowPeriod",
+                        Code = "TREND_SLOW_PERIOD_INVALID",
+                        Message = "Trend filter slow period must be greater than 0.",
+                    });
+                }
+
+                break;
+
+            case TrendFilterType.PriceAboveEma:
+                if (filter.Period is null or <= 0)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = "trendFilter.period",
+                        Code = "TREND_PERIOD_INVALID",
+                        Message = "Trend filter period must be greater than 0.",
+                    });
+                }
+
+                break;
         }
     }
 }

@@ -83,6 +83,28 @@ public sealed class BacktestMarketContextBuilderIndicatorTests
         histogram.Should().Be(line - signal);
     }
 
+    [TestMethod]
+    public void GivenSmaRequirement_WhenBuild_ThenSmaValuesArePopulated()
+    {
+        var sut = new BacktestMarketContextBuilder();
+        var candles = CreateCandles(10);
+
+        foreach (var candle in candles)
+        {
+            sut.UpdateIndicators(candle);
+        }
+
+        var result = sut.Build(
+            candles[^1],
+            null,
+            null,
+            [new IndicatorRequirement { Type = "SMA", Period = 5 }]);
+
+        result.IndicatorContext.Should().NotBeNull();
+        result.IndicatorContext!.GetSma(5).Should().Be(107m);
+        result.IndicatorContext.GetPreviousSma(5).Should().Be(106m);
+    }
+
     private static List<Candle> CreateCandles(int count)
     {
         var candles = new List<Candle>(count);

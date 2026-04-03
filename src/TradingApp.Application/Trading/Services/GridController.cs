@@ -148,7 +148,7 @@ public sealed class GridController : IGridController
         }
 
         var gridSpacingPercent = Math.Abs(grid.Spacing);
-        var positionSize = Math.Abs(config.Risk.PositionSizeValue);
+        var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity);
 
         gridState.GridCycleId = Guid.NewGuid().ToString("N");
         gridState.Lifecycle = GridLifecycle.Deploying;

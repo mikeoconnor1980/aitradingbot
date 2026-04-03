@@ -13,13 +13,25 @@ public sealed class CompositeStrategyEngineTests
     private const long CandleTimestamp = 1_000_000;
 
     private Mock<IConditionEvaluator> _conditionEvaluatorMock = default!;
+    private Mock<ITrendFilterEvaluator> _trendFilterEvaluatorMock = default!;
     private CompositeStrategyEngine _sut = default!;
 
     [TestInitialize]
     public void Setup()
     {
         _conditionEvaluatorMock = new Mock<IConditionEvaluator>();
-        _sut = new CompositeStrategyEngine(new GridStrategyEngine(), _conditionEvaluatorMock.Object);
+        _trendFilterEvaluatorMock = new Mock<ITrendFilterEvaluator>();
+        _trendFilterEvaluatorMock
+            .Setup(evaluator => evaluator.Evaluate(
+                It.IsAny<TrendFilterConfig?>(),
+                It.IsAny<Direction>(),
+                It.IsAny<IndicatorContext>(),
+                It.IsAny<MarketContext>()))
+            .Returns(TrendFilterResult.Pass("Trend filter passed."));
+        _sut = new CompositeStrategyEngine(
+            new GridStrategyEngine(),
+            _conditionEvaluatorMock.Object,
+            _trendFilterEvaluatorMock.Object);
     }
 
     [TestMethod]
@@ -34,6 +46,13 @@ public sealed class CompositeStrategyEngineTests
         result.Reason.Should().Be("Grid setup available.");
         _conditionEvaluatorMock.Verify(
             evaluator => evaluator.Evaluate(It.IsAny<StrategyConfig>(), It.IsAny<MarketContext>()),
+            Times.Never);
+        _trendFilterEvaluatorMock.Verify(
+            evaluator => evaluator.Evaluate(
+                It.IsAny<TrendFilterConfig?>(),
+                It.IsAny<Direction>(),
+                It.IsAny<IndicatorContext>(),
+                It.IsAny<MarketContext>()),
             Times.Never);
     }
 
@@ -54,6 +73,7 @@ public sealed class CompositeStrategyEngineTests
         var result = await _sut.EvaluateAsync(context, config);
 
         result.SetupDetected.Should().BeTrue();
+        result.TrendFilterPassed.Should().BeTrue();
         result.Reason.Should().Be("All 1 conditions passed.");
         _conditionEvaluatorMock.Verify(evaluator => evaluator.Evaluate(config, context), Times.Once);
     }
@@ -75,8 +95,28 @@ public sealed class CompositeStrategyEngineTests
         var result = await _sut.EvaluateAsync(context, config);
 
         result.SetupDetected.Should().BeFalse();
+        result.TrendFilterPassed.Should().BeTrue();
         result.Reason.Should().Be("1/1 conditions failed.");
         _conditionEvaluatorMock.Verify(evaluator => evaluator.Evaluate(config, context), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenSignalMode_WhenTrendFilterFails_ThenNoSetupAndConditionsNotEvaluated()
+    {
+        var config = CreateSignalConfig();
+        var context = CreateMarketContext(includeHigherTimeframes: true);
+        _trendFilterEvaluatorMock
+            .Setup(evaluator => evaluator.Evaluate(config.TrendFilter, config.Direction, context.IndicatorContext!, context))
+            .Returns(TrendFilterResult.Fail("EMA(50) < EMA(200)"));
+
+        var result = await _sut.EvaluateAsync(context, config);
+
+        result.SetupDetected.Should().BeFalse();
+        result.TrendFilterPassed.Should().BeFalse();
+        result.Reason.Should().Contain("Trend filter failed");
+        _conditionEvaluatorMock.Verify(
+            evaluator => evaluator.Evaluate(It.IsAny<StrategyConfig>(), It.IsAny<MarketContext>()),
+            Times.Never);
     }
 
     [TestMethod]
@@ -117,6 +157,16 @@ public sealed class CompositeStrategyEngineTests
             StrategyMode = StrategyMode.Signal,
             StrategyName = "Signal Strategy",
             Market = "BTC-USD",
+            Direction = Direction.Long,
+            TrendFilter = new TrendFilterConfig
+            {
+                Enabled = true,
+                Type = TrendFilterType.EmaCross,
+                FastPeriod = 50,
+                SlowPeriod = 200,
+                Operator = TrendOperator.Gt,
+                AppliesTo = Direction.Long,
+            },
             EntryLogic = EntryLogic.All,
             EntryConditions =
             [
@@ -148,6 +198,7 @@ public sealed class CompositeStrategyEngineTests
             Symbol = "BTC-USD",
             TimestampUtc = CandleTimestamp,
             CurrentCandle = CreateCandle("15m", CandleTimestamp),
+            PreviousCandle = CreateCandle("15m", CandleTimestamp - 60_000L),
             LatestOneHourCandle = includeHigherTimeframes ? CreateCandle("1h", CandleTimestamp) : null,
             LatestFourHourCandle = includeHigherTimeframes ? CreateCandle("4h", CandleTimestamp) : null,
             Indicators = new IndicatorSnapshot(),

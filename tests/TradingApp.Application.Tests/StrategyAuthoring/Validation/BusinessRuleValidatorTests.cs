@@ -55,4 +55,71 @@ public sealed class BusinessRuleValidatorTests
 
         result.Errors.Should().Contain(error => error.Code == "RSI_VALUE_INVALID");
     }
+
+    [TestMethod]
+    public void GivenPriceAboveEmaWithPeriodZero_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            TrendFilter = new TrendFilterConfig
+            {
+                Enabled = true,
+                Type = TrendFilterType.PriceAboveEma,
+                Period = 0,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "TREND_PERIOD_INVALID");
+    }
+
+    [TestMethod]
+    public void GivenPriceAboveEmaWithValidPeriod_WhenValidated_ThenNoTrendFilterErrors()
+    {
+        var config = new StrategyConfig
+        {
+            TrendFilter = new TrendFilterConfig
+            {
+                Enabled = true,
+                Type = TrendFilterType.PriceAboveEma,
+                Period = 200,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error =>
+            error.Code == "TREND_FAST_PERIOD_INVALID"
+            || error.Code == "TREND_SLOW_PERIOD_INVALID"
+            || error.Code == "TREND_PERIOD_INVALID");
+    }
+
+    [TestMethod]
+    public void GivenPriceVsEmaWithNearOperatorAndNoDistanceValue_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            EntryConditions =
+            [
+                new EntryConditionConfig
+                {
+                    Type = EntryConditionType.PriceVsEma,
+                    Params = new PriceVsEmaParams
+                    {
+                        Period = 50,
+                        Operator = "near",
+                        DistanceValue = null,
+                    },
+                },
+            ],
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DISTANCE_VALUE_INVALID");
+    }
 }

@@ -14,8 +14,8 @@ describe("StrategyValidationService", () => {
       timeframe: "15m",
       grid: { levels: 10, spacing: 0.5, breakdownThreshold: 1.5, entryMode: "auto_from_signal_candle" },
       exit: {
-        takeProfit: { enabled: true, value: 2 },
-        stopLoss: { enabled: true, value: 6 }
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "fixed_percent", value: 6, lookback: null }
       },
       risk: { positionSizeValue: 5, leverage: 1, maxOpenTrades: 1, cooldownValue: 0 },
       conditions: [],
@@ -77,6 +77,30 @@ describe("StrategyValidationService", () => {
     const errors = service.validate(baseFormValue());
 
     expect(errors.filter((error) => error.severity === "error")).toHaveSize(0);
+  });
+
+  it("should accept swing low stop loss with lookback", () => {
+    const errors = service.validate({
+      ...baseFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: null, lookback: 5 }
+      }
+    });
+
+    expect(errors.some((error) => error.fieldPath === "exit.stopLoss.lookback")).toBeFalse();
+  });
+
+  it("should require lookback for swing low stop loss", () => {
+    const errors = service.validate({
+      ...baseFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: null, lookback: null }
+      }
+    });
+
+    expect(errors.some((error) => error.fieldPath === "exit.stopLoss.lookback" && error.code === "REQUIRED")).toBeTrue();
   });
 
   describe("signal mode validation", () => {

@@ -4,6 +4,7 @@ public sealed record TrendFilterConfig
 {
     public bool Enabled { get; init; }
     public TrendFilterType Type { get; init; }
+    public int? Period { get; init; }
     public int FastPeriod { get; init; }
     public int SlowPeriod { get; init; }
     public TrendOperator Operator { get; init; }

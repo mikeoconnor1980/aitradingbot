@@ -14,6 +14,8 @@ public static class IndicatorExtractor
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var requirements = new List<IndicatorRequirement>();
 
+        ExtractFromTrendFilter(config.TrendFilter, seen, requirements);
+
         if (config.EntryConditions is null)
         {
             return requirements;
@@ -25,6 +27,75 @@ public static class IndicatorExtractor
         }
 
         return requirements;
+    }
+
+    private static void ExtractFromTrendFilter(
+        TrendFilterConfig? filter,
+        HashSet<string> seen,
+        List<IndicatorRequirement> requirements)
+    {
+        if (filter is null || !filter.Enabled)
+        {
+            return;
+        }
+
+        switch (filter.Type)
+        {
+            case TrendFilterType.EmaCross:
+            case TrendFilterType.EmaSingle:
+                if (filter.FastPeriod > 0)
+                {
+                    AddIfNew(seen, requirements, new IndicatorRequirement
+                    {
+                        Type = "EMA",
+                        Period = filter.FastPeriod,
+                    });
+                }
+
+                if (filter.SlowPeriod > 0)
+                {
+                    AddIfNew(seen, requirements, new IndicatorRequirement
+                    {
+                        Type = "EMA",
+                        Period = filter.SlowPeriod,
+                    });
+                }
+
+                break;
+
+            case TrendFilterType.SmaCross:
+                if (filter.FastPeriod > 0)
+                {
+                    AddIfNew(seen, requirements, new IndicatorRequirement
+                    {
+                        Type = "SMA",
+                        Period = filter.FastPeriod,
+                    });
+                }
+
+                if (filter.SlowPeriod > 0)
+                {
+                    AddIfNew(seen, requirements, new IndicatorRequirement
+                    {
+                        Type = "SMA",
+                        Period = filter.SlowPeriod,
+                    });
+                }
+
+                break;
+
+            case TrendFilterType.PriceAboveEma:
+                if (filter.Period is > 0)
+                {
+                    AddIfNew(seen, requirements, new IndicatorRequirement
+                    {
+                        Type = "EMA",
+                        Period = filter.Period.Value,
+                    });
+                }
+
+                break;
+        }
     }
 
     private static void ExtractFromCondition(

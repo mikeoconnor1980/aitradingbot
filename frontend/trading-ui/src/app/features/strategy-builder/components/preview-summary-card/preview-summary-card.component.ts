@@ -1,6 +1,6 @@
 import { Component, Input, signal } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
-import { RsiOperator } from "../../models/strategy.model";
+import { PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, TrendOperator } from "../../models/strategy.model";
 
 @Component({
   selector: "app-preview-summary-card",
@@ -25,8 +25,9 @@ export class PreviewSummaryCardComponent {
     }
 
     const templateId = String(formValue["templateId"] ?? "grid");
+    const strategyMode = String(formValue["strategyMode"] ?? "grid");
 
-    if (templateId === "custom_signal") {
+    if (strategyMode === "signal" || this._isSignalTemplate(templateId)) {
       return this._buildSignalPreview(formValue);
     }
 
@@ -65,30 +66,35 @@ export class PreviewSummaryCardComponent {
   }
 
   private _buildSignalPreview(formValue: Record<string, unknown>): string {
-    const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
+    const conditions = this._getConditions(formValue);
     const direction = String(formValue["direction"] ?? "long");
     const market = String(formValue["market"] ?? "market");
     const timeframe = String(formValue["timeframe"] ?? "timeframe");
+    const trendFilter = (formValue["trendFilter"] ?? null) as Record<string, unknown> | null;
+    const parts: string[] = [`Signal strategy on ${market} ${timeframe} (${direction}).`];
 
-    if (conditions.length === 0) {
-      return "Add entry conditions to see a preview.";
+    const trendFilterText = this._buildTrendFilterText(trendFilter);
+    if (trendFilterText.length > 0) {
+      parts.push(trendFilterText);
     }
 
     const conditionTexts = conditions
       .filter((condition) => Boolean(condition["enabled"] ?? true))
-      .map((condition) => {
-        const period = Number(condition["period"] ?? 14);
-        const operator = String(condition["operator"] ?? "lt") as RsiOperator;
-        const value = Number(condition["value"] ?? 0);
+      .map((condition) => this._buildConditionText(condition))
+      .filter((text) => text.length > 0);
 
-        return `RSI(${period}) ${this._operatorText(operator)} ${value}`;
-      });
-
-    if (conditionTexts.length === 0) {
-      return "All conditions are disabled.";
+    if (conditions.length === 0) {
+      parts.push("Add entry conditions to see a preview.");
+      return parts.join(" ");
     }
 
-    return `Enter a ${direction} trade on ${market} ${timeframe} when ${conditionTexts.join(" and ")}.`;
+    if (conditionTexts.length === 0) {
+      parts.push("All conditions are disabled.");
+      return parts.join(" ");
+    }
+
+    parts.push(`Entry when ${conditionTexts.join(" and ")}.`);
+    return parts.join(" ");
   }
 
   private _operatorText(operator: RsiOperator): string {
@@ -102,6 +108,104 @@ export class PreviewSummaryCardComponent {
     };
 
     return operatorMap[operator] ?? operator;
+  }
+
+  private _buildTrendFilterText(trendFilter: Record<string, unknown> | null): string {
+    if (trendFilter === null || !(trendFilter["enabled"] ?? false)) {
+      return "";
+    }
+
+    const type = String(trendFilter["type"] ?? "ema_cross");
+    if (type === "ema_cross" || type === "sma_cross") {
+      const maType = type === "ema_cross" ? "EMA" : "SMA";
+      const fast = Number(trendFilter["fastPeriod"] ?? 0);
+      const slow = Number(trendFilter["slowPeriod"] ?? 0);
+      const operator = String(trendFilter["operator"] ?? "gt") as TrendOperator;
+      return `When the ${fast} ${maType} ${this._trendOperatorText(operator)} the ${slow} ${maType}.`;
+    }
+
+    if (type === "price_above_ema") {
+      const period = Number(trendFilter["period"] ?? 0);
+      const operator = String(trendFilter["operator"] ?? "above") as TrendOperator;
+      return `When price ${this._priceTrendOperatorText(operator)} the ${period} EMA.`;
+    }
+
+    return "";
+  }
+
+  private _buildConditionText(condition: Record<string, unknown>): string {
+    const type = String(condition["type"] ?? "rsi");
+    if (type === "price_vs_ema") {
+      const period = Number(condition["period"] ?? 50);
+      const operator = String(condition["operator"] ?? "near") as PriceVsEmaOperator;
+
+      if (operator === "near") {
+        const distanceValue = this._formatNumber(condition["distanceValue"]);
+        const distanceType = String(condition["distanceType"] ?? "percent") as PriceVsEmaDistanceType;
+        const distanceUnit = distanceType === "percent" ? "%" : distanceType === "absolute" ? " points" : " ATR";
+        return `price is within ${distanceValue}${distanceUnit} of the ${period} EMA`;
+      }
+
+      if (operator === "touch") {
+        return `price touches the ${period} EMA`;
+      }
+
+      return `price ${this._priceConditionOperatorText(operator)} the ${period} EMA`;
+    }
+
+    const period = Number(condition["period"] ?? 14);
+    const operator = String(condition["operator"] ?? "lt") as RsiOperator;
+    const value = this._formatNumber(condition["value"]);
+    return `RSI(${period}) ${this._operatorText(operator)} ${value}`;
+  }
+
+  private _trendOperatorText(operator: TrendOperator): string {
+    const operatorMap: Partial<Record<TrendOperator, string>> = {
+      gt: "is above",
+      gte: "is at or above",
+      lt: "is below",
+      lte: "is at or below",
+      cross_above: "crosses above",
+      cross_below: "crosses below",
+    };
+
+    return operatorMap[operator] ?? operator;
+  }
+
+  private _priceTrendOperatorText(operator: TrendOperator): string {
+    const operatorMap: Partial<Record<TrendOperator, string>> = {
+      above: "is above",
+      below: "is below",
+      cross_above: "crosses above",
+      cross_below: "crosses below",
+    };
+
+    return operatorMap[operator] ?? operator;
+  }
+
+  private _priceConditionOperatorText(operator: PriceVsEmaOperator): string {
+    const operatorMap: Record<Exclude<PriceVsEmaOperator, "near" | "touch">, string> = {
+      above: "is above",
+      below: "is below",
+      cross_above: "crosses above",
+      cross_below: "crosses below",
+    };
+
+    return operatorMap[operator as Exclude<PriceVsEmaOperator, "near" | "touch">] ?? operator;
+  }
+
+  private _getConditions(formValue: Record<string, unknown>): Record<string, unknown>[] {
+    const conditions = formValue["conditions"];
+    if (Array.isArray(conditions)) {
+      return conditions as Record<string, unknown>[];
+    }
+
+    const entryConditions = formValue["entryConditions"];
+    return Array.isArray(entryConditions) ? entryConditions as Record<string, unknown>[] : [];
+  }
+
+  private _isSignalTemplate(templateId: string): boolean {
+    return templateId === "custom_signal" || templateId === "ema_pullback";
   }
 
   private _formatNumber(value: unknown): string {

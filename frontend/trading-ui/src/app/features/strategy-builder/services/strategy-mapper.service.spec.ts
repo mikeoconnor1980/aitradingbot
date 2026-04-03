@@ -44,6 +44,38 @@ describe("StrategyMapperService", () => {
       },
     });
   });
+
+  it("should map trend filter config for signal mode", () => {
+    const config = service.mapFormToConfig(buildSignalFormValue());
+
+    expect(config.trendFilter).toEqual({
+      enabled: true,
+      type: "ema_cross",
+      period: null,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    });
+  });
+
+  it("should map swing low stop loss to lookback", () => {
+    const config = service.mapFormToConfig({
+      ...buildSignalFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: 6, lookback: 5 },
+        exitOnOppositeSignal: false,
+      },
+    });
+
+    expect(config.exit.stopLoss).toEqual({
+      enabled: true,
+      type: "swing_low",
+      value: null,
+      lookback: 5,
+    });
+  });
 });
 
 function buildGridFormValue(): Record<string, unknown> {
@@ -75,6 +107,15 @@ function buildGridFormValue(): Record<string, unknown> {
       cooldownUnit: "candles",
       allowSameCandleReentry: false,
     },
+    trendFilter: {
+      enabled: false,
+      type: "ema_cross",
+      period: 200,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    },
     metadata: { tags: [], notes: "" },
     conditions: [],
   };
@@ -84,6 +125,15 @@ function buildSignalFormValue(): Record<string, unknown> {
   return {
     ...buildGridFormValue(),
     templateId: "custom_signal",
+    trendFilter: {
+      enabled: true,
+      type: "ema_cross",
+      period: 200,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    },
     conditions: [{
       id: "cond-1",
       enabled: true,

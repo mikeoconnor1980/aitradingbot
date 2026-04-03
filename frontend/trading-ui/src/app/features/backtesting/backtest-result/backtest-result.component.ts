@@ -105,7 +105,22 @@ export class BacktestResultComponent {
   }
 
   public get positionSize(): number {
-    return this.result.strategyConfig.risk.positionSizeValue;
+    const risk = this.result.strategyConfig.risk;
+
+    if (risk.positionSizeType === "percent_wallet") {
+      return this.result.initialCapital * (risk.positionSizeValue / 100);
+    }
+
+    return risk.positionSizeValue;
+  }
+
+  public get positionSizeLabel(): string {
+    const risk = this.result.strategyConfig.risk;
+    const formattedNotional = `$${this.positionSize.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    return risk.positionSizeType === "percent_wallet"
+      ? `${risk.positionSizeValue}% wallet (${formattedNotional} at start)`
+      : formattedNotional;
   }
 
   public get leverage(): number {

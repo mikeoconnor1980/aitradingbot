@@ -4,7 +4,7 @@
       <span>Entry Conditions</span>
       <app-info-popover
         title="Entry Conditions"
-        description="Entry conditions define the exact signal rules that must be true before the strategy opens a trade. You can combine multiple RSI rules, but exact duplicates are blocked."
+        description="Entry conditions define the exact signal rules that must be true before the strategy opens a trade. You can combine RSI and Price vs EMA rules, but exact duplicates are blocked."
       />
     </mat-card-title>
   </mat-card-header>
@@ -13,15 +13,24 @@
     @if (!isBound) {
       <p class="conditions-card__message">Available in signal mode</p>
     } @else if (conditionGroups.length === 0) {
-      <p class="conditions-card__message">No conditions added. Click "Add RSI" to create a condition.</p>
+      <p class="conditions-card__message">No conditions added. Click "Add RSI" or "Add Price vs EMA" to create a condition.</p>
     } @else {
       @for (group of conditionGroups; track group.value.id; let index = $index) {
-        <app-rsi-condition-item
-          [group]="group"
-          [index]="index"
-          (duplicate)="onDuplicate(index)"
-          (remove)="onRemove(index)"
-        />
+        @if (getConditionType(group) === "price_vs_ema") {
+          <app-price-vs-ema-condition-item
+            [group]="group"
+            [index]="index"
+            (duplicate)="onDuplicate(index)"
+            (remove)="onRemove(index)"
+          />
+        } @else {
+          <app-rsi-condition-item
+            [group]="group"
+            [index]="index"
+            (duplicate)="onDuplicate(index)"
+            (remove)="onRemove(index)"
+          />
+        }
       }
     }
   </mat-card-content>
@@ -31,6 +40,10 @@
       <button mat-stroked-button type="button" (click)="onAddRsi()">
         <mat-icon>add</mat-icon>
         <span>Add RSI</span>
+      </button>
+      <button mat-stroked-button type="button" (click)="onAddPriceVsEma()">
+        <mat-icon>add</mat-icon>
+        <span>Add Price vs EMA</span>
       </button>
     </mat-card-actions>
   }

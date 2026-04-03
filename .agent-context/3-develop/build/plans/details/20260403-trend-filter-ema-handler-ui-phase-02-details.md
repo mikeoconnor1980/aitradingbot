@@ -37,6 +37,7 @@ Create a new service that evaluates trend filter configuration against indicator
   - Solution builds
 - **Dependencies**:
   - Phase 1 complete (enums, IndicatorContext SMA support)
+  - **F6.75 complete** — the signal execution path must be established before wiring the trend filter evaluator into it
 
 #### Implementation Details
 
@@ -554,7 +555,7 @@ public sealed class PriceVsEmaConditionHandler : IConditionHandler
 Inject `ITrendFilterEvaluator` into `CompositeStrategyEngine` and call it before `ConditionEvaluator.Evaluate` in signal mode. If the trend filter fails, skip condition evaluation and return `SetupDetected = false`.
 
 - **Complexity**: Medium
-- **Risk Factors**: Must preserve existing grid mode behavior; must propagate `TrendFilterPassed` into result
+- **Risk Factors**: Must preserve existing grid mode behavior; must propagate `TrendFilterPassed` into result; **F6.75 may restructure signal mode flow** — injection point may shift from `CompositeStrategyEngine` to a new signal orchestrator
 - **Files**:
   - `src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs` — inject and wire
 - **Success**:

@@ -29,6 +29,16 @@ public sealed class IndicatorContext
         }
     }
 
+    public void SetSma(int period, decimal currentValue, decimal? previousValue = null)
+    {
+        _current[CreateSmaKey(period)] = currentValue;
+
+        if (previousValue.HasValue)
+        {
+            _previous[CreateSmaKey(period)] = previousValue.Value;
+        }
+    }
+
     public void SetMacd(
         int fast,
         int slow,
@@ -72,6 +82,10 @@ public sealed class IndicatorContext
 
     public decimal? GetPreviousEma(int period) => GetValue(_previous, CreateEmaKey(period));
 
+    public decimal? GetSma(int period) => GetValue(_current, CreateSmaKey(period));
+
+    public decimal? GetPreviousSma(int period) => GetValue(_previous, CreateSmaKey(period));
+
     public decimal? GetMacd(int fast, int slow, int signal) => GetValue(_current, CreateMacdKey(fast, slow, signal));
 
     public decimal? GetPreviousMacd(int fast, int slow, int signal) => GetValue(_previous, CreateMacdKey(fast, slow, signal));
@@ -92,6 +106,8 @@ public sealed class IndicatorContext
     private static string CreateRsiKey(int period) => $"RSI:{period}";
 
     private static string CreateEmaKey(int period) => $"EMA:{period}";
+
+    private static string CreateSmaKey(int period) => $"SMA:{period}";
 
     private static string CreateMacdKey(int fast, int slow, int signal) => $"MACD:{fast}:{slow}:{signal}";
 

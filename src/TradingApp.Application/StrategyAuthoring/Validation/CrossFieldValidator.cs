@@ -10,7 +10,6 @@ public sealed class CrossFieldValidator
         ArgumentNullException.ThrowIfNull(result);
 
         ValidateStrategyModeConsistency(config, result);
-        EmitV1InfoMessages(config, result);
     }
 
     private static void ValidateStrategyModeConsistency(StrategyConfig config, ValidationResult result)
@@ -49,20 +48,6 @@ public sealed class CrossFieldValidator
                     Message = "Entry logic is required for signal mode.",
                 });
             }
-        }
-    }
-
-    private static void EmitV1InfoMessages(StrategyConfig config, ValidationResult result)
-    {
-        if (config.TrendFilter is not null && config.TrendFilter.Enabled)
-        {
-            result.Add(new ValidationError
-            {
-                Severity = ValidationSeverity.Info,
-                FieldPath = "trendFilter",
-                Code = "TREND_FILTER_NOT_EVALUATED",
-                Message = "Trend filter not yet evaluated.",
-            });
         }
     }
 }
