@@ -1,0 +1,10 @@
+.preview-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  &__text {
+    margin: 0;
+    color: var(--colour-text-primary);
+    line-height: 1.6;
+  }
+}

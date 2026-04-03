@@ -1,10 +1,15 @@
+using Microsoft.Extensions.Logging;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Tests.Backtesting.Services;
 
@@ -25,14 +30,25 @@ public sealed class RealBacktestRunnerTests
         _candleRepositoryMock = new Mock<ICandleRepository>();
         _executionContextAccessor = new BacktestExecutionContextAccessor();
 
+        var conditionEvaluator = new ConditionEvaluator(
+            [
+                new RsiConditionHandler(),
+                new PriceVsEmaConditionHandler(new Mock<ILogger<PriceVsEmaConditionHandler>>().Object)
+            ],
+            new Mock<ILogger<ConditionEvaluator>>().Object);
+
         _sut = new BacktestRunner(
             _candleRepositoryMock.Object,
             new BacktestMarketContextBuilder(),
-            new GridStrategyEngine(),
+            new CompositeStrategyEngine(
+                new GridStrategyEngine(),
+                conditionEvaluator,
+                new TrendFilterEvaluator(new Mock<ILogger<TrendFilterEvaluator>>().Object)),
             new GridController(),
             new PassThroughRiskEngine(),
             new BacktestPositionManager(_executionContextAccessor),
-            _executionContextAccessor);
+            _executionContextAccessor,
+            new SignalController());
     }
 
     [TestMethod]
@@ -45,9 +61,9 @@ public sealed class RealBacktestRunnerTests
             StartDateUtc = 12 * OneHourMs,
             EndDateUtc = (12 * OneHourMs) + (4 * FifteenMinutesMs),
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = CreateStrategyConfig(gridLevels: 1),
+            Execution = CreateExecutionConfig(),
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":1,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}"
         };
 
         SetupCandles("15m",
@@ -92,9 +108,9 @@ public sealed class RealBacktestRunnerTests
             StartDateUtc = 12 * OneHourMs,
             EndDateUtc = (12 * OneHourMs) + (4 * FifteenMinutesMs),
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = CreateStrategyConfig(gridLevels: 1, entryMode: EntryModes.WaitForLimitPrice, manualAnchorPrice: 100.2m),
+            Execution = CreateExecutionConfig(),
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":1,\"entryMode\":\"WaitForLimitPrice\",\"manualAnchorPrice\":100.2,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
             EnableAuditLog = true,
         };
 
@@ -148,9 +164,9 @@ public sealed class RealBacktestRunnerTests
             StartDateUtc = 12 * OneHourMs,
             EndDateUtc = (12 * OneHourMs) + (4 * FifteenMinutesMs),
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = CreateStrategyConfig(gridLevels: 2, entryMode: EntryModes.InitialMarketThenGrid),
+            Execution = CreateExecutionConfig(),
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":2,\"entryMode\":\"InitialMarketThenGrid\",\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
             EnableAuditLog = true,
         };
 
@@ -203,9 +219,9 @@ public sealed class RealBacktestRunnerTests
             StartDateUtc = 12 * OneHourMs,
             EndDateUtc = (12 * OneHourMs) + (7 * FifteenMinutesMs),
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = CreateStrategyConfig(gridLevels: 5),
+            Execution = CreateExecutionConfig(),
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":5,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
             EnableAuditLog = true,
         };
 
@@ -260,9 +276,9 @@ public sealed class RealBacktestRunnerTests
             StartDateUtc = 12 * OneHourMs,
             EndDateUtc = (12 * OneHourMs) + (5 * FifteenMinutesMs),
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = CreateStrategyConfig(gridLevels: 5, stopLossPercent: 0.4m),
+            Execution = CreateExecutionConfig(),
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":5,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":0.4}",
             EnableAuditLog = true,
         };
 
@@ -312,9 +328,9 @@ public sealed class RealBacktestRunnerTests
             StartDateUtc = 12 * OneHourMs,
             EndDateUtc = (12 * OneHourMs) + (5 * FifteenMinutesMs),
             InitialCapital = 10_000m,
-            FeeModel = FeeModel.Default,
+            Strategy = CreateStrategyConfig(gridLevels: 3),
+            Execution = CreateExecutionConfig(),
             WarmupPeriod = 2,
-            StrategyConfigJson = "{\"gridLevels\":3,\"gridSpacing\":0.5,\"takeProfitPercent\":1,\"breakdownThreshold\":2,\"makerFee\":0.0001,\"takerFee\":0.00035,\"slippage\":0,\"positionSize\":100,\"leverage\":3,\"stopLossPercent\":5}",
             EnableAuditLog = true,
         };
 
@@ -354,6 +370,33 @@ public sealed class RealBacktestRunnerTests
         result.TotalPnL.Should().BeGreaterThan(0m);
     }
 
+    [TestMethod]
+    public async Task GivenSignalModeStrategyWithPassingRsi_WhenRunAsync_ThenTradesRecorded()
+    {
+        var config = CreateSignalBacktestConfig(CreateSignalStrategyConfig(30m));
+        SetupSignalModeCandles(config);
+
+        var result = await _sut.RunAsync(config);
+
+        result.TotalTrades.Should().BeGreaterThan(0);
+        result.TradeLog.Should().ContainSingle(trade =>
+            trade.TradeType == TradeType.SignalEntry &&
+            trade.ExitTimeUtc.HasValue);
+        result.GridCycles.Should().Be(0);
+    }
+
+    [TestMethod]
+    public async Task GivenSignalModeStrategyWithNonPassingRsi_WhenRunAsync_ThenNoTradesRecorded()
+    {
+        var config = CreateSignalBacktestConfig(CreateSignalStrategyConfig(0m));
+        SetupSignalModeCandles(config);
+
+        var result = await _sut.RunAsync(config);
+
+        result.TotalTrades.Should().Be(0);
+        result.TradeLog.Should().BeEmpty();
+    }
+
     private void SetupCandles(string interval, IReadOnlyList<Candle> candles)
     {
         _candleRepositoryMock
@@ -380,5 +423,147 @@ public sealed class RealBacktestRunnerTests
             close,
             1_000m,
             10);
+    }
+
+    private static StrategyConfig CreateStrategyConfig(
+        int gridLevels,
+        decimal gridSpacing = 0.5m,
+        decimal takeProfitPercent = 1m,
+        decimal breakdownThreshold = 2m,
+        decimal positionSize = 100m,
+        decimal stopLossPercent = 5m,
+        string? entryMode = null,
+        decimal? manualAnchorPrice = null)
+    {
+        return new StrategyConfig
+        {
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Grid,
+            StrategyName = "Test",
+            Market = "BTC-USD",
+            Grid = new GridConfig
+            {
+                Levels = gridLevels,
+                Spacing = gridSpacing,
+                BreakdownThreshold = breakdownThreshold,
+                EntryMode = entryMode ?? EntryModes.AutoFromSignalCandle,
+                AnchorPrice = manualAnchorPrice,
+            },
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = takeProfitPercent },
+                StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = stopLossPercent },
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeValue = positionSize,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+    }
+
+    private static StrategyConfig CreateSignalStrategyConfig(decimal rsiThreshold)
+    {
+        return new StrategyConfig
+        {
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Signal,
+            StrategyName = "RSI Signal Test",
+            Market = "BTC",
+            Timeframe = "15m",
+            Direction = Direction.Long,
+            EntryLogic = EntryLogic.All,
+            EntryConditions =
+            [
+                new EntryConditionConfig
+                {
+                    Id = "rsi-entry",
+                    Type = EntryConditionType.Rsi,
+                    Enabled = true,
+                    Params = new RsiParams { Period = 14, Operator = "lt", Value = rsiThreshold }
+                }
+            ],
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 2m },
+                StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 5m },
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeValue = 1000m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+    }
+
+    private static BacktestConfig CreateSignalBacktestConfig(StrategyConfig strategy)
+    {
+        return new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = (12 * OneHourMs) + (5 * FifteenMinutesMs),
+            InitialCapital = 10_000m,
+            Strategy = strategy,
+            Execution = CreateExecutionConfig(),
+            WarmupPeriod = 20,
+            EnableAuditLog = true,
+        };
+    }
+
+    private void SetupSignalModeCandles(BacktestConfig config)
+    {
+        var first15mTimestamp = config.StartDateUtc - (config.WarmupPeriod * FifteenMinutesMs);
+        var closes = new[]
+        {
+            100m, 99m, 98m, 97m, 96m, 95m, 94m, 93m, 92m, 91m,
+            90m, 89m, 88m, 87m, 86m, 85m, 84m, 83m, 82m, 81m,
+            80m, 81m, 83m, 86m, 87m, 88m,
+        };
+
+        var candles15m = closes
+            .Select((close, index) => CreateCandle(
+                "15m",
+                first15mTimestamp + (index * FifteenMinutesMs),
+                close,
+                close + 0.5m,
+                Math.Max(0m, close - 0.5m),
+                close))
+            .ToList();
+
+        SetupCandles("15m", candles15m);
+        SetupCandles("1h",
+        [
+            CreateCandle("1h", 9 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 10 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 11 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 12 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 13 * OneHourMs, 100m, 101m, 99m, 100m),
+        ]);
+        SetupCandles("4h",
+        [
+            CreateCandle("4h", 4 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", 8 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", 12 * OneHourMs, 100m, 101m, 99m, 100m),
+        ]);
+    }
+
+    private static ExecutionConfig CreateExecutionConfig(
+        decimal makerFeeRate = 0.0001m,
+        decimal takerFeeRate = 0.00035m,
+        decimal slippageRate = 0m)
+    {
+        return new ExecutionConfig
+        {
+            FeeModel = new FeeModel
+            {
+                MakerFeeRate = makerFeeRate,
+                TakerFeeRate = takerFeeRate,
+                SlippageRate = slippageRate,
+            },
+        };
     }
 }

@@ -1,12 +1,18 @@
+using System.Text.Json;
 using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Models;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
+using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 using TradingApp.Infrastructure.Binance;
 
 namespace TradingApp.Api.Controllers;
@@ -14,9 +20,16 @@ namespace TradingApp.Api.Controllers;
 [Route("api/backtests")]
 public sealed class BacktestsController : ApiController
 {
-    public BacktestsController(IMediator mediator, IdentityService identityService)
+    private static readonly string[] RequiredBacktestIntervals = ["15m", "1h", "4h"];
+    private readonly IStrategyRepository _strategyRepository;
+
+    public BacktestsController(
+        IMediator mediator,
+        IdentityService identityService,
+        IStrategyRepository strategyRepository)
         : base(mediator, identityService)
     {
+        _strategyRepository = strategyRepository;
     }
 
     [HttpPost]
@@ -25,33 +38,57 @@ public sealed class BacktestsController : ApiController
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RunAsync([FromBody] RunBacktestRequest request, CancellationToken cancellationToken)
     {
-        ValidateRequest(request);
+        ValidateRequestDates(request);
 
-        var strategyConfig = new GridStrategyConfig
+        StrategyConfig strategyConfig;
+        string symbol;
+        string[] intervals;
+
+        if (request.StrategyId.HasValue)
         {
-            GridLevels = request.StrategyConfig.GridLevels,
-            EntryMode = request.StrategyConfig.EntryMode,
-            ManualAnchorPrice = request.StrategyConfig.ManualAnchorPrice,
-            GridSpacing = request.StrategyConfig.GridSpacing,
-            TakeProfitPercent = request.StrategyConfig.TakeProfitPercent,
-            BreakdownThreshold = request.StrategyConfig.BreakdownThreshold,
-            MakerFee = request.StrategyConfig.MakerFee,
-            TakerFee = request.StrategyConfig.TakerFee,
-            Slippage = request.StrategyConfig.Slippage,
-            PositionSize = request.StrategyConfig.PositionSize,
-            Leverage = request.StrategyConfig.Leverage,
-            StopLossPercent = request.StrategyConfig.StopLossPercent,
+            var strategy = await GetOwnedStrategyAsync(request.StrategyId.Value, cancellationToken);
+
+            strategyConfig = JsonSerializer.Deserialize<StrategyConfig>(strategy.ConfigJson, StrategyJsonOptions.Default)
+                ?? throw new DomainException("Failed to deserialize strategy configuration.");
+            symbol = BinanceAssetMapper.NormalizeSymbol(strategyConfig.Market);
+            intervals = RequiredBacktestIntervals;
+        }
+        else
+        {
+            if (request.StrategyConfig is null)
+            {
+                throw new DomainException("Either strategyId or strategyConfig must be provided.");
+            }
+
+            ValidateManualRequest(request);
+
+            strategyConfig = MapStrategyConfig(request.StrategyConfig);
+            symbol = BinanceAssetMapper.NormalizeSymbol(request.Symbol!);
+            intervals = request.Intervals!;
+        }
+
+        var executionConfig = new ExecutionConfig
+        {
+            FeeModel = new FeeModel
+            {
+                MakerFeeRate = request.ExecutionConfig.MakerFee,
+                TakerFeeRate = request.ExecutionConfig.TakerFee,
+                SlippageRate = request.ExecutionConfig.Slippage,
+            },
         };
 
         var result = await Mediator.Send(
             new RunBacktestCommand(
-                request.Symbol,
-                request.Intervals,
+                symbol,
+                intervals,
                 request.StartDate!.Value,
                 request.EndDate!.Value,
                 strategyConfig,
+                executionConfig,
                 request.InitialCapital!.Value,
-                request.EnableAuditLog),
+                request.EnableAuditLog,
+                IdentityService.Identity,
+                request.StrategyId),
             cancellationToken);
 
         return AcceptedAtRoute(GetBacktestByIdRouteName, new { id = result.Id }, result);
@@ -76,6 +113,7 @@ public sealed class BacktestsController : ApiController
         }
 
         var result = await Mediator.Send(new GetBacktestListQuery(page, pageSize), cancellationToken);
+        var strategyNames = await GetStrategyNamesByIdAsync(result.Items.Select(summary => summary.StrategyId), cancellationToken);
 
         return Ok(new PagedResult<BacktestSummaryDto>
         {
@@ -92,6 +130,11 @@ public sealed class BacktestsController : ApiController
                     TotalPnl = summary.TotalPnl,
                     MaxDrawdown = summary.MaxDrawdown,
                     CreatedAt = summary.CreatedAt,
+                    StrategyId = summary.StrategyId,
+                    StrategyRevisionId = summary.StrategyRevisionId,
+                    StrategyName = summary.StrategyId.HasValue && strategyNames.TryGetValue(summary.StrategyId.Value, out var strategyName)
+                        ? strategyName
+                        : summary.StrategyName,
                 })
                 .ToList(),
             Page = result.Page,
@@ -118,7 +161,9 @@ public sealed class BacktestsController : ApiController
             throw new DomainException("intervals is required");
         }
 
-        if (!BinanceAssetMapper.IsValidSymbol(symbol))
+        var normalizedSymbol = BinanceAssetMapper.NormalizeSymbol(symbol);
+
+        if (!BinanceAssetMapper.IsValidSymbol(normalizedSymbol))
         {
             throw new DomainException(
                 $"Unknown symbol '{symbol}'. Supported: {string.Join(", ", BinanceAssetMapper.ValidSymbols)}");
@@ -136,7 +181,7 @@ public sealed class BacktestsController : ApiController
             }
         }
 
-        var result = await Mediator.Send(new GetCandleCoverageQuery(symbol, intervalArray), cancellationToken);
+        var result = await Mediator.Send(new GetCandleCoverageQuery(normalizedSymbol, intervalArray), cancellationToken);
         return Ok(result);
     }
 
@@ -162,8 +207,20 @@ public sealed class BacktestsController : ApiController
         return result is not null ? Ok(result) : NoContent();
     }
 
-    private static void ValidateRequest(RunBacktestRequest request)
+    private static void ValidateManualRequest(RunBacktestRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.Symbol))
+        {
+            throw new DomainException("symbol is required");
+        }
+
+        if (request.Intervals is null || request.Intervals.Length == 0)
+        {
+            throw new DomainException("intervals is required");
+        }
+
+        request.Symbol = BinanceAssetMapper.NormalizeSymbol(request.Symbol);
+
         if (!BinanceAssetMapper.IsValidSymbol(request.Symbol))
         {
             throw new DomainException(
@@ -184,16 +241,182 @@ public sealed class BacktestsController : ApiController
             throw new DomainException("endDate must be after startDate");
         }
 
-        if (!BacktestEntryModes.IsValid(request.StrategyConfig.EntryMode))
+        if (request.StrategyConfig is null)
         {
-            throw new DomainException($"entryMode must be one of: {BacktestEntryModes.AutoFromSignalCandle}, {BacktestEntryModes.InitialMarketThenGrid}, {BacktestEntryModes.WaitForLimitPrice}");
+            throw new DomainException("strategyConfig is required");
         }
 
-        if (string.Equals(request.StrategyConfig.EntryMode, BacktestEntryModes.WaitForLimitPrice, StringComparison.Ordinal) &&
-            request.StrategyConfig.ManualAnchorPrice is null)
+        if (request.StrategyConfig.Grid is null)
+        {
+            throw new DomainException("grid configuration is required");
+        }
+
+        var entryMode = NormalizeEntryMode(request.StrategyConfig.Grid.EntryMode);
+
+        if (!EntryModes.IsValid(entryMode))
+        {
+            throw new DomainException($"entryMode must be one of: {EntryModes.AutoFromSignalCandle}, {EntryModes.InitialMarketThenGrid}, {EntryModes.WaitForLimitPrice}");
+        }
+
+        if (string.Equals(entryMode, EntryModes.WaitForLimitPrice, StringComparison.Ordinal)
+            && request.StrategyConfig.Grid.AnchorPrice is null)
         {
             throw new DomainException("manualAnchorPrice is required when entryMode is WaitForLimitPrice");
         }
+    }
+
+    private static void ValidateRequestDates(RunBacktestRequest request)
+    {
+        if (!request.StartDate.HasValue)
+        {
+            throw new DomainException("startDate is required");
+        }
+
+        if (!request.EndDate.HasValue)
+        {
+            throw new DomainException("endDate is required");
+        }
+
+        var utcNow = DateTime.UtcNow;
+
+        if (request.StartDate.Value.ToUniversalTime() > utcNow)
+        {
+            throw new DomainException("startDate cannot be in the future");
+        }
+
+        if (request.EndDate.Value.ToUniversalTime() > utcNow)
+        {
+            throw new DomainException("endDate cannot be in the future");
+        }
+    }
+
+    private async Task<Strategy> GetOwnedStrategyAsync(Guid strategyId, CancellationToken cancellationToken)
+    {
+        var strategy = await _strategyRepository.GetByIdAsync(strategyId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Strategy), strategyId);
+
+        if (strategy.UserId != IdentityService.Identity.UserId || !strategy.IsActive)
+        {
+            throw new NotFoundException(nameof(Strategy), strategyId);
+        }
+
+        return strategy;
+    }
+
+    private static StrategyConfig MapStrategyConfig(StrategyConfigRequest request)
+    {
+        return new StrategyConfig
+        {
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Grid,
+            StrategyName = request.StrategyName,
+            Exchange = "Hyperliquid",
+            Market = request.Market,
+            Timeframe = request.Timeframe,
+            Direction = ParseSchemaEnum(request.Direction, Direction.Long),
+            Enabled = request.Enabled,
+            Grid = request.Grid is not null
+                ? new GridConfig
+                {
+                    Levels = request.Grid.Levels,
+                    Spacing = request.Grid.Spacing,
+                    EntryMode = NormalizeEntryMode(request.Grid.EntryMode),
+                    AnchorPrice = request.Grid.AnchorPrice,
+                    BreakdownThreshold = request.Grid.BreakdownThreshold,
+                }
+                : null,
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = request.Exit.TakeProfit.Enabled,
+                    Type = ParseSchemaEnum(request.Exit.TakeProfit.Type, ExitRuleType.FixedPercent),
+                    Value = request.Exit.TakeProfit.Value,
+                    Lookback = request.Exit.TakeProfit.Lookback,
+                },
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = request.Exit.StopLoss.Enabled,
+                    Type = ParseSchemaEnum(request.Exit.StopLoss.Type, ExitRuleType.FixedPercent),
+                    Value = request.Exit.StopLoss.Value,
+                    Lookback = request.Exit.StopLoss.Lookback,
+                },
+                ExitOnOppositeSignal = request.Exit.ExitOnOppositeSignal,
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeType = ParseSchemaEnum(request.Risk.PositionSizeType, PositionSizeType.PercentWallet),
+                PositionSizeValue = request.Risk.PositionSizeValue,
+                Leverage = request.Risk.Leverage,
+                MaxOpenTrades = request.Risk.MaxOpenTrades,
+                CooldownValue = request.Risk.CooldownValue,
+                CooldownUnit = ParseSchemaEnum(request.Risk.CooldownUnit, CooldownUnit.Candles),
+                AllowSameCandleReentry = request.Risk.AllowSameCandleReentry,
+            },
+            Source = new SourceMetadata
+            {
+                EntryPoint = StrategyEntryPoint.UiBuilder,
+                Summary = $"Backtest: {request.StrategyName}",
+            },
+        };
+    }
+
+    private async Task<Dictionary<Guid, string?>> GetStrategyNamesByIdAsync(
+        IEnumerable<Guid?> strategyIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = strategyIds
+            .Where(strategyId => strategyId.HasValue)
+            .Select(strategyId => strategyId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var strategies = await _strategyRepository.GetByIdsAsync(ids, cancellationToken);
+
+        return strategies.ToDictionary(
+            strategy => strategy.Id,
+            strategy => (string?)(strategy.IsActive
+                ? strategy.Name
+                : $"{strategy.Name} (deleted)"));
+    }
+
+    private static TEnum ParseSchemaEnum<TEnum>(string? value, TEnum fallback)
+        where TEnum : struct, Enum
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<TEnum>($"\"{value}\"", StrategyJsonOptions.Default);
+        }
+        catch (JsonException)
+        {
+            return fallback;
+        }
+    }
+
+    private static string NormalizeEntryMode(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return EntryModes.AutoFromSignalCandle;
+        }
+
+        return value switch
+        {
+            "auto_from_signal_candle" => EntryModes.AutoFromSignalCandle,
+            "initial_market_then_grid" => EntryModes.InitialMarketThenGrid,
+            "wait_for_limit_price" => EntryModes.WaitForLimitPrice,
+            _ => value,
+        };
     }
 
     private const string GetBacktestByIdRouteName = "GetBacktestById";

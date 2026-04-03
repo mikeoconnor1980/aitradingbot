@@ -23,6 +23,8 @@ public static class PersistenceServiceExtensions
         services.AddScoped<IBacktestRunRepository, BacktestRunRepository>();
         services.AddScoped<ICandleRepository, CandleRepository>();
         services.AddScoped<IFundingRateRepository, FundingRateRepository>();
+        services.AddScoped<IStrategyRepository, StrategyRepository>();
+        services.AddScoped<IStrategyRevisionRepository, StrategyRevisionRepository>();
 
         return services;
     }

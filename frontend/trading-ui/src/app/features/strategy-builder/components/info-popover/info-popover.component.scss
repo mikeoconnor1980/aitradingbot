@@ -1,0 +1,34 @@
+.info-popover {
+  &__trigger {
+    width: 1.55rem;
+    height: 1.55rem;
+    min-width: 1.55rem;
+    color: var(--colour-muted);
+    padding: 0;
+
+    mat-icon {
+      font-size: 0.95rem;
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+  }
+
+  &__panel {
+    max-width: 20rem;
+    padding: 0.85rem 1rem;
+    color: var(--colour-text-primary);
+
+    h4 {
+      margin: 0 0 0.35rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.45;
+      color: var(--colour-text-secondary);
+      white-space: normal;
+    }
+  }
+}

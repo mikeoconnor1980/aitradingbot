@@ -1,0 +1,57 @@
+.exit-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  .mat-mdc-card-header {
+    padding: 1.1rem 1rem 0.45rem;
+    min-height: 0;
+  }
+
+  .mat-mdc-card-header-text {
+    margin: 0;
+  }
+
+  .mat-mdc-card-content {
+    padding: 0 1rem 1rem;
+  }
+
+  &__title,
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  &__grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  &__section {
+    padding: 1rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 0.85rem;
+    background: var(--colour-surface-alt);
+  }
+
+  &__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+  }
+
+  &__fields {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+}

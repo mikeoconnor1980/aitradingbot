@@ -1,24 +1,19 @@
-using System.Text.Json;
-using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Trading.Services;
 
 public sealed class GridController : IGridController
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     public Task<IReadOnlyList<TradingSignal>> ProcessAsync(
         StrategyEvaluation evaluation,
         MarketContext context,
         GridState gridState,
         PositionState positionState,
-        string strategyConfigJson,
+        IStrategyConfig strategyConfig,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -26,15 +21,23 @@ public sealed class GridController : IGridController
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(gridState);
         ArgumentNullException.ThrowIfNull(positionState);
-        ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
+        ArgumentNullException.ThrowIfNull(strategyConfig);
 
-        var config = JsonSerializer.Deserialize<GridStrategyConfig>(strategyConfigJson, JsonOptions)
-            ?? throw new ArgumentException("Strategy config JSON is invalid.", nameof(strategyConfigJson));
+        if (strategyConfig is not StrategyConfig config)
+        {
+            throw new ArgumentException(
+                $"Expected {nameof(StrategyConfig)} but received {strategyConfig.GetType().Name}.",
+                nameof(strategyConfig));
+        }
 
         if (positionState.IsOpen)
         {
-            var stopLossPercent = Math.Abs(config.StopLossPercent);
-            var takeProfitPercent = Math.Abs(config.TakeProfitPercent);
+            var stopLossPercent = config.Exit.StopLoss.Enabled && config.Exit.StopLoss.Value.HasValue
+                ? Math.Abs(config.Exit.StopLoss.Value.Value)
+                : 0m;
+            var takeProfitPercent = config.Exit.TakeProfit.Enabled && config.Exit.TakeProfit.Value.HasValue
+                ? Math.Abs(config.Exit.TakeProfit.Value.Value)
+                : 0m;
             var stopLossTrigger = positionState.AverageEntryPrice * (1m - (stopLossPercent / 100m));
             var takeProfitTrigger = positionState.AverageEntryPrice * (1m + (takeProfitPercent / 100m));
             var shouldStopOut = stopLossPercent > 0m && context.CurrentCandle.Close <= stopLossTrigger;
@@ -127,24 +130,25 @@ public sealed class GridController : IGridController
             return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
-        var gridLevels = Math.Max(1, config.GridLevels);
-        var entryMode = string.IsNullOrWhiteSpace(config.EntryMode)
-            ? BacktestEntryModes.AutoFromSignalCandle
-            : config.EntryMode;
+        var grid = config.Grid ?? throw new InvalidOperationException("Grid configuration is required for grid mode.");
+        var gridLevels = Math.Max(1, grid.Levels);
+        var entryMode = string.IsNullOrWhiteSpace(grid.EntryMode)
+            ? EntryModes.AutoFromSignalCandle
+            : grid.EntryMode;
         var anchorPrice = context.CurrentCandle.Close;
 
-        if (string.Equals(entryMode, BacktestEntryModes.WaitForLimitPrice, StringComparison.Ordinal))
+        if (string.Equals(entryMode, EntryModes.WaitForLimitPrice, StringComparison.Ordinal))
         {
-            if (config.ManualAnchorPrice is null || context.CurrentCandle.Low > config.ManualAnchorPrice.Value)
+            if (grid.AnchorPrice is null || context.CurrentCandle.Low > grid.AnchorPrice.Value)
             {
                 return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
             }
 
-            anchorPrice = config.ManualAnchorPrice.Value;
+            anchorPrice = grid.AnchorPrice.Value;
         }
 
-        var gridSpacingPercent = Math.Abs(config.GridSpacing);
-        var positionSize = Math.Abs(config.PositionSize);
+        var gridSpacingPercent = Math.Abs(grid.Spacing);
+        var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity);
 
         gridState.GridCycleId = Guid.NewGuid().ToString("N");
         gridState.Lifecycle = GridLifecycle.Deploying;

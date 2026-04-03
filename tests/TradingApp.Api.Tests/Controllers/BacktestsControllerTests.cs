@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,8 +14,12 @@ using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Api.Tests.Controllers;
 
@@ -27,6 +32,8 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     private readonly Mock<IBacktestRunner> _backtestRunnerMock = new();
     private readonly Mock<IBacktestRunRepository> _backtestRunRepositoryMock = new();
     private readonly Mock<ICandleRepository> _candleRepositoryMock = new();
+    private readonly Mock<IStrategyRepository> _strategyRepositoryMock = new();
+    private readonly Mock<IStrategyRevisionRepository> _strategyRevisionRepositoryMock = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -37,6 +44,10 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
     protected override void ConfigureTestServices(IServiceCollection services)
     {
+        _strategyRepositoryMock
+            .Setup(repository => repository.GetByIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
         services.RemoveAll<IBacktestRunner>();
         services.AddSingleton(_backtestRunnerMock.Object);
 
@@ -45,6 +56,12 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         services.RemoveAll<ICandleRepository>();
         services.AddSingleton(_candleRepositoryMock.Object);
+
+        services.RemoveAll<IStrategyRepository>();
+        services.AddSingleton(_strategyRepositoryMock.Object);
+
+        services.RemoveAll<IStrategyRevisionRepository>();
+        services.AddSingleton(_strategyRevisionRepositoryMock.Object);
 
         // Suppress the background processor so it doesn't interfere with tests
         services.RemoveAll<IHostedService>();
@@ -63,7 +80,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         var response = await client.PostAsJsonAsync(BaseUrl, request);
 
         response.AssertStatusCode(HttpStatusCode.Accepted);
-        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>();
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>(BaseControllerTestsJson.Options);
         result.Should().NotBeNull();
 
         result!.Id.Should().NotBeEmpty();
@@ -77,10 +94,22 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.StartDate.Should().Be(new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         result.EndDate.Should().Be(new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc));
         result.CreatedAt.Should().BeAfter(DateTime.MinValue);
-        result.StrategyConfig.GridLevels.Should().Be(10);
-        result.StrategyConfig.EntryMode.Should().Be(BacktestEntryModes.WaitForLimitPrice);
-        result.StrategyConfig.ManualAnchorPrice.Should().Be(42000m);
-        result.StrategyConfig.GridSpacing.Should().Be(0.5m);
+        result.StrategyConfig.StrategyName.Should().Be("BTC Grid");
+        result.StrategyConfig.Market.Should().Be("BTC");
+        result.StrategyConfig.Grid.Should().NotBeNull();
+        result.StrategyConfig.Grid!.Levels.Should().Be(10);
+        result.StrategyConfig.Grid.EntryMode.Should().Be(EntryModes.WaitForLimitPrice);
+        result.StrategyConfig.Grid.AnchorPrice.Should().Be(42000m);
+        result.StrategyConfig.Grid.Spacing.Should().Be(0.5m);
+        result.StrategyConfig.Exit.TakeProfit.Enabled.Should().BeTrue();
+        result.StrategyConfig.Exit.TakeProfit.Value.Should().Be(1.0m);
+        result.StrategyConfig.Exit.StopLoss.Enabled.Should().BeTrue();
+        result.StrategyConfig.Exit.StopLoss.Value.Should().Be(5m);
+        result.StrategyConfig.Risk.PositionSizeValue.Should().Be(100m);
+        result.StrategyConfig.Risk.Leverage.Should().Be(3m);
+        result.ExecutionConfig.FeeModel.MakerFeeRate.Should().Be(0.0001m);
+        result.ExecutionConfig.FeeModel.TakerFeeRate.Should().Be(0.00035m);
+        result.ExecutionConfig.FeeModel.SlippageRate.Should().Be(0m);
 
         _backtestRunRepositoryMock.Verify(
             repository => repository.AddAsync(
@@ -101,16 +130,178 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         var client = GetTestClient();
         var request = CreateValidRequest();
-        request.StrategyConfig.EntryMode = BacktestEntryModes.InitialMarketThenGrid;
-        request.StrategyConfig.ManualAnchorPrice = null;
+        var grid = request.StrategyConfig?.Grid;
+        grid.Should().NotBeNull();
+        grid!.EntryMode = EntryModes.InitialMarketThenGrid;
+        grid.AnchorPrice = null;
 
         var response = await client.PostAsJsonAsync(BaseUrl, request);
 
         response.AssertStatusCode(HttpStatusCode.Accepted);
-        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>();
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>(BaseControllerTestsJson.Options);
         result.Should().NotBeNull();
-        result!.StrategyConfig.EntryMode.Should().Be(BacktestEntryModes.InitialMarketThenGrid);
-        result.StrategyConfig.ManualAnchorPrice.Should().BeNull();
+        result!.StrategyConfig.Grid.Should().NotBeNull();
+        result.StrategyConfig.Grid!.EntryMode.Should().Be(EntryModes.InitialMarketThenGrid);
+        result.StrategyConfig.Grid.AnchorPrice.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenValidStrategyId_WhenPostBacktest_ThenReturnsAcceptedWithStrategyFields()
+    {
+        BacktestRun? savedRun = null;
+        var strategy = CreateStrategy();
+
+        _strategyRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(strategy.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(strategy);
+        _strategyRevisionRepositoryMock
+            .Setup(repository => repository.GetLatestRevisionNumberAsync(strategy.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
+            .Callback<BacktestRun, CancellationToken>((run, _) => savedRun = run)
+            .Returns(Task.CompletedTask);
+
+        var client = GetTestClient();
+        var request = new RunBacktestRequest
+        {
+            StrategyId = strategy.Id,
+            StartDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+            InitialCapital = 10000m,
+            ExecutionConfig = new ExecutionConfigRequest
+            {
+                MakerFee = 0.0001m,
+                TakerFee = 0.00035m,
+                Slippage = 0m,
+            },
+        };
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.Accepted);
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>(BaseControllerTestsJson.Options);
+
+        result.Should().NotBeNull();
+        result!.Symbol.Should().Be("BTC");
+        result.Intervals.Should().Equal("15m", "1h", "4h");
+        result.StrategyId.Should().Be(strategy.Id);
+        result.StrategyRevisionId.Should().Be(3);
+        savedRun.Should().NotBeNull();
+        savedRun!.StrategyId.Should().Be(strategy.Id);
+        savedRun.StrategyRevisionId.Should().Be(3);
+
+        _strategyRevisionRepositoryMock.Verify(
+            repository => repository.GetLatestRevisionNumberAsync(strategy.Id, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenStrategyUsingDisplayMarket_WhenPostBacktest_ThenNormalizesSymbolForBacktest()
+    {
+        BacktestRun? savedRun = null;
+        var strategy = CreateStrategy();
+        var strategyConfigNode = JsonNode.Parse(strategy.ConfigJson)?.AsObject()
+            ?? throw new InvalidOperationException("Strategy config JSON was invalid.");
+        strategyConfigNode["market"] = "BTC-USD";
+        strategy.Update(strategy.Name, strategyConfigNode.ToJsonString());
+
+        _strategyRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(strategy.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(strategy);
+        _strategyRevisionRepositoryMock
+            .Setup(repository => repository.GetLatestRevisionNumberAsync(strategy.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(3);
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
+            .Callback<BacktestRun, CancellationToken>((run, _) => savedRun = run)
+            .Returns(Task.CompletedTask);
+
+        var client = GetTestClient();
+        var request = new RunBacktestRequest
+        {
+            StrategyId = strategy.Id,
+            StartDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+            InitialCapital = 10000m,
+            ExecutionConfig = new ExecutionConfigRequest
+            {
+                MakerFee = 0.0001m,
+                TakerFee = 0.00035m,
+                Slippage = 0m,
+            },
+        };
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.Accepted);
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>(BaseControllerTestsJson.Options);
+
+        result.Should().NotBeNull();
+        result!.Symbol.Should().Be("BTC");
+        savedRun.Should().NotBeNull();
+        savedRun!.Symbol.Should().Be("BTC");
+    }
+
+    [TestMethod]
+    public async Task GivenNoStrategyIdAndNoConfig_WhenPostBacktest_ThenReturnsBadRequest()
+    {
+        var client = GetTestClient();
+        var request = new RunBacktestRequest
+        {
+            Symbol = "BTC",
+            Intervals = ["15m"],
+            StartDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+            InitialCapital = 10000m,
+            ExecutionConfig = new ExecutionConfigRequest
+            {
+                MakerFee = 0.0001m,
+                TakerFee = 0.00035m,
+                Slippage = 0m,
+            },
+        };
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.BadRequest);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorMessage").GetString().Should().Contain("Either strategyId or strategyConfig must be provided");
+        body.GetProperty("errorCode").GetString().Should().Be("validation_error");
+    }
+
+    [TestMethod]
+    public async Task GivenNonExistentStrategyId_WhenPostBacktest_ThenReturnsNotFound()
+    {
+        var strategyId = Guid.NewGuid();
+
+        _strategyRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(strategyId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Strategy?)null);
+
+        var client = GetTestClient();
+        var request = new RunBacktestRequest
+        {
+            StrategyId = strategyId,
+            StartDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+            InitialCapital = 10000m,
+            ExecutionConfig = new ExecutionConfigRequest
+            {
+                MakerFee = 0.0001m,
+                TakerFee = 0.00035m,
+                Slippage = 0m,
+            },
+        };
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.NotFound);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorCode").GetString().Should().Be("not_found");
+        body.GetProperty("errorMessage").GetString().Should().Contain(strategyId.ToString());
     }
 
     [TestMethod]
@@ -132,7 +323,8 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.Symbol.Should().Be("BTC");
         result.TotalTrades.Should().Be(847);
         result.WinRate.Should().Be(72.3m);
-        result.StrategyConfig.GridLevels.Should().Be(10);
+        result.StrategyConfig.Grid.Should().NotBeNull();
+        result.StrategyConfig.Grid!.Levels.Should().Be(10);
         result.Intervals.Should().Equal("15m", "1h", "4h");
         result.Trades.Should().BeEmpty();
     }
@@ -266,6 +458,9 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.Items[0].WinRate.Should().Be(61.5m);
         result.Items[0].TotalPnl.Should().Be(1250.75m);
         result.Items[0].MaxDrawdown.Should().Be(-210.4m);
+        result.Items[0].StrategyId.Should().BeNull();
+        result.Items[0].StrategyRevisionId.Should().BeNull();
+        result.Items[0].StrategyName.Should().BeNull();
         result.Page.Should().Be(2);
         result.PageSize.Should().Be(1);
         result.TotalCount.Should().Be(2);
@@ -317,6 +512,23 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenDisplayStyleSymbol_WhenValidate_ThenNormalizesSymbolForCoverage()
+    {
+        _candleRepositoryMock
+            .Setup(repository => repository.GetCoverageAsync("BTC", "15m", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((1704067200000L, 1704152700000L, 96));
+
+        var client = GetTestClient();
+
+        var response = await client.GetAsync($"{BaseUrl}/validate?symbol=BTC-USD&intervals=15m");
+
+        var result = await response.ReadAndAssertSuccessAsync<CandleCoverageResponse>();
+
+        result.Coverage.Should().ContainKey("BTC/15m");
+        result.Coverage["BTC/15m"].CandleCount.Should().Be(96);
+    }
+
+    [TestMethod]
     public async Task GivenEndDateBeforeStartDate_WhenPostBacktest_ThenReturnsBadRequest()
     {
         var client = GetTestClient();
@@ -332,6 +544,22 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         body.GetProperty("errorMessage").GetString().Should().Contain("endDate must be after startDate");
         body.GetProperty("errorCode").GetString().Should().Be("validation_error");
         body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenFutureEndDate_WhenPostBacktest_ThenReturnsBadRequest()
+    {
+        var client = GetTestClient();
+        var request = CreateValidRequest();
+        request.EndDate = DateTime.UtcNow.AddDays(1);
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.BadRequest);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorMessage").GetString().Should().Contain("endDate cannot be in the future");
+        body.GetProperty("errorCode").GetString().Should().Be("validation_error");
     }
 
     [TestMethod]
@@ -372,7 +600,9 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     {
         var client = GetTestClient();
         var request = CreateValidRequest();
-        request.StrategyConfig.GridLevels = 0;
+        var grid = request.StrategyConfig?.Grid;
+        grid.Should().NotBeNull();
+        grid!.Levels = 0;
 
         var response = await client.PostAsJsonAsync(BaseUrl, request);
 
@@ -380,7 +610,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.TryGetProperty("errors", out var errors).Should().BeTrue();
-        errors.TryGetProperty("StrategyConfig.GridLevels", out var gridLevelErrors).Should().BeTrue();
+        errors.TryGetProperty("StrategyConfig.Grid.Levels", out var gridLevelErrors).Should().BeTrue();
         gridLevelErrors[0].GetString().Should().Contain("gridLevels must be > 0");
     }
 
@@ -389,7 +619,9 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     {
         var client = GetTestClient();
         var request = CreateValidRequest();
-        request.StrategyConfig.ManualAnchorPrice = null;
+        var grid = request.StrategyConfig?.Grid;
+        grid.Should().NotBeNull();
+        grid!.AnchorPrice = null;
 
         var response = await client.PostAsJsonAsync(BaseUrl, request);
 
@@ -414,16 +646,51 @@ public sealed class BacktestsControllerTests : BaseControllerTests
                 initialCapital = 10000m,
                 strategyConfig = new
                 {
-                    gridLevels = 10,
-                    gridSpacing = 0.5m,
-                    takeProfitPercent = 1.0m,
-                    breakdownThreshold = -3.0m,
+                    strategyName = "BTC Grid",
+                    market = "BTC",
+                    timeframe = "15m",
+                    direction = "long",
+                    enabled = true,
+                    grid = new
+                    {
+                        levels = 10,
+                        entryMode = EntryModes.WaitForLimitPrice,
+                        anchorPrice = 42000m,
+                        spacing = 0.5m,
+                        breakdownThreshold = -3.0m,
+                    },
+                    exit = new
+                    {
+                        takeProfit = new
+                        {
+                            enabled = true,
+                            type = "fixed_percent",
+                            value = 1.0m,
+                        },
+                        stopLoss = new
+                        {
+                            enabled = true,
+                            type = "fixed_percent",
+                            value = 5m,
+                        },
+                        exitOnOppositeSignal = false,
+                    },
+                    risk = new
+                    {
+                        positionSizeType = "fixed_notional",
+                        positionSizeValue = 100m,
+                        leverage = 3m,
+                        maxOpenTrades = 1,
+                        cooldownValue = 0,
+                        cooldownUnit = "candles",
+                        allowSameCandleReentry = false,
+                    },
+                },
+                executionConfig = new
+                {
                     makerFee = 0.0001m,
                     takerFee = 0.00035m,
                     slippage = 0m,
-                    positionSize = 100m,
-                    leverage = 3m,
-                    stopLossPercent = 5m,
                 },
             }));
 
@@ -551,20 +818,53 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             StartDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2024, 12, 31, 23, 59, 59, DateTimeKind.Utc),
             InitialCapital = 10000m,
-            StrategyConfig = new GridStrategyConfigRequest
+            StrategyConfig = new StrategyConfigRequest
             {
-                GridLevels = 10,
-                EntryMode = BacktestEntryModes.WaitForLimitPrice,
-                ManualAnchorPrice = 42000m,
-                GridSpacing = 0.5m,
-                TakeProfitPercent = 1.0m,
-                BreakdownThreshold = -3.0m,
+                StrategyName = "BTC Grid",
+                Market = "BTC",
+                Timeframe = "15m",
+                Direction = "long",
+                Enabled = true,
+                Grid = new GridConfigRequest
+                {
+                    Levels = 10,
+                    EntryMode = EntryModes.WaitForLimitPrice,
+                    AnchorPrice = 42000m,
+                    Spacing = 0.5m,
+                    BreakdownThreshold = -3.0m,
+                },
+                Exit = new ExitConfigRequest
+                {
+                    TakeProfit = new ExitRuleRequest
+                    {
+                        Enabled = true,
+                        Type = "fixed_percent",
+                        Value = 1.0m,
+                    },
+                    StopLoss = new ExitRuleRequest
+                    {
+                        Enabled = true,
+                        Type = "fixed_percent",
+                        Value = 5m,
+                    },
+                    ExitOnOppositeSignal = false,
+                },
+                Risk = new RiskConfigRequest
+                {
+                    PositionSizeType = "fixed_notional",
+                    PositionSizeValue = 100m,
+                    Leverage = 3m,
+                    MaxOpenTrades = 1,
+                    CooldownValue = 0,
+                    CooldownUnit = "candles",
+                    AllowSameCandleReentry = false,
+                },
+            },
+            ExecutionConfig = new ExecutionConfigRequest
+            {
                 MakerFee = 0.0001m,
                 TakerFee = 0.00035m,
                 Slippage = 0m,
-                PositionSize = 100m,
-                Leverage = 3m,
-                StopLossPercent = 5m,
             },
         };
     }
@@ -615,21 +915,8 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
             startDateUtc: 1704067200000,
             endDateUtc: 1735689599000,
-            strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
-            {
-                GridLevels = 10,
-                EntryMode = BacktestEntryModes.WaitForLimitPrice,
-                ManualAnchorPrice = 42000m,
-                GridSpacing = 0.5m,
-                TakeProfitPercent = 1m,
-                BreakdownThreshold = -3m,
-                MakerFee = 0.0001m,
-                TakerFee = 0.00035m,
-                Slippage = 0m,
-                PositionSize = 100m,
-                Leverage = 3m,
-                StopLossPercent = 5m,
-            }),
+            strategyConfigJson: CreateTestStrategyConfigJson(),
+            executionConfigJson: CreateTestExecutionConfigJson(),
             initialCapital: 10000m,
             candlesReplayed: 35040,
             elapsedMs: 12500,
@@ -653,21 +940,8 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
             startDateUtc: 1704067200000,
             endDateUtc: 1735689599000,
-            strategyConfigJson: JsonSerializer.Serialize(new GridStrategyConfig
-            {
-                GridLevels = 10,
-                EntryMode = BacktestEntryModes.WaitForLimitPrice,
-                ManualAnchorPrice = 42000m,
-                GridSpacing = 0.5m,
-                TakeProfitPercent = 1m,
-                BreakdownThreshold = -3m,
-                MakerFee = 0.0001m,
-                TakerFee = 0.00035m,
-                Slippage = 0m,
-                PositionSize = 100m,
-                Leverage = 3m,
-                StopLossPercent = 5m,
-            }),
+            strategyConfigJson: CreateTestStrategyConfigJson(),
+            executionConfigJson: CreateTestExecutionConfigJson(),
             initialCapital: 10000m,
             candlesReplayed: 35040,
             elapsedMs: 12500,
@@ -813,5 +1087,125 @@ public sealed class BacktestsControllerTests : BaseControllerTests
             MaxDrawdown = maxDrawdown,
             CreatedAt = createdAt,
         };
+    }
+
+    private static Strategy CreateStrategy()
+    {
+        return Strategy.Create(
+            userId: "dev-user",
+            name: "Saved BTC Grid",
+            strategyType: "GridStrategy",
+            configJson: JsonSerializer.Serialize(new StrategyConfig
+            {
+                SchemaVersion = 1,
+                StrategyMode = StrategyMode.Grid,
+                StrategyName = "Saved BTC Grid",
+                Exchange = "Hyperliquid",
+                Market = "BTC",
+                Timeframe = "15m",
+                Direction = Direction.Long,
+                Enabled = true,
+                Grid = new GridConfig
+                {
+                    Levels = 8,
+                    EntryMode = EntryModes.AutoFromSignalCandle,
+                    Spacing = 0.4m,
+                    BreakdownThreshold = -2.5m,
+                },
+                Exit = new ExitConfig
+                {
+                    TakeProfit = new ExitRuleConfig
+                    {
+                        Enabled = true,
+                        Type = ExitRuleType.FixedPercent,
+                        Value = 1m,
+                    },
+                    StopLoss = new ExitRuleConfig
+                    {
+                        Enabled = true,
+                        Type = ExitRuleType.FixedPercent,
+                        Value = 5m,
+                    },
+                },
+                Risk = new RiskConfig
+                {
+                    PositionSizeType = PositionSizeType.FixedNotional,
+                    PositionSizeValue = 100m,
+                    Leverage = 3m,
+                    MaxOpenTrades = 1,
+                    CooldownValue = 0,
+                    CooldownUnit = CooldownUnit.Candles,
+                },
+                Source = new SourceMetadata
+                {
+                    EntryPoint = StrategyEntryPoint.UiBuilder,
+                    Summary = "Backtest: Saved BTC Grid",
+                },
+            }, StrategyJsonOptions.Default));
+    }
+
+    private static string CreateTestStrategyConfigJson()
+    {
+        return JsonSerializer.Serialize(new StrategyConfig
+        {
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Grid,
+            StrategyName = "BTC Grid",
+            Exchange = "Hyperliquid",
+            Market = "BTC",
+            Timeframe = "15m",
+            Direction = Direction.Long,
+            Enabled = true,
+            Grid = new GridConfig
+            {
+                Levels = 10,
+                EntryMode = EntryModes.WaitForLimitPrice,
+                AnchorPrice = 42000m,
+                Spacing = 0.5m,
+                BreakdownThreshold = -3m,
+            },
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 1m,
+                },
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 5m,
+                },
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.FixedNotional,
+                PositionSizeValue = 100m,
+                Leverage = 3m,
+                MaxOpenTrades = 1,
+                CooldownValue = 0,
+                CooldownUnit = CooldownUnit.Candles,
+            },
+            Source = new SourceMetadata
+            {
+                EntryPoint = StrategyEntryPoint.UiBuilder,
+                Summary = "Backtest: BTC Grid",
+            },
+        }, StrategyJsonOptions.Default);
+    }
+
+    private static string CreateTestExecutionConfigJson()
+    {
+        return JsonSerializer.Serialize(new ExecutionConfig
+        {
+            FeeModel = new FeeModel
+            {
+                MakerFeeRate = 0.0001m,
+                TakerFeeRate = 0.00035m,
+                SlippageRate = 0m,
+            },
+        }, StrategyJsonOptions.Default);
     }
 }

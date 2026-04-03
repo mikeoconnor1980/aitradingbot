@@ -1,9 +1,13 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.Scheduling.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Scheduling;
 
@@ -18,9 +22,12 @@ public sealed class StrategyScheduler
     private readonly IGridController _gridController;
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
+    private readonly ISignalController? _signalController;
     private readonly IBacktestAuditCollector _auditCollector;
-    private readonly string _strategyConfigJson;
+    private readonly IStrategyConfig _strategyConfig;
     private readonly string _triggerTimeframe;
+    private readonly decimal _initialCapital;
+    private readonly BacktestExecutionContextAccessor? _executionContextAccessor;
 
     private GridState _gridState = new();
     private PositionState _positionState = new();
@@ -31,21 +38,27 @@ public sealed class StrategyScheduler
         IGridController gridController,
         IRiskEngine riskEngine,
         IPositionManager positionManager,
-        string strategyConfigJson,
+        IStrategyConfig strategyConfig,
         string triggerTimeframe = "15m",
-        IBacktestAuditCollector? auditCollector = null)
+        IBacktestAuditCollector? auditCollector = null,
+        ISignalController? signalController = null,
+        decimal initialCapital = 0m,
+        BacktestExecutionContextAccessor? executionContextAccessor = null)
     {
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
         _strategyEngine = strategyEngine ?? throw new ArgumentNullException(nameof(strategyEngine));
         _gridController = gridController ?? throw new ArgumentNullException(nameof(gridController));
         _riskEngine = riskEngine ?? throw new ArgumentNullException(nameof(riskEngine));
         _positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
-        ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
+        ArgumentNullException.ThrowIfNull(strategyConfig);
         ArgumentException.ThrowIfNullOrWhiteSpace(triggerTimeframe);
 
         _auditCollector = auditCollector ?? NullBacktestAuditCollector.Instance;
-        _strategyConfigJson = strategyConfigJson;
+        _signalController = signalController;
+        _strategyConfig = strategyConfig;
         _triggerTimeframe = triggerTimeframe;
+        _initialCapital = initialCapital;
+        _executionContextAccessor = executionContextAccessor;
     }
 
     public async Task HandleCandleClosedAsync(
@@ -61,22 +74,28 @@ public sealed class StrategyScheduler
             return;
         }
 
+        IReadOnlyList<IndicatorRequirement>? requiredIndicators = null;
+        if (_strategyConfig is StrategyConfig typedConfig
+            && typedConfig.StrategyMode == StrategyMode.Signal)
+        {
+            requiredIndicators = IndicatorExtractor.Extract(typedConfig);
+        }
+
         var context = _contextBuilder.Build(
             evt.Candle,
             latestOneHourCandle,
-            latestFourHourCandle);
+            latestFourHourCandle,
+            requiredIndicators);
+        context.AccountEquity = ResolveAccountEquity();
 
         var evaluation = await _strategyEngine.EvaluateAsync(
             context,
-            _strategyConfigJson,
+            _strategyConfig,
             cancellationToken);
 
-        var signals = await _gridController.ProcessAsync(
+        var signals = await ProcessEvaluationAsync(
             evaluation,
             context,
-            _gridState,
-            _positionState,
-            _strategyConfigJson,
             cancellationToken);
 
         _auditCollector.LogCandleEvaluation(new CandleEvaluationEntry
@@ -122,4 +141,48 @@ public sealed class StrategyScheduler
     }
 
     public GridState GetGridState() => _gridState;
+
+    private decimal ResolveAccountEquity()
+    {
+        var accountEquity = _initialCapital;
+
+        var simulatedPosition = _executionContextAccessor?.CurrentExecutionEngine?.GetPosition();
+        if (simulatedPosition is not null)
+        {
+            accountEquity += simulatedPosition.RealisedPnL + simulatedPosition.UnrealisedPnL;
+            return Math.Max(0m, accountEquity);
+        }
+
+        if (_positionState.IsOpen)
+        {
+            accountEquity += _positionState.UnrealisedPnL;
+        }
+
+        return Math.Max(0m, accountEquity);
+    }
+
+    private Task<IReadOnlyList<TradingSignal>> ProcessEvaluationAsync(
+        StrategyEvaluation evaluation,
+        MarketContext context,
+        CancellationToken cancellationToken)
+    {
+        if (_signalController is not null
+            && _strategyConfig is StrategyConfig { StrategyMode: StrategyMode.Signal })
+        {
+            return _signalController.ProcessAsync(
+                evaluation,
+                context,
+                _positionState,
+                _strategyConfig,
+                cancellationToken);
+        }
+
+        return _gridController.ProcessAsync(
+            evaluation,
+            context,
+            _gridState,
+            _positionState,
+            _strategyConfig,
+            cancellationToken);
+    }
 }

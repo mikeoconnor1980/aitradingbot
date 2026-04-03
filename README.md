@@ -66,6 +66,24 @@ dotnet run --project src/TradingApp.Api
 
 The API starts at `http://localhost:5062`.
 
+### Database and migrations
+
+EF Core migration files are committed to source control, but the local SQLite database is not.
+
+When you start the API, it automatically applies pending migrations to your local database on startup. In most cases your local setup is simply:
+
+```bash
+dotnet run --project src/TradingApp.Api
+```
+
+If you need to apply migrations manually, run:
+
+```bash
+dotnet ef database update --project src/TradingApp.Persistence --startup-project src/TradingApp.Api
+```
+
+Local runtime database files under `data/` are intentionally ignored by git. Do not commit `data/*.db` files; commit the migration files under `src/TradingApp.Persistence/Migrations/` instead.
+
 ### 4. Start the frontend
 
 ```bash

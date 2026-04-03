@@ -119,9 +119,27 @@
           <span class="backtest-result__config-label">Intervals</span>
           <span class="backtest-result__config-value">{{ intervalsLabel }}</span>
         </div>
+        @if (result.strategyName) {
+          <div class="backtest-result__config-item">
+            <span class="backtest-result__config-label">Strategy</span>
+            <span class="backtest-result__config-value backtest-result__config-value--strategy">
+              @if (canNavigateToStrategy && result.strategyId) {
+                <button type="button" class="backtest-result__strategy-link" (click)="onNavigateToStrategy(result.strategyId)">
+                  {{ result.strategyName }}
+                </button>
+              } @else {
+                <span class="backtest-result__strategy-label backtest-result__strategy-label--deleted">{{ result.strategyName }}</span>
+              }
+
+              @if (result.strategyRevisionId) {
+                <span class="backtest-result__revision-badge">v{{ result.strategyRevisionId }}</span>
+              }
+            </span>
+          </div>
+        }
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Grid Levels</span>
-          <span class="backtest-result__config-value">{{ result.strategyConfig.gridLevels }}</span>
+          <span class="backtest-result__config-value">{{ gridLevels }}</span>
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Entry Mode</span>
@@ -133,23 +151,23 @@
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Grid Spacing</span>
-          <span class="backtest-result__config-value">{{ result.strategyConfig.gridSpacing | number: "1.2-2" }}%</span>
+          <span class="backtest-result__config-value">{{ gridSpacing | number: "1.2-2" }}%</span>
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Take Profit</span>
-          <span class="backtest-result__config-value">{{ result.strategyConfig.takeProfitPercent | number: "1.2-2" }}%</span>
+          <span class="backtest-result__config-value">{{ takeProfitPercent | number: "1.2-2" }}%</span>
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Leverage</span>
-          <span class="backtest-result__config-value">{{ result.strategyConfig.leverage | number: "1.0-2" }}x</span>
+          <span class="backtest-result__config-value">{{ leverage | number: "1.0-2" }}x</span>
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Position Size</span>
-          <span class="backtest-result__config-value">${{ result.strategyConfig.positionSize | number: "1.2-2" }}</span>
+          <span class="backtest-result__config-value">{{ positionSizeLabel }}</span>
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Stop Loss</span>
-          <span class="backtest-result__config-value">{{ result.strategyConfig.stopLossPercent | number: "1.2-2" }}%</span>
+          <span class="backtest-result__config-value">{{ stopLossPercent | number: "1.2-2" }}%</span>
         </div>
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Candles Replayed</span>

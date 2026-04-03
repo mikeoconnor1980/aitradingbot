@@ -1,3 +1,5 @@
+import { ChartIndicatorValues } from "./chart-indicator.model";
+
 export enum OrderEventType {
   Placed = "Placed",
   Filled = "Filled",
@@ -31,6 +33,7 @@ export interface CandleEvaluation {
   positionAvgEntry: number;
   signalsEmitted: string[];
   gridCycleId: string | null;
+  indicators?: ChartIndicatorValues | null;
 }
 
 export interface OrderEvent {

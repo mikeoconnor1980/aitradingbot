@@ -1,0 +1,47 @@
+<mat-card class="validation-card">
+  <mat-card-header>
+    <mat-card-title>Validation</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (!hasIssues) {
+      <div class="validation-card__item validation-card__item--success">
+        <mat-icon>check_circle</mat-icon>
+        <div>
+          <strong>No issues</strong>
+          <p>The current strategy configuration passes client and server validation.</p>
+        </div>
+      </div>
+    }
+
+    @for (error of errors; track error.code + error.fieldPath + error.message) {
+      <div class="validation-card__item validation-card__item--error">
+        <mat-icon>error</mat-icon>
+        <div>
+          <strong>{{ error.fieldPath || "form" }}</strong>
+          <p>{{ error.message }}</p>
+        </div>
+      </div>
+    }
+
+    @for (warning of warnings; track warning.code + warning.fieldPath + warning.message) {
+      <div class="validation-card__item validation-card__item--warning">
+        <mat-icon>warning</mat-icon>
+        <div>
+          <strong>{{ warning.fieldPath || "form" }}</strong>
+          <p>{{ warning.message }}</p>
+        </div>
+      </div>
+    }
+
+    @for (info of infoMessages; track info.code + info.fieldPath + info.message) {
+      <div class="validation-card__item validation-card__item--info">
+        <mat-icon>info</mat-icon>
+        <div>
+          <strong>{{ info.fieldPath || "form" }}</strong>
+          <p>{{ info.message }}</p>
+        </div>
+      </div>
+    }
+  </mat-card-content>
+</mat-card>

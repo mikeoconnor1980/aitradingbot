@@ -36,13 +36,8 @@ export class BacktestService {
   public validateCoverage(
     symbol: string,
     intervals: string[],
-    _startDate?: string,
-    _endDate?: string,
     context?: HttpContext
   ): Observable<CoverageReport> {
-    void _startDate;
-    void _endDate;
-
     const encodedSymbol = encodeURIComponent(symbol);
     const encodedIntervals = intervals.map((interval) => encodeURIComponent(interval)).join(",");
 
@@ -55,6 +50,20 @@ export class BacktestService {
   public getBacktestList(page = 1, pageSize = 20, context?: HttpContext): Observable<PagedResult<BacktestSummary>> {
     return this._apiClient.get<PagedResult<BacktestSummary>>(
       `backtests?page=${page}&pageSize=${pageSize}`,
+      context
+    );
+  }
+
+  public getBacktestsByStrategy(
+    strategyId: string,
+    page = 1,
+    pageSize = 20,
+    context?: HttpContext
+  ): Observable<PagedResult<BacktestSummary>> {
+    const encodedId = encodeURIComponent(strategyId);
+
+    return this._apiClient.get<PagedResult<BacktestSummary>>(
+      `strategies/${encodedId}/backtests?page=${page}&pageSize=${pageSize}`,
       context
     );
   }

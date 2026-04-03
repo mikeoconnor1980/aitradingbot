@@ -1,0 +1,45 @@
+<mat-card class="nl-input-card">
+  <mat-card-header>
+    <mat-card-title class="nl-input-card__title">Describe Your Strategy</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <p class="nl-input-card__description">
+      Describe the setup in plain English and the form will be populated with the interpreted configuration.
+    </p>
+
+    <mat-form-field appearance="outline" class="nl-input-card__text-field">
+      <mat-label>Strategy description</mat-label>
+      <textarea
+        matInput
+        [(ngModel)]="text"
+        [maxlength]="maxLength"
+        rows="4"
+        placeholder="Buy ETH when RSI drops below 30 with a 2% take profit"
+      ></textarea>
+      <mat-hint align="end">{{ charCount }} / {{ maxLength }}</mat-hint>
+    </mat-form-field>
+
+    @if (errorMessage !== null) {
+      <div class="nl-input-card__error" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ errorMessage }}</span>
+      </div>
+    }
+  </mat-card-content>
+
+  <mat-card-actions class="nl-input-card__actions">
+    <button mat-raised-button color="primary" type="button" [disabled]="!canGenerate" (click)="generate()">
+      @if (isLoading) {
+        <mat-spinner diameter="18"></mat-spinner>
+      } @else {
+        <mat-icon>auto_awesome</mat-icon>
+      }
+      <span>{{ initialText ? "Re-interpret" : "Generate" }}</span>
+    </button>
+
+    <button mat-button type="button" [disabled]="isLoading || text.length === 0" (click)="clear()">
+      Clear
+    </button>
+  </mat-card-actions>
+</mat-card>

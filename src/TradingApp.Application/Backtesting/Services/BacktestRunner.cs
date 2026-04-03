@@ -1,4 +1,3 @@
-using System.Text.Json;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
@@ -6,6 +5,8 @@ using TradingApp.Application.Scheduling;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Backtesting.Services;
 
@@ -21,6 +22,7 @@ public sealed class BacktestRunner : IBacktestRunner
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
     private readonly BacktestExecutionContextAccessor _executionContextAccessor;
+    private readonly ISignalController _signalController;
 
     public BacktestRunner(
         ICandleRepository candleRepository,
@@ -29,7 +31,8 @@ public sealed class BacktestRunner : IBacktestRunner
         IGridController gridController,
         IRiskEngine riskEngine,
         IPositionManager positionManager,
-        BacktestExecutionContextAccessor executionContextAccessor)
+        BacktestExecutionContextAccessor executionContextAccessor,
+        ISignalController signalController)
     {
         _candleRepository = candleRepository ?? throw new ArgumentNullException(nameof(candleRepository));
         _marketContextBuilder = marketContextBuilder ?? throw new ArgumentNullException(nameof(marketContextBuilder));
@@ -38,6 +41,7 @@ public sealed class BacktestRunner : IBacktestRunner
         _riskEngine = riskEngine ?? throw new ArgumentNullException(nameof(riskEngine));
         _positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
         _executionContextAccessor = executionContextAccessor ?? throw new ArgumentNullException(nameof(executionContextAccessor));
+        _signalController = signalController ?? throw new ArgumentNullException(nameof(signalController));
     }
 
     public Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
@@ -56,7 +60,7 @@ public sealed class BacktestRunner : IBacktestRunner
         IBacktestAuditCollector collector = auditCollector is not null
             ? auditCollector
             : NullBacktestAuditCollector.Instance;
-        var executionEngine = new SimulatedExecutionEngine(config.FeeModel);
+        var executionEngine = new SimulatedExecutionEngine(config.Execution.FeeModel);
         var replayEngine = new CandleReplayEngine(_candleRepository);
         var candleClock = new CandleClock();
         var metricsCalculator = new BacktestMetricsCalculator();
@@ -72,8 +76,11 @@ public sealed class BacktestRunner : IBacktestRunner
             _gridController,
             _riskEngine,
             positionManager,
-            config.StrategyConfigJson,
-            auditCollector: collector);
+            config.Strategy,
+            auditCollector: collector,
+            signalController: _signalController,
+            initialCapital: config.InitialCapital,
+            executionContextAccessor: _executionContextAccessor);
 
         _executionContextAccessor.CurrentExecutionEngine = executionEngine;
 
@@ -259,7 +266,9 @@ public sealed class BacktestRunner : IBacktestRunner
     private static void ValidateConfig(BacktestConfig config)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(config.Symbol, nameof(config.Symbol));
-        ArgumentNullException.ThrowIfNull(config.FeeModel);
+        ArgumentNullException.ThrowIfNull(config.Strategy);
+        ArgumentNullException.ThrowIfNull(config.Execution);
+        ArgumentNullException.ThrowIfNull(config.Execution.FeeModel);
 
         if (config.StartDateUtc >= config.EndDateUtc)
         {
@@ -282,17 +291,6 @@ public sealed class BacktestRunner : IBacktestRunner
         EnsureRequiredInterval(config.Intervals, "1h");
         EnsureRequiredInterval(config.Intervals, "4h");
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(config.StrategyConfigJson, nameof(config.StrategyConfigJson));
-
-        try
-        {
-            using var _ = JsonDocument.Parse(config.StrategyConfigJson);
-        }
-        catch (JsonException exception)
-        {
-            throw new ArgumentException("Strategy config JSON is invalid.", nameof(config.StrategyConfigJson), exception);
-        }
-
         if (config.WarmupPeriod < 0)
         {
             throw new ArgumentException("Warmup period cannot be negative.");
@@ -312,7 +310,7 @@ public sealed class BacktestRunner : IBacktestRunner
         var gridCycleId = fill.GridCycleId ?? gridState.GridCycleId ?? "default";
         ApplyGridFillState(gridState, fill);
 
-        if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen)
+        if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen or TradeType.SignalEntry)
         {
             tradeLog.Add(new BacktestTrade
             {
@@ -449,7 +447,7 @@ public sealed class BacktestRunner : IBacktestRunner
     {
         return exitTradeType switch
         {
-            TradeType.TakeProfit => openTrade.TradeType == TradeType.GridFill,
+            TradeType.TakeProfit => openTrade.TradeType is TradeType.GridFill or TradeType.SignalEntry,
             TradeType.HedgeClose => openTrade.TradeType == TradeType.HedgeOpen,
             _ => false
         };
@@ -474,6 +472,11 @@ public sealed class BacktestRunner : IBacktestRunner
                 break;
 
             case TradeType.TakeProfit:
+                if (string.Equals(fill.GridCycleId, "signal", StringComparison.Ordinal))
+                {
+                    break;
+                }
+
                 gridState.FilledLevels = 0;
                 gridState.Lifecycle = GridLifecycle.Closed;
                 break;
@@ -484,6 +487,9 @@ public sealed class BacktestRunner : IBacktestRunner
 
             case TradeType.HedgeClose:
                 gridState.Lifecycle = GridLifecycle.Closed;
+                break;
+
+            case TradeType.SignalEntry:
                 break;
         }
     }
@@ -546,7 +552,9 @@ public sealed class BacktestRunner : IBacktestRunner
 
     private static void TrackCycleExit(IDictionary<string, GridCycleTrackingState> trackedCycles, SimulatedFill fill)
     {
-        if (string.IsNullOrWhiteSpace(fill.GridCycleId) || fill.TradeType != TradeType.TakeProfit)
+        if (string.IsNullOrWhiteSpace(fill.GridCycleId)
+            || fill.TradeType != TradeType.TakeProfit
+            || string.Equals(fill.GridCycleId, "signal", StringComparison.Ordinal))
         {
             return;
         }

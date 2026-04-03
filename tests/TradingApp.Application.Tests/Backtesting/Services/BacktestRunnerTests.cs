@@ -5,8 +5,11 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Tests.Backtesting.Services;
 
@@ -23,6 +26,7 @@ public sealed class BacktestRunnerTests
     private Mock<IGridController> _gridControllerMock = default!;
     private Mock<IRiskEngine> _riskEngineMock = default!;
     private Mock<IPositionManager> _positionManagerMock = default!;
+    private Mock<ISignalController> _signalControllerMock = default!;
     private BacktestExecutionContextAccessor _executionContextAccessor = default!;
     private BacktestRunner _sut = default!;
 
@@ -35,6 +39,7 @@ public sealed class BacktestRunnerTests
         _gridControllerMock = new Mock<IGridController>();
         _riskEngineMock = new Mock<IRiskEngine>();
         _positionManagerMock = new Mock<IPositionManager>();
+        _signalControllerMock = new Mock<ISignalController>();
         _executionContextAccessor = new BacktestExecutionContextAccessor();
 
         _sut = new BacktestRunner(
@@ -44,7 +49,8 @@ public sealed class BacktestRunnerTests
             _gridControllerMock.Object,
             _riskEngineMock.Object,
             _positionManagerMock.Object,
-            _executionContextAccessor);
+            _executionContextAccessor,
+            _signalControllerMock.Object);
 
         _contextBuilderMock
             .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
@@ -58,8 +64,24 @@ public sealed class BacktestRunnerTests
                 Indicators = new IndicatorSnapshot()
             });
 
+        _contextBuilderMock
+            .Setup(builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>()))
+            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _) => new MarketContext
+            {
+                Symbol = trigger.Symbol,
+                TimestampUtc = trigger.Timestamp,
+                CurrentCandle = trigger,
+                LatestOneHourCandle = oneHour,
+                LatestFourHourCandle = fourHour,
+                Indicators = new IndicatorSnapshot()
+            });
+
         _strategyEngineMock
-            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrategyEvaluation { SetupDetected = false });
 
         _gridControllerMock
@@ -68,12 +90,21 @@ public sealed class BacktestRunnerTests
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
-                It.IsAny<string>(),
+                It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
         _riskEngineMock
             .Setup(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        _signalControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
     }
 
@@ -126,14 +157,25 @@ public sealed class BacktestRunnerTests
     }
 
     [TestMethod]
-    public async Task GivenInvalidStrategyConfigJson_WhenRunAsync_ThenThrowsArgumentException()
+    public async Task GivenNullStrategyConfig_WhenRunAsync_ThenThrowsArgumentNullException()
     {
-        var config = CreateConfig(strategyConfigJson: "{");
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = 13 * OneHourMs,
+            InitialCapital = 10_000m,
+            Strategy = null!,
+            Execution = new ExecutionConfig
+            {
+                FeeModel = FeeModel.Default,
+            },
+        };
 
         var action = () => _sut.RunAsync(config);
 
-        await action.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*Strategy config JSON is invalid.*");
+        await action.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [TestMethod]
@@ -226,6 +268,21 @@ public sealed class BacktestRunnerTests
         tradeLog.Sum(trade => trade.PnL).Should().Be(19m);
     }
 
+    [TestMethod]
+    public void GivenSignalEntryAndTakeProfitInSameCycle_WhenRecordFill_ThenSignalTradeIsClosed()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { TotalLevels = 10 };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("signal-entry", "signal", OrderSide.Buy, TradeType.SignalEntry, 81m, 1m, 0.01m, 1_000));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("signal-exit", "signal", OrderSide.Sell, TradeType.TakeProfit, 86m, 1m, 0.01m, 2_000));
+
+        tradeLog.Should().ContainSingle(trade =>
+            trade.TradeType == TradeType.SignalEntry &&
+            trade.ExitTimeUtc == 2_000 &&
+            trade.PnL == 5m);
+    }
+
     private void SetupCandles(BacktestConfig config)
     {
         var first15mTimestamp = config.StartDateUtc - (config.WarmupPeriod * FifteenMinutesMs);
@@ -256,7 +313,8 @@ public sealed class BacktestRunnerTests
         decimal initialCapital = 10_000m,
         int warmupPeriod = 2,
         IReadOnlyList<string>? intervals = null,
-        string strategyConfigJson = "{}",
+        IStrategyConfig? strategy = null,
+        ExecutionConfig? execution = null,
         bool enableAuditLog = true)
     {
         return new BacktestConfig
@@ -266,9 +324,35 @@ public sealed class BacktestRunnerTests
             StartDateUtc = startDateUtc,
             EndDateUtc = endDateUtc,
             InitialCapital = initialCapital,
-            FeeModel = FeeModel.Default,
+            Strategy = strategy ?? new StrategyConfig
+            {
+                SchemaVersion = 1,
+                StrategyMode = StrategyMode.Grid,
+                StrategyName = "Test",
+                Market = "BTC-USD",
+                Grid = new GridConfig
+                {
+                    Levels = 5,
+                    Spacing = 0.5m,
+                    BreakdownThreshold = 3m,
+                },
+                Exit = new ExitConfig
+                {
+                    TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 2m },
+                    StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 5m },
+                },
+                Risk = new RiskConfig
+                {
+                    PositionSizeValue = 100m,
+                    Leverage = 1m,
+                    MaxOpenTrades = 1,
+                },
+            },
+            Execution = execution ?? new ExecutionConfig
+            {
+                FeeModel = FeeModel.Default,
+            },
             WarmupPeriod = warmupPeriod,
-            StrategyConfigJson = strategyConfigJson,
             EnableAuditLog = enableAuditLog
         };
     }

@@ -1,6 +1,9 @@
+using System.Globalization;
+using System.Threading.RateLimiting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
+using TradingApp.AI;
 using TradingApp.Api.Hubs;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Infrastructure.Filters;
@@ -10,6 +13,8 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.MarketData.Queries;
+using TradingApp.Application.StrategyAuthoring.Services;
+using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
@@ -87,11 +92,24 @@ builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
 builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
 builder.Services.AddSingleton<BacktestJobQueue>();
 builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
-builder.Services.AddScoped<IStrategyEngine, GridStrategyEngine>();
+builder.Services.AddScoped<GridStrategyEngine>();
+builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
+builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();
+builder.Services.AddScoped<IConditionHandler, MacdConditionHandler>();
+builder.Services.AddScoped<ITrendFilterEvaluator, TrendFilterEvaluator>();
+builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
+builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();
 builder.Services.AddScoped<IGridController, GridController>();
+builder.Services.AddScoped<ISignalController, SignalController>();
 builder.Services.AddScoped<IRiskEngine, PassThroughRiskEngine>();
 builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
 builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
+builder.Services.AddSingleton<IChangeSummaryGenerator, ChangeSummaryGenerator>();
+builder.Services.AddSingleton<IStrategyDiffService, StrategyDiffService>();
+builder.Services.AddSingleton<SchemaValidator>();
+builder.Services.AddSingleton<BusinessRuleValidator>();
+builder.Services.AddSingleton<CrossFieldValidator>();
+builder.Services.AddSingleton<IStrategyValidator, CompositeStrategyValidator>();
 builder.Services.AddHostedService<BacktestProcessorService>();
 builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>
 {
@@ -122,6 +140,7 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
 builder.Services.AddScoped<IBinanceCandleIngestionService, BinanceCandleIngestionService>();
 builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
+builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
 
 // SignalR
@@ -153,9 +172,51 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("interpret-strategy", httpContext =>
+    {
+        var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].ToString();
+        var partitionKey = !string.IsNullOrWhiteSpace(forwardedFor)
+            ? forwardedFor.Split(',', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)[0]
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            });
+    });
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers["Retry-After"] =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+        }
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new Envelope("Too many requests. Please wait a moment.", "rate_limit"),
+            cancellationToken);
+    };
+});
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<HttpGlobalExceptionFilter>();
+})
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter(System.Text.Json.JsonNamingPolicy.SnakeCaseLower));
 });
 
 var app = builder.Build();
@@ -168,6 +229,7 @@ app.Logger.LogInformation(
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseCors();
+app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");
 

@@ -53,6 +53,24 @@
           <td mat-cell *matCellDef="let row">{{ row.symbol }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="strategyName">
+          <th mat-header-cell *matHeaderCellDef>Strategy</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.strategyName && row.strategyId && !isDeletedStrategy(row.strategyName)) {
+              <button
+                type="button"
+                class="backtest-list__strategy-link"
+                (click)="onNavigateToStrategy(row.strategyId); $event.stopPropagation()">
+                {{ row.strategyName }}
+              </button>
+            } @else if (row.strategyName) {
+              <span class="backtest-list__strategy-label backtest-list__strategy-label--deleted">{{ row.strategyName }}</span>
+            } @else {
+              <span class="backtest-list__strategy-label">—</span>
+            }
+          </td>
+        </ng-container>
+
         <ng-container matColumnDef="dateRange">
           <th mat-header-cell *matHeaderCellDef>Date Range</th>
           <td mat-cell *matCellDef="let row">

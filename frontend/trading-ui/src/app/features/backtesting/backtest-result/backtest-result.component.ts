@@ -1,7 +1,8 @@
 import { DecimalPipe } from "@angular/common";
-import { Component, Input } from "@angular/core";
+import { Component, Input, inject } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
+import { Router } from "@angular/router";
 import { BacktestResult } from "../../../core/models/backtest.model";
 
 @Component({
@@ -12,6 +13,8 @@ import { BacktestResult } from "../../../core/models/backtest.model";
   styleUrl: "./backtest-result.component.scss"
 })
 export class BacktestResultComponent {
+  private readonly _router = inject(Router);
+
   @Input({ required: true })
   public result!: BacktestResult;
 
@@ -28,11 +31,13 @@ export class BacktestResultComponent {
   }
 
   public get drawdownPercent(): number {
-    if ((this.result.equityTimeSeries?.length ?? 0) > 1) {
-      let peak = this.result.equityTimeSeries![0].equity;
+    const timeSeries = this.result.equityTimeSeries;
+
+    if (timeSeries !== undefined && timeSeries !== null && timeSeries.length > 1) {
+      let peak = timeSeries[0].equity;
       let maxDrawdownPercent = 0;
 
-      for (const snapshot of this.result.equityTimeSeries!) {
+      for (const snapshot of timeSeries) {
         peak = Math.max(peak, snapshot.equity);
         const drawdownPercent = peak > 0 ? ((snapshot.equity - peak) / peak) * 100 : 0;
         maxDrawdownPercent = Math.min(maxDrawdownPercent, drawdownPercent);
@@ -60,8 +65,16 @@ export class BacktestResultComponent {
     return this.result.intervals.join(", ");
   }
 
+  public get canNavigateToStrategy(): boolean {
+    return this.result.strategyId !== null
+      && this.result.strategyId !== undefined
+      && this.result.strategyName !== null
+      && this.result.strategyName !== undefined
+      && !this.isDeletedStrategy(this.result.strategyName);
+  }
+
   public get entryModeLabel(): string {
-    switch (this.result.strategyConfig.entryMode) {
+    switch (this.result.strategyConfig.grid?.entryMode) {
       case "WaitForLimitPrice":
         return "Wait for limit price";
       case "InitialMarketThenGrid":
@@ -72,9 +85,58 @@ export class BacktestResultComponent {
   }
 
   public get limitPriceLabel(): string {
-    return this.result.strategyConfig.entryMode === "WaitForLimitPrice" && this.result.strategyConfig.manualAnchorPrice !== null && this.result.strategyConfig.manualAnchorPrice !== undefined
-      ? `$${this.result.strategyConfig.manualAnchorPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    const anchorPrice = this.result.strategyConfig.grid?.anchorPrice;
+
+    return this.result.strategyConfig.grid?.entryMode === "WaitForLimitPrice" && anchorPrice !== null && anchorPrice !== undefined
+      ? `$${anchorPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : "—";
+  }
+
+  public get gridLevels(): number {
+    return this.result.strategyConfig.grid?.levels ?? 0;
+  }
+
+  public get gridSpacing(): number {
+    return this.result.strategyConfig.grid?.spacing ?? 0;
+  }
+
+  public get takeProfitPercent(): number {
+    return this.result.strategyConfig.exit.takeProfit.value ?? 0;
+  }
+
+  public get positionSize(): number {
+    const risk = this.result.strategyConfig.risk;
+
+    if (risk.positionSizeType === "percent_wallet") {
+      return this.result.initialCapital * (risk.positionSizeValue / 100);
+    }
+
+    return risk.positionSizeValue;
+  }
+
+  public get positionSizeLabel(): string {
+    const risk = this.result.strategyConfig.risk;
+    const formattedNotional = `$${this.positionSize.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    return risk.positionSizeType === "percent_wallet"
+      ? `${risk.positionSizeValue}% wallet (${formattedNotional} at start)`
+      : formattedNotional;
+  }
+
+  public get leverage(): number {
+    return this.result.strategyConfig.risk.leverage ?? this.result.executionConfig.leverage ?? 1;
+  }
+
+  public get stopLossPercent(): number {
+    return this.result.strategyConfig.exit.stopLoss.value ?? 0;
+  }
+
+  public onNavigateToStrategy(strategyId: string): void {
+    void this._router.navigate(["/strategies", strategyId, "edit"]);
+  }
+
+  public isDeletedStrategy(strategyName: string | null | undefined): boolean {
+    return strategyName?.endsWith(" (deleted)") ?? false;
   }
 
   public getPnlClass(value: number): string {

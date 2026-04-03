@@ -7,6 +7,11 @@ namespace TradingApp.Application.Abstractions.Repositories;
 public interface IBacktestRunRepository
 {
     Task<BacktestRun?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<PagedResult<BacktestRunSummary>> GetPagedSummariesByStrategyAsync(
+        Guid strategyId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
     Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(
         int page,
         int pageSize,

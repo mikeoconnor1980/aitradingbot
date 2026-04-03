@@ -3,6 +3,8 @@ using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Enums;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Trading.Services;
 
@@ -42,6 +44,10 @@ public sealed class BacktestPositionManager : IPositionManager
                     await DeployGridAsync(executionEngine, signal, cancellationToken);
                     break;
 
+                case "OpenPosition":
+                    await OpenSignalPositionAsync(executionEngine, signal, cancellationToken);
+                    break;
+
                 case "TakeProfit":
                     await PlaceTakeProfitAsync(executionEngine, signal, cancellationToken);
                     break;
@@ -75,11 +81,11 @@ public sealed class BacktestPositionManager : IPositionManager
         var gridSpacingPercent = Math.Abs(GetDecimal(signal.Parameters, "gridSpacingPercent"));
         var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalPerLevel"));
         var gridCycleId = GetGridCycleId(signal.Parameters);
-        var entryMode = GetOptionalString(signal.Parameters, "entryMode") ?? BacktestEntryModes.AutoFromSignalCandle;
+        var entryMode = GetOptionalString(signal.Parameters, "entryMode") ?? EntryModes.AutoFromSignalCandle;
 
         var firstLimitLevel = 1;
 
-        if (string.Equals(entryMode, BacktestEntryModes.InitialMarketThenGrid, StringComparison.Ordinal))
+        if (string.Equals(entryMode, EntryModes.InitialMarketThenGrid, StringComparison.Ordinal))
         {
             var marketSize = decimal.Round(notionalPerLevel / anchorPrice, 8, MidpointRounding.AwayFromZero);
             if (marketSize > 0m)
@@ -106,7 +112,7 @@ public sealed class BacktestPositionManager : IPositionManager
 
         for (var level = firstLimitLevel; level <= gridLevels; level++)
         {
-            var ladderOffset = string.Equals(entryMode, BacktestEntryModes.InitialMarketThenGrid, StringComparison.Ordinal)
+            var ladderOffset = string.Equals(entryMode, EntryModes.InitialMarketThenGrid, StringComparison.Ordinal)
                 ? level - 1
                 : level;
             var price = anchorPrice * (1m - ((gridSpacingPercent / 100m) * ladderOffset));
@@ -137,6 +143,35 @@ public sealed class BacktestPositionManager : IPositionManager
                 gridCycleId,
                 cancellationToken);
         }
+    }
+
+    private async Task OpenSignalPositionAsync(
+        Backtesting.Services.SimulatedExecutionEngine executionEngine,
+        TradingSignal signal,
+        CancellationToken cancellationToken)
+    {
+        var entryPrice = GetDecimal(signal.Parameters, "entryPrice");
+        var size = Math.Abs(GetDecimal(signal.Parameters, "size"));
+
+        if (size <= 0m)
+        {
+            return;
+        }
+
+        await PlaceAndLogOrderAsync(
+            executionEngine,
+            new OrderRequest
+            {
+                Symbol = signal.Symbol,
+                Side = OrderSide.Buy,
+                OrderType = OrderType.Market,
+                Price = entryPrice,
+                Size = size,
+                TradeType = TradeType.SignalEntry,
+                GridCycleId = "signal"
+            },
+            "signal",
+            cancellationToken);
     }
 
     private async Task PlaceTakeProfitAsync(

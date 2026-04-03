@@ -86,6 +86,40 @@
     word-break: break-word;
   }
 
+  &__config-value--strategy {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__strategy-link {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--colour-primary, #7dd3a5);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  &__strategy-label--deleted {
+    color: var(--colour-muted);
+  }
+
+  &__revision-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 999px;
+    background: var(--colour-surface-alt);
+    color: var(--colour-label);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
   &__empty {
     display: flex;
     align-items: center;

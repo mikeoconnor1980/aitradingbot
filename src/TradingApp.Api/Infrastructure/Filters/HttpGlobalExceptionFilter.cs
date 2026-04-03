@@ -31,6 +31,14 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
                 StatusCodes.Status404NotFound,
                 new Envelope(ex.Message, "not_found", correlationId)),
 
+            DuplicateStrategyNameException ex => (
+                StatusCodes.Status409Conflict,
+                new Envelope(ex.Message, "duplicate_name", correlationId)),
+
+            ConflictException ex => (
+                StatusCodes.Status409Conflict,
+                new Envelope(ex.Message, "conflict", correlationId)),
+
             UnauthorizedAccessException ex => (
                 StatusCodes.Status403Forbidden,
                 new Envelope(ex.Message, "unauthorized", correlationId)),

@@ -32,12 +32,33 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
         int pageSize,
         CancellationToken cancellationToken = default)
     {
+        return await GetPagedSummariesCoreAsync(_context.BacktestRuns, page, pageSize, cancellationToken);
+    }
+
+    public async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesByStrategyAsync(
+        Guid strategyId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _context.BacktestRuns
+            .Where(backtestRun => backtestRun.StrategyId == strategyId);
+
+        return await GetPagedSummariesCoreAsync(query, page, pageSize, cancellationToken);
+    }
+
+    private async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesCoreAsync(
+        IQueryable<BacktestRun> source,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(page);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize);
 
-        var totalCount = await _context.BacktestRuns.CountAsync(cancellationToken);
+        var totalCount = await source.CountAsync(cancellationToken);
 
-        var projections = await _context.BacktestRuns
+        var projections = await source
             .AsNoTracking()
             .OrderByDescending(backtestRun => backtestRun.CreatedAtUtc)
             .Skip((page - 1) * pageSize)
@@ -54,6 +75,8 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
                 backtestRun.TotalPnl,
                 backtestRun.MaxDrawdown,
                 backtestRun.CreatedAtUtc,
+                backtestRun.StrategyId,
+                backtestRun.StrategyRevisionId,
             })
             .ToListAsync(cancellationToken);
 
@@ -69,6 +92,8 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
             TotalPnl = backtestRun.TotalPnl,
             MaxDrawdown = backtestRun.MaxDrawdown,
             CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(backtestRun.CreatedAtUtc).UtcDateTime,
+            StrategyId = backtestRun.StrategyId,
+            StrategyRevisionId = backtestRun.StrategyRevisionId,
         }).ToList();
 
         return new PagedResult<BacktestRunSummary>

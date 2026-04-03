@@ -67,12 +67,14 @@ describe("AppComponent", () => {
     expect(linkTexts).not.toContain("Connection");
   });
 
-  it("should have exactly 4 nav links", () => {
+  it("should have exactly 5 nav links including Strategies", () => {
     fixture.detectChanges();
 
-    const navLinks = fixture.nativeElement.querySelectorAll(".app-shell__link");
+    const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".app-shell__link")) as HTMLAnchorElement[];
+    const linkTexts = navLinks.map((link: HTMLAnchorElement) => link.textContent?.trim() ?? "");
 
-    expect(navLinks.length).toBe(4);
+    expect(navLinks.length).toBe(5);
+    expect(linkTexts).toContain("Strategies");
   });
 
   it("should render the status pill as a link to /connection", () => {

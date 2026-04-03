@@ -1,4 +1,5 @@
 using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Abstractions.Services;
 
@@ -7,5 +8,5 @@ namespace TradingApp.Application.Abstractions.Services;
 /// </summary>
 public interface IStrategyEngine
 {
-    Task<StrategyEvaluation> EvaluateAsync(MarketContext context, string strategyConfigJson, CancellationToken cancellationToken = default);
+    Task<StrategyEvaluation> EvaluateAsync(MarketContext context, IStrategyConfig strategyConfig, CancellationToken cancellationToken = default);
 }

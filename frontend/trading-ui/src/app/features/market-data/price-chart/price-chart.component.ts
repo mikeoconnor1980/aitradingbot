@@ -20,9 +20,14 @@ import {
   createChart,
   createSeriesMarkers,
   CrosshairMode,
+  HistogramData,
+  HistogramSeries,
   IChartApi,
+  IPriceLine,
   ISeriesApi,
   ISeriesMarkersPluginApi,
+  LineData,
+  LineSeries,
   LogicalRange,
   MouseEventParams,
   SeriesMarker,
@@ -30,6 +35,7 @@ import {
   UTCTimestamp
 } from "lightweight-charts";
 import { Candle } from "../../../core/models/candle.model";
+import { ChartIndicatorValues } from "../../../core/models/chart-indicator.model";
 import { FillEvent } from "../../../core/models/fill-event.model";
 import { PriceUpdate } from "../../../core/models/price-update.model";
 import { SignalRService } from "../../../core/services/signalr.service";
@@ -43,6 +49,34 @@ interface ConsolidatedFillGroup {
   totalClosedPnl: number;
   averagePrice: number;
 }
+
+type IndicatorToggleKey = "emaFast" | "emaSlow" | "emaTrend" | "bollinger" | "rsi" | "macd";
+
+interface IndicatorToggleState {
+  emaFast: boolean;
+  emaSlow: boolean;
+  emaTrend: boolean;
+  bollinger: boolean;
+  rsi: boolean;
+  macd: boolean;
+}
+
+const PRICE_CHART_THEME = {
+  background: "#091315",
+  panelBackground: "#071012",
+  grid: "#162629",
+  text: "#7f9d99",
+  accent: "#79cfc3",
+  info: "#8fc7d8",
+  profit: "#3bc9a8",
+  loss: "#e07a8f",
+  warning: "#caa86a",
+  warningStrong: "#b9873f",
+  band: "rgba(143, 199, 216, 0.42)",
+  bandMid: "rgba(224, 122, 143, 0.4)",
+  rsiOverbought: "rgba(224, 122, 143, 0.55)",
+  rsiOversold: "rgba(59, 201, 168, 0.55)"
+} as const;
 
 @Component({
   selector: "app-price-chart",
@@ -86,28 +120,60 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   @ViewChild("chartContainer", { static: true })
   private readonly _chartContainer!: ElementRef<HTMLDivElement>;
 
+  @ViewChild("rsiChartContainer", { static: true })
+  private readonly _rsiChartContainer!: ElementRef<HTMLDivElement>;
+
+  @ViewChild("macdChartContainer", { static: true })
+  private readonly _macdChartContainer!: ElementRef<HTMLDivElement>;
+
   private readonly _signalRService = inject(SignalRService);
   private readonly _destroyRef = inject(DestroyRef);
+
+  public indicatorToggles: IndicatorToggleState = {
+    emaFast: true,
+    emaSlow: true,
+    emaTrend: false,
+    bollinger: false,
+    rsi: false,
+    macd: false,
+  };
 
   private _chart: IChartApi | null = null;
   private _candleSeries: ISeriesApi<"Candlestick"> | null = null;
   private _markersApi: ISeriesMarkersPluginApi<Time> | null = null;
   private _resizeObserver: ResizeObserver | null = null;
   private _candles: CandlestickData<UTCTimestamp>[] = [];
+  private _indicatorCandles: Candle[] = [];
   private _currentFills: FillEvent[] = [];
   private _fillGroupsByTime = new Map<number, ConsolidatedFillGroup[]>();
   private _liveCandle: CandlestickData<UTCTimestamp> | null = null;
   private _isLoadingHistory = false;
   private _oldestTimestamp: number | null = null;
   private _crosshairHandler: ((param: MouseEventParams<Time>) => void) | null = null;
+  private _emaFastSeries: ISeriesApi<"Line"> | null = null;
+  private _emaSlowSeries: ISeriesApi<"Line"> | null = null;
+  private _emaTrendSeries: ISeriesApi<"Line"> | null = null;
+  private _bollingerUpperSeries: ISeriesApi<"Line"> | null = null;
+  private _bollingerMiddleSeries: ISeriesApi<"Line"> | null = null;
+  private _bollingerLowerSeries: ISeriesApi<"Line"> | null = null;
+  private _rsiChart: IChartApi | null = null;
+  private _rsiSeries: ISeriesApi<"Line"> | null = null;
+  private _rsiPriceLines: IPriceLine[] = [];
+  private _macdChart: IChartApi | null = null;
+  private _macdLineSeries: ISeriesApi<"Line"> | null = null;
+  private _macdSignalSeries: ISeriesApi<"Line"> | null = null;
+  private _macdHistogramSeries: ISeriesApi<"Histogram"> | null = null;
 
   public ngAfterViewInit(): void {
     this._initChart();
+    this._initRsiChart();
+    this._initMacdChart();
     this._applySeedCandles();
     this._subscribeToUpdates();
     this._subscribeToVisibleRangeChange();
     this._subscribeCrosshairMove();
     this._refreshMarkers();
+    this._refreshIndicatorSeries();
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
@@ -136,6 +202,8 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   public ngOnDestroy(): void {
     const resizeObserver = this._resizeObserver;
     const chart = this._chart;
+    const rsiChart = this._rsiChart;
+    const macdChart = this._macdChart;
 
     if (this._crosshairHandler) {
       chart?.unsubscribeCrosshairMove(this._crosshairHandler);
@@ -144,11 +212,35 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     this._crosshairHandler = null;
     this._resizeObserver = null;
     this._markersApi = null;
+    this._emaFastSeries = null;
+    this._emaSlowSeries = null;
+    this._emaTrendSeries = null;
+    this._bollingerUpperSeries = null;
+    this._bollingerMiddleSeries = null;
+    this._bollingerLowerSeries = null;
     this._candleSeries = null;
     this._chart = null;
+    this._rsiPriceLines = [];
+    this._rsiSeries = null;
+    this._rsiChart = null;
+    this._macdHistogramSeries = null;
+    this._macdLineSeries = null;
+    this._macdSignalSeries = null;
+    this._macdChart = null;
 
     resizeObserver?.disconnect();
     chart?.remove();
+    rsiChart?.remove();
+    macdChart?.remove();
+  }
+
+  public onIndicatorToggleChanged(key: IndicatorToggleKey, checked: boolean): void {
+    this.indicatorToggles = {
+      ...this.indicatorToggles,
+      [key]: checked,
+    };
+
+    this._refreshIndicatorSeries();
   }
 
   public prependCandles(candles: Candle[]): void {
@@ -172,10 +264,14 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     const unique = newData.filter(c => (c.time as number) < currentOldest);
 
     if (unique.length) {
+      this._indicatorCandles = [...candles, ...this._indicatorCandles]
+        .sort((left: Candle, right: Candle) => left.timestamp - right.timestamp)
+        .filter((candle: Candle, index: number, all: Candle[]) => index === 0 || candle.timestamp !== all[index - 1].timestamp);
       this._candles = [...unique, ...this._candles];
       this._oldestTimestamp = this._candles[0].time as number;
       this._candleSeries?.setData(this._candles);
       this._refreshMarkers();
+      this._refreshIndicatorSeries();
     }
 
     this._isLoadingHistory = false;
@@ -193,20 +289,20 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: container.clientWidth,
       height: 300,
       layout: {
-        background: { color: "#1a1a2e" },
-        textColor: "#a0a0b0"
+        background: { color: PRICE_CHART_THEME.background },
+        textColor: PRICE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#2a2a3e" },
-        horzLines: { color: "#2a2a3e" }
+        vertLines: { color: PRICE_CHART_THEME.grid },
+        horzLines: { color: PRICE_CHART_THEME.grid }
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: "#2a2a3e"
+        borderColor: PRICE_CHART_THEME.grid
       },
       rightPriceScale: {
-        borderColor: "#2a2a3e"
+        borderColor: PRICE_CHART_THEME.grid
       },
       crosshair: {
         mode: CrosshairMode.Normal
@@ -214,11 +310,11 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     });
 
     this._candleSeries = this._chart.addSeries(CandlestickSeries, {
-      upColor: "#26a69a",
-      downColor: "#ef5350",
+      upColor: PRICE_CHART_THEME.profit,
+      downColor: PRICE_CHART_THEME.loss,
       borderVisible: false,
-      wickUpColor: "#26a69a",
-      wickDownColor: "#ef5350",
+      wickUpColor: PRICE_CHART_THEME.profit,
+      wickDownColor: PRICE_CHART_THEME.loss,
       priceFormat: {
         type: "price",
         precision: 2,
@@ -227,15 +323,131 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     });
 
     this._markersApi = createSeriesMarkers(this._candleSeries, []);
+    this._emaFastSeries = this._chart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.accent,
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._emaSlowSeries = this._chart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.warningStrong,
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._emaTrendSeries = this._chart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.profit,
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._bollingerUpperSeries = this._chart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.band,
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._bollingerMiddleSeries = this._chart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.bandMid,
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._bollingerLowerSeries = this._chart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.band,
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
 
     this._resizeObserver = new ResizeObserver((entries: ResizeObserverEntry[]) => {
       for (const entry of entries) {
         const { width } = entry.contentRect;
         this._chart?.applyOptions({ width });
+        this._rsiChart?.applyOptions({ width });
+        this._macdChart?.applyOptions({ width });
       }
     });
 
     this._resizeObserver.observe(container);
+  }
+
+  private _initRsiChart(): void {
+    const container = this._rsiChartContainer.nativeElement;
+
+    this._rsiChart = createChart(container, {
+      width: container.clientWidth,
+      height: 140,
+      layout: {
+        background: { color: PRICE_CHART_THEME.panelBackground },
+        textColor: PRICE_CHART_THEME.text
+      },
+      grid: {
+        vertLines: { color: PRICE_CHART_THEME.grid },
+        horzLines: { color: PRICE_CHART_THEME.grid }
+      },
+      timeScale: {
+        visible: false,
+        borderColor: PRICE_CHART_THEME.grid
+      },
+      rightPriceScale: {
+        borderColor: PRICE_CHART_THEME.grid
+      }
+    });
+
+    this._rsiSeries = this._rsiChart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.warning,
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    this._rsiPriceLines = [
+      this._rsiSeries.createPriceLine({ price: 70, color: PRICE_CHART_THEME.rsiOverbought, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" }),
+      this._rsiSeries.createPriceLine({ price: 30, color: PRICE_CHART_THEME.rsiOversold, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" })
+    ];
+  }
+
+  private _initMacdChart(): void {
+    const container = this._macdChartContainer.nativeElement;
+
+    this._macdChart = createChart(container, {
+      width: container.clientWidth,
+      height: 160,
+      layout: {
+        background: { color: PRICE_CHART_THEME.panelBackground },
+        textColor: PRICE_CHART_THEME.text
+      },
+      grid: {
+        vertLines: { color: PRICE_CHART_THEME.grid },
+        horzLines: { color: PRICE_CHART_THEME.grid }
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        borderColor: PRICE_CHART_THEME.grid
+      },
+      rightPriceScale: {
+        borderColor: PRICE_CHART_THEME.grid
+      }
+    });
+
+    this._macdHistogramSeries = this._macdChart.addSeries(HistogramSeries, {
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    this._macdLineSeries = this._macdChart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.accent,
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._macdSignalSeries = this._macdChart.addSeries(LineSeries, {
+      color: PRICE_CHART_THEME.warningStrong,
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
   }
 
   private _applySeedCandles(): void {
@@ -248,6 +460,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     const sorted = [...this.seedCandles].sort((a, b) => a.timestamp - b.timestamp);
+    this._indicatorCandles = sorted;
     this._candles = sorted.map((c) => ({
       time: Math.floor(c.timestamp / 1000) as UTCTimestamp,
       open: c.open,
@@ -258,7 +471,14 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     this._oldestTimestamp = this._candles.length ? (this._candles[0].time as number) : null;
     this._candleSeries?.setData(this._candles);
     this._refreshMarkers();
+    this._refreshIndicatorSeries();
     this._chart?.timeScale().fitContent();
+
+    const range = this._chart?.timeScale().getVisibleLogicalRange();
+    if (range) {
+      this._rsiChart?.timeScale().setVisibleLogicalRange(range);
+      this._macdChart?.timeScale().setVisibleLogicalRange(range);
+    }
   }
 
   private _subscribeToUpdates(): void {
@@ -274,6 +494,9 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     this._chart.timeScale().subscribeVisibleLogicalRangeChange((range: LogicalRange | null) => {
       if (!range || this._isLoadingHistory || !this._candles.length) return;
+
+       this._rsiChart?.timeScale().setVisibleLogicalRange(range);
+       this._macdChart?.timeScale().setVisibleLogicalRange(range);
 
       // When user scrolls to the left edge (first ~10 candles visible), load more
       if (range.from < 10) {
@@ -299,6 +522,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
         this._candles.push({ ...this._liveCandle });
         this._candleSeries?.setData(this._candles);
         this._refreshMarkers();
+        this._refreshIndicatorSeries();
       }
       this._liveCandle = { time: candleTime, open: price, high: price, low: price, close: price };
       this._chart?.timeScale().scrollToRealTime();
@@ -381,7 +605,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       markers.push({
         time: aggregatedGroup.time as UTCTimestamp,
         position: isBuy ? "belowBar" : "aboveBar",
-        color: isBuy ? "#26a69a" : "#f59e0b",
+        color: isBuy ? PRICE_CHART_THEME.profit : PRICE_CHART_THEME.warning,
         shape: isBuy ? "arrowUp" : "arrowDown",
         text: this._buildMarkerText(aggregatedGroup)
       });
@@ -495,5 +719,51 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   private _normalizeAsset(asset: string): string {
     return asset.replace(/-PERP$/i, "").toUpperCase();
+  }
+
+  private _refreshIndicatorSeries(): void {
+    this._setLineSeriesData(this._emaFastSeries, this.indicatorToggles.emaFast ? this._mapIndicatorLineData(indicators => indicators?.emaFast) : []);
+    this._setLineSeriesData(this._emaSlowSeries, this.indicatorToggles.emaSlow ? this._mapIndicatorLineData(indicators => indicators?.emaSlow) : []);
+    this._setLineSeriesData(this._emaTrendSeries, this.indicatorToggles.emaTrend ? this._mapIndicatorLineData(indicators => indicators?.emaTrend) : []);
+
+    const showBollinger = this.indicatorToggles.bollinger;
+    this._setLineSeriesData(this._bollingerUpperSeries, showBollinger ? this._mapIndicatorLineData(indicators => indicators?.bollingerUpper) : []);
+    this._setLineSeriesData(this._bollingerMiddleSeries, showBollinger ? this._mapIndicatorLineData(indicators => indicators?.bollingerMiddle) : []);
+    this._setLineSeriesData(this._bollingerLowerSeries, showBollinger ? this._mapIndicatorLineData(indicators => indicators?.bollingerLower) : []);
+
+    this._setLineSeriesData(this._rsiSeries, this.indicatorToggles.rsi ? this._mapIndicatorLineData(indicators => indicators?.rsi) : []);
+    this._setLineSeriesData(this._macdLineSeries, this.indicatorToggles.macd ? this._mapIndicatorLineData(indicators => indicators?.macdLine) : []);
+    this._setLineSeriesData(this._macdSignalSeries, this.indicatorToggles.macd ? this._mapIndicatorLineData(indicators => indicators?.macdSignal) : []);
+    this._setHistogramSeriesData(this._macdHistogramSeries, this.indicatorToggles.macd ? this._mapMacdHistogramData() : []);
+  }
+
+  private _mapIndicatorLineData(selector: (indicators: ChartIndicatorValues | null | undefined) => number | null | undefined): LineData<UTCTimestamp>[] {
+    return this._indicatorCandles
+      .filter((candle: Candle) => selector(candle.indicators) != null)
+      .map((candle: Candle) => ({
+        time: Math.floor(candle.timestamp / 1000) as UTCTimestamp,
+        value: selector(candle.indicators) as number,
+      }));
+  }
+
+  private _mapMacdHistogramData(): HistogramData<UTCTimestamp>[] {
+    return this._indicatorCandles
+      .filter((candle: Candle) => candle.indicators?.macdHistogram != null)
+      .map((candle: Candle) => {
+        const value = candle.indicators?.macdHistogram as number;
+        return {
+          time: Math.floor(candle.timestamp / 1000) as UTCTimestamp,
+          value,
+          color: value >= 0 ? "rgba(34, 197, 94, 0.8)" : "rgba(239, 68, 68, 0.8)",
+        };
+      });
+  }
+
+  private _setLineSeriesData(series: ISeriesApi<"Line"> | null, data: LineData<UTCTimestamp>[]): void {
+    series?.setData(data);
+  }
+
+  private _setHistogramSeriesData(series: ISeriesApi<"Histogram"> | null, data: HistogramData<UTCTimestamp>[]): void {
+    series?.setData(data);
   }
 }

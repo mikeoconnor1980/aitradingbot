@@ -88,17 +88,17 @@
     flex-direction: column;
     gap: 12px;
     padding: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--colour-border-subtle);
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--colour-surface-soft);
   }
 
   &__sltp-warning {
-    border-left: 3px solid #f59e0b;
+    border-left: 3px solid var(--colour-warning-elevated);
     color: var(--colour-label, #aaa);
     font-size: 12px;
     padding: 8px 12px;
-    background: rgba(245, 158, 11, 0.08);
+    background: var(--colour-warning-soft);
 
     &--liquidation {
       border-left-color: var(--colour-loss, #f44336);
@@ -116,7 +116,7 @@
     align-items: center;
     padding: 8px 12px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--colour-surface-soft);
     margin-top: -8px;
   }
 
@@ -154,8 +154,8 @@
     margin-top: -12px;
 
     &--limit {
-      color: #2196f3;
-      background: rgba(33, 150, 243, 0.12);
+      color: var(--colour-info);
+      background: var(--colour-info-soft);
     }
 
     &--market {

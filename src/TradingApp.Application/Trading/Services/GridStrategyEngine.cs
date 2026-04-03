@@ -1,28 +1,29 @@
-using System.Text.Json;
 using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Trading;
 
 namespace TradingApp.Application.Trading.Services;
 
 public sealed class GridStrategyEngine : IStrategyEngine
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
-    public Task<StrategyEvaluation> EvaluateAsync(MarketContext context, string strategyConfigJson, CancellationToken cancellationToken = default)
+    public Task<StrategyEvaluation> EvaluateAsync(MarketContext context, IStrategyConfig strategyConfig, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrWhiteSpace(strategyConfigJson);
+        ArgumentNullException.ThrowIfNull(strategyConfig);
 
-        var config = JsonSerializer.Deserialize<GridStrategyConfig>(strategyConfigJson, JsonOptions)
-            ?? throw new ArgumentException("Strategy config JSON is invalid.", nameof(strategyConfigJson));
+        if (strategyConfig is not StrategyConfig config)
+        {
+            throw new ArgumentException(
+                $"Expected {nameof(StrategyConfig)} but received {strategyConfig.GetType().Name}.",
+                nameof(strategyConfig));
+        }
 
-        if (config.GridLevels <= 0 || config.GridSpacing <= 0m || config.PositionSize <= 0m)
+        if (config.Grid is null
+            || config.Grid.Levels <= 0
+            || config.Grid.Spacing <= 0m
+            || config.Risk.PositionSizeValue <= 0m)
         {
             return Task.FromResult(new StrategyEvaluation
             {

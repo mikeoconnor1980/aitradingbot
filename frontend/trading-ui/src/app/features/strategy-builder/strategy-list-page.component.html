@@ -1,0 +1,95 @@
+<section class="strategy-list">
+  <header class="strategy-list__header">
+    <div>
+      <h2 class="strategy-list__title">Strategies</h2>
+      <p class="strategy-list__subtitle">Manage saved grid strategies, edit configurations, and remove inactive ideas.</p>
+    </div>
+
+    <button mat-raised-button color="primary" type="button" (click)="onNewStrategy()">
+      <mat-icon>add</mat-icon>
+      <span>New Strategy</span>
+    </button>
+  </header>
+
+  @if (isLoading) {
+    <mat-card class="strategy-list__state strategy-list__state--loading">
+      <mat-card-content>
+        <mat-spinner diameter="42"></mat-spinner>
+        <p>Loading strategies...</p>
+      </mat-card-content>
+    </mat-card>
+  } @else if (strategies.length === 0) {
+    <mat-card class="strategy-list__state strategy-list__state--empty">
+      <mat-card-content>
+        <p>No strategies yet. Start with a new grid strategy to build and save your first configuration.</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <mat-card class="strategy-list__table-card">
+      <mat-card-content>
+        <div class="strategy-list__table-wrap">
+          <table mat-table [dataSource]="strategies" class="strategy-list__table">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Name</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.name }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="market">
+              <th mat-header-cell *matHeaderCellDef>Market</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.market }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="timeframe">
+              <th mat-header-cell *matHeaderCellDef>Timeframe</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.timeframe }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="direction">
+              <th mat-header-cell *matHeaderCellDef>Direction</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.direction }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="strategyMode">
+              <th mat-header-cell *matHeaderCellDef>Mode</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.strategyMode }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="createdAt">
+              <th mat-header-cell *matHeaderCellDef>Created</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.createdAt | date: "short" }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="updatedAt">
+              <th mat-header-cell *matHeaderCellDef>Updated</th>
+              <td mat-cell *matCellDef="let strategy">{{ strategy.updatedAt | date: "short" }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let strategy" class="strategy-list__actions">
+                <button mat-icon-button type="button" aria-label="Edit strategy" (click)="onEdit(strategy)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  color="primary"
+                  aria-label="Backtest strategy"
+                  matTooltip="Backtest"
+                  (click)="onBacktestStrategy(strategy.id); $event.stopPropagation()">
+                  <mat-icon>science</mat-icon>
+                </button>
+                <button mat-icon-button type="button" color="warn" aria-label="Delete strategy" (click)="onDelete(strategy)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

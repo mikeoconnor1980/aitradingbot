@@ -12,4 +12,7 @@ public sealed class BacktestRunSummary
     public required decimal TotalPnl { get; init; }
     public required decimal MaxDrawdown { get; init; }
     public required DateTime CreatedAt { get; init; }
+    public Guid? StrategyId { get; init; }
+    public int? StrategyRevisionId { get; init; }
+    public string? StrategyName { get; init; }
 }

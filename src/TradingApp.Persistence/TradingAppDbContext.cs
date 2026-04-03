@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
 
 namespace TradingApp.Persistence;
 
@@ -13,6 +14,8 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<Candle> Candles => Set<Candle>();
     public DbSet<FundingRate> FundingRates => Set<FundingRate>();
     public DbSet<BacktestRun> BacktestRuns => Set<BacktestRun>();
+    public DbSet<Strategy> Strategies => Set<Strategy>();
+    public DbSet<StrategyRevision> StrategyRevisions => Set<StrategyRevision>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -98,6 +101,9 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(backtestRun => backtestRun.StrategyConfigJson)
                 .IsRequired();
 
+            entity.Property(backtestRun => backtestRun.ExecutionConfigJson)
+                .IsRequired();
+
             entity.Property(backtestRun => backtestRun.TradesJson)
                 .IsRequired();
 
@@ -111,6 +117,10 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(backtestRun => backtestRun.OrderEventLogJson);
 
             entity.Property(backtestRun => backtestRun.GridCycleLogJson);
+
+            entity.Property(backtestRun => backtestRun.StrategyId);
+
+            entity.Property(backtestRun => backtestRun.StrategyRevisionId);
 
             entity.Property(backtestRun => backtestRun.Status)
                 .IsRequired();
@@ -135,6 +145,100 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.Property(backtestRun => backtestRun.TotalFeesPaid)
                 .HasConversion<double>();
+
+            entity.HasIndex(backtestRun => backtestRun.StrategyId)
+                .HasDatabaseName("IX_BacktestRuns_StrategyId");
+        });
+
+        modelBuilder.Entity<Strategy>(entity =>
+        {
+            entity.ToTable("Strategies");
+
+            entity.HasKey(strategy => strategy.Id);
+
+            entity.Property(strategy => strategy.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(strategy => strategy.UserId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.Name)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.StrategyType)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.ConfigJson)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.Version)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.IsActive)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.IsRunning)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(strategy => strategy.UpdatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(strategy => new { strategy.UserId, strategy.IsActive })
+                .HasDatabaseName("IX_Strategies_UserId_IsActive");
+
+            entity.HasIndex(strategy => new { strategy.UserId, strategy.Name })
+                .IsUnique()
+                .HasDatabaseName("IX_Strategies_UserId_Name")
+                .HasFilter("[IsActive] = 1");
+        });
+
+        modelBuilder.Entity<StrategyRevision>(entity =>
+        {
+            entity.ToTable("StrategyRevisions");
+
+            entity.HasKey(revision => revision.Id);
+
+            entity.Property(revision => revision.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(revision => revision.StrategyId)
+                .IsRequired();
+
+            entity.Property(revision => revision.RevisionNumber)
+                .IsRequired();
+
+            entity.Property(revision => revision.ConfigJson)
+                .IsRequired();
+
+            entity.Property(revision => revision.Source)
+                .HasMaxLength(20)
+                .IsRequired()
+                .HasConversion<string>();
+
+            entity.Property(revision => revision.Label)
+                .HasMaxLength(200);
+
+            entity.Property(revision => revision.ChangeSummary)
+                .HasMaxLength(2000)
+                .IsRequired();
+
+            entity.Property(revision => revision.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Strategy>()
+                .WithMany()
+                .HasForeignKey(revision => revision.StrategyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(revision => new { revision.StrategyId, revision.RevisionNumber })
+                .IsUnique()
+                .HasDatabaseName("IX_StrategyRevisions_StrategyId_RevisionNumber");
         });
     }
 }

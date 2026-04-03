@@ -13,18 +13,44 @@ describe("BacktestResultComponent", () => {
     startDate: "2024-01-01T00:00:00Z",
     endDate: "2024-01-31T00:00:00Z",
     strategyConfig: {
-      gridLevels: 8,
-      entryMode: "WaitForLimitPrice",
-      manualAnchorPrice: 42500,
-      gridSpacing: 0.45,
-      takeProfitPercent: 1.2,
-      breakdownThreshold: -3,
-      makerFee: 0.0001,
-      takerFee: 0.00035,
-      slippage: 0,
-      positionSize: 250,
-      leverage: 4,
-      stopLossPercent: 5
+      schemaVersion: 1,
+      strategyMode: "grid",
+      strategyName: "Backtest",
+      exchange: "Hyperliquid",
+      market: "BTC",
+      timeframe: "15m",
+      direction: "long",
+      enabled: true,
+      grid: {
+        levels: 8,
+        entryMode: "WaitForLimitPrice",
+        anchorPrice: 42500,
+        spacing: 0.45,
+        breakdownThreshold: -3
+      },
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 1.2 },
+        stopLoss: { enabled: true, type: "fixed_percent", value: 5 },
+        exitOnOppositeSignal: false
+      },
+      risk: {
+        positionSizeType: "fixed_notional",
+        positionSizeValue: 250,
+        leverage: 4,
+        maxOpenTrades: 1,
+        cooldownValue: 0,
+        cooldownUnit: "candles",
+        allowSameCandleReentry: false
+      },
+      source: { entryPoint: "ui_builder", summary: "Backtest: BTC" }
+    },
+    executionConfig: {
+      feeModel: {
+        makerFeeRate: 0.0001,
+        takerFeeRate: 0.00035,
+        slippageRate: 0
+      },
+      leverage: 4
     },
     initialCapital: 10000,
     status: "Completed",
@@ -103,8 +129,11 @@ describe("BacktestResultComponent", () => {
       ...mockResult,
       strategyConfig: {
         ...mockResult.strategyConfig,
-        entryMode: "InitialMarketThenGrid",
-        manualAnchorPrice: null
+        grid: {
+          ...mockResult.strategyConfig.grid!,
+          entryMode: "InitialMarketThenGrid",
+          anchorPrice: null
+        }
       }
     });
     fixture.detectChanges();

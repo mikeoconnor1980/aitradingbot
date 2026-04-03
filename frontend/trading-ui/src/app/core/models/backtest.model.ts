@@ -1,27 +1,102 @@
 export type BacktestEntryMode = "AutoFromSignalCandle" | "InitialMarketThenGrid" | "WaitForLimitPrice";
 
-export interface GridStrategyConfig {
-  gridLevels: number;
-  entryMode?: BacktestEntryMode;
-  manualAnchorPrice?: number | null;
-  gridSpacing: number;
-  takeProfitPercent: number;
+export interface BacktestGridConfig {
+  levels: number;
+  entryMode: BacktestEntryMode;
+  anchorPrice?: number | null;
+  spacing: number;
   breakdownThreshold: number;
+}
+
+export interface BacktestRsiParams {
+  period: number;
+  operator: string;
+  value: number;
+}
+
+export interface BacktestEntryConditionConfig {
+  id: string;
+  enabled: boolean;
+  type: string;
+  label: string;
+  params: BacktestRsiParams;
+}
+
+export interface BacktestExitRuleConfig {
+  enabled: boolean;
+  type: string;
+  value?: number | null;
+  lookback?: number | null;
+}
+
+export interface BacktestExitConfig {
+  takeProfit: BacktestExitRuleConfig;
+  stopLoss: BacktestExitRuleConfig;
+  exitOnOppositeSignal: boolean;
+}
+
+export interface BacktestRiskConfig {
+  positionSizeType: string;
+  positionSizeValue: number;
+  leverage: number;
+  maxOpenTrades: number;
+  cooldownValue: number;
+  cooldownUnit: string;
+  allowSameCandleReentry: boolean;
+}
+
+export interface BacktestSourceMetadata {
+  entryPoint: string;
+  summary?: string;
+}
+
+export interface BacktestStrategyConfig {
+  schemaVersion: number;
+  strategyMode: string;
+  strategyName: string;
+  exchange: string;
+  market: string;
+  timeframe: string;
+  direction: string;
+  enabled: boolean;
+  templateId?: string | null;
+  grid?: BacktestGridConfig | null;
+  trendFilter?: null;
+  entryLogic?: string | null;
+  entryConditions?: BacktestEntryConditionConfig[] | null;
+  exit: BacktestExitConfig;
+  risk: BacktestRiskConfig;
+  metadata?: { tags: string[]; notes: string } | null;
+  source?: BacktestSourceMetadata | null;
+}
+
+export interface FeeModel {
+  makerFeeRate: number;
+  takerFeeRate: number;
+  slippageRate: number;
+}
+
+export interface ExecutionConfig {
+  feeModel: FeeModel;
+  leverage?: number;
+}
+
+export interface BacktestExecutionConfigRequest {
   makerFee: number;
   takerFee: number;
   slippage: number;
-  positionSize: number;
-  leverage: number;
-  stopLossPercent: number;
 }
 
 export interface BacktestRequest {
-  symbol: string;
-  intervals: string[];
+  symbol?: string;
+  intervals?: string[];
   startDate: string;
   endDate: string;
   initialCapital: number;
-  strategyConfig: GridStrategyConfig;
+  strategyConfig?: BacktestStrategyConfig;
+  executionConfig: BacktestExecutionConfigRequest;
+  enableAuditLog?: boolean;
+  strategyId?: string;
 }
 
 export interface BacktestTrade {
@@ -48,7 +123,8 @@ export interface BacktestResult {
   intervals: string[];
   startDate: string;
   endDate: string;
-  strategyConfig: GridStrategyConfig;
+  strategyConfig: BacktestStrategyConfig;
+  executionConfig: ExecutionConfig;
   initialCapital: number;
   status: string;
   progress: number;
@@ -69,6 +145,9 @@ export interface BacktestResult {
   createdAt: string;
   equityTimeSeries?: EquitySnapshot[];
   hasAuditLog: boolean;
+  strategyId?: string | null;
+  strategyRevisionId?: number | null;
+  strategyName?: string | null;
 }
 
 export interface BacktestProgress {
@@ -90,15 +169,12 @@ export interface BacktestSummary {
   totalPnl: number;
   maxDrawdown: number;
   createdAt: string;
+  strategyId?: string | null;
+  strategyRevisionId?: number | null;
+  strategyName?: string | null;
 }
 
-export interface PagedResult<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-}
+export type { PagedResult } from "./paged-result.model";
 
 export interface CoverageReport {
   coverage: Record<string, IntervalCoverage>;

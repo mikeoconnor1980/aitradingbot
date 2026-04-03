@@ -3,6 +3,8 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Queries;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.StrategyAuthoring.Serialization;
+using TradingApp.Application.Trading.Services;
 
 namespace TradingApp.Application.Backtesting;
 
@@ -10,11 +12,7 @@ public sealed record GetBacktestDebugQuery(Guid BacktestId, string CycleId) : Qu
 
 public sealed class GetBacktestDebugQueryHandler : QueryHandler<GetBacktestDebugQuery, BacktestDebugResponse?>
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions JsonOptions = StrategyJsonOptions.Default;
 
     private readonly IBacktestRunRepository _repository;
 
@@ -46,12 +44,23 @@ public sealed class GetBacktestDebugQueryHandler : QueryHandler<GetBacktestDebug
             ? []
             : JsonSerializer.Deserialize<List<GridCycleEntry>>(backtestRun.GridCycleLogJson, JsonOptions) ?? [];
 
+        var filteredCandleEvaluations = candleEvaluations
+            .Where(entry => string.Equals(entry.GridCycleId, request.CycleId, StringComparison.Ordinal))
+            .OrderBy(entry => entry.TimestampUtc)
+            .ToList();
+
+        var indicatorSeries = ChartIndicatorSeriesCalculator.Calculate(filteredCandleEvaluations
+            .Select(entry => (entry.High, entry.Low, entry.Close))
+            .ToList());
+
+        var enrichedCandleEvaluations = filteredCandleEvaluations
+            .Select((entry, index) => entry with { Indicators = indicatorSeries[index] })
+            .ToList();
+
         return new BacktestDebugResponse
         {
             CycleId = request.CycleId,
-            CandleEvaluations = candleEvaluations
-                .Where(entry => string.Equals(entry.GridCycleId, request.CycleId, StringComparison.Ordinal))
-                .ToList(),
+            CandleEvaluations = enrichedCandleEvaluations,
             OrderEvents = orderEvents
                 .Where(entry => string.Equals(entry.GridCycleId, request.CycleId, StringComparison.Ordinal))
                 .ToList(),

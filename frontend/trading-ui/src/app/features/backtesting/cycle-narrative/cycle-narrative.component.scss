@@ -31,15 +31,15 @@
   }
 
   &__line--deploy .narrative__icon {
-    color: #f59e0b;
+    color: var(--colour-warning-elevated);
   }
 
   &__line--structure .narrative__icon {
-    color: #60a5fa;
+    color: var(--colour-info);
   }
 
   &__line--fill .narrative__icon {
-    color: #26a69a;
+    color: var(--colour-profit);
   }
 
   &__line--profit .narrative__icon {

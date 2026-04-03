@@ -1,3 +1,5 @@
+using TradingApp.Domain.Trading;
+
 namespace TradingApp.Application.Backtesting.Models;
 
 public sealed class BacktestConfig
@@ -7,8 +9,8 @@ public sealed class BacktestConfig
     public required long StartDateUtc { get; init; }
     public required long EndDateUtc { get; init; }
     public required decimal InitialCapital { get; init; }
-    public required FeeModel FeeModel { get; init; }
+    public required IStrategyConfig Strategy { get; init; }
+    public required ExecutionConfig Execution { get; init; }
     public int WarmupPeriod { get; init; } = 200;
-    public required string StrategyConfigJson { get; init; }
     public bool EnableAuditLog { get; init; } = true;
 }

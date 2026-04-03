@@ -18,9 +18,9 @@ describe("CycleChartComponent", () => {
       closeTimestampUtc: 0
     };
 
-    expect((component as any)._isFilledLevel(summary, 0)).toBeFalse();
-    expect((component as any)._isFilledLevel(summary, 1)).toBeFalse();
-    expect((component as any)._isFilledLevel(summary, 2)).toBeTrue();
+    expect(component["_isFilledLevel"](summary, 0)).toBeFalse();
+    expect(component["_isFilledLevel"](summary, 1)).toBeFalse();
+    expect(component["_isFilledLevel"](summary, 2)).toBeTrue();
   });
 
   it("should given two filled levels when grid prices are ascending then mark the two highest levels as filled", () => {
@@ -40,9 +40,9 @@ describe("CycleChartComponent", () => {
       closeTimestampUtc: 0
     };
 
-    expect((component as any)._isFilledLevel(summary, 0)).toBeFalse();
-    expect((component as any)._isFilledLevel(summary, 1)).toBeFalse();
-    expect((component as any)._isFilledLevel(summary, 2)).toBeTrue();
-    expect((component as any)._isFilledLevel(summary, 3)).toBeTrue();
+    expect(component["_isFilledLevel"](summary, 0)).toBeFalse();
+    expect(component["_isFilledLevel"](summary, 1)).toBeFalse();
+    expect(component["_isFilledLevel"](summary, 2)).toBeTrue();
+    expect(component["_isFilledLevel"](summary, 3)).toBeTrue();
   });
 });

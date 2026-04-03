@@ -1,0 +1,36 @@
+.conditions-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  .mat-mdc-card-header {
+    padding: 1.1rem 1rem 0.45rem;
+    min-height: 0;
+  }
+
+  .mat-mdc-card-header-text {
+    margin: 0;
+  }
+
+  .mat-mdc-card-content {
+    padding: 0 1rem 0.9rem;
+  }
+
+  .mat-mdc-card-actions {
+    padding: 0 1rem 1rem;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  &__message {
+    margin: 0;
+    color: var(--colour-muted);
+    font-style: italic;
+    padding: 0.75rem 0;
+  }
+}
