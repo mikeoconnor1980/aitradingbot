@@ -6,5 +6,6 @@ namespace TradingApp.Application.Trading.Models;
 public sealed class StrategyEvaluation
 {
     public bool SetupDetected { get; init; }
+    public bool? TrendFilterPassed { get; init; }
     public string? Reason { get; init; }
 }

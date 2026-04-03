@@ -1,0 +1,112 @@
+<mat-card class="condition-item" [formGroup]="group">
+  <div class="condition-item__header">
+    <div class="condition-item__identity">
+      <mat-checkbox formControlName="enabled" color="primary">
+        <span class="condition-item__type-label">MACD</span>
+      </mat-checkbox>
+
+      <app-info-popover
+        title="MACD"
+        description="MACD (Moving Average Convergence Divergence) is a momentum indicator. Use it to detect signal line crossovers, zero-line direction, or histogram momentum before the strategy enters a trade."
+      />
+    </div>
+
+    <mat-form-field class="condition-item__label-field" appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" placeholder="e.g. MACD Bullish Cross" />
+    </mat-form-field>
+
+    <div class="condition-item__actions">
+      <button
+        mat-icon-button
+        type="button"
+        matTooltip="Duplicate"
+        [attr.aria-label]="'Duplicate MACD condition ' + (index + 1)"
+        (click)="onDuplicate()"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        color="warn"
+        matTooltip="Remove"
+        [attr.aria-label]="'Remove MACD condition ' + (index + 1)"
+        (click)="onRemove()"
+      >
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="condition-item__fields">
+    <mat-form-field appearance="outline">
+      <mat-label>Fast Period</mat-label>
+      <input matInput type="number" formControlName="fastPeriod" min="2" max="50" step="1" />
+      <app-info-popover
+        matSuffix
+        title="Fast Period"
+        description="Fast period controls the short EMA used in MACD. Lower values react faster to price changes, but they also create more noise and more frequent crossovers."
+      />
+      @if (hasError("fastPeriod", "required")) {
+        <mat-error>Fast period is required.</mat-error>
+      }
+      @if (hasError("fastPeriod", "min") || hasError("fastPeriod", "max")) {
+        <mat-error>Fast period must be between 2 and 50.</mat-error>
+      }
+      @if (hasFastPeriodOrderingError()) {
+        <mat-error>Fast period must be less than slow period.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Slow Period</mat-label>
+      <input matInput type="number" formControlName="slowPeriod" min="5" max="200" step="1" />
+      <app-info-popover
+        matSuffix
+        title="Slow Period"
+        description="Slow period controls the longer EMA used in MACD. Higher values smooth the indicator and define the broader momentum baseline that the fast EMA is compared against."
+      />
+      @if (hasError("slowPeriod", "required")) {
+        <mat-error>Slow period is required.</mat-error>
+      }
+      @if (hasError("slowPeriod", "min") || hasError("slowPeriod", "max")) {
+        <mat-error>Slow period must be between 5 and 200.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Signal Period</mat-label>
+      <input matInput type="number" formControlName="signalPeriod" min="2" max="50" step="1" />
+      <app-info-popover
+        matSuffix
+        title="Signal Period"
+        description="Signal period controls the EMA applied to the MACD line itself. Shorter values make signal-line crosses appear sooner, while longer values reduce sensitivity."
+      />
+      @if (hasError("signalPeriod", "required")) {
+        <mat-error>Signal period is required.</mat-error>
+      }
+      @if (hasError("signalPeriod", "min") || hasError("signalPeriod", "max")) {
+        <mat-error>Signal period must be between 2 and 50.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Operator</mat-label>
+      <mat-select formControlName="operator">
+        @for (operator of operators; track operator.value) {
+          <mat-option [value]="operator.value">{{ operator.label }}</mat-option>
+        }
+      </mat-select>
+      <app-info-popover
+        matSuffix
+        title="Operator"
+        description="Operator defines how MACD is evaluated. Choose signal-line crosses for entry triggers, zero-line checks for directional bias, or histogram rising and falling for momentum acceleration or decay."
+      />
+      @if (hasError("operator", "required")) {
+        <mat-error>Operator is required.</mat-error>
+      }
+    </mat-form-field>
+  </div>
+</mat-card>

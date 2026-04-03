@@ -1,0 +1,19 @@
+<div class="confidence-badge confidence-badge--{{ level }}">
+  <div class="confidence-badge__pill">
+    <mat-icon>{{ icon }}</mat-icon>
+    <span>{{ label }}</span>
+  </div>
+
+  @if (level === "low") {
+    <div class="confidence-badge__message confidence-badge__message--warning">
+      This interpretation needs extra review before you save it.
+    </div>
+  }
+
+  @if (clarificationNeeded !== null) {
+    <div class="confidence-badge__message confidence-badge__message--clarification">
+      <mat-icon>help_outline</mat-icon>
+      <span>{{ clarificationNeeded }}</span>
+    </div>
+  }
+</div>

@@ -7,6 +7,11 @@ export type EntryMode = "auto_from_signal_candle" | "manual";
 export type EntryLogic = "all" | "any";
 export type EntryConditionType = "rsi" | "price_vs_ema" | "macd";
 export type RsiOperator = "lt" | "lte" | "gt" | "gte" | "cross_above" | "cross_below";
+export type MacdOperator = "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling";
+export type TrendFilterType = "ema_cross" | "sma_cross" | "price_above_ema";
+export type TrendOperator = "gt" | "lt" | "gte" | "lte" | "cross_above" | "cross_below" | "above" | "below";
+export type PriceVsEmaOperator = "near" | "above" | "below" | "cross_above" | "cross_below" | "touch";
+export type PriceVsEmaDistanceType = "percent" | "atr_multiple" | "absolute";
 
 export interface GridConfig {
   levels: number;
@@ -22,12 +27,36 @@ export interface RsiParams {
   value: number;
 }
 
+export interface TrendFilterConfig {
+  enabled: boolean;
+  type: TrendFilterType;
+  period?: number | null;
+  fastPeriod: number;
+  slowPeriod: number;
+  operator: TrendOperator;
+  appliesTo: Direction;
+}
+
+export interface PriceVsEmaParams {
+  period: number;
+  operator: PriceVsEmaOperator;
+  distanceType: PriceVsEmaDistanceType;
+  distanceValue: number | null;
+}
+
+export interface MacdParams {
+  fastPeriod: number;
+  slowPeriod: number;
+  signalPeriod: number;
+  operator: MacdOperator;
+}
+
 export interface EntryConditionConfig {
   id: string;
   enabled: boolean;
   type: EntryConditionType;
   label: string;
-  params: RsiParams;
+  params: RsiParams | PriceVsEmaParams | MacdParams;
 }
 
 export interface ExitRuleConfig {
@@ -61,6 +90,7 @@ export interface StrategyMetadata {
 export interface SourceMetadata {
   entryPoint: string;
   summary: string;
+  sourceText?: string | null;
 }
 
 export interface StrategyConfig {
@@ -74,7 +104,7 @@ export interface StrategyConfig {
   enabled: boolean;
   templateId?: string | null;
   grid?: GridConfig | null;
-  trendFilter?: null;
+  trendFilter?: TrendFilterConfig | null;
   entryLogic?: EntryLogic | null;
   entryConditions?: EntryConditionConfig[] | null;
   exit: ExitConfig;
@@ -162,7 +192,8 @@ export interface StrategyTemplate {
 export const STRATEGY_TEMPLATES: StrategyTemplate[] = [
   { id: "grid", label: "Grid", available: true },
   { id: "custom_signal", label: "Custom Signal", available: true },
-  { id: "ema_pullback", label: "EMA Pullback", available: false },
+  { id: "ema_pullback", label: "EMA Pullback", available: true },
+  { id: "macd_cross", label: "MACD Cross", available: true },
   { id: "rsi_reversal", label: "RSI Reversal", available: false },
   { id: "blank", label: "Blank", available: true },
 ];

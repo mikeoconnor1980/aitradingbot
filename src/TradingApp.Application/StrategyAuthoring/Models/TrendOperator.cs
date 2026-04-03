@@ -6,4 +6,8 @@ public enum TrendOperator
     Lt,
     Gte,
     Lte,
+    CrossAbove,
+    CrossBelow,
+    Above,
+    Below,
 }

@@ -5,5 +5,6 @@ public enum TradeType
     GridFill,
     TakeProfit,
     HedgeOpen,
-    HedgeClose
+    HedgeClose,
+    SignalEntry
 }

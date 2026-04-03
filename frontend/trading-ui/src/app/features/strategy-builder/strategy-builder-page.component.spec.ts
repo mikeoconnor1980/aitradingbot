@@ -4,6 +4,7 @@ import { MatDialog } from "@angular/material/dialog";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { ActivatedRoute, Router } from "@angular/router";
 import { of } from "rxjs";
+import { StrategyIntentDto } from "./models/strategy-intent.model";
 import { ReferenceDataService } from "./services/reference-data.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyBuilderPageComponent } from "./strategy-builder-page.component";
@@ -37,7 +38,7 @@ describe("StrategyBuilderPageComponent", () => {
         },
         {
           provide: StrategyApiService,
-          useValue: jasmine.createSpyObj("StrategyApiService", ["getStrategy", "createStrategy", "updateStrategy"])
+          useValue: jasmine.createSpyObj("StrategyApiService", ["getStrategy", "createStrategy", "updateStrategy", "interpretStrategy"])
         },
         {
           provide: StrategyMapperService,
@@ -73,8 +74,9 @@ describe("StrategyBuilderPageComponent", () => {
                 allowSameCandleReentry: false
               },
               source: {
-                entryPoint: "ui_builder",
-                summary: "Test"
+                entryPoint: String((formValue["source"] as Record<string, unknown> | undefined)?.["entryPoint"] ?? "ui_builder"),
+                summary: String((formValue["source"] as Record<string, unknown> | undefined)?.["summary"] ?? "Test"),
+                sourceText: ((formValue["source"] as Record<string, unknown> | undefined)?.["sourceText"] as string | null | undefined) ?? null,
               }
             })
           }
@@ -157,5 +159,125 @@ describe("StrategyBuilderPageComponent", () => {
     expect(dialogSpy.open).toHaveBeenCalled();
     expect(routerSpy.navigate).toHaveBeenCalledWith(["/strategies"]);
     expect(component.hasUnsavedChanges()).toBeFalse();
+  });
+
+  it("should populate the form from an interpreted grid strategy", () => {
+    const result: StrategyIntentDto = {
+      config: {
+        schemaVersion: 1,
+        strategyMode: "grid",
+        strategyName: "ETH Grid",
+        exchange: "Hyperliquid",
+        market: "ETH-USD",
+        timeframe: "1h",
+        direction: "long",
+        enabled: true,
+        grid: {
+          levels: 5,
+          spacing: 0.5,
+          entryMode: "auto_from_signal_candle",
+          breakdownThreshold: 2,
+          anchorPrice: null,
+        },
+        exit: {
+          takeProfit: { enabled: true, type: "fixed_percent", value: 3 },
+          stopLoss: { enabled: true, type: "fixed_percent", value: 4 },
+          exitOnOppositeSignal: false,
+        },
+        risk: {
+          positionSizeType: "percent_wallet",
+          positionSizeValue: 8,
+          leverage: 2,
+          maxOpenTrades: 1,
+          cooldownValue: 1,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false,
+        },
+        source: {
+          entryPoint: "naturalLanguage",
+          summary: "Interpreted from natural language",
+          sourceText: "Set up a 5-level ETH grid",
+        },
+      },
+      confidence: 0.82,
+      assumptions: [],
+      clarificationNeeded: null,
+    };
+
+    component.onNlInterpreted(result);
+
+    expect(component.form.get("strategyName")?.value).toBe("ETH Grid");
+    expect(component.gridFormGroup.get("levels")?.value).toBe(5);
+    expect(component.form.get("source.sourceText")?.value).toBe("Set up a 5-level ETH grid");
+    expect(component.nlSourceText).toBe("Set up a 5-level ETH grid");
+  });
+
+  it("should populate MACD conditions from an interpreted signal strategy", () => {
+    const result: StrategyIntentDto = {
+      config: {
+        schemaVersion: 1,
+        strategyMode: "signal",
+        strategyName: "BTC Momentum",
+        exchange: "Hyperliquid",
+        market: "BTC-USD",
+        timeframe: "15m",
+        direction: "long",
+        enabled: true,
+        templateId: "custom_signal",
+        trendFilter: {
+          enabled: false,
+          type: "ema_cross",
+          period: null,
+          fastPeriod: 50,
+          slowPeriod: 200,
+          operator: "gt",
+          appliesTo: "both",
+        },
+        entryLogic: "all",
+        entryConditions: [
+          {
+            id: "cond-1",
+            enabled: true,
+            type: "macd",
+            label: "MACD bullish crossover",
+            params: {
+              fastPeriod: 12,
+              slowPeriod: 26,
+              signalPeriod: 9,
+              operator: "cross_above_signal",
+            },
+          }
+        ],
+        exit: {
+          takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+          stopLoss: { enabled: true, type: "fixed_percent", value: 1 },
+          exitOnOppositeSignal: true,
+        },
+        risk: {
+          positionSizeType: "percent_wallet",
+          positionSizeValue: 4,
+          leverage: 3,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false,
+        },
+        source: {
+          entryPoint: "naturalLanguage",
+          summary: "Interpreted from natural language",
+          sourceText: "Buy BTC when MACD crosses above signal",
+        },
+      },
+      confidence: 0.78,
+      assumptions: [],
+      clarificationNeeded: null,
+    };
+
+    component.onNlInterpreted(result);
+
+    expect(component.isSignalMode).toBeTrue();
+    expect(component.conditionsFormArray.length).toBe(1);
+    expect(component.conditionsFormArray.at(0).get("type")?.value).toBe("macd");
+    expect(component.conditionsFormArray.at(0).get("operator")?.value).toBe("cross_above_signal");
   });
 });

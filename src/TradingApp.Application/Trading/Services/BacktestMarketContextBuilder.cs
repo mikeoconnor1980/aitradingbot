@@ -41,6 +41,7 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             Symbol = triggerCandle.Symbol,
             TimestampUtc = triggerCandle.Timestamp,
             CurrentCandle = triggerCandle,
+            PreviousCandle = GetPreviousCandle(triggerCandle),
             LatestOneHourCandle = latestOneHourCandle,
             LatestFourHourCandle = latestFourHourCandle,
             Indicators = new IndicatorSnapshot
@@ -85,6 +86,13 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
                         EmaCalculator.Calculate(previousCloses, requirement.Period));
                     break;
 
+                case "SMA":
+                    context.SetSma(
+                        requirement.Period,
+                        CalculateSma(requirement.Period),
+                        CalculatePreviousSma(requirement.Period));
+                    break;
+
                 case "MACD":
                     var fast = requirement.FastPeriod ?? 12;
                     var slow = requirement.SlowPeriod ?? 26;
@@ -111,6 +119,57 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
         }
 
         return context;
+    }
+
+    private Candle? GetPreviousCandle(Candle triggerCandle)
+    {
+        var triggerIndex = _candles.FindLastIndex(candle =>
+            candle.Timestamp == triggerCandle.Timestamp
+            && string.Equals(candle.Interval, triggerCandle.Interval, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(candle.Symbol, triggerCandle.Symbol, StringComparison.OrdinalIgnoreCase));
+
+        return triggerIndex > 0 ? _candles[triggerIndex - 1] : null;
+    }
+
+    private decimal CalculateSma(int period)
+    {
+        if (_candles.Count == 0)
+        {
+            return 0m;
+        }
+
+        var startIndex = Math.Max(0, _candles.Count - period);
+        var sum = 0m;
+        var count = 0;
+
+        for (var index = startIndex; index < _candles.Count; index++)
+        {
+            sum += _candles[index].Close;
+            count++;
+        }
+
+        return sum / count;
+    }
+
+    private decimal CalculatePreviousSma(int period)
+    {
+        if (_candles.Count < 2)
+        {
+            return 0m;
+        }
+
+        var endIndex = _candles.Count - 1;
+        var startIndex = Math.Max(0, endIndex - period);
+        var sum = 0m;
+        var count = 0;
+
+        for (var index = startIndex; index < endIndex; index++)
+        {
+            sum += _candles[index].Close;
+            count++;
+        }
+
+        return count > 0 ? sum / count : 0m;
     }
 
     private IReadOnlyList<(decimal High, decimal Low, decimal Close)> GetBars()

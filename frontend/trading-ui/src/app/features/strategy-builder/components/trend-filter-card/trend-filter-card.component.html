@@ -1,9 +1,108 @@
-<mat-card class="disabled-card">
+<mat-card class="trend-filter-card">
   <mat-card-header>
-    <mat-card-title>Trend Filter</mat-card-title>
+    <mat-card-title class="trend-filter-card__title">
+      <span>Trend Filter</span>
+      <app-info-popover
+        title="Trend Filter"
+        description="Trend filter gates entries so the strategy only trades when higher-level market direction matches the setup. Use it to avoid taking long and short signals against the broader trend context."
+      />
+    </mat-card-title>
   </mat-card-header>
 
   <mat-card-content>
-    <p class="disabled-card__message">Available in signal mode</p>
+    @if (!isBound) {
+      <p class="trend-filter-card__message">Available in signal mode</p>
+    } @else {
+      <div class="trend-filter-card__form" [formGroup]="group!">
+        <mat-checkbox formControlName="enabled">Enable trend filter</mat-checkbox>
+
+        <div class="trend-filter-card__fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Filter type</mat-label>
+            <mat-select formControlName="type">
+              @for (filterType of filterTypes; track filterType.value) {
+                <mat-option [value]="filterType.value">{{ filterType.label }}</mat-option>
+              }
+            </mat-select>
+            <app-info-popover
+              matSuffix
+              title="Filter Type"
+              description="Filter type defines how the trend is measured. EMA and SMA cross compare two moving averages, while Price vs EMA checks whether price is above or below a chosen EMA period."
+            />
+          </mat-form-field>
+
+          @if (showFastSlowFields) {
+            <mat-form-field appearance="outline">
+              <mat-label>Fast period</mat-label>
+              <input matInput type="number" formControlName="fastPeriod" min="1" step="1" />
+              <app-info-popover
+                matSuffix
+                title="Fast Period"
+                description="Fast period controls the shorter moving average in the trend filter. Lower values respond faster to recent price movement and make crossovers happen sooner."
+              />
+              @if (hasError("fastPeriod", "min")) {
+                <mat-error>Fast period must be at least 1.</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Slow period</mat-label>
+              <input matInput type="number" formControlName="slowPeriod" min="1" step="1" />
+              <app-info-popover
+                matSuffix
+                title="Slow Period"
+                description="Slow period controls the longer moving average in the trend filter. Higher values smooth the baseline trend and reduce sensitivity to short-term fluctuations."
+              />
+              @if (hasError("slowPeriod", "min")) {
+                <mat-error>Slow period must be at least 1.</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          @if (showPeriodField) {
+            <mat-form-field appearance="outline">
+              <mat-label>Period</mat-label>
+              <input matInput type="number" formControlName="period" min="1" step="1" />
+              <app-info-popover
+                matSuffix
+                title="Period"
+                description="Period sets the moving average length when using the Price vs EMA filter type. Larger values reflect the broader trend, while smaller values track price more closely."
+              />
+              @if (hasError("period", "min")) {
+                <mat-error>Period must be at least 1.</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <mat-form-field appearance="outline">
+            <mat-label>Operator</mat-label>
+            <mat-select formControlName="operator">
+              @for (operator of availableOperators; track operator.value) {
+                <mat-option [value]="operator.value">{{ operator.label }}</mat-option>
+              }
+            </mat-select>
+            <app-info-popover
+              matSuffix
+              title="Operator"
+              description="Operator defines what condition must be true for the filter to pass. Use above and below for directional bias, or cross operators when the trend filter should react only at crossover events."
+            />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Applies to</mat-label>
+            <mat-select formControlName="appliesTo">
+              @for (option of appliesToOptions; track option.value) {
+                <mat-option [value]="option.value">{{ option.label }}</mat-option>
+              }
+            </mat-select>
+            <app-info-popover
+              matSuffix
+              title="Applies To"
+              description="Applies to controls which side of the strategy uses this filter. Choose long, short, or both depending on whether you want the trend check to gate one direction or every entry."
+            />
+          </mat-form-field>
+        </div>
+      </div>
+    }
   </mat-card-content>
 </mat-card>

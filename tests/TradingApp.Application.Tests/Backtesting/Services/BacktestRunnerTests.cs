@@ -26,6 +26,7 @@ public sealed class BacktestRunnerTests
     private Mock<IGridController> _gridControllerMock = default!;
     private Mock<IRiskEngine> _riskEngineMock = default!;
     private Mock<IPositionManager> _positionManagerMock = default!;
+    private Mock<ISignalController> _signalControllerMock = default!;
     private BacktestExecutionContextAccessor _executionContextAccessor = default!;
     private BacktestRunner _sut = default!;
 
@@ -38,6 +39,7 @@ public sealed class BacktestRunnerTests
         _gridControllerMock = new Mock<IGridController>();
         _riskEngineMock = new Mock<IRiskEngine>();
         _positionManagerMock = new Mock<IPositionManager>();
+        _signalControllerMock = new Mock<ISignalController>();
         _executionContextAccessor = new BacktestExecutionContextAccessor();
 
         _sut = new BacktestRunner(
@@ -47,11 +49,28 @@ public sealed class BacktestRunnerTests
             _gridControllerMock.Object,
             _riskEngineMock.Object,
             _positionManagerMock.Object,
-            _executionContextAccessor);
+            _executionContextAccessor,
+            _signalControllerMock.Object);
 
         _contextBuilderMock
             .Setup(builder => builder.Build(It.IsAny<Candle>(), It.IsAny<Candle?>(), It.IsAny<Candle?>()))
             .Returns((Candle trigger, Candle? oneHour, Candle? fourHour) => new MarketContext
+            {
+                Symbol = trigger.Symbol,
+                TimestampUtc = trigger.Timestamp,
+                CurrentCandle = trigger,
+                LatestOneHourCandle = oneHour,
+                LatestFourHourCandle = fourHour,
+                Indicators = new IndicatorSnapshot()
+            });
+
+        _contextBuilderMock
+            .Setup(builder => builder.Build(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>()))
+            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _) => new MarketContext
             {
                 Symbol = trigger.Symbol,
                 TimestampUtc = trigger.Timestamp,
@@ -77,6 +96,15 @@ public sealed class BacktestRunnerTests
 
         _riskEngineMock
             .Setup(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        _signalControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<TradingSignal>());
     }
 
@@ -238,6 +266,21 @@ public sealed class BacktestRunnerTests
         tradeLog.Should().HaveCount(2);
         tradeLog.Should().OnlyContain(trade => trade.ExitTimeUtc == 3_000);
         tradeLog.Sum(trade => trade.PnL).Should().Be(19m);
+    }
+
+    [TestMethod]
+    public void GivenSignalEntryAndTakeProfitInSameCycle_WhenRecordFill_ThenSignalTradeIsClosed()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { TotalLevels = 10 };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("signal-entry", "signal", OrderSide.Buy, TradeType.SignalEntry, 81m, 1m, 0.01m, 1_000));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("signal-exit", "signal", OrderSide.Sell, TradeType.TakeProfit, 86m, 1m, 0.01m, 2_000));
+
+        tradeLog.Should().ContainSingle(trade =>
+            trade.TradeType == TradeType.SignalEntry &&
+            trade.ExitTimeUtc == 2_000 &&
+            trade.PnL == 5m);
     }
 
     private void SetupCandles(BacktestConfig config)

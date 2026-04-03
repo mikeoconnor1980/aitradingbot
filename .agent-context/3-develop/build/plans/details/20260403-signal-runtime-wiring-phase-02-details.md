@@ -246,7 +246,7 @@ Add an optional `ISignalController?` parameter to `StrategyScheduler`'s construc
 // Add field after existing _positionManager field:
     private readonly ISignalController? _signalController;
 
-// Add parameter to constructor (after positionManager, before strategyConfig):
+// Add optional parameter to constructor (after auditCollector):
     public StrategyScheduler(
         IMarketContextBuilder contextBuilder,
         IStrategyEngine strategyEngine,

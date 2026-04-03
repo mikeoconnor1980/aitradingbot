@@ -1,0 +1,24 @@
+@if (assumptions.length > 0) {
+  <mat-card class="assumptions-panel">
+    <mat-card-header>
+      <mat-card-title>Assumptions</mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      @for (assumption of assumptions; track assumption.fieldName + assumption.reason) {
+        <div class="assumptions-panel__item">
+          <div class="assumptions-panel__content">
+            <div class="assumptions-panel__field">{{ assumption.fieldName }}</div>
+            <div class="assumptions-panel__value">{{ assumption.assumedValue }}</div>
+            <div class="assumptions-panel__reason">{{ assumption.reason }}</div>
+          </div>
+
+          <button mat-stroked-button type="button" (click)="onEdit(assumption.fieldName)">
+            <mat-icon>edit</mat-icon>
+            <span>Edit</span>
+          </button>
+        </div>
+      }
+    </mat-card-content>
+  </mat-card>
+}

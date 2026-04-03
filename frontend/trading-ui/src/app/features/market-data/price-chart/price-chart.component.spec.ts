@@ -131,7 +131,7 @@ describe("PriceChartComponent", () => {
 
     expect(markers.length).toBe(2);
     expect(markers.map((marker) => marker.shape)).toEqual(["arrowUp", "arrowDown"]);
-    expect(markers.map((marker) => marker.color)).toEqual(["#26a69a", "#f59e0b"]);
+    expect(markers.map((marker) => marker.color)).toEqual(["#3bc9a8", "#caa86a"]);
   });
 
   it("should given split fills in the same candle and side when inputs change then create one consolidated marker", () => {

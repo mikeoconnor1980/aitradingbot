@@ -39,6 +39,11 @@
     align-content: start;
   }
 
+  &__nl-results {
+    display: grid;
+    gap: 1rem;
+  }
+
   &__loading {
     background: var(--colour-surface-dark);
     border: 1px solid var(--colour-border-subtle);

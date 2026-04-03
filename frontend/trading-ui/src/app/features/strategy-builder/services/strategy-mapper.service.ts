@@ -4,8 +4,18 @@ import {
   EntryMode,
   EntryConditionConfig,
   EntryConditionType,
+  ExitRuleType,
+  MacdOperator,
+  MacdParams,
+  PriceVsEmaDistanceType,
+  PriceVsEmaOperator,
   PositionSizeType,
+  PriceVsEmaParams,
+  TrendFilterConfig,
+  TrendFilterType,
+  TrendOperator,
   RsiOperator,
+  RsiParams,
   StrategyConfig,
 } from "../models/strategy.model";
 
@@ -18,9 +28,12 @@ export class StrategyMapperService {
     const stopLoss = (exit["stopLoss"] ?? {}) as Record<string, unknown>;
     const risk = (formValue["risk"] ?? {}) as Record<string, unknown>;
     const metadata = (formValue["metadata"] ?? {}) as Record<string, unknown>;
+    const source = (formValue["source"] ?? {}) as Record<string, unknown>;
+    const trendFilter = (formValue["trendFilter"] ?? {}) as Record<string, unknown>;
     const entryMode = (grid["entryMode"] as EntryMode | undefined) ?? "auto_from_signal_candle";
     const templateId = String(formValue["templateId"] ?? "grid");
-    const isSignalMode = templateId === "custom_signal";
+    const strategyMode = String(formValue["strategyMode"] ?? "grid");
+    const isSignalMode = strategyMode === "signal" || this._isSignalTemplate(templateId);
     const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
 
     return {
@@ -40,7 +53,7 @@ export class StrategyMapperService {
         anchorPrice: entryMode === "manual" ? this._toNullableNumber(grid["anchorPrice"]) : null,
         breakdownThreshold: Number(grid["breakdownThreshold"] ?? 0),
       },
-      trendFilter: null,
+      trendFilter: isSignalMode ? this._mapTrendFilter(trendFilter) : null,
       entryLogic: isSignalMode ? "all" : null,
       entryConditions: isSignalMode ? this._mapConditions(conditions) : null,
       exit: {
@@ -50,12 +63,7 @@ export class StrategyMapperService {
           value: takeProfit["enabled"] ? this._toNullableNumber(takeProfit["value"]) : null,
           lookback: null,
         },
-        stopLoss: {
-          enabled: !!stopLoss["enabled"],
-          type: "fixed_percent",
-          value: stopLoss["enabled"] ? this._toNullableNumber(stopLoss["value"]) : null,
-          lookback: null,
-        },
+        stopLoss: this._mapStopLoss(stopLoss),
         exitOnOppositeSignal: !!exit["exitOnOppositeSignal"],
       },
       risk: {
@@ -72,9 +80,36 @@ export class StrategyMapperService {
         notes: String(metadata["notes"] ?? ""),
       },
       source: {
-        entryPoint: "ui_builder",
-        summary: "Created in strategy builder",
+        entryPoint: String(source["entryPoint"] ?? "ui_builder"),
+        summary: String(source["summary"] ?? "Created in strategy builder"),
+        sourceText: this._toNullableString(source["sourceText"]),
       },
+    };
+  }
+
+  private _mapTrendFilter(trendFilter: Record<string, unknown>): TrendFilterConfig {
+    const type = (trendFilter["type"] as TrendFilterType | undefined) ?? "ema_cross";
+
+    return {
+      enabled: Boolean(trendFilter["enabled"] ?? false),
+      type,
+      period: type === "price_above_ema" ? this._toNullableNumber(trendFilter["period"]) : null,
+      fastPeriod: Number(trendFilter["fastPeriod"] ?? 50),
+      slowPeriod: Number(trendFilter["slowPeriod"] ?? 200),
+      operator: (trendFilter["operator"] as TrendOperator | undefined) ?? (type === "price_above_ema" ? "above" : "gt"),
+      appliesTo: (trendFilter["appliesTo"] as Direction | undefined) ?? "both",
+    };
+  }
+
+  private _mapStopLoss(stopLoss: Record<string, unknown>): { enabled: boolean; type: ExitRuleType; value?: number | null; lookback?: number | null } {
+    const enabled = Boolean(stopLoss["enabled"] ?? false);
+    const type = (stopLoss["type"] as ExitRuleType | undefined) ?? "fixed_percent";
+
+    return {
+      enabled,
+      type,
+      value: enabled && type === "fixed_percent" ? this._toNullableNumber(stopLoss["value"]) : null,
+      lookback: enabled && type === "swing_low" ? this._toNullableNumber(stopLoss["lookback"]) : null,
     };
   }
 
@@ -84,12 +119,40 @@ export class StrategyMapperService {
       enabled: Boolean(condition["enabled"] ?? true),
       type: String(condition["type"] ?? "rsi") as EntryConditionType,
       label: String(condition["label"] ?? ""),
-      params: {
-        period: Number(condition["period"] ?? 14),
-        operator: String(condition["operator"] ?? "lt") as RsiOperator,
-        value: Number(condition["value"] ?? 40),
-      },
+      params: this._mapConditionParams(condition),
     }));
+  }
+
+  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams | MacdParams {
+    const type = String(condition["type"] ?? "rsi");
+
+    if (type === "price_vs_ema") {
+      return {
+        period: Number(condition["period"] ?? 50),
+        operator: String(condition["operator"] ?? "near") as PriceVsEmaOperator,
+        distanceType: String(condition["distanceType"] ?? "percent") as PriceVsEmaDistanceType,
+        distanceValue: this._toNullableNumber(condition["distanceValue"]),
+      };
+    }
+
+    if (type === "macd") {
+      return {
+        fastPeriod: Number(condition["fastPeriod"] ?? 12),
+        slowPeriod: Number(condition["slowPeriod"] ?? 26),
+        signalPeriod: Number(condition["signalPeriod"] ?? 9),
+        operator: String(condition["operator"] ?? "cross_above_signal") as MacdOperator,
+      };
+    }
+
+    return {
+      period: Number(condition["period"] ?? 14),
+      operator: String(condition["operator"] ?? "lt") as RsiOperator,
+      value: Number(condition["value"] ?? 40),
+    };
+  }
+
+  private _isSignalTemplate(templateId: string): boolean {
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   private _toNullableNumber(value: unknown): number | null {
@@ -99,5 +162,14 @@ export class StrategyMapperService {
 
     const parsedValue = Number(value);
     return Number.isNaN(parsedValue) ? null : parsedValue;
+  }
+
+  private _toNullableString(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    const parsedValue = String(value).trim();
+    return parsedValue.length === 0 ? null : parsedValue;
   }
 }

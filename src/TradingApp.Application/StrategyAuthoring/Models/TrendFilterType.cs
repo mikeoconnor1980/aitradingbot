@@ -4,4 +4,6 @@ public enum TrendFilterType
 {
     EmaCross,
     EmaSingle,
+    SmaCross,
+    PriceAboveEma,
 }

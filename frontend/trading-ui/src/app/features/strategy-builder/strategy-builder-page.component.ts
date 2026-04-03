@@ -1,3 +1,4 @@
+import { DOCUMENT } from "@angular/common";
 import { HttpContext, HttpErrorResponse } from "@angular/common/http";
 import { DestroyRef, OnInit, Component, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
@@ -12,10 +13,13 @@ import { debounceTime, map, of, startWith, switchMap } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { NotificationService } from "../../core/services/notification.service";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
+import { AssumptionsPanelComponent } from "./components/assumptions-panel/assumptions-panel.component";
+import { ConfidenceBadgeComponent } from "./components/confidence-badge/confidence-badge.component";
 import { EntryConditionsCardComponent } from "./components/entry-conditions-card/entry-conditions-card.component";
 import { ExitRulesCardComponent } from "./components/exit-rules-card/exit-rules-card.component";
 import { GridConfigCardComponent } from "./components/grid-config-card/grid-config-card.component";
 import { JsonPreviewCardComponent } from "./components/json-preview-card/json-preview-card.component";
+import { NlInputCardComponent } from "./components/nl-input-card/nl-input-card.component";
 import { PreviewSummaryCardComponent } from "./components/preview-summary-card/preview-summary-card.component";
 import { RevisionHistoryPanelComponent } from "./components/revision-history-panel/revision-history-panel.component";
 import { RiskManagementCardComponent } from "./components/risk-management-card/risk-management-card.component";
@@ -25,7 +29,8 @@ import { StrategyTemplateSelectorComponent } from "./components/strategy-templat
 import { TrendFilterCardComponent } from "./components/trend-filter-card/trend-filter-card.component";
 import { ValidationCardComponent } from "./components/validation-card/validation-card.component";
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
-import { EntryConditionConfig, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
+import { StrategyIntentDto } from "./models/strategy-intent.model";
+import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -40,6 +45,9 @@ import { StrategyValidationService } from "./services/strategy-validation.servic
     MatCardModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    NlInputCardComponent,
+    ConfidenceBadgeComponent,
+    AssumptionsPanelComponent,
     StrategyTemplateSelectorComponent,
     StrategyDetailsCardComponent,
     GridConfigCardComponent,
@@ -57,6 +65,7 @@ import { StrategyValidationService } from "./services/strategy-validation.servic
   styleUrl: "./strategy-builder-page.component.scss"
 })
 export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
+  private readonly _document = inject(DOCUMENT);
   private readonly _fb = inject(FormBuilder);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
@@ -72,6 +81,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   public form: FormGroup = this._buildForm();
   public editId: string | null = null;
+  public nlResult: StrategyIntentDto | null = null;
+  public nlSourceText = "";
   public isLoading = false;
   public isSaving = false;
   public isValidating = false;
@@ -109,7 +120,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   public get isSignalMode(): boolean {
-    return this.selectedTemplateId === "custom_signal";
+    return this._isSignalTemplate(this.selectedTemplateId);
   }
 
   public get currentConfig(): StrategyConfig {
@@ -128,6 +139,10 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     return this.form.get("risk") as FormGroup;
   }
 
+  public get trendFilterFormGroup(): FormGroup {
+    return this.form.get("trendFilter") as FormGroup;
+  }
+
   public get conditionsFormArray(): FormArray {
     return this.form.get("conditions") as FormArray;
   }
@@ -143,8 +158,15 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   public onTemplateSelected(templateId: string): void {
     this.form.patchValue({ templateId });
 
-    if (templateId === "custom_signal") {
+    if (this._isSignalTemplate(templateId)) {
       this.form.get("grid")?.disable();
+
+      if (templateId === "ema_pullback") {
+        this._applyEmaPullbackTemplate();
+      } else if (templateId === "macd_cross") {
+        this._applyMacdCrossTemplate();
+      }
+
       return;
     }
 
@@ -213,6 +235,35 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     return this._createFormSnapshot() !== this._savedFormSnapshot;
   }
 
+  public onNlInterpreted(result: StrategyIntentDto): void {
+    if (!this._shouldConfirmInterpretation()) {
+      this._applyInterpretedResult(result);
+      return;
+    }
+
+    const dialogData: ConfirmDialogData = {
+      title: "Replace Current Form?",
+      message: "This will replace the current form values with the generated strategy configuration.",
+      confirmText: "Replace",
+      cancelText: "Keep Current"
+    };
+
+    this._dialog.open(ConfirmDialogComponent, { data: dialogData, width: "420px" }).afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) {
+        return;
+      }
+
+      this._applyInterpretedResult(result);
+    });
+  }
+
+  public onEditAssumptionField(fieldName: string): void {
+    const fieldSelector = this._buildFieldSelector(fieldName);
+    const element = this._document.querySelector(fieldSelector) as HTMLElement | null;
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+    element?.focus();
+  }
+
   public onBacktestStrategy(): void {
     if (this.editId === null) {
       return;
@@ -256,6 +307,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           enabled: [true],
           type: ["fixed_percent"],
           value: [6, [Validators.min(0.01), Validators.max(50)]],
+          lookback: [null, [Validators.min(1)]],
         }),
         exitOnOppositeSignal: [false],
       }),
@@ -271,6 +323,20 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       metadata: this._fb.group({
         tags: [[]],
         notes: [""],
+      }),
+      source: this._fb.group({
+        entryPoint: ["ui_builder"],
+        summary: ["Created in strategy builder"],
+        sourceText: [null],
+      }),
+      trendFilter: this._fb.group({
+        enabled: [false],
+        type: ["ema_cross", Validators.required],
+        period: [200, [Validators.min(1)]],
+        fastPeriod: [50, [Validators.required, Validators.min(1)]],
+        slowPeriod: [200, [Validators.required, Validators.min(1)]],
+        operator: ["gt", Validators.required],
+        appliesTo: ["both", Validators.required],
       }),
       conditions: this._fb.array([]),
     });
@@ -338,6 +404,20 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           exit: strategy.config.exit,
           risk: strategy.config.risk,
           metadata: strategy.config.metadata ?? { tags: [], notes: "" },
+          source: {
+            entryPoint: strategy.config.source?.entryPoint ?? "ui_builder",
+            summary: strategy.config.source?.summary ?? "Created in strategy builder",
+            sourceText: strategy.config.source?.sourceText ?? null,
+          },
+          trendFilter: strategy.config.trendFilter ?? {
+            enabled: false,
+            type: "ema_cross",
+            period: 200,
+            fastPeriod: 50,
+            slowPeriod: 200,
+            operator: "gt",
+            appliesTo: "both",
+          },
         });
 
         if (strategy.config.strategyMode === "signal") {
@@ -352,6 +432,9 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           this.form.get("grid")?.enable();
           this._clearConditions();
         }
+
+        this.nlSourceText = strategy.config.source?.sourceText ?? "";
+        this.nlResult = null;
 
         this._savedFormSnapshot = this._createFormSnapshot();
         this.form.markAsPristine();
@@ -373,19 +456,158 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     }
   }
 
+  private _applyEmaPullbackTemplate(): void {
+    this.form.patchValue({
+      direction: "long",
+    });
+
+    const trendFilterGroup = this.form.get("trendFilter") as FormGroup | null;
+    if (trendFilterGroup !== null) {
+      trendFilterGroup.patchValue({
+        enabled: true,
+        type: "ema_cross",
+        period: 200,
+        fastPeriod: 50,
+        slowPeriod: 200,
+        operator: "gt",
+        appliesTo: "long",
+      });
+    }
+
+    const conditionsArray = this.conditionsFormArray;
+    conditionsArray.clear();
+    conditionsArray.push(this._conditionFactory.createPriceVsEmaCondition({
+      label: "Price near EMA 50",
+      period: 50,
+      operator: "near",
+      distanceType: "percent",
+      distanceValue: 0.25,
+    }));
+    conditionsArray.push(this._conditionFactory.createRsiCondition({
+      label: "RSI Oversold",
+      period: 14,
+      operator: "lt",
+      value: 40,
+    }));
+
+    const exitGroup = this.form.get("exit") as FormGroup;
+    exitGroup.patchValue({
+      takeProfit: {
+        enabled: true,
+        type: "fixed_percent",
+        value: 3,
+      },
+      stopLoss: {
+        enabled: true,
+        type: "swing_low",
+        value: null,
+        lookback: 5,
+      },
+    });
+
+    trendFilterGroup?.markAsDirty();
+    conditionsArray.markAsDirty();
+    exitGroup.markAsDirty();
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
+  private _applyMacdCrossTemplate(): void {
+    this.form.patchValue({
+      direction: "long",
+    });
+
+    const trendFilterGroup = this.form.get("trendFilter") as FormGroup | null;
+    trendFilterGroup?.patchValue({
+      enabled: false,
+      type: "ema_cross",
+      period: 200,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    });
+
+    const conditionsArray = this.conditionsFormArray;
+    conditionsArray.clear();
+    conditionsArray.push(this._conditionFactory.createMacdCondition({
+      label: "MACD Bullish Cross",
+      fastPeriod: 12,
+      slowPeriod: 26,
+      signalPeriod: 9,
+      operator: "cross_above_signal",
+    }));
+
+    const exitGroup = this.form.get("exit") as FormGroup;
+    exitGroup.patchValue({
+      takeProfit: {
+        enabled: true,
+        type: "fixed_percent",
+        value: 2,
+      },
+      stopLoss: {
+        enabled: true,
+        type: "fixed_percent",
+        value: 1.5,
+      },
+    });
+
+    trendFilterGroup?.markAsDirty();
+    conditionsArray.markAsDirty();
+    exitGroup.markAsDirty();
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
   private _addLoadedCondition(condition: EntryConditionConfig): void {
+    if (condition.type === "price_vs_ema") {
+      const params = condition.params as PriceVsEmaParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createPriceVsEmaCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        period: params.period,
+        operator: params.operator,
+        distanceType: params.distanceType,
+        distanceValue: params.distanceValue,
+      }));
+      return;
+    }
+
+    if (condition.type === "macd") {
+      const params = condition.params as MacdParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createMacdCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        fastPeriod: params.fastPeriod,
+        slowPeriod: params.slowPeriod,
+        signalPeriod: params.signalPeriod,
+        operator: params.operator,
+      }));
+      return;
+    }
+
     if (condition.type !== "rsi") {
       return;
     }
+
+    const params = condition.params as RsiParams;
 
     this.conditionsFormArray.push(this._conditionFactory.createRsiCondition({
       id: condition.id,
       enabled: condition.enabled,
       label: condition.label,
-      period: condition.params.period,
-      operator: condition.params.operator,
-      value: condition.params.value,
+      period: params.period,
+      operator: params.operator,
+      value: params.value,
     }));
+  }
+
+  private _isSignalTemplate(templateId: string): boolean {
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   private _applyServerSaveError(error: HttpErrorResponse): void {
@@ -409,5 +631,96 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   private _createFormSnapshot(): string {
     return JSON.stringify(this.form.getRawValue());
+  }
+
+  private _applyInterpretedResult(result: StrategyIntentDto): void {
+    this.nlResult = result;
+    this.nlSourceText = result.config.source?.sourceText ?? "";
+    this._populateFormFromIntent(result);
+  }
+
+  private _populateFormFromIntent(intent: StrategyIntentDto): void {
+    const config = intent.config;
+    const templateId = config.templateId ?? (config.strategyMode === "signal" ? "custom_signal" : "grid");
+
+    this.form.patchValue({
+      templateId,
+      strategyName: config.strategyName,
+      exchange: config.exchange,
+      market: config.market,
+      timeframe: config.timeframe,
+      direction: config.direction,
+      exit: {
+        takeProfit: {
+          enabled: config.exit.takeProfit.enabled,
+          type: config.exit.takeProfit.type,
+          value: config.exit.takeProfit.value ?? null,
+        },
+        stopLoss: {
+          enabled: config.exit.stopLoss.enabled,
+          type: config.exit.stopLoss.type,
+          value: config.exit.stopLoss.value ?? null,
+          lookback: config.exit.stopLoss.lookback ?? null,
+        },
+        exitOnOppositeSignal: config.exit.exitOnOppositeSignal,
+      },
+      risk: config.risk,
+      metadata: config.metadata ?? { tags: [], notes: "" },
+      source: {
+        entryPoint: config.source?.entryPoint ?? "ui_builder",
+        summary: config.source?.summary ?? "Created in strategy builder",
+        sourceText: config.source?.sourceText ?? null,
+      },
+      trendFilter: config.trendFilter ?? {
+        enabled: false,
+        type: "ema_cross",
+        period: 200,
+        fastPeriod: 50,
+        slowPeriod: 200,
+        operator: "gt",
+        appliesTo: "both",
+      },
+    });
+
+    this._clearConditions();
+
+    if (config.strategyMode === "signal") {
+      this.form.get("grid")?.disable({ emitEvent: false });
+      for (const condition of config.entryConditions ?? []) {
+        this._addLoadedCondition(condition);
+      }
+    } else {
+      this.form.get("grid")?.enable({ emitEvent: false });
+      this.gridFormGroup.patchValue({
+        levels: config.grid?.levels ?? 10,
+        spacing: config.grid?.spacing ?? 0.5,
+        entryMode: config.grid?.entryMode ?? "auto_from_signal_candle",
+        anchorPrice: config.grid?.anchorPrice ?? null,
+        breakdownThreshold: config.grid?.breakdownThreshold ?? 1.5,
+      });
+    }
+
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
+  private _shouldConfirmInterpretation(): boolean {
+    if (this.editId !== null) {
+      return true;
+    }
+
+    return this.form.dirty;
+  }
+
+  private _buildFieldSelector(fieldName: string): string {
+    const normalizedFieldName = fieldName.trim();
+    if (!normalizedFieldName.includes(".")) {
+      return `[formcontrolname="${normalizedFieldName}"]`;
+    }
+
+    const segments = normalizedFieldName.split(".");
+    const controlName = segments.pop() as string;
+    const groupSelector = segments.map((segment: string) => `[formgroupname="${segment}"]`).join(" ");
+    return `${groupSelector} [formcontrolname="${controlName}"]`;
   }
 }

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading App — Colour Scheme Alternatives</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #111;
+      color: #ccc;
+      padding: 2rem;
+    }
+
+    h1 { text-align: center; color: #fff; margin-bottom: 0.5rem; font-size: 1.75rem; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 2rem; font-size: 0.95rem; }
+
+    .scheme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(520px, 1fr));
+      gap: 2rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── Scheme Card ── */
+    .scheme-card {
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: pointer;
+    }
+    .scheme-card:hover { transform: translateY(-2px); }
+    .scheme-card.selected { border-color: #fff; }
+
+    .scheme-header {
+      padding: 1rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .scheme-name { font-weight: 700; font-size: 1.1rem; }
+    .scheme-tag {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .scheme-body { padding: 0 1.25rem 1.25rem; }
+
+    /* ── Swatch Row ── */
+    .swatch-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(255,255,255,0.1);
+      position: relative;
+      cursor: help;
+    }
+    .swatch::after {
+      content: attr(data-label);
+      position: absolute;
+      bottom: -1.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.55rem;
+      white-space: nowrap;
+      opacity: 0.6;
+    }
+
+    /* ── Mini Dashboard Preview ── */
+    .mini-dash {
+      border-radius: 0.75rem;
+      padding: 1rem;
+      font-size: 0.8rem;
+    }
+
+    .mini-dash__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+    }
+    .mini-dash__logo { font-weight: 700; font-size: 0.9rem; }
+    .mini-dash__nav { display: flex; gap: 0.5rem; }
+    .mini-dash__nav-item {
+      padding: 0.25rem 0.6rem;
+      border-radius: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+
+    .mini-dash__stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .stat-card {
+      padding: 0.6rem;
+      border-radius: 0.5rem;
+      text-align: center;
+    }
+    .stat-card__label { font-size: 0.6rem; font-weight: 500; margin-bottom: 0.2rem; }
+    .stat-card__value { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 600; }
+
+    /* ── Trade Table ── */
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7rem;
+    }
+    .mini-table th {
+      text-align: left;
+      padding: 0.35rem 0.5rem;
+      font-weight: 600;
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .mini-table td {
+      padding: 0.35rem 0.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+    }
+    .mini-table tbody tr { border-top-width: 1px; border-top-style: solid; }
+
+    /* ── Buttons row ── */
+    .btn-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+    .btn {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 0.4rem;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-align: center;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* ── Status dots ── */
+    .status-dot {
+      display: inline-block;
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      margin-right: 0.3rem;
+    }
+
+    /* ── Description ── */
+    .scheme-desc {
+      margin-top: 1rem;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      opacity: 0.75;
+      padding-top: 0.75rem;
+    }
+
+    /* ================================================
+       THEME DEFINITIONS
+       ================================================ */
+
+    /* ── 0: Original (Slate Navy) ── */
+    .theme-current {
+      --bg: #0f172a;
+      --bg-grad-start: #1f2a44;
+      --bg-grad-end: #090f1d;
+      --surface: rgba(15, 23, 42, 0.82);
+      --surface-alt: rgba(30, 41, 59, 0.82);
+      --border: rgba(148, 163, 184, 0.22);
+      --text: #e2e8f0;
+      --text-bright: #f8fafc;
+      --text-muted: #94a3b8;
+      --label: #93c5fd;
+      --profit: #4ade80;
+      --loss: #f87171;
+      --warning: #fbbf24;
+      --accent: #86efac;
+      --accent-on: #0b1324;
+      --nav-hover: rgba(59, 130, 246, 0.22);
+      --table-header: rgba(148, 163, 184, 0.15);
+      --tag-bg: rgba(147, 197, 253, 0.15);
+      --tag-color: #93c5fd;
+    }
+
+    /* ── 1: Obsidian & Gold ── */
+    .theme-obsidian {
+      --bg: #0c0c0e;
+      --bg-grad-start: #1a1a1f;
+      --bg-grad-end: #08080a;
+      --surface: rgba(18, 18, 22, 0.9);
+      --surface-alt: rgba(28, 28, 34, 0.85);
+      --border: rgba(212, 175, 55, 0.18);
+      --text: #d4d4d8;
+      --text-bright: #fafafa;
+      --text-muted: #71717a;
+      --label: #d4af37;
+      --profit: #22c55e;
+      --loss: #ef4444;
+      --warning: #eab308;
+      --accent: #d4af37;
+      --accent-on: #0c0c0e;
+      --nav-hover: rgba(212, 175, 55, 0.12);
+      --table-header: rgba(212, 175, 55, 0.08);
+      --tag-bg: rgba(212, 175, 55, 0.15);
+      --tag-color: #d4af37;
+    }
+
+    /* ── 2: Arctic Teal ── */
+    .theme-arctic {
+      --bg: #0a1a1f;
+      --bg-grad-start: #112a2f;
+      --bg-grad-end: #060e12;
+      --surface: rgba(10, 26, 31, 0.88);
+      --surface-alt: rgba(17, 42, 47, 0.82);
+      --border: rgba(45, 212, 191, 0.18);
+      --text: #ccfbf1;
+      --text-bright: #f0fdfa;
+      --text-muted: #5eead4;
+      --label: #2dd4bf;
+      --profit: #34d399;
+      --loss: #fb7185;
+      --warning: #fbbf24;
+      --accent: #2dd4bf;
+      --accent-on: #042f2e;
+      --nav-hover: rgba(45, 212, 191, 0.12);
+      --table-header: rgba(45, 212, 191, 0.08);
+      --tag-bg: rgba(45, 212, 191, 0.15);
+      --tag-color: #2dd4bf;
+    }
+
+    /* ── 2b: Luxury Teal & Brass ── */
+    .theme-luxury {
+      --bg: #071114;
+      --bg-grad-start: #0d1b1d;
+      --bg-grad-end: #04090b;
+      --surface: rgba(8, 20, 22, 0.92);
+      --surface-alt: rgba(15, 31, 34, 0.88);
+      --border: rgba(121, 207, 195, 0.10);
+      --text: #dbe7e4;
+      --text-bright: #f3f1eb;
+      --text-muted: #7f9d99;
+      --label: #79cfc3;
+      --profit: #3bc9a8;
+      --loss: #e07a8f;
+      --warning: #caa86a;
+      --accent: #79cfc3;
+      --accent-on: #061314;
+      --nav-hover: rgba(121, 207, 195, 0.10);
+      --table-header: rgba(121, 207, 195, 0.06);
+      --tag-bg: rgba(202, 168, 106, 0.12);
+      --tag-color: #d6c29a;
+    }
+
+    /* ── 3: Midnight Violet ── */
+    .theme-violet {
+      --bg: #0f0720;
+      --bg-grad-start: #1e1045;
+      --bg-grad-end: #080412;
+      --surface: rgba(15, 7, 32, 0.9);
+      --surface-alt: rgba(30, 16, 69, 0.75);
+      --border: rgba(167, 139, 250, 0.2);
+      --text: #e0d4fc;
+      --text-bright: #f5f3ff;
+      --text-muted: #a78bfa;
+      --label: #c4b5fd;
+      --profit: #4ade80;
+      --loss: #fb923c;
+      --warning: #facc15;
+      --accent: #a78bfa;
+      --accent-on: #0f0720;
+      --nav-hover: rgba(167, 139, 250, 0.15);
+      --table-header: rgba(167, 139, 250, 0.08);
+      --tag-bg: rgba(167, 139, 250, 0.15);
+      --tag-color: #c4b5fd;
+    }
+
+    /* ── 4: Carbon Ember ── */
+    .theme-ember {
+      --bg: #141414;
+      --bg-grad-start: #1f1f1f;
+      --bg-grad-end: #0a0a0a;
+      --surface: rgba(20, 20, 20, 0.92);
+      --surface-alt: rgba(32, 32, 32, 0.88);
+      --border: rgba(251, 146, 60, 0.18);
+      --text: #d4d4d4;
+      --text-bright: #fafafa;
+      --text-muted: #737373;
+      --label: #fb923c;
+      --profit: #22c55e;
+      --loss: #ef4444;
+      --warning: #f59e0b;
+      --accent: #f97316;
+      --accent-on: #fff7ed;
+      --nav-hover: rgba(249, 115, 22, 0.12);
+      --table-header: rgba(249, 115, 22, 0.08);
+      --tag-bg: rgba(249, 115, 22, 0.15);
+      --tag-color: #fb923c;
+    }
+
+    /* ── 5: Deep Ocean ── */
+    .theme-ocean {
+      --bg: #020617;
+      --bg-grad-start: #0c1e3a;
+      --bg-grad-end: #010313;
+      --surface: rgba(2, 6, 23, 0.9);
+      --surface-alt: rgba(12, 30, 58, 0.8);
+      --border: rgba(56, 189, 248, 0.2);
+      --text: #e0f2fe;
+      --text-bright: #f0f9ff;
+      --text-muted: #7dd3fc;
+      --label: #38bdf8;
+      --profit: #2dd4bf;
+      --loss: #f472b6;
+      --warning: #fbbf24;
+      --accent: #38bdf8;
+      --accent-on: #020617;
+      --nav-hover: rgba(56, 189, 248, 0.12);
+      --table-header: rgba(56, 189, 248, 0.08);
+      --tag-bg: rgba(56, 189, 248, 0.15);
+      --tag-color: #38bdf8;
+    }
+
+    /* Apply theme vars */
+    [class*="theme-"] .scheme-header { background: var(--bg); color: var(--text-bright); }
+    [class*="theme-"] .scheme-tag { background: var(--tag-bg); color: var(--tag-color); }
+    [class*="theme-"] .scheme-body { background: var(--bg); }
+    [class*="theme-"] .mini-dash {
+      background: radial-gradient(circle at top left, var(--bg-grad-start) 0%, var(--bg) 60%, var(--bg-grad-end) 100%);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    [class*="theme-"] .mini-dash__header { border-bottom: 1px solid var(--border); }
+    [class*="theme-"] .mini-dash__logo { color: var(--text-bright); }
+    [class*="theme-"] .mini-dash__nav-item { color: var(--text-muted); }
+    [class*="theme-"] .mini-dash__nav-item:hover { background: var(--nav-hover); color: var(--text-bright); }
+    [class*="theme-"] .mini-dash__nav-item.active {
+      background: var(--accent);
+      color: var(--accent-on);
+      font-weight: 700;
+    }
+    [class*="theme-"] .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    [class*="theme-"] .stat-card__label { color: var(--label); }
+    [class*="theme-"] .stat-card__value { color: var(--text-bright); }
+    [class*="theme-"] .stat-card__value.profit { color: var(--profit); }
+    [class*="theme-"] .stat-card__value.loss { color: var(--loss); }
+    [class*="theme-"] .stat-card__value.warning { color: var(--warning); }
+    [class*="theme-"] .mini-table th {
+      color: var(--text-muted);
+      background: var(--table-header);
+    }
+    [class*="theme-"] .mini-table td { color: var(--text); }
+    [class*="theme-"] .mini-table tbody tr { border-color: var(--border); }
+    [class*="theme-"] .mini-table .profit { color: var(--profit); }
+    [class*="theme-"] .mini-table .loss { color: var(--loss); }
+    [class*="theme-"] .btn-buy { background: var(--profit); color: #000; }
+    [class*="theme-"] .btn-sell { background: var(--loss); color: #fff; }
+    [class*="theme-"] .scheme-desc { color: var(--text-muted); border-top: 1px solid var(--border); }
+    [class*="theme-"] .status-dot.connected { background: var(--profit); }
+
+    .theme-luxury .mini-dash__nav-item.active {
+      background: rgba(121, 207, 195, 0.12);
+      color: #a6e3da;
+      border: 1px solid rgba(166, 227, 218, 0.22);
+      box-shadow: inset 0 0 0 1px rgba(166, 227, 218, 0.05);
+    }
+
+    .theme-luxury .btn-buy {
+      background: linear-gradient(180deg, #4bc9b0, #2b907c);
+      color: #04110f;
+    }
+
+    .theme-luxury .btn-sell {
+      background: linear-gradient(180deg, #d58e9f, #9d5968);
+      color: #fff8fa;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Trading App — Colour Scheme Alternatives</h1>
+<p class="subtitle">Click any scheme to highlight it. Each preview shows how it would look with real trading data.</p>
+
+<div class="scheme-grid">
+
+  <!-- ════════════════════════════════════════
+       0: ORIGINAL — Slate Navy
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-current" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">A) Original — Slate Navy</span>
+      <span class="scheme-tag">LEGACY</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#0f172a" data-label="bg"></div>
+        <div class="swatch" style="background:#1f2a44" data-label="surface"></div>
+        <div class="swatch" style="background:#93c5fd" data-label="label"></div>
+        <div class="swatch" style="background:#86efac" data-label="accent"></div>
+        <div class="swatch" style="background:#4ade80" data-label="profit"></div>
+        <div class="swatch" style="background:#f87171" data-label="loss"></div>
+        <div class="swatch" style="background:#fbbf24" data-label="warn"></div>
+        <div class="swatch" style="background:#94a3b8" data-label="muted"></div>
+        <div class="swatch" style="background:#e2e8f0" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          The current Tailwind slate-navy palette. Clean and familiar but common in AI-generated apps 
+          and many crypto/fintech dashboards. Uses blue-tinted grays with green/red trading colours.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       1: Obsidian & Gold
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-obsidian" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">B) Obsidian & Gold</span>
+      <span class="scheme-tag">PREMIUM</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#0c0c0e" data-label="bg"></div>
+        <div class="swatch" style="background:#1a1a1f" data-label="surface"></div>
+        <div class="swatch" style="background:#d4af37" data-label="label"></div>
+        <div class="swatch" style="background:#d4af37" data-label="accent"></div>
+        <div class="swatch" style="background:#22c55e" data-label="profit"></div>
+        <div class="swatch" style="background:#ef4444" data-label="loss"></div>
+        <div class="swatch" style="background:#eab308" data-label="warn"></div>
+        <div class="swatch" style="background:#71717a" data-label="muted"></div>
+        <div class="swatch" style="background:#d4d4d8" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          True black surfaces with warm gold accents. Inspired by luxury fintech (Bloomberg Terminal 
+          meets private banking). Feels exclusive and high-end. The neutral gray base makes the gold 
+          accents pop without looking garish.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       2: Arctic Teal
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-arctic" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">C) Arctic Teal</span>
+      <span class="scheme-tag">FRESH</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#0a1a1f" data-label="bg"></div>
+        <div class="swatch" style="background:#112a2f" data-label="surface"></div>
+        <div class="swatch" style="background:#2dd4bf" data-label="label"></div>
+        <div class="swatch" style="background:#2dd4bf" data-label="accent"></div>
+        <div class="swatch" style="background:#34d399" data-label="profit"></div>
+        <div class="swatch" style="background:#fb7185" data-label="loss"></div>
+        <div class="swatch" style="background:#fbbf24" data-label="warn"></div>
+        <div class="swatch" style="background:#5eead4" data-label="muted"></div>
+        <div class="swatch" style="background:#ccfbf1" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          Dark teal backgrounds with mint/cyan accents. Cool and clinical — reminiscent of medical 
+          monitors or scientific dashboards. Loss uses rose-pink instead of pure red, giving a 
+          softer feel. Highly legible with the teal-tinted text.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       2b: Luxury Teal & Brass
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-luxury" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">D) Luxury Teal & Brass</span>
+      <span class="scheme-tag">IN USE</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#071114" data-label="bg"></div>
+        <div class="swatch" style="background:#0d1b1d" data-label="surface"></div>
+        <div class="swatch" style="background:#79cfc3" data-label="label"></div>
+        <div class="swatch" style="background:#a6e3da" data-label="accent"></div>
+        <div class="swatch" style="background:#3bc9a8" data-label="profit"></div>
+        <div class="swatch" style="background:#e07a8f" data-label="loss"></div>
+        <div class="swatch" style="background:#caa86a" data-label="warn"></div>
+        <div class="swatch" style="background:#7f9d99" data-label="muted"></div>
+        <div class="swatch" style="background:#dbe7e4" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          The current app design. A darker, more restrained evolution of Arctic Teal: teal shifts toward sea-glass,
+          warning moves into aged brass, and the whole UI uses inkier surfaces with softer borders. This reads less like
+          a modern SaaS dashboard and more like a premium private-terminal product.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       3: Midnight Violet
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-violet" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">E) Midnight Violet</span>
+      <span class="scheme-tag">BOLD</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#0f0720" data-label="bg"></div>
+        <div class="swatch" style="background:#1e1045" data-label="surface"></div>
+        <div class="swatch" style="background:#c4b5fd" data-label="label"></div>
+        <div class="swatch" style="background:#a78bfa" data-label="accent"></div>
+        <div class="swatch" style="background:#4ade80" data-label="profit"></div>
+        <div class="swatch" style="background:#fb923c" data-label="loss"></div>
+        <div class="swatch" style="background:#facc15" data-label="warn"></div>
+        <div class="swatch" style="background:#a78bfa" data-label="muted"></div>
+        <div class="swatch" style="background:#e0d4fc" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          Deep purple/indigo base with violet accents. Uses orange for loss instead of red — 
+          gives better contrast against the purple. Stands out from the typical dark-blue crypto 
+          dashboard. Feels modern and distinctive, like a gaming-meets-fintech aesthetic.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       4: Carbon Ember
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-ember" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">F) Carbon Ember</span>
+      <span class="scheme-tag">SHARP</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#141414" data-label="bg"></div>
+        <div class="swatch" style="background:#1f1f1f" data-label="surface"></div>
+        <div class="swatch" style="background:#fb923c" data-label="label"></div>
+        <div class="swatch" style="background:#f97316" data-label="accent"></div>
+        <div class="swatch" style="background:#22c55e" data-label="profit"></div>
+        <div class="swatch" style="background:#ef4444" data-label="loss"></div>
+        <div class="swatch" style="background:#f59e0b" data-label="warn"></div>
+        <div class="swatch" style="background:#737373" data-label="muted"></div>
+        <div class="swatch" style="background:#d4d4d4" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          True neutral carbon/charcoal with warm orange accents. No blue bias at all — 
+          completely different from the typical crypto dark theme. Inspired by VS Code Dark+, 
+          Figma, and modern dev tools. The pure gray base is extremely versatile and the 
+          orange gives it energy without feeling cold.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       5: Deep Ocean
+       ════════════════════════════════════════ -->
+  <div class="scheme-card theme-ocean" onclick="selectScheme(this)">
+    <div class="scheme-header">
+      <span class="scheme-name">G) Deep Ocean</span>
+      <span class="scheme-tag">VIBRANT</span>
+    </div>
+    <div class="scheme-body">
+      <div class="swatch-row">
+        <div class="swatch" style="background:#020617" data-label="bg"></div>
+        <div class="swatch" style="background:#0c1e3a" data-label="surface"></div>
+        <div class="swatch" style="background:#38bdf8" data-label="label"></div>
+        <div class="swatch" style="background:#38bdf8" data-label="accent"></div>
+        <div class="swatch" style="background:#2dd4bf" data-label="profit"></div>
+        <div class="swatch" style="background:#f472b6" data-label="loss"></div>
+        <div class="swatch" style="background:#fbbf24" data-label="warn"></div>
+        <div class="swatch" style="background:#7dd3fc" data-label="muted"></div>
+        <div class="swatch" style="background:#e0f2fe" data-label="text"></div>
+      </div>
+      <div class="mini-dash">
+        <div class="mini-dash__header">
+          <span class="mini-dash__logo"><span class="status-dot connected"></span>HyperGrid</span>
+          <div class="mini-dash__nav">
+            <span class="mini-dash__nav-item active">Dashboard</span>
+            <span class="mini-dash__nav-item">Market</span>
+            <span class="mini-dash__nav-item">Backtest</span>
+          </div>
+        </div>
+        <div class="mini-dash__stats">
+          <div class="stat-card"><div class="stat-card__label">Equity</div><div class="stat-card__value">$12,450</div></div>
+          <div class="stat-card"><div class="stat-card__label">Unrealised PnL</div><div class="stat-card__value profit">+$284.30</div></div>
+          <div class="stat-card"><div class="stat-card__label">Margin Ratio</div><div class="stat-card__value warning">18.4%</div></div>
+          <div class="stat-card"><div class="stat-card__label">Win Rate</div><div class="stat-card__value">62.5%</div></div>
+        </div>
+        <table class="mini-table">
+          <thead><tr><th>Pair</th><th>Entry</th><th>Exit</th><th>Side</th><th>Size</th><th>PnL</th></tr></thead>
+          <tbody>
+            <tr><td>BTC-PERP</td><td>77,139</td><td>78,800</td><td>Buy</td><td>0.0065</td><td class="profit">+$10.79</td></tr>
+            <tr><td>BTC-PERP</td><td>77,987</td><td>74,523</td><td>Buy</td><td>0.0064</td><td class="loss">-$22.29</td></tr>
+            <tr><td>BTC-PERP</td><td>69,300</td><td>63,820</td><td>Buy</td><td>0.0072</td><td class="loss">-$39.20</td></tr>
+            <tr><td>BTC-PERP</td><td>63,640</td><td>64,828</td><td>Buy</td><td>0.0078</td><td class="profit">+$9.23</td></tr>
+          </tbody>
+        </table>
+        <div class="btn-row">
+          <button class="btn btn-buy">Long / Buy</button>
+          <button class="btn btn-sell">Short / Sell</button>
+        </div>
+        <div class="scheme-desc">
+          Deepest navy (nearly black) with sky-blue accents. Uses teal for profit and pink for 
+          loss — a non-traditional pairing that still reads intuitively. The closest to the 
+          current scheme but with more saturation and personality. Feels like deep-sea 
+          data visualization.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function selectScheme(card) {
+    document.querySelectorAll('.scheme-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+  }
+</script>
+
+</body>
+</html>

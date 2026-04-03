@@ -14,8 +14,8 @@ describe("StrategyValidationService", () => {
       timeframe: "15m",
       grid: { levels: 10, spacing: 0.5, breakdownThreshold: 1.5, entryMode: "auto_from_signal_candle" },
       exit: {
-        takeProfit: { enabled: true, value: 2 },
-        stopLoss: { enabled: true, value: 6 }
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "fixed_percent", value: 6, lookback: null }
       },
       risk: { positionSizeValue: 5, leverage: 1, maxOpenTrades: 1, cooldownValue: 0 },
       conditions: [],
@@ -31,6 +31,19 @@ describe("StrategyValidationService", () => {
       period: 14,
       operator: "lt",
       value: 40,
+    };
+  }
+
+  function validMacdCondition(): Record<string, unknown> {
+    return {
+      id: "cond-1",
+      enabled: true,
+      type: "macd",
+      label: "MACD bullish crossover",
+      fastPeriod: 12,
+      slowPeriod: 26,
+      signalPeriod: 9,
+      operator: "cross_above_signal",
     };
   }
 
@@ -77,6 +90,30 @@ describe("StrategyValidationService", () => {
     const errors = service.validate(baseFormValue());
 
     expect(errors.filter((error) => error.severity === "error")).toHaveSize(0);
+  });
+
+  it("should accept swing low stop loss with lookback", () => {
+    const errors = service.validate({
+      ...baseFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: null, lookback: 5 }
+      }
+    });
+
+    expect(errors.some((error) => error.fieldPath === "exit.stopLoss.lookback")).toBeFalse();
+  });
+
+  it("should require lookback for swing low stop loss", () => {
+    const errors = service.validate({
+      ...baseFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: null, lookback: null }
+      }
+    });
+
+    expect(errors.some((error) => error.fieldPath === "exit.stopLoss.lookback" && error.code === "REQUIRED")).toBeTrue();
   });
 
   describe("signal mode validation", () => {
@@ -155,6 +192,50 @@ describe("StrategyValidationService", () => {
       });
 
       expect(errors.some((error) => error.fieldPath.startsWith("entryConditions"))).toBeFalse();
+    });
+
+    it("should accept a valid MACD condition", () => {
+      const errors = service.validate({
+        ...baseFormValue(),
+        templateId: "macd_cross",
+        conditions: [validMacdCondition()],
+      });
+
+      expect(errors.some((error) => error.fieldPath.startsWith("entryConditions"))).toBeFalse();
+    });
+
+    it("should reject MACD fast periods outside the allowed range", () => {
+      const errors = service.validate({
+        ...baseFormValue(),
+        templateId: "macd_cross",
+        conditions: [{ ...validMacdCondition(), fastPeriod: 1 }],
+      });
+
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0].params.fastPeriod" && error.code === "RANGE")).toBeTrue();
+    });
+
+    it("should reject MACD fast periods that are not less than slow periods", () => {
+      const errors = service.validate({
+        ...baseFormValue(),
+        templateId: "macd_cross",
+        conditions: [{ ...validMacdCondition(), fastPeriod: 26, slowPeriod: 26 }],
+      });
+
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0].params.fastPeriod" && error.message === "Fast period must be less than slow period.")).toBeTrue();
+    });
+
+    it("should reject duplicate MACD conditions using MACD-specific signatures", () => {
+      const errors = service.validate({
+        ...baseFormValue(),
+        templateId: "macd_cross",
+        conditions: [
+          validMacdCondition(),
+          { ...validMacdCondition(), id: "cond-2", label: "Same MACD rule" },
+        ],
+      });
+
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0]" && error.code === "DUPLICATE")).toBeTrue();
+      expect(errors.some((error) => error.fieldPath === "entryConditions[1]" && error.code === "DUPLICATE")).toBeTrue();
     });
   });
 });

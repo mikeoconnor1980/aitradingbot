@@ -22,6 +22,7 @@ public sealed class BacktestRunner : IBacktestRunner
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
     private readonly BacktestExecutionContextAccessor _executionContextAccessor;
+    private readonly ISignalController _signalController;
 
     public BacktestRunner(
         ICandleRepository candleRepository,
@@ -30,7 +31,8 @@ public sealed class BacktestRunner : IBacktestRunner
         IGridController gridController,
         IRiskEngine riskEngine,
         IPositionManager positionManager,
-        BacktestExecutionContextAccessor executionContextAccessor)
+        BacktestExecutionContextAccessor executionContextAccessor,
+        ISignalController signalController)
     {
         _candleRepository = candleRepository ?? throw new ArgumentNullException(nameof(candleRepository));
         _marketContextBuilder = marketContextBuilder ?? throw new ArgumentNullException(nameof(marketContextBuilder));
@@ -39,6 +41,7 @@ public sealed class BacktestRunner : IBacktestRunner
         _riskEngine = riskEngine ?? throw new ArgumentNullException(nameof(riskEngine));
         _positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
         _executionContextAccessor = executionContextAccessor ?? throw new ArgumentNullException(nameof(executionContextAccessor));
+        _signalController = signalController ?? throw new ArgumentNullException(nameof(signalController));
     }
 
     public Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
@@ -74,7 +77,10 @@ public sealed class BacktestRunner : IBacktestRunner
             _riskEngine,
             positionManager,
             config.Strategy,
-            auditCollector: collector);
+            auditCollector: collector,
+            signalController: _signalController,
+            initialCapital: config.InitialCapital,
+            executionContextAccessor: _executionContextAccessor);
 
         _executionContextAccessor.CurrentExecutionEngine = executionEngine;
 
@@ -304,7 +310,7 @@ public sealed class BacktestRunner : IBacktestRunner
         var gridCycleId = fill.GridCycleId ?? gridState.GridCycleId ?? "default";
         ApplyGridFillState(gridState, fill);
 
-        if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen)
+        if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen or TradeType.SignalEntry)
         {
             tradeLog.Add(new BacktestTrade
             {
@@ -441,7 +447,7 @@ public sealed class BacktestRunner : IBacktestRunner
     {
         return exitTradeType switch
         {
-            TradeType.TakeProfit => openTrade.TradeType == TradeType.GridFill,
+            TradeType.TakeProfit => openTrade.TradeType is TradeType.GridFill or TradeType.SignalEntry,
             TradeType.HedgeClose => openTrade.TradeType == TradeType.HedgeOpen,
             _ => false
         };
@@ -466,6 +472,11 @@ public sealed class BacktestRunner : IBacktestRunner
                 break;
 
             case TradeType.TakeProfit:
+                if (string.Equals(fill.GridCycleId, "signal", StringComparison.Ordinal))
+                {
+                    break;
+                }
+
                 gridState.FilledLevels = 0;
                 gridState.Lifecycle = GridLifecycle.Closed;
                 break;
@@ -476,6 +487,9 @@ public sealed class BacktestRunner : IBacktestRunner
 
             case TradeType.HedgeClose:
                 gridState.Lifecycle = GridLifecycle.Closed;
+                break;
+
+            case TradeType.SignalEntry:
                 break;
         }
     }
@@ -538,7 +552,9 @@ public sealed class BacktestRunner : IBacktestRunner
 
     private static void TrackCycleExit(IDictionary<string, GridCycleTrackingState> trackedCycles, SimulatedFill fill)
     {
-        if (string.IsNullOrWhiteSpace(fill.GridCycleId) || fill.TradeType != TradeType.TakeProfit)
+        if (string.IsNullOrWhiteSpace(fill.GridCycleId)
+            || fill.TradeType != TradeType.TakeProfit
+            || string.Equals(fill.GridCycleId, "signal", StringComparison.Ordinal))
         {
             return;
         }

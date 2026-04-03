@@ -12,7 +12,7 @@
     padding: 1rem;
     border: 1px solid var(--colour-border-light);
     border-radius: 0.75rem;
-    background-color: rgba(15, 23, 42, 0.6);
+    background-color: rgba(8, 20, 22, 0.72);
     backdrop-filter: blur(8px);
   }
 
@@ -62,22 +62,24 @@
   }
 
   &__link {
-    color: #bfdbfe;
+    color: var(--colour-label);
     text-decoration: none;
     padding: 0.5rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid rgba(147, 197, 253, 0.35);
+    border: 1px solid rgba(121, 207, 195, 0.18);
     transition: background-color 0.2s ease, color 0.2s ease;
 
     &:hover {
       color: #f8fafc;
-      background-color: rgba(59, 130, 246, 0.22);
+      background-color: var(--colour-accent-soft);
+      border-color: rgba(166, 227, 218, 0.26);
     }
 
     &--active {
-      color: #0b1324;
-      border-color: #86efac;
-      background-color: #86efac;
+      color: var(--colour-accent-strong);
+      border-color: rgba(166, 227, 218, 0.32);
+      background-color: rgba(121, 207, 195, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(166, 227, 218, 0.08);
     }
   }
 }
@@ -94,12 +96,12 @@
 
 .status--reconnecting {
   .app-shell__status-dot {
-    background-color: #f59e0b;
+    background-color: var(--colour-warning);
     animation: pulse 1.5s infinite;
   }
 
   .app-shell__status-label {
-    color: #f59e0b;
+    color: var(--colour-warning);
   }
 }
 

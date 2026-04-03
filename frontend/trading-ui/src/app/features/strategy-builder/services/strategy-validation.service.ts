@@ -15,7 +15,8 @@ export class StrategyValidationService {
   public validate(formValue: Record<string, unknown>): ValidationError[] {
     const errors: ValidationError[] = [];
     const templateId = String(formValue["templateId"] ?? "grid");
-    const isSignalMode = templateId === "custom_signal";
+    const strategyMode = String(formValue["strategyMode"] ?? "grid");
+    const isSignalMode = strategyMode === "signal" || this._isSignalTemplate(templateId);
     const name = String(formValue["strategyName"] ?? "").trim();
     const market = String(formValue["market"] ?? "").trim();
     const timeframe = String(formValue["timeframe"] ?? "").trim();
@@ -67,8 +68,8 @@ export class StrategyValidationService {
       }
     }
 
-    this._validateExitRule(takeProfit, "exit.takeProfit.value", "Take profit", errors);
-    this._validateExitRule(stopLoss, "exit.stopLoss.value", "Stop loss", errors);
+    this._validateExitRule(takeProfit, "exit.takeProfit", "Take profit", errors);
+    this._validateExitRule(stopLoss, "exit.stopLoss", "Stop loss", errors);
 
     if (risk !== null) {
       const positionSizeValue = Number(risk["positionSizeValue"] ?? 0);
@@ -107,17 +108,30 @@ export class StrategyValidationService {
     const duplicateIndexes = this._findDuplicateConditionIndexes(conditions);
 
     duplicateIndexes.forEach((index) => {
-      errors.push(this._error(`entryConditions[${index}]`, "DUPLICATE", "Duplicate RSI conditions are not allowed."));
+      errors.push(this._error(`entryConditions[${index}]`, "DUPLICATE", "Duplicate entry conditions are not allowed."));
     });
 
     conditions.forEach((condition, index) => {
-      const period = Number(condition["period"] ?? 0);
-      const value = Number(condition["value"] ?? -1);
+      const type = String(condition["type"] ?? "rsi");
 
-      if (period < 1) {
-        errors.push(this._error(`entryConditions[${index}].params.period`, "RANGE", "RSI period must be at least 1."));
+      if (type === "macd") {
+        this._validateMacdCondition(condition, index, errors);
+        return;
       }
 
+      const period = Number(condition["period"] ?? 0);
+
+      if (period < 1) {
+        const periodLabel = type === "price_vs_ema" ? "EMA period" : "RSI period";
+        errors.push(this._error(`entryConditions[${index}].params.period`, "RANGE", `${periodLabel} must be at least 1.`));
+      }
+
+      if (type === "price_vs_ema") {
+        this._validatePriceVsEmaCondition(condition, index, errors);
+        return;
+      }
+
+      const value = Number(condition["value"] ?? -1);
       if (value < 0 || value > 100) {
         errors.push(this._error(`entryConditions[${index}].params.value`, "RANGE", "RSI value must be between 0 and 100."));
       }
@@ -145,12 +159,84 @@ export class StrategyValidationService {
   }
 
   private _createConditionSignature(condition: Record<string, unknown>): string {
+    const type = String(condition["type"] ?? "rsi");
+
+    if (type === "price_vs_ema") {
+      return [
+        type,
+        String(condition["period"] ?? ""),
+        String(condition["operator"] ?? ""),
+        String(condition["distanceType"] ?? ""),
+        String(condition["distanceValue"] ?? ""),
+      ].join("|");
+    }
+
+    if (type === "macd") {
+      return [
+        type,
+        String(condition["fastPeriod"] ?? ""),
+        String(condition["slowPeriod"] ?? ""),
+        String(condition["signalPeriod"] ?? ""),
+        String(condition["operator"] ?? ""),
+      ].join("|");
+    }
+
     return [
-      String(condition["type"] ?? "rsi"),
+      type,
       String(condition["period"] ?? ""),
       String(condition["operator"] ?? ""),
       String(condition["value"] ?? ""),
     ].join("|");
+  }
+
+  private _validateMacdCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const fastPeriod = Number(condition["fastPeriod"] ?? 0);
+    const slowPeriod = Number(condition["slowPeriod"] ?? 0);
+    const signalPeriod = Number(condition["signalPeriod"] ?? 0);
+
+    if (fastPeriod < 2 || fastPeriod > 50) {
+      errors.push(this._error(`entryConditions[${index}].params.fastPeriod`, "RANGE", "Fast period must be between 2 and 50."));
+    }
+
+    if (slowPeriod < 5 || slowPeriod > 200) {
+      errors.push(this._error(`entryConditions[${index}].params.slowPeriod`, "RANGE", "Slow period must be between 5 and 200."));
+    }
+
+    if (signalPeriod < 2 || signalPeriod > 50) {
+      errors.push(this._error(`entryConditions[${index}].params.signalPeriod`, "RANGE", "Signal period must be between 2 and 50."));
+    }
+
+    if (fastPeriod >= slowPeriod) {
+      errors.push(this._error(`entryConditions[${index}].params.fastPeriod`, "RANGE", "Fast period must be less than slow period."));
+    }
+  }
+
+  private _validatePriceVsEmaCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const operator = String(condition["operator"] ?? "near");
+
+    if (operator !== "near") {
+      return;
+    }
+
+    const distanceType = String(condition["distanceType"] ?? "").trim();
+    const distanceValue = this._toNullableNumber(condition["distanceValue"]);
+
+    if (distanceType.length === 0) {
+      errors.push(this._error(`entryConditions[${index}].params.distanceType`, "REQUIRED", "Distance type is required for near EMA conditions."));
+    }
+
+    if (distanceValue === null) {
+      errors.push(this._error(`entryConditions[${index}].params.distanceValue`, "REQUIRED", "Distance value is required for near EMA conditions."));
+      return;
+    }
+
+    if (distanceValue <= 0) {
+      errors.push(this._error(`entryConditions[${index}].params.distanceValue`, "RANGE", "Distance value must be greater than 0."));
+    }
+  }
+
+  private _isSignalTemplate(templateId: string): boolean {
+    return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
   }
 
   public validateServer(config: StrategyConfig, context?: HttpContext): Observable<ServerValidationResult> {
@@ -176,15 +262,32 @@ export class StrategyValidationService {
       return;
     }
 
+    const type = String(rule["type"] ?? "fixed_percent");
+
+    if (type === "swing_low") {
+      const lookback = this._toNullableNumber(rule["lookback"]);
+
+      if (lookback === null) {
+        errors.push(this._error(`${fieldPath}.lookback`, "REQUIRED", `${label} lookback is required when swing low is enabled.`));
+        return;
+      }
+
+      if (lookback < 1) {
+        errors.push(this._error(`${fieldPath}.lookback`, "RANGE", `${label} lookback must be at least 1 candle.`));
+      }
+
+      return;
+    }
+
     const value = this._toNullableNumber(rule["value"]);
 
     if (value === null) {
-      errors.push(this._error(fieldPath, "REQUIRED", `${label} value is required when enabled.`));
+      errors.push(this._error(`${fieldPath}.value`, "REQUIRED", `${label} value is required when enabled.`));
       return;
     }
 
     if (value < 0.01 || value > 50) {
-      errors.push(this._error(fieldPath, "RANGE", `${label} must be between 0.01% and 50%.`));
+      errors.push(this._error(`${fieldPath}.value`, "RANGE", `${label} must be between 0.01% and 50%.`));
     }
   }
 

@@ -11,8 +11,10 @@ public sealed class MarketContext
     public required string Symbol { get; init; }
     public required long TimestampUtc { get; init; }
     public required Candle CurrentCandle { get; init; }
+    public Candle? PreviousCandle { get; init; }
     public Candle? LatestOneHourCandle { get; init; }
     public Candle? LatestFourHourCandle { get; init; }
     public required IndicatorSnapshot Indicators { get; init; }
     public IndicatorContext? IndicatorContext { get; init; }
+    public decimal AccountEquity { get; set; }
 }

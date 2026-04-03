@@ -39,7 +39,7 @@ public sealed class CrossFieldValidatorTests
     }
 
     [TestMethod]
-    public void GivenEnabledTrendFilter_WhenValidated_ThenInfoMessage()
+    public void GivenEnabledTrendFilter_WhenValidated_ThenLegacyInfoMessageIsNotEmitted()
     {
         var config = new StrategyConfig
         {
@@ -51,9 +51,7 @@ public sealed class CrossFieldValidatorTests
 
         _sut.Validate(config, result);
 
-        result.InfoMessages.Should().Contain(error =>
-            error.Code == "TREND_FILTER_NOT_EVALUATED"
-            && error.Message.Contains("not yet evaluated"));
+        result.InfoMessages.Should().NotContain(error => error.Code == "TREND_FILTER_NOT_EVALUATED");
     }
 
     [TestMethod]

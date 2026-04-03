@@ -44,6 +44,70 @@ describe("StrategyMapperService", () => {
       },
     });
   });
+
+  it("should map trend filter config for signal mode", () => {
+    const config = service.mapFormToConfig(buildSignalFormValue());
+
+    expect(config.trendFilter).toEqual({
+      enabled: true,
+      type: "ema_cross",
+      period: null,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    });
+  });
+
+  it("should map swing low stop loss to lookback", () => {
+    const config = service.mapFormToConfig({
+      ...buildSignalFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: 6, lookback: 5 },
+        exitOnOppositeSignal: false,
+      },
+    });
+
+    expect(config.exit.stopLoss).toEqual({
+      enabled: true,
+      type: "swing_low",
+      value: null,
+      lookback: 5,
+    });
+  });
+
+  it("should map MACD condition params for signal mode", () => {
+    const config = service.mapFormToConfig({
+      ...buildSignalFormValue(),
+      templateId: "macd_cross",
+      conditions: [{
+        id: "cond-1",
+        enabled: true,
+        type: "macd",
+        label: "MACD bullish crossover",
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        operator: "cross_above_signal",
+      }],
+    });
+    const condition = config.entryConditions?.[0];
+
+    expect(config.strategyMode).toBe("signal");
+    expect(condition).toEqual({
+      id: "cond-1",
+      enabled: true,
+      type: "macd",
+      label: "MACD bullish crossover",
+      params: {
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        operator: "cross_above_signal",
+      },
+    });
+  });
 });
 
 function buildGridFormValue(): Record<string, unknown> {
@@ -75,6 +139,15 @@ function buildGridFormValue(): Record<string, unknown> {
       cooldownUnit: "candles",
       allowSameCandleReentry: false,
     },
+    trendFilter: {
+      enabled: false,
+      type: "ema_cross",
+      period: 200,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    },
     metadata: { tags: [], notes: "" },
     conditions: [],
   };
@@ -84,6 +157,15 @@ function buildSignalFormValue(): Record<string, unknown> {
   return {
     ...buildGridFormValue(),
     templateId: "custom_signal",
+    trendFilter: {
+      enabled: true,
+      type: "ema_cross",
+      period: 200,
+      fastPeriod: 50,
+      slowPeriod: 200,
+      operator: "gt",
+      appliesTo: "both",
+    },
     conditions: [{
       id: "cond-1",
       enabled: true,

@@ -18,7 +18,11 @@ public sealed class ConditionEvaluatorTests
     public void Setup()
     {
         _loggerMock = new Mock<ILogger<ConditionEvaluator>>();
-        var handlers = new IConditionHandler[] { new RsiConditionHandler() };
+        var handlers = new IConditionHandler[]
+        {
+            new RsiConditionHandler(),
+            new PriceVsEmaConditionHandler(new Mock<ILogger<PriceVsEmaConditionHandler>>().Object)
+        };
         _sut = new ConditionEvaluator(handlers, _loggerMock.Object);
     }
 
@@ -144,6 +148,34 @@ public sealed class ConditionEvaluatorTests
     }
 
     [TestMethod]
+    public void GivenPriceVsEmaNearCondition_WhenPriceIsNearEma_ThenSetupDetected()
+    {
+        var config = CreateSignalConfig(
+            EntryLogic.All,
+            new EntryConditionConfig
+            {
+                Id = "ema-1",
+                Enabled = true,
+                Type = EntryConditionType.PriceVsEma,
+                Label = "Price near EMA(50)",
+                Params = new PriceVsEmaParams
+                {
+                    Period = 50,
+                    Operator = "near",
+                    DistanceType = "percent",
+                    DistanceValue = 0.5m,
+                }
+            });
+        var context = CreateMarketContextWithIndicators(rsiPeriod: 14, currentRsi: 32m, previousRsi: 28m, close: 100.2m);
+        context.IndicatorContext!.SetEma(50, 100m);
+
+        var result = _sut.Evaluate(config, context);
+
+        result.SetupDetected.Should().BeTrue();
+        result.ConditionResults.Should().ContainSingle();
+    }
+
+    [TestMethod]
     public void GivenUnknownConditionsOnly_WhenEvaluated_ThenSetupDetected()
     {
         var config = CreateSignalConfig(EntryLogic.All, CreateUnknownCondition());
@@ -209,33 +241,42 @@ public sealed class ConditionEvaluatorTests
         };
     }
 
-    private static MarketContext CreateMarketContextWithIndicators(int rsiPeriod = 14, decimal currentRsi = 50m, decimal? previousRsi = null)
+    private static MarketContext CreateMarketContextWithIndicators(
+        int rsiPeriod = 14,
+        decimal currentRsi = 50m,
+        decimal? previousRsi = null,
+        decimal close = 102m)
     {
         var indicatorContext = new IndicatorContext();
         indicatorContext.SetRsi(rsiPeriod, currentRsi, previousRsi);
 
-        return CreateMarketContext(indicatorContext);
+        return CreateMarketContext(indicatorContext, close);
     }
 
-    private static MarketContext CreateMarketContext(IndicatorContext? indicatorContext)
+    private static MarketContext CreateMarketContext(IndicatorContext? indicatorContext, decimal close = 102m)
     {
         return new MarketContext
         {
             Symbol = "BTC-USD",
             TimestampUtc = CandleTimestamp,
-            CurrentCandle = Candle.Create(
-                "Binance",
-                "BTC-USD",
-                "15m",
-                CandleTimestamp,
-                100m,
-                105m,
-                95m,
-                102m,
-                1_000m,
-                10),
+            CurrentCandle = CreateCandle(close),
             Indicators = new IndicatorSnapshot(),
             IndicatorContext = indicatorContext
         };
+    }
+
+    private static Candle CreateCandle(decimal close)
+    {
+        return Candle.Create(
+            "Binance",
+            "BTC-USD",
+            "15m",
+            CandleTimestamp,
+            100m,
+            105m,
+            95m,
+            close,
+            1_000m,
+            10);
     }
 }

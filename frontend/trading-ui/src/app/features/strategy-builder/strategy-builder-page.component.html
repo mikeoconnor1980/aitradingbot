@@ -34,6 +34,25 @@
   } @else {
     <div class="builder-page__layout">
       <div class="builder-page__column builder-page__column--main">
+        <app-nl-input-card
+          [initialText]="nlSourceText"
+          (interpreted)="onNlInterpreted($event)"
+        />
+
+        @if (nlResult !== null) {
+          <div class="builder-page__nl-results">
+            <app-confidence-badge
+              [confidence]="nlResult.confidence"
+              [clarificationNeeded]="nlResult.clarificationNeeded"
+            />
+
+            <app-assumptions-panel
+              [assumptions]="nlResult.assumptions"
+              (editField)="onEditAssumptionField($event)"
+            />
+          </div>
+        }
+
         <app-strategy-template-selector
           [selectedTemplateId]="selectedTemplateId"
           (templateSelected)="onTemplateSelected($event)"
@@ -48,7 +67,7 @@
         }
         <app-exit-rules-card [group]="exitFormGroup" />
         <app-risk-management-card [group]="riskFormGroup" />
-        <app-trend-filter-card />
+        <app-trend-filter-card [group]="isSignalMode ? trendFilterFormGroup : null" />
       </div>
 
       <div class="builder-page__column builder-page__column--side">

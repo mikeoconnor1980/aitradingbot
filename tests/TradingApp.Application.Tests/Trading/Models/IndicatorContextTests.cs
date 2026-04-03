@@ -44,6 +44,24 @@ public sealed class IndicatorContextTests
     }
 
     [TestMethod]
+    public void GivenSmaSet_WhenGetSma_ThenReturnsValue()
+    {
+        var context = new IndicatorContext();
+        context.SetSma(20, 42000m, 41900m);
+
+        context.GetSma(20).Should().Be(42000m);
+        context.GetPreviousSma(20).Should().Be(41900m);
+    }
+
+    [TestMethod]
+    public void GivenSmaNotSet_WhenGetSma_ThenReturnsNull()
+    {
+        var context = new IndicatorContext();
+
+        context.GetSma(20).Should().BeNull();
+    }
+
+    [TestMethod]
     public void GivenMacdSet_WhenGetMacd_ThenReturnsLineSignalAndHistogramValues()
     {
         var context = new IndicatorContext();

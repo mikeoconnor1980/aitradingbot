@@ -61,6 +61,23 @@ interface IndicatorToggleState {
   macd: boolean;
 }
 
+const PRICE_CHART_THEME = {
+  background: "#091315",
+  panelBackground: "#071012",
+  grid: "#162629",
+  text: "#7f9d99",
+  accent: "#79cfc3",
+  info: "#8fc7d8",
+  profit: "#3bc9a8",
+  loss: "#e07a8f",
+  warning: "#caa86a",
+  warningStrong: "#b9873f",
+  band: "rgba(143, 199, 216, 0.42)",
+  bandMid: "rgba(224, 122, 143, 0.4)",
+  rsiOverbought: "rgba(224, 122, 143, 0.55)",
+  rsiOversold: "rgba(59, 201, 168, 0.55)"
+} as const;
+
 @Component({
   selector: "app-price-chart",
   standalone: true,
@@ -272,20 +289,20 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: container.clientWidth,
       height: 300,
       layout: {
-        background: { color: "#1a1a2e" },
-        textColor: "#a0a0b0"
+        background: { color: PRICE_CHART_THEME.background },
+        textColor: PRICE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#2a2a3e" },
-        horzLines: { color: "#2a2a3e" }
+        vertLines: { color: PRICE_CHART_THEME.grid },
+        horzLines: { color: PRICE_CHART_THEME.grid }
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: "#2a2a3e"
+        borderColor: PRICE_CHART_THEME.grid
       },
       rightPriceScale: {
-        borderColor: "#2a2a3e"
+        borderColor: PRICE_CHART_THEME.grid
       },
       crosshair: {
         mode: CrosshairMode.Normal
@@ -293,11 +310,11 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     });
 
     this._candleSeries = this._chart.addSeries(CandlestickSeries, {
-      upColor: "#26a69a",
-      downColor: "#ef5350",
+      upColor: PRICE_CHART_THEME.profit,
+      downColor: PRICE_CHART_THEME.loss,
       borderVisible: false,
-      wickUpColor: "#26a69a",
-      wickDownColor: "#ef5350",
+      wickUpColor: PRICE_CHART_THEME.profit,
+      wickDownColor: PRICE_CHART_THEME.loss,
       priceFormat: {
         type: "price",
         precision: 2,
@@ -307,37 +324,37 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
 
     this._markersApi = createSeriesMarkers(this._candleSeries, []);
     this._emaFastSeries = this._chart.addSeries(LineSeries, {
-      color: "#38bdf8",
+      color: PRICE_CHART_THEME.accent,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._emaSlowSeries = this._chart.addSeries(LineSeries, {
-      color: "#f97316",
+      color: PRICE_CHART_THEME.warningStrong,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._emaTrendSeries = this._chart.addSeries(LineSeries, {
-      color: "#22c55e",
+      color: PRICE_CHART_THEME.profit,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._bollingerUpperSeries = this._chart.addSeries(LineSeries, {
-      color: "rgba(168, 85, 247, 0.85)",
+      color: PRICE_CHART_THEME.band,
       lineWidth: 1,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._bollingerMiddleSeries = this._chart.addSeries(LineSeries, {
-      color: "rgba(244, 114, 182, 0.8)",
+      color: PRICE_CHART_THEME.bandMid,
       lineWidth: 1,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._bollingerLowerSeries = this._chart.addSeries(LineSeries, {
-      color: "rgba(168, 85, 247, 0.85)",
+      color: PRICE_CHART_THEME.band,
       lineWidth: 1,
       lastValueVisible: false,
       priceLineVisible: false,
@@ -362,32 +379,32 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: container.clientWidth,
       height: 140,
       layout: {
-        background: { color: "#101827" },
-        textColor: "#94a3b8"
+        background: { color: PRICE_CHART_THEME.panelBackground },
+        textColor: PRICE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" }
+        vertLines: { color: PRICE_CHART_THEME.grid },
+        horzLines: { color: PRICE_CHART_THEME.grid }
       },
       timeScale: {
         visible: false,
-        borderColor: "#1f2937"
+        borderColor: PRICE_CHART_THEME.grid
       },
       rightPriceScale: {
-        borderColor: "#1f2937"
+        borderColor: PRICE_CHART_THEME.grid
       }
     });
 
     this._rsiSeries = this._rsiChart.addSeries(LineSeries, {
-      color: "#facc15",
+      color: PRICE_CHART_THEME.warning,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
 
     this._rsiPriceLines = [
-      this._rsiSeries.createPriceLine({ price: 70, color: "rgba(239, 68, 68, 0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" }),
-      this._rsiSeries.createPriceLine({ price: 30, color: "rgba(34, 197, 94, 0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" })
+      this._rsiSeries.createPriceLine({ price: 70, color: PRICE_CHART_THEME.rsiOverbought, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" }),
+      this._rsiSeries.createPriceLine({ price: 30, color: PRICE_CHART_THEME.rsiOversold, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" })
     ];
   }
 
@@ -398,20 +415,20 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: container.clientWidth,
       height: 160,
       layout: {
-        background: { color: "#101827" },
-        textColor: "#94a3b8"
+        background: { color: PRICE_CHART_THEME.panelBackground },
+        textColor: PRICE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" }
+        vertLines: { color: PRICE_CHART_THEME.grid },
+        horzLines: { color: PRICE_CHART_THEME.grid }
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: "#1f2937"
+        borderColor: PRICE_CHART_THEME.grid
       },
       rightPriceScale: {
-        borderColor: "#1f2937"
+        borderColor: PRICE_CHART_THEME.grid
       }
     });
 
@@ -420,13 +437,13 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       lastValueVisible: false,
     });
     this._macdLineSeries = this._macdChart.addSeries(LineSeries, {
-      color: "#38bdf8",
+      color: PRICE_CHART_THEME.accent,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._macdSignalSeries = this._macdChart.addSeries(LineSeries, {
-      color: "#f97316",
+      color: PRICE_CHART_THEME.warningStrong,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
@@ -588,7 +605,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       markers.push({
         time: aggregatedGroup.time as UTCTimestamp,
         position: isBuy ? "belowBar" : "aboveBar",
-        color: isBuy ? "#26a69a" : "#f59e0b",
+        color: isBuy ? PRICE_CHART_THEME.profit : PRICE_CHART_THEME.warning,
         shape: isBuy ? "arrowUp" : "arrowDown",
         text: this._buildMarkerText(aggregatedGroup)
       });

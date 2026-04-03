@@ -1,7 +1,7 @@
 .coverage-report {
   margin-top: 1rem;
   border: 1px solid var(--colour-border-subtle);
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(10, 26, 31, 0.72);
 
   &__empty {
     margin: 0;
@@ -39,7 +39,7 @@
   }
 
   &__status--full {
-    color: #86efac;
+    color: var(--colour-profit);
   }
 
   &__status--partial {
