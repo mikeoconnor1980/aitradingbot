@@ -15,7 +15,7 @@
     } @else if (conditionGroups.length === 0) {
       <p class="conditions-card__message">No conditions added. Click "Add RSI" to create a condition.</p>
     } @else {
-      @for (group of conditionGroups; track group; let index = $index) {
+      @for (group of conditionGroups; track group.value.id; let index = $index) {
         <app-rsi-condition-item
           [group]="group"
           [index]="index"

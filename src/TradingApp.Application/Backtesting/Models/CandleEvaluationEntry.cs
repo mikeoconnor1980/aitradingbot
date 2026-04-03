@@ -1,3 +1,5 @@
+using TradingApp.Application.Trading.Models;
+
 namespace TradingApp.Application.Backtesting.Models;
 
 /// <summary>
@@ -23,4 +25,5 @@ public sealed record CandleEvaluationEntry
     public required decimal PositionAvgEntry { get; init; }
     public required IReadOnlyList<string> SignalsEmitted { get; init; }
     public string? GridCycleId { get; init; }
+    public ChartIndicatorValues? Indicators { get; init; }
 }

@@ -13,10 +13,14 @@ import {
   createChart,
   createSeriesMarkers,
   CrosshairMode,
+  HistogramData,
+  HistogramSeries,
   IChartApi,
   IPriceLine,
   ISeriesApi,
   ISeriesMarkersPluginApi,
+  LineData,
+  LineSeries,
   SeriesMarker,
   Time,
   UTCTimestamp
@@ -37,6 +41,17 @@ interface CandleDataPoint {
   close: number;
 }
 
+type IndicatorToggleKey = "emaFast" | "emaSlow" | "emaTrend" | "bollinger" | "rsi" | "macd";
+
+interface IndicatorToggleState {
+  emaFast: boolean;
+  emaSlow: boolean;
+  emaTrend: boolean;
+  bollinger: boolean;
+  rsi: boolean;
+  macd: boolean;
+}
+
 @Component({
   selector: "app-cycle-chart",
   standalone: true,
@@ -54,11 +69,39 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   @ViewChild("chartContainer", { static: true })
   private readonly _chartContainer!: ElementRef<HTMLDivElement>;
 
+  @ViewChild("rsiChartContainer", { static: true })
+  private readonly _rsiChartContainer!: ElementRef<HTMLDivElement>;
+
+  @ViewChild("macdChartContainer", { static: true })
+  private readonly _macdChartContainer!: ElementRef<HTMLDivElement>;
+
+  public indicatorToggles: IndicatorToggleState = {
+    emaFast: true,
+    emaSlow: true,
+    emaTrend: false,
+    bollinger: false,
+    rsi: false,
+    macd: false,
+  };
+
   private _chart: IChartApi | null = null;
   private _candleSeries: ISeriesApi<"Candlestick"> | null = null;
   private _markersApi: ISeriesMarkersPluginApi<Time> | null = null;
   private _resizeObserver: ResizeObserver | null = null;
   private _priceLines: IPriceLine[] = [];
+  private _emaFastSeries: ISeriesApi<"Line"> | null = null;
+  private _emaSlowSeries: ISeriesApi<"Line"> | null = null;
+  private _emaTrendSeries: ISeriesApi<"Line"> | null = null;
+  private _bollingerUpperSeries: ISeriesApi<"Line"> | null = null;
+  private _bollingerMiddleSeries: ISeriesApi<"Line"> | null = null;
+  private _bollingerLowerSeries: ISeriesApi<"Line"> | null = null;
+  private _rsiChart: IChartApi | null = null;
+  private _rsiSeries: ISeriesApi<"Line"> | null = null;
+  private _rsiPriceLines: IPriceLine[] = [];
+  private _macdChart: IChartApi | null = null;
+  private _macdLineSeries: ISeriesApi<"Line"> | null = null;
+  private _macdSignalSeries: ISeriesApi<"Line"> | null = null;
+  private _macdHistogramSeries: ISeriesApi<"Histogram"> | null = null;
 
   public get hasData(): boolean {
     return (this.debugData?.candleEvaluations.length ?? 0) > 0;
@@ -66,6 +109,8 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   public ngAfterViewInit(): void {
     this._initChart();
+    this._initRsiChart();
+    this._initMacdChart();
     this._updateData();
   }
 
@@ -82,15 +127,41 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   public ngOnDestroy(): void {
     const resizeObserver = this._resizeObserver;
     const chart = this._chart;
+    const rsiChart = this._rsiChart;
+    const macdChart = this._macdChart;
 
     this._resizeObserver = null;
     this._markersApi = null;
     this._priceLines = [];
+    this._emaFastSeries = null;
+    this._emaSlowSeries = null;
+    this._emaTrendSeries = null;
+    this._bollingerUpperSeries = null;
+    this._bollingerMiddleSeries = null;
+    this._bollingerLowerSeries = null;
     this._candleSeries = null;
     this._chart = null;
+    this._rsiPriceLines = [];
+    this._rsiSeries = null;
+    this._rsiChart = null;
+    this._macdHistogramSeries = null;
+    this._macdLineSeries = null;
+    this._macdSignalSeries = null;
+    this._macdChart = null;
 
     resizeObserver?.disconnect();
     chart?.remove();
+    rsiChart?.remove();
+    macdChart?.remove();
+  }
+
+  public onIndicatorToggleChanged(key: IndicatorToggleKey, checked: boolean): void {
+    this.indicatorToggles = {
+      ...this.indicatorToggles,
+      [key]: checked,
+    };
+
+    this._refreshIndicatorSeries();
   }
 
   private _initChart(): void {
@@ -130,14 +201,130 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     });
 
     this._markersApi = createSeriesMarkers(this._candleSeries, []);
+    this._emaFastSeries = this._chart.addSeries(LineSeries, {
+      color: "#38bdf8",
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._emaSlowSeries = this._chart.addSeries(LineSeries, {
+      color: "#f97316",
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._emaTrendSeries = this._chart.addSeries(LineSeries, {
+      color: "#22c55e",
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._bollingerUpperSeries = this._chart.addSeries(LineSeries, {
+      color: "rgba(168, 85, 247, 0.85)",
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._bollingerMiddleSeries = this._chart.addSeries(LineSeries, {
+      color: "rgba(244, 114, 182, 0.8)",
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._bollingerLowerSeries = this._chart.addSeries(LineSeries, {
+      color: "rgba(168, 85, 247, 0.85)",
+      lineWidth: 1,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
 
     this._resizeObserver = new ResizeObserver((entries: ResizeObserverEntry[]) => {
       for (const entry of entries) {
         this._chart?.applyOptions({ width: Math.max(entry.contentRect.width, 320) });
+        this._rsiChart?.applyOptions({ width: Math.max(entry.contentRect.width, 320) });
+        this._macdChart?.applyOptions({ width: Math.max(entry.contentRect.width, 320) });
       }
     });
 
     this._resizeObserver.observe(container);
+  }
+
+  private _initRsiChart(): void {
+    const container = this._rsiChartContainer.nativeElement;
+
+    this._rsiChart = createChart(container, {
+      width: Math.max(container.clientWidth, 320),
+      height: 140,
+      layout: {
+        background: { color: "#101827" },
+        textColor: "#94a3b8"
+      },
+      grid: {
+        vertLines: { color: "#1f2937" },
+        horzLines: { color: "#1f2937" }
+      },
+      timeScale: {
+        visible: false,
+        borderColor: "#1f2937"
+      },
+      rightPriceScale: {
+        borderColor: "#1f2937"
+      }
+    });
+
+    this._rsiSeries = this._rsiChart.addSeries(LineSeries, {
+      color: "#facc15",
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    this._rsiPriceLines = [
+      this._rsiSeries.createPriceLine({ price: 70, color: "rgba(239, 68, 68, 0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" }),
+      this._rsiSeries.createPriceLine({ price: 30, color: "rgba(34, 197, 94, 0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" })
+    ];
+  }
+
+  private _initMacdChart(): void {
+    const container = this._macdChartContainer.nativeElement;
+
+    this._macdChart = createChart(container, {
+      width: Math.max(container.clientWidth, 320),
+      height: 160,
+      layout: {
+        background: { color: "#101827" },
+        textColor: "#94a3b8"
+      },
+      grid: {
+        vertLines: { color: "#1f2937" },
+        horzLines: { color: "#1f2937" }
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        borderColor: "#1f2937"
+      },
+      rightPriceScale: {
+        borderColor: "#1f2937"
+      }
+    });
+
+    this._macdHistogramSeries = this._macdChart.addSeries(HistogramSeries, {
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    this._macdLineSeries = this._macdChart.addSeries(LineSeries, {
+      color: "#38bdf8",
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    this._macdSignalSeries = this._macdChart.addSeries(LineSeries, {
+      color: "#f97316",
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
   }
 
   private _updateData(): void {
@@ -151,9 +338,15 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     this._clearPriceLines();
     this._addGridOverlay(this.debugData.gridCycleSummary);
     this._markersApi?.setMarkers(this._buildOrderMarkers(this.debugData.orderEvents));
+    this._refreshIndicatorSeries();
 
     if (candles.length > 0) {
       this._chart.timeScale().fitContent();
+      const range = this._chart.timeScale().getVisibleLogicalRange();
+      if (range) {
+        this._rsiChart?.timeScale().setVisibleLogicalRange(range);
+        this._macdChart?.timeScale().setVisibleLogicalRange(range);
+      }
     }
   }
 
@@ -266,5 +459,54 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
         };
       })
       .sort((a: SeriesMarker<Time>, b: SeriesMarker<Time>) => (a.time as number) - (b.time as number));
+  }
+
+  private _refreshIndicatorSeries(): void {
+    const evaluations = this.debugData?.candleEvaluations ?? [];
+    this._setLineSeriesData(this._emaFastSeries, this.indicatorToggles.emaFast ? this._mapIndicatorLineData(evaluations, candle => candle.emaFast) : []);
+    this._setLineSeriesData(this._emaSlowSeries, this.indicatorToggles.emaSlow ? this._mapIndicatorLineData(evaluations, candle => candle.emaSlow) : []);
+    this._setLineSeriesData(this._emaTrendSeries, this.indicatorToggles.emaTrend ? this._mapIndicatorLineData(evaluations, candle => candle.emaTrend) : []);
+
+    const showBollinger = this.indicatorToggles.bollinger;
+    this._setLineSeriesData(this._bollingerUpperSeries, showBollinger ? this._mapIndicatorLineData(evaluations, candle => candle.indicators?.bollingerUpper) : []);
+    this._setLineSeriesData(this._bollingerMiddleSeries, showBollinger ? this._mapIndicatorLineData(evaluations, candle => candle.indicators?.bollingerMiddle) : []);
+    this._setLineSeriesData(this._bollingerLowerSeries, showBollinger ? this._mapIndicatorLineData(evaluations, candle => candle.indicators?.bollingerLower) : []);
+
+    this._setLineSeriesData(this._rsiSeries, this.indicatorToggles.rsi ? this._mapIndicatorLineData(evaluations, candle => candle.indicators?.rsi ?? candle.rsi) : []);
+    this._setLineSeriesData(this._macdLineSeries, this.indicatorToggles.macd ? this._mapIndicatorLineData(evaluations, candle => candle.indicators?.macdLine) : []);
+    this._setLineSeriesData(this._macdSignalSeries, this.indicatorToggles.macd ? this._mapIndicatorLineData(evaluations, candle => candle.indicators?.macdSignal) : []);
+    this._setHistogramSeriesData(this._macdHistogramSeries, this.indicatorToggles.macd ? this._mapMacdHistogramData(evaluations) : []);
+  }
+
+  private _mapIndicatorLineData(
+    evaluations: CandleEvaluation[],
+    selector: (candle: CandleEvaluation) => number | null | undefined): LineData<UTCTimestamp>[] {
+    return evaluations
+      .filter((candle: CandleEvaluation) => !candle.isWarmup && selector(candle) != null)
+      .map((candle: CandleEvaluation) => ({
+        time: Math.floor(candle.timestampUtc / 1000) as UTCTimestamp,
+        value: selector(candle) as number,
+      }));
+  }
+
+  private _mapMacdHistogramData(evaluations: CandleEvaluation[]): HistogramData<UTCTimestamp>[] {
+    return evaluations
+      .filter((candle: CandleEvaluation) => !candle.isWarmup && candle.indicators?.macdHistogram != null)
+      .map((candle: CandleEvaluation) => {
+        const value = candle.indicators?.macdHistogram as number;
+        return {
+          time: Math.floor(candle.timestampUtc / 1000) as UTCTimestamp,
+          value,
+          color: value >= 0 ? "rgba(34, 197, 94, 0.8)" : "rgba(239, 68, 68, 0.8)",
+        };
+      });
+  }
+
+  private _setLineSeriesData(series: ISeriesApi<"Line"> | null, data: LineData<UTCTimestamp>[]): void {
+    series?.setData(data);
+  }
+
+  private _setHistogramSeriesData(series: ISeriesApi<"Histogram"> | null, data: HistogramData<UTCTimestamp>[]): void {
+    series?.setData(data);
   }
 }

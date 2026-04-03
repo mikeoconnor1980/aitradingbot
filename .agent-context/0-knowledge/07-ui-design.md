@@ -40,6 +40,7 @@ Services (all `providedIn: 'root'`):
 | `ReferenceDataService` | GET `/api/reference-data/markets`; `shareReplay` cached |
 | `StrategyMapperService` | Converts reactive form values → `StrategyConfig` |
 | `StrategyValidationService` | Client-side validation rules |
+| `ConditionFactoryService` | Creates typed `FormGroup` instances for each entry condition type; extensible for future condition types |
 
 Route guard: `unsavedChangesGuard` (`CanDeactivateFn`) — prompts confirmation dialog when form is dirty.
 

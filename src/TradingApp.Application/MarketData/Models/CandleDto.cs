@@ -1,3 +1,5 @@
+using TradingApp.Application.Trading.Models;
+
 namespace TradingApp.Application.MarketData.Models;
 
 public sealed class CandleDto
@@ -8,4 +10,5 @@ public sealed class CandleDto
     public decimal Low { get; init; }
     public decimal Close { get; init; }
     public decimal Volume { get; init; }
+    public ChartIndicatorValues? Indicators { get; init; }
 }

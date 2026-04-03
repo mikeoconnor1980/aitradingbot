@@ -18,6 +18,10 @@ export class ConditionFactoryService {
   private _nextId = 1;
 
   public createRsiCondition(overrides?: Partial<CreateRsiConditionOverrides>): FormGroup {
+    if (overrides?.id !== undefined) {
+      this._advancePastId(overrides.id);
+    }
+
     return this._fb.group({
       id: [overrides?.id ?? this._generateId()],
       enabled: [overrides?.enabled ?? true],
@@ -31,5 +35,15 @@ export class ConditionFactoryService {
 
   private _generateId(): string {
     return `cond-${this._nextId++}`;
+  }
+
+  private _advancePastId(id: string): void {
+    const match = /^cond-(\d+)$/.exec(id);
+    if (match !== null) {
+      const existingNumber = Number(match[1]);
+      if (existingNumber >= this._nextId) {
+        this._nextId = existingNumber + 1;
+      }
+    }
   }
 }

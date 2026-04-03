@@ -29,14 +29,38 @@ public sealed class IndicatorContext
         }
     }
 
-    public void SetMacd(int fast, int slow, int signal, decimal currentValue, decimal? previousValue = null)
+    public void SetMacd(
+        int fast,
+        int slow,
+        int signal,
+        decimal line,
+        decimal signalLine,
+        decimal histogram,
+        decimal? previousLine = null,
+        decimal? previousSignalLine = null,
+        decimal? previousHistogram = null)
     {
-        var key = CreateMacdKey(fast, slow, signal);
-        _current[key] = currentValue;
+        var lineKey = CreateMacdKey(fast, slow, signal);
+        var signalKey = CreateMacdSignalKey(fast, slow, signal);
+        var histogramKey = CreateMacdHistogramKey(fast, slow, signal);
 
-        if (previousValue.HasValue)
+        _current[lineKey] = line;
+        _current[signalKey] = signalLine;
+        _current[histogramKey] = histogram;
+
+        if (previousLine.HasValue)
         {
-            _previous[key] = previousValue.Value;
+            _previous[lineKey] = previousLine.Value;
+        }
+
+        if (previousSignalLine.HasValue)
+        {
+            _previous[signalKey] = previousSignalLine.Value;
+        }
+
+        if (previousHistogram.HasValue)
+        {
+            _previous[histogramKey] = previousHistogram.Value;
         }
     }
 
@@ -52,6 +76,14 @@ public sealed class IndicatorContext
 
     public decimal? GetPreviousMacd(int fast, int slow, int signal) => GetValue(_previous, CreateMacdKey(fast, slow, signal));
 
+    public decimal? GetMacdSignal(int fast, int slow, int signal) => GetValue(_current, CreateMacdSignalKey(fast, slow, signal));
+
+    public decimal? GetPreviousMacdSignal(int fast, int slow, int signal) => GetValue(_previous, CreateMacdSignalKey(fast, slow, signal));
+
+    public decimal? GetMacdHistogram(int fast, int slow, int signal) => GetValue(_current, CreateMacdHistogramKey(fast, slow, signal));
+
+    public decimal? GetPreviousMacdHistogram(int fast, int slow, int signal) => GetValue(_previous, CreateMacdHistogramKey(fast, slow, signal));
+
     private static decimal? GetValue(IReadOnlyDictionary<string, decimal> source, string key)
     {
         return source.TryGetValue(key, out var value) ? value : null;
@@ -62,4 +94,8 @@ public sealed class IndicatorContext
     private static string CreateEmaKey(int period) => $"EMA:{period}";
 
     private static string CreateMacdKey(int fast, int slow, int signal) => $"MACD:{fast}:{slow}:{signal}";
+
+    private static string CreateMacdSignalKey(int fast, int slow, int signal) => $"MACD:{fast}:{slow}:{signal}:signal";
+
+    private static string CreateMacdHistogramKey(int fast, int slow, int signal) => $"MACD:{fast}:{slow}:{signal}:histogram";
 }

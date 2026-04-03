@@ -193,4 +193,49 @@ public sealed class GetHistoricalCandlesQueryHandlerTests
         await action.Should().ThrowAsync<DomainException>()
             .WithMessage("Invalid timeframe '2m'.*");
     }
+
+    [TestMethod]
+    public async Task GivenEnoughCandles_WhenHandle_ThenReturnsPerCandleIndicatorRepresentation()
+    {
+        var candles = Enumerable.Range(0, 220)
+            .Select(index => Candle.Create(
+                "BTC",
+                "15m",
+                1_700_000_000_000 + (index * 900_000L),
+                100m + index,
+                101m + index,
+                99m + index,
+                100.5m + index,
+                50m + index,
+                10 + index))
+            .ToList();
+
+        _candleRepositoryMock
+            .Setup(repository => repository.GetCandlesAsync(
+                "BTC",
+                "15m",
+                It.IsAny<long>(),
+                It.IsAny<long>(),
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(candles);
+
+        var sut = new GetHistoricalCandlesQueryHandler(_candleRepositoryMock.Object);
+
+    var result = await sut.Handle(new GetHistoricalCandlesQuery("BTC-PERP", "15m", Limit: 220), CancellationToken.None);
+
+    result.Should().HaveCount(220);
+        result[^1].Indicators.Should().NotBeNull();
+        result[^1].Indicators!.EmaFast.Should().NotBeNull();
+        result[^1].Indicators!.EmaSlow.Should().NotBeNull();
+        result[^1].Indicators!.EmaTrend.Should().NotBeNull();
+        result[^1].Indicators!.Rsi.Should().NotBeNull();
+        result[^1].Indicators!.Atr.Should().NotBeNull();
+        result[^1].Indicators!.MacdLine.Should().NotBeNull();
+        result[^1].Indicators!.MacdSignal.Should().NotBeNull();
+        result[^1].Indicators!.MacdHistogram.Should().NotBeNull();
+        result[^1].Indicators!.BollingerUpper.Should().NotBeNull();
+        result[^1].Indicators!.BollingerMiddle.Should().NotBeNull();
+        result[^1].Indicators!.BollingerLower.Should().NotBeNull();
+    }
 }

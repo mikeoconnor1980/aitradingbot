@@ -1,5 +1,13 @@
 <section class="price-chart">
   <h3 class="price-chart__title">{{ selectedAsset }} — {{ timeWindowLabel }} ({{ selectedTimeframe }} candles)</h3>
+  <div class="price-chart__controls">
+    <label class="price-chart__toggle"><input #emaFastToggle type="checkbox" [checked]="indicatorToggles.emaFast" (change)="onIndicatorToggleChanged('emaFast', emaFastToggle.checked)" /> EMA 20</label>
+    <label class="price-chart__toggle"><input #emaSlowToggle type="checkbox" [checked]="indicatorToggles.emaSlow" (change)="onIndicatorToggleChanged('emaSlow', emaSlowToggle.checked)" /> EMA 50</label>
+    <label class="price-chart__toggle"><input #emaTrendToggle type="checkbox" [checked]="indicatorToggles.emaTrend" (change)="onIndicatorToggleChanged('emaTrend', emaTrendToggle.checked)" /> EMA 200</label>
+    <label class="price-chart__toggle"><input #bollingerToggle type="checkbox" [checked]="indicatorToggles.bollinger" (change)="onIndicatorToggleChanged('bollinger', bollingerToggle.checked)" /> Bollinger</label>
+    <label class="price-chart__toggle"><input #rsiToggle type="checkbox" [checked]="indicatorToggles.rsi" (change)="onIndicatorToggleChanged('rsi', rsiToggle.checked)" /> RSI</label>
+    <label class="price-chart__toggle"><input #macdToggle type="checkbox" [checked]="indicatorToggles.macd" (change)="onIndicatorToggleChanged('macd', macdToggle.checked)" /> MACD</label>
+  </div>
   <div class="price-chart__surface">
     <div #chartContainer class="price-chart__container"></div>
 
@@ -31,4 +39,14 @@
       </div>
     }
   </div>
+
+  <section class="price-chart__indicator-pane" [class.price-chart__indicator-pane--collapsed]="!indicatorToggles.rsi">
+    <div class="price-chart__indicator-title">RSI (14)</div>
+    <div #rsiChartContainer class="price-chart__indicator-container"></div>
+  </section>
+
+  <section class="price-chart__indicator-pane" [class.price-chart__indicator-pane--collapsed]="!indicatorToggles.macd">
+    <div class="price-chart__indicator-title">MACD (12, 26, 9)</div>
+    <div #macdChartContainer class="price-chart__indicator-container price-chart__indicator-container--macd"></div>
+  </section>
 </section>

@@ -455,8 +455,8 @@ private _applyEmaPullbackTemplate(): void {
   if (conditionsArray !== null) {
     conditionsArray.clear();
 
-    const conditionFactory = inject(ConditionFactoryService);
-    conditionsArray.push(conditionFactory.createPriceVsEmaCondition({
+    // Use class-level injected service — inject() cannot be called inside a method body
+    conditionsArray.push(this._conditionFactory.createPriceVsEmaCondition({
       label: "Price near EMA 50",
       period: 50,
       operator: "near",
@@ -464,7 +464,7 @@ private _applyEmaPullbackTemplate(): void {
       distanceValue: 0.25,
     }));
 
-    conditionsArray.push(conditionFactory.createRsiCondition({
+    conditionsArray.push(this._conditionFactory.createRsiCondition({
       label: "RSI Oversold",
       period: 14,
       operator: "lt",
@@ -568,6 +568,16 @@ private _buildSignalPreview(formValue: Record<string, unknown>): string {
         const period = Number(cond["period"] ?? 14);
         const op = String(cond["operator"] ?? "lt");
         const value = this._formatNumber(cond["value"]);
+```
+
+Add the `_formatNumber` helper method to the component:
+
+```typescript
+private _formatNumber(value: unknown): string {
+  const num = Number(value ?? 0);
+  return Number.isFinite(num) ? String(num) : "0";
+}
+```
         const opText = op === "lt" ? "<" : op === "gt" ? ">" : op;
         parts.push(`RSI(${period}) ${opText} ${value}.`);
       }

@@ -7,6 +7,15 @@
     <span class="cycle-chart__legend-item cycle-chart__legend-item--sl">Stop Loss</span>
   </div>
 
+  <div class="cycle-chart__controls">
+    <label class="cycle-chart__toggle"><input #emaFastToggle type="checkbox" [checked]="indicatorToggles.emaFast" (change)="onIndicatorToggleChanged('emaFast', emaFastToggle.checked)" /> EMA 20</label>
+    <label class="cycle-chart__toggle"><input #emaSlowToggle type="checkbox" [checked]="indicatorToggles.emaSlow" (change)="onIndicatorToggleChanged('emaSlow', emaSlowToggle.checked)" /> EMA 50</label>
+    <label class="cycle-chart__toggle"><input #emaTrendToggle type="checkbox" [checked]="indicatorToggles.emaTrend" (change)="onIndicatorToggleChanged('emaTrend', emaTrendToggle.checked)" /> EMA 200</label>
+    <label class="cycle-chart__toggle"><input #bollingerToggle type="checkbox" [checked]="indicatorToggles.bollinger" (change)="onIndicatorToggleChanged('bollinger', bollingerToggle.checked)" /> Bollinger</label>
+    <label class="cycle-chart__toggle"><input #rsiToggle type="checkbox" [checked]="indicatorToggles.rsi" (change)="onIndicatorToggleChanged('rsi', rsiToggle.checked)" /> RSI</label>
+    <label class="cycle-chart__toggle"><input #macdToggle type="checkbox" [checked]="indicatorToggles.macd" (change)="onIndicatorToggleChanged('macd', macdToggle.checked)" /> MACD</label>
+  </div>
+
   <div class="cycle-chart__surface">
     <div #chartContainer class="cycle-chart__container"></div>
 
@@ -14,4 +23,14 @@
       <div class="cycle-chart__empty">No candle data available for this cycle.</div>
     }
   </div>
+
+  <section class="cycle-chart__indicator-pane" [class.cycle-chart__indicator-pane--collapsed]="!indicatorToggles.rsi">
+    <div class="cycle-chart__indicator-title">RSI (14)</div>
+    <div #rsiChartContainer class="cycle-chart__indicator-container"></div>
+  </section>
+
+  <section class="cycle-chart__indicator-pane" [class.cycle-chart__indicator-pane--collapsed]="!indicatorToggles.macd">
+    <div class="cycle-chart__indicator-title">MACD (12, 26, 9)</div>
+    <div #macdChartContainer class="cycle-chart__indicator-container cycle-chart__indicator-container--macd"></div>
+  </section>
 </section>

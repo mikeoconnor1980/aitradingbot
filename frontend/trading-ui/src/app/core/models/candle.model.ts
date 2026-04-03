@@ -1,3 +1,5 @@
+import { ChartIndicatorValues } from "./chart-indicator.model";
+
 export interface Candle {
   timestamp: number;
   open: number;
@@ -5,4 +7,5 @@ export interface Candle {
   low: number;
   close: number;
   volume: number;
+  indicators?: ChartIndicatorValues | null;
 }
