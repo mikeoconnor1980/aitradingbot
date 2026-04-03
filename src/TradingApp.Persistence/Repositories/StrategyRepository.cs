@@ -19,6 +19,21 @@ public sealed class StrategyRepository : IStrategyRepository
             .FirstOrDefaultAsync(strategy => strategy.Id == id, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Strategy>> GetByIdsAsync(
+        IReadOnlyList<Guid> ids,
+        CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Strategies
+            .AsNoTracking()
+            .Where(strategy => ids.Contains(strategy.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<List<Strategy>> GetActiveByUserIdAsync(
         string userId,
         CancellationToken cancellationToken = default)

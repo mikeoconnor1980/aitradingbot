@@ -7,6 +7,7 @@ import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTableModule } from "@angular/material/table";
+import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { NotificationService } from "../../core/services/notification.service";
@@ -17,7 +18,7 @@ import { StrategyApiService } from "./services/strategy-api.service";
 @Component({
   selector: "app-strategy-list-page",
   standalone: true,
-  imports: [DatePipe, MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, MatTableModule],
+  imports: [DatePipe, MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, MatTableModule, MatTooltipModule],
   templateUrl: "./strategy-list-page.component.html",
   styleUrl: "./strategy-list-page.component.scss"
 })
@@ -42,6 +43,12 @@ export class StrategyListPageComponent implements OnInit {
 
   public onEdit(strategy: StrategySummaryDto): void {
     void this._router.navigate(["/strategies", strategy.id, "edit"]);
+  }
+
+  public onBacktestStrategy(strategyId: string): void {
+    void this._router.navigate(["/backtesting"], {
+      queryParams: { strategyId }
+    });
   }
 
   public onDelete(strategy: StrategySummaryDto): void {

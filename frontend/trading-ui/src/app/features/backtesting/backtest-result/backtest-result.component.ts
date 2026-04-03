@@ -1,7 +1,8 @@
 import { DecimalPipe } from "@angular/common";
-import { Component, Input } from "@angular/core";
+import { Component, Input, inject } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
+import { Router } from "@angular/router";
 import { BacktestResult } from "../../../core/models/backtest.model";
 
 @Component({
@@ -12,6 +13,8 @@ import { BacktestResult } from "../../../core/models/backtest.model";
   styleUrl: "./backtest-result.component.scss"
 })
 export class BacktestResultComponent {
+  private readonly _router = inject(Router);
+
   @Input({ required: true })
   public result!: BacktestResult;
 
@@ -28,11 +31,13 @@ export class BacktestResultComponent {
   }
 
   public get drawdownPercent(): number {
-    if ((this.result.equityTimeSeries?.length ?? 0) > 1) {
-      let peak = this.result.equityTimeSeries![0].equity;
+    const timeSeries = this.result.equityTimeSeries;
+
+    if (timeSeries !== undefined && timeSeries !== null && timeSeries.length > 1) {
+      let peak = timeSeries[0].equity;
       let maxDrawdownPercent = 0;
 
-      for (const snapshot of this.result.equityTimeSeries!) {
+      for (const snapshot of timeSeries) {
         peak = Math.max(peak, snapshot.equity);
         const drawdownPercent = peak > 0 ? ((snapshot.equity - peak) / peak) * 100 : 0;
         maxDrawdownPercent = Math.min(maxDrawdownPercent, drawdownPercent);
@@ -58,6 +63,14 @@ export class BacktestResultComponent {
 
   public get intervalsLabel(): string {
     return this.result.intervals.join(", ");
+  }
+
+  public get canNavigateToStrategy(): boolean {
+    return this.result.strategyId !== null
+      && this.result.strategyId !== undefined
+      && this.result.strategyName !== null
+      && this.result.strategyName !== undefined
+      && !this.isDeletedStrategy(this.result.strategyName);
   }
 
   public get entryModeLabel(): string {
@@ -101,6 +114,14 @@ export class BacktestResultComponent {
 
   public get stopLossPercent(): number {
     return this.result.strategyConfig.exit.stopLoss.value ?? 0;
+  }
+
+  public onNavigateToStrategy(strategyId: string): void {
+    void this._router.navigate(["/strategies", strategyId, "edit"]);
+  }
+
+  public isDeletedStrategy(strategyName: string | null | undefined): boolean {
+    return strategyName?.endsWith(" (deleted)") ?? false;
   }
 
   public getPnlClass(value: number): string {

@@ -9,6 +9,7 @@ public sealed class Strategy
     public string ConfigJson { get; private set; } = string.Empty;
     public int Version { get; private set; }
     public bool IsActive { get; private set; }
+    public bool IsRunning { get; private set; }
     public long CreatedAtUtc { get; private set; }
     public long UpdatedAtUtc { get; private set; }
 
@@ -38,6 +39,7 @@ public sealed class Strategy
             ConfigJson = configJson,
             Version = 1,
             IsActive = true,
+            IsRunning = false,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         };
@@ -57,6 +59,18 @@ public sealed class Strategy
     public void SoftDelete()
     {
         IsActive = false;
+        IsRunning = false;
+        UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    public void SetRunningState(bool isRunning)
+    {
+        if (isRunning && !IsActive)
+        {
+            throw new InvalidOperationException("Cannot start an inactive strategy.");
+        }
+
+        IsRunning = isRunning;
         UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 }

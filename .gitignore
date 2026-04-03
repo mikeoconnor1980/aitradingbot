@@ -74,6 +74,11 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Local SQLite runtime data
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
@@ -222,9 +227,10 @@ PublishScripts/
 # Hyperliquid POC - development config with private keys
 appsettings.Development.json
 
-# SQLite runtime sidecar files
-*.db-shm
-*.db-wal
+# Local SQLite runtime data
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # NuGet v3's project.json files produces more ignorable files
 *.nuget.props

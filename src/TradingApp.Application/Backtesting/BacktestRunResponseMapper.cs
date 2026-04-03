@@ -60,7 +60,7 @@ public static class BacktestRunResponseMapper
         return JsonSerializer.Serialize(entries, JsonOptions);
     }
 
-    public static BacktestRunResponse ToResponse(BacktestRun entity)
+    public static BacktestRunResponse ToResponse(BacktestRun entity, string? strategyName = null)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -104,7 +104,10 @@ public static class BacktestRunResponseMapper
             Trades = MapTrades(trades),
             EquityTimeSeries = MapEquityTimeSeries(equityTimeSeries),
             CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(entity.CreatedAtUtc).UtcDateTime,
-            HasAuditLog = entity.CandleLogJson is not null || entity.OrderEventLogJson is not null || entity.GridCycleLogJson is not null
+            HasAuditLog = entity.CandleLogJson is not null || entity.OrderEventLogJson is not null || entity.GridCycleLogJson is not null,
+            StrategyId = entity.StrategyId,
+            StrategyRevisionId = entity.StrategyRevisionId,
+            StrategyName = strategyName,
         };
     }
 

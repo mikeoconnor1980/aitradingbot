@@ -93,16 +93,61 @@ StrategyType (always `"GridStrategy"` in v1)
 ConfigJson (serialized `StrategyConfig`; see [Strategy Config Schema](13-strategy-config-schema.md))  
 Version (starts at 1; incremented on each `Update()`)  
 IsActive (soft-delete flag)  
+IsRunning (tracks live execution state; default false; stub in POC)  
 CreatedAtUtc (Unix milliseconds)  
 UpdatedAtUtc (Unix milliseconds)
 
 Behavior:
 
-- `Strategy.Create(userId, name, strategyType, configJson)` — static factory; validates all inputs; sets `Version = 1`, `IsActive = true`
+- `Strategy.Create(userId, name, strategyType, configJson)` — static factory; validates all inputs; sets `Version = 1`, `IsActive = true`, `IsRunning = false`
 - `Strategy.Update(name, configJson)` — increments `Version`, updates `UpdatedAtUtc`
-- `Strategy.SoftDelete()` — sets `IsActive = false`; active queries exclude soft-deleted records
+- `Strategy.SoftDelete()` — sets `IsActive = false` and `IsRunning = false`; active queries exclude soft-deleted records
+- `Strategy.SetRunningState(bool isRunning)` — updates `IsRunning`; throws if attempting to set `true` on an inactive strategy
 
 File: `src/TradingApp.Domain/Entities/Strategy.cs`
+
+---
+
+# StrategyRevision
+
+Immutable audit record capturing each save of a strategy. Created automatically when a strategy is created, updated, or restored.
+
+Fields:
+
+Id (Guid)
+StrategyId
+RevisionNumber (auto-incrementing per strategy; starts at 1)
+ConfigJson (full JSON snapshot of strategy configuration at this revision)
+Source (how this revision was created — see RevisionSource enum)
+Label (optional user-provided label, e.g. "Restored from revision 3")
+ChangeSummary (auto-generated diff summary highlighting field changes)
+CreatedAtUtc (Unix milliseconds)
+
+Behavior:
+
+- `StrategyRevision.Create(strategyId, revisionNumber, configJson, source, changeSummary, label)` — static factory; validates all inputs including enum bounds; generates unique Guid Id
+- Immutable after creation (private setters)
+
+File: `src/TradingApp.Domain/Entities/StrategyRevision.cs`
+
+---
+
+# RevisionSource
+
+Enum indicating how a revision was created.
+
+Values:
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| `Ui` | 0 | User created or edited via web interface |
+| `Api` | 1 | Created via natural language API |
+| `Import` | 2 | Created via Pine Script import or data migration |
+| `Restore` | 3 | Created by restoring a previous revision |
+
+Maps from `StrategyEntryPoint` enum in the Application layer via `RevisionSourceMapper`.
+
+File: `src/TradingApp.Domain/Enums/RevisionSource.cs`
 
 ---
 

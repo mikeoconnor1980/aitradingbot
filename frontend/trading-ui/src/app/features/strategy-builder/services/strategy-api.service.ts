@@ -1,10 +1,14 @@
 import { HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
+import { PagedResult } from "../../../core/models/paged-result.model";
 import { ApiRestClient } from "../../../core/services/api-rest-client.service";
 import {
+  StrategyDiffDto,
   ServerValidationResult,
   StrategyConfig,
+  StrategyRevisionDto,
+  StrategyRevisionSummaryDto,
   StrategyDto,
   StrategySummaryDto,
 } from "../models/strategy.model";
@@ -19,6 +23,48 @@ export class StrategyApiService {
 
   public getStrategy(id: string, context?: HttpContext): Observable<StrategyDto> {
     return this._apiClient.get<StrategyDto>(`strategies/${encodeURIComponent(id)}`, context);
+  }
+
+  public getVersions(
+    strategyId: string,
+    page = 1,
+    pageSize = 20,
+    context?: HttpContext
+  ): Observable<PagedResult<StrategyRevisionSummaryDto>> {
+    const encodedStrategyId = encodeURIComponent(strategyId);
+
+    return this._apiClient.get<PagedResult<StrategyRevisionSummaryDto>>(
+      `strategies/${encodedStrategyId}/versions?page=${page}&pageSize=${pageSize}`,
+      context
+    );
+  }
+
+  public getVersion(strategyId: string, revisionNumber: number, context?: HttpContext): Observable<StrategyRevisionDto> {
+    const encodedStrategyId = encodeURIComponent(strategyId);
+
+    return this._apiClient.get<StrategyRevisionDto>(
+      `strategies/${encodedStrategyId}/versions/${revisionNumber}`,
+      context
+    );
+  }
+
+  public getDiff(strategyId: string, from: number, to: number, context?: HttpContext): Observable<StrategyDiffDto> {
+    const encodedStrategyId = encodeURIComponent(strategyId);
+
+    return this._apiClient.get<StrategyDiffDto>(
+      `strategies/${encodedStrategyId}/diff?from=${from}&to=${to}`,
+      context
+    );
+  }
+
+  public restoreVersion(strategyId: string, revisionNumber: number, context?: HttpContext): Observable<void> {
+    const encodedStrategyId = encodeURIComponent(strategyId);
+
+    return this._apiClient.post<void>(
+      `strategies/${encodedStrategyId}/versions/${revisionNumber}/restore`,
+      null,
+      context
+    );
   }
 
   public createStrategy(config: StrategyConfig, context?: HttpContext): Observable<{ id: string }> {

@@ -50,6 +50,8 @@ The worker loads the active strategy configuration at startup.
 
 ## API Endpoints
 
+### Core Operations
+
 | Method | Endpoint | Notes |
 |--------|----------|-------|
 | `GET` | `/api/strategies` | Returns `StrategySummaryDto[]` for authenticated user |
@@ -61,11 +63,30 @@ The worker loads the active strategy configuration at startup.
 
 Duplicate strategy names (per user) return HTTP 409.
 
+### Revision History (F3)
+
+| Method | Endpoint | Notes |
+|--------|----------|-------|
+| `GET` | `/api/strategies/{id}/versions` | Returns `PagedResult<StrategyRevisionSummaryDto>` (paginated revision list); accepts `page` and `pageSize` query params |
+| `GET` | `/api/strategies/{id}/versions/{rev:int}` | Returns `StrategyRevisionDto` (single revision with full config); 404 if strategy or revision not found |
+| `GET` | `/api/strategies/{id}/diff` | Returns `StrategyDiffDto` (field-level diff); accepts `from` and `to` query params (revision numbers) |
+| `POST` | `/api/strategies/{id}/versions/{rev:int}/restore` | Restores a previous revision as a new revision with source=`Restore`; returns 204; 409 if strategy is running |
+
 ## Persistence and Versioning
 
-`ConfigJson` is stored directly on the `Strategy` entity. Each `PUT` increments `Version`. Soft-delete via `Strategy.SoftDelete()` sets `IsActive = false`; listings only return active records.
+`ConfigJson` is stored directly on the `Strategy` entity. Each `PUT` increments `Version` and creates a new `StrategyRevision` snapshot. Soft-delete via `Strategy.SoftDelete()` sets `IsActive = false`; listings only return active records.
 
-Repository: `IStrategyRepository` (`src/TradingApp.Application/Abstractions/Repositories/IStrategyRepository.cs`) / `src/TradingApp.Persistence/Repositories/StrategyRepository.cs`
+Every create, update, and restore operation automatically generates a `StrategyRevision` with:
+- Full JSON snapshot of the config at that point
+- Auto-generated change summary (field-level diff)
+- Source metadata (`Ui`, `Api`, `Import`, or `Restore`)
+
+Repository: `IStrategyRepository` / `IStrategyRevisionRepository`
+
+Application services:
+- `ChangeSummaryGenerator` — computes field-level diff summary between JSON snapshots
+- `StrategyDiffService` — detailed field-level diff with JSON paths, old/new values
+- `RevisionSourceMapper` — maps `StrategyEntryPoint` to `RevisionSource` enum
 
 ## Frontend
 

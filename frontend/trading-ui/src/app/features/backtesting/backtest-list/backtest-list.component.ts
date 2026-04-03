@@ -8,6 +8,7 @@ import { MatPaginatorModule, PageEvent } from "@angular/material/paginator";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { Router } from "@angular/router";
 import { BacktestSummary } from "../../../core/models/backtest.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../../core/services/backtest.service";
@@ -32,6 +33,7 @@ import { formatErrorPayload } from "../../../core/utils/error-utils";
 })
 export class BacktestListComponent implements OnInit {
   private readonly _backtestService = inject(BacktestService);
+  private readonly _router = inject(Router);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   @Output()
@@ -55,6 +57,7 @@ export class BacktestListComponent implements OnInit {
     "select",
     "createdAt",
     "symbol",
+    "strategyName",
     "dateRange",
     "intervals",
     "totalTrades",
@@ -128,9 +131,17 @@ export class BacktestListComponent implements OnInit {
     this.viewResult.emit(id);
   }
 
+  public onNavigateToStrategy(strategyId: string): void {
+    void this._router.navigate(["/strategies", strategyId, "edit"]);
+  }
+
   public onRerun(id: string, event: Event): void {
     event.stopPropagation();
     this.rerunConfig.emit(id);
+  }
+
+  public isDeletedStrategy(strategyName: string | null | undefined): boolean {
+    return strategyName?.endsWith(" (deleted)") ?? false;
   }
 
   public getPnlClass(pnl: number): string {

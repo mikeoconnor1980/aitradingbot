@@ -17,6 +17,7 @@ public sealed class StrategyTests
         strategy.ConfigJson.Should().Be("{\"grid\":{}}");
         strategy.Version.Should().Be(1);
         strategy.IsActive.Should().BeTrue();
+        strategy.IsRunning.Should().BeFalse();
         strategy.CreatedAtUtc.Should().BeGreaterThan(0);
         strategy.UpdatedAtUtc.Should().Be(strategy.CreatedAtUtc);
     }
@@ -88,5 +89,26 @@ public sealed class StrategyTests
         strategy.SoftDelete();
 
         strategy.IsActive.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void GivenStrategy_WhenSetRunningStateTrue_ThenIsRunningTrue()
+    {
+        var strategy = Strategy.Create("user-1", "Test", "GridStrategy", "{}");
+
+        strategy.SetRunningState(true);
+
+        strategy.IsRunning.Should().BeTrue();
+    }
+
+    [TestMethod]
+    public void GivenRunningStrategy_WhenSetRunningStateFalse_ThenIsRunningFalse()
+    {
+        var strategy = Strategy.Create("user-1", "Test", "GridStrategy", "{}");
+        strategy.SetRunningState(true);
+
+        strategy.SetRunningState(false);
+
+        strategy.IsRunning.Should().BeFalse();
     }
 }

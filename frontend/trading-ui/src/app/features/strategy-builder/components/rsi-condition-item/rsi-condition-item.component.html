@@ -1,0 +1,78 @@
+<mat-card class="condition-item" [formGroup]="group">
+  <div class="condition-item__header">
+    <div class="condition-item__identity">
+      <mat-checkbox formControlName="enabled" color="primary">
+        <span class="condition-item__type-label">RSI</span>
+      </mat-checkbox>
+
+      <app-info-popover
+        title="RSI"
+        description="RSI stands for Relative Strength Index, a momentum indicator on a 0 to 100 scale. Use it to require weak momentum, strong momentum, or a cross through a threshold before the strategy enters a trade."
+      />
+    </div>
+
+    <mat-form-field class="condition-item__label-field" appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" placeholder="e.g. RSI Oversold" />
+    </mat-form-field>
+
+    <div class="condition-item__actions">
+      <button
+        mat-icon-button
+        type="button"
+        matTooltip="Duplicate"
+        [attr.aria-label]="'Duplicate RSI condition ' + (index + 1)"
+        (click)="onDuplicate()"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        color="warn"
+        matTooltip="Remove"
+        [attr.aria-label]="'Remove RSI condition ' + (index + 1)"
+        (click)="onRemove()"
+      >
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="condition-item__fields">
+    <mat-form-field appearance="outline">
+      <mat-label>Period</mat-label>
+      <input matInput type="number" formControlName="period" min="1" step="1" />
+      @if (hasError("period", "required")) {
+        <mat-error>Period is required.</mat-error>
+      }
+      @if (hasError("period", "min")) {
+        <mat-error>Period must be at least 1.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Operator</mat-label>
+      <mat-select formControlName="operator">
+        @for (operator of operators; track operator.value) {
+          <mat-option [value]="operator.value">{{ operator.label }}</mat-option>
+        }
+      </mat-select>
+      @if (hasError("operator", "required")) {
+        <mat-error>Operator is required.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Value</mat-label>
+      <input matInput type="number" formControlName="value" min="0" max="100" step="1" />
+      @if (hasError("value", "required")) {
+        <mat-error>Value is required.</mat-error>
+      }
+      @if (hasError("value", "min") || hasError("value", "max")) {
+        <mat-error>RSI value must be between 0 and 100.</mat-error>
+      }
+    </mat-form-field>
+  </div>
+</mat-card>

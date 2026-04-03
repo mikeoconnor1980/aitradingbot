@@ -35,6 +35,8 @@ public sealed class BacktestRun
     public string? OrderEventLogJson { get; private set; }
     public string? GridCycleLogJson { get; private set; }
     public long CreatedAtUtc { get; private set; }
+    public Guid? StrategyId { get; private set; }
+    public int? StrategyRevisionId { get; private set; }
 
     private BacktestRun()
     {
@@ -48,7 +50,9 @@ public sealed class BacktestRun
         string strategyConfigJson,
         string executionConfigJson,
         decimal initialCapital,
-        bool auditLogEnabled = true)
+        bool auditLogEnabled = true,
+        Guid? strategyId = null,
+        int? strategyRevisionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
@@ -56,6 +60,11 @@ public sealed class BacktestRun
         ArgumentException.ThrowIfNullOrWhiteSpace(executionConfigJson);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialCapital);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startDateUtc, endDateUtc);
+
+        if (strategyRevisionId.HasValue && !strategyId.HasValue)
+        {
+            throw new ArgumentException("StrategyRevisionId requires a StrategyId.", nameof(strategyRevisionId));
+        }
 
         return new BacktestRun
         {
@@ -76,7 +85,9 @@ public sealed class BacktestRun
             CandleLogJson = null,
             OrderEventLogJson = null,
             GridCycleLogJson = null,
-            CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            StrategyId = strategyId,
+            StrategyRevisionId = strategyRevisionId
         };
     }
 
@@ -165,7 +176,9 @@ public sealed class BacktestRun
         bool auditLogEnabled = true,
         string? candleLogJson = null,
         string? orderEventLogJson = null,
-        string? gridCycleLogJson = null)
+        string? gridCycleLogJson = null,
+        Guid? strategyId = null,
+        int? strategyRevisionId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(intervalsJson);
@@ -173,6 +186,11 @@ public sealed class BacktestRun
         ArgumentException.ThrowIfNullOrWhiteSpace(executionConfigJson);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(initialCapital);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(startDateUtc, endDateUtc);
+
+        if (strategyRevisionId.HasValue && !strategyId.HasValue)
+        {
+            throw new ArgumentException("StrategyRevisionId requires a StrategyId.", nameof(strategyRevisionId));
+        }
 
         return new BacktestRun
         {
@@ -204,7 +222,9 @@ public sealed class BacktestRun
             CandleLogJson = candleLogJson,
             OrderEventLogJson = orderEventLogJson,
             GridCycleLogJson = gridCycleLogJson,
-            CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            StrategyId = strategyId,
+            StrategyRevisionId = strategyRevisionId
         };
     }
 }

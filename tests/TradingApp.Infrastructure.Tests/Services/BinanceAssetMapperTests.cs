@@ -15,6 +15,8 @@ public sealed class BinanceAssetMapperTests
     [DataRow("ARB", "ARBUSDT")]
     [DataRow("LINK", "LINKUSDT")]
     [DataRow("OP", "OPUSDT")]
+    [DataRow("BTC-USD", "BTCUSDT")]
+    [DataRow("ETH-PERP", "ETHUSDT")]
     public void GivenValidSymbol_WhenToFuturesSymbol_ThenReturnsBinanceSymbol(string displaySymbol, string expected)
     {
         var result = BinanceAssetMapper.ToFuturesSymbol(displaySymbol);
@@ -33,10 +35,24 @@ public sealed class BinanceAssetMapperTests
     [TestMethod]
     [DataRow("BTC", true)]
     [DataRow("btc", true)]
+    [DataRow("BTC-USD", true)]
+    [DataRow("btc-perp", true)]
     [DataRow("INVALID", false)]
     public void GivenSymbol_WhenIsValidSymbol_ThenReturnsExpectedResult(string symbol, bool expected)
     {
         var result = BinanceAssetMapper.IsValidSymbol(symbol);
+
+        result.Should().Be(expected);
+    }
+
+    [TestMethod]
+    [DataRow("BTC-USD", "BTC")]
+    [DataRow("ETH-PERP", "ETH")]
+    [DataRow("SOL-USDT", "SOL")]
+    [DataRow("ARB", "ARB")]
+    public void GivenDisplaySymbol_WhenNormalizeSymbol_ThenReturnsBinanceDisplaySymbol(string symbol, string expected)
+    {
+        var result = BinanceAssetMapper.NormalizeSymbol(symbol);
 
         result.Should().Be(expected);
     }

@@ -57,7 +57,7 @@ public sealed class CrossFieldValidatorTests
     }
 
     [TestMethod]
-    public void GivenSignalMode_WhenValidated_ThenInfoAboutUnsupported()
+    public void GivenSignalModeWithValidFields_WhenValidated_ThenNoSignalModeInfoMessage()
     {
         var config = new StrategyConfig
         {
@@ -76,6 +76,6 @@ public sealed class CrossFieldValidatorTests
 
         _sut.Validate(config, result);
 
-        result.InfoMessages.Should().Contain(error => error.Code == "SIGNAL_MODE_NOT_SUPPORTED");
+        result.InfoMessages.Should().NotContain(error => error.Code == "SIGNAL_MODE_NOT_SUPPORTED");
     }
 }

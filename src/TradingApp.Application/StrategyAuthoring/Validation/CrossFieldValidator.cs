@@ -64,16 +64,5 @@ public sealed class CrossFieldValidator
                 Message = "Trend filter not yet evaluated.",
             });
         }
-
-        if (config.StrategyMode == StrategyMode.Signal)
-        {
-            result.Add(new ValidationError
-            {
-                Severity = ValidationSeverity.Info,
-                FieldPath = "strategyMode",
-                Code = "SIGNAL_MODE_NOT_SUPPORTED",
-                Message = "Signal mode not yet supported for execution.",
-            });
-        }
     }
 }

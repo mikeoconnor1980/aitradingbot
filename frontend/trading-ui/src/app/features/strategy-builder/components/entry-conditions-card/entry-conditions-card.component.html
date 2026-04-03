@@ -1,9 +1,37 @@
-<mat-card class="disabled-card">
+<mat-card class="conditions-card">
   <mat-card-header>
-    <mat-card-title>Entry Conditions</mat-card-title>
+    <mat-card-title class="conditions-card__title">
+      <span>Entry Conditions</span>
+      <app-info-popover
+        title="Entry Conditions"
+        description="Entry conditions define the exact signal rules that must be true before the strategy opens a trade. You can combine multiple RSI rules, but exact duplicates are blocked."
+      />
+    </mat-card-title>
   </mat-card-header>
 
   <mat-card-content>
-    <p class="disabled-card__message">Available in signal mode</p>
+    @if (!isBound) {
+      <p class="conditions-card__message">Available in signal mode</p>
+    } @else if (conditionGroups.length === 0) {
+      <p class="conditions-card__message">No conditions added. Click "Add RSI" to create a condition.</p>
+    } @else {
+      @for (group of conditionGroups; track group; let index = $index) {
+        <app-rsi-condition-item
+          [group]="group"
+          [index]="index"
+          (duplicate)="onDuplicate(index)"
+          (remove)="onRemove(index)"
+        />
+      }
+    }
   </mat-card-content>
+
+  @if (isBound) {
+    <mat-card-actions>
+      <button mat-stroked-button type="button" (click)="onAddRsi()">
+        <mat-icon>add</mat-icon>
+        <span>Add RSI</span>
+      </button>
+    </mat-card-actions>
+  }
 </mat-card>

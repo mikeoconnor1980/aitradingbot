@@ -56,3 +56,25 @@ grid levels
 entry line  
 hedge line  
 take profit
+
+---
+
+# Strategy Revision History
+
+Two components handle strategy versioning in the builder page (edit mode only).
+
+| Component | Purpose |
+|---|---|
+| `RevisionHistoryPanelComponent` | Expandable panel with paginated revision table — revision number, source, change summary, timestamp, compare checkboxes, restore button |
+| `DiffViewComponent` | Field-level diff display showing JSON path, old value, and new value for selected revision comparison |
+
+Location: `frontend/trading-ui/src/app/features/strategy-builder/components/revision-history-panel/` and `diff-view/`
+
+API methods on `StrategyApiService`:
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `getVersions(strategyId, page, pageSize)` | `GET /versions` | Paginated revision list |
+| `getVersion(strategyId, rev)` | `GET /versions/{rev}` | Single revision with full config |
+| `getDiff(strategyId, from, to)` | `GET /diff` | Field-level diff between two revisions |
+| `restoreVersion(strategyId, rev)` | `POST /versions/{rev}/restore` | Restore previous revision; emits event to reload form |

@@ -14,4 +14,5 @@ public sealed class MarketContext
     public Candle? LatestOneHourCandle { get; init; }
     public Candle? LatestFourHourCandle { get; init; }
     public required IndicatorSnapshot Indicators { get; init; }
+    public IndicatorContext? IndicatorContext { get; init; }
 }

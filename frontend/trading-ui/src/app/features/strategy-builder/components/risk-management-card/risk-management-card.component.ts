@@ -5,6 +5,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
+import { InfoPopoverComponent } from "../info-popover/info-popover.component";
 
 @Component({
   selector: "app-risk-management-card",
@@ -16,6 +17,7 @@ import { MatSelectModule } from "@angular/material/select";
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    InfoPopoverComponent,
   ],
   templateUrl: "./risk-management-card.component.html",
   styleUrl: "./risk-management-card.component.scss"

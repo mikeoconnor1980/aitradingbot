@@ -1,5 +1,6 @@
 import { Component, Input, signal } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
+import { RsiOperator } from "../../models/strategy.model";
 
 @Component({
   selector: "app-preview-summary-card",
@@ -21,6 +22,12 @@ export class PreviewSummaryCardComponent {
 
     if (formValue === null) {
       return "Fill in the form to see a preview.";
+    }
+
+    const templateId = String(formValue["templateId"] ?? "grid");
+
+    if (templateId === "custom_signal") {
+      return this._buildSignalPreview(formValue);
     }
 
     const grid = (formValue["grid"] ?? null) as Record<string, unknown> | null;
@@ -55,6 +62,46 @@ export class PreviewSummaryCardComponent {
     }
 
     return parts.join(" ");
+  }
+
+  private _buildSignalPreview(formValue: Record<string, unknown>): string {
+    const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
+    const direction = String(formValue["direction"] ?? "long");
+    const market = String(formValue["market"] ?? "market");
+    const timeframe = String(formValue["timeframe"] ?? "timeframe");
+
+    if (conditions.length === 0) {
+      return "Add entry conditions to see a preview.";
+    }
+
+    const conditionTexts = conditions
+      .filter((condition) => Boolean(condition["enabled"] ?? true))
+      .map((condition) => {
+        const period = Number(condition["period"] ?? 14);
+        const operator = String(condition["operator"] ?? "lt") as RsiOperator;
+        const value = Number(condition["value"] ?? 0);
+
+        return `RSI(${period}) ${this._operatorText(operator)} ${value}`;
+      });
+
+    if (conditionTexts.length === 0) {
+      return "All conditions are disabled.";
+    }
+
+    return `Enter a ${direction} trade on ${market} ${timeframe} when ${conditionTexts.join(" and ")}.`;
+  }
+
+  private _operatorText(operator: RsiOperator): string {
+    const operatorMap: Record<RsiOperator, string> = {
+      lt: "is below",
+      lte: "is at or below",
+      gt: "is above",
+      gte: "is at or above",
+      cross_above: "crosses above",
+      cross_below: "crosses below",
+    };
+
+    return operatorMap[operator] ?? operator;
   }
 
   private _formatNumber(value: unknown): string {

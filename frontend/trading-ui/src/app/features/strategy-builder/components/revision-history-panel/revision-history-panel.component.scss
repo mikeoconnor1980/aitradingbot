@@ -1,0 +1,55 @@
+.revision-panel {
+  border: 1px solid var(--colour-border-subtle);
+  background: var(--colour-surface-dark);
+  overflow: hidden;
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+  }
+
+  &__source {
+    font-weight: 600;
+    color: var(--colour-text-primary);
+  }
+
+  &__label {
+    margin-top: 0.2rem;
+    color: var(--colour-muted);
+    font-size: 0.78rem;
+  }
+
+  &__summary {
+    min-width: 14rem;
+    white-space: normal;
+    color: var(--colour-text-primary);
+  }
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 1.25rem;
+    color: var(--colour-muted);
+  }
+
+  &__loading--diff {
+    border-top: 1px solid var(--colour-border-subtle);
+  }
+
+  &__empty,
+  &__hint {
+    margin: 0;
+    padding: 1rem 1.25rem;
+    color: var(--colour-muted);
+  }
+
+  .mat-mdc-paginator {
+    background: transparent;
+    border-top: 1px solid var(--colour-border-subtle);
+  }
+}

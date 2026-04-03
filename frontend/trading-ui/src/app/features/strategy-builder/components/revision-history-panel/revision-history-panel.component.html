@@ -1,0 +1,93 @@
+<mat-expansion-panel class="revision-panel">
+  <mat-expansion-panel-header>
+    <mat-panel-title>Revision History ({{ totalCount }})</mat-panel-title>
+  </mat-expansion-panel-header>
+
+  @if (isLoading) {
+    <div class="revision-panel__loading">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  } @else if (revisions.length === 0) {
+    <p class="revision-panel__empty">No revisions found.</p>
+  } @else {
+    <div class="revision-panel__table-wrap">
+      <table mat-table [dataSource]="revisions" class="revision-panel__table">
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef>Compare</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-checkbox
+              [checked]="isSelected(row.revisionNumber)"
+              [disabled]="!canSelect(row.revisionNumber)"
+              (change)="toggleSelection(row.revisionNumber)"
+              [attr.aria-label]="'Select revision ' + row.revisionNumber + ' for comparison'">
+            </mat-checkbox>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="revisionNumber">
+          <th mat-header-cell *matHeaderCellDef>Rev</th>
+          <td mat-cell *matCellDef="let row">{{ row.revisionNumber }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="source">
+          <th mat-header-cell *matHeaderCellDef>Source</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="revision-panel__source">{{ row.source }}</div>
+
+            @if (row.label) {
+              <div class="revision-panel__label">{{ row.label }}</div>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="changeSummary">
+          <th mat-header-cell *matHeaderCellDef>Changes</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="revision-panel__summary">{{ row.changeSummary }}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let row">{{ row.createdAt | date: "short" }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Restore this revision"
+              [attr.aria-label]="'Restore revision ' + row.revisionNumber"
+              (click)="restore(row)">
+              <mat-icon>restore</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <mat-paginator
+      [length]="totalCount"
+      [pageIndex]="page - 1"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+
+    @if (isDiffLoading) {
+      <div class="revision-panel__loading revision-panel__loading--diff">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span>Computing diff...</span>
+      </div>
+    } @else if (diff) {
+      <app-diff-view [diff]="diff" />
+    } @else if (selectedFrom !== null || selectedTo !== null) {
+      <p class="revision-panel__hint">Select one more revision to compare.</p>
+    }
+  }
+</mat-expansion-panel>

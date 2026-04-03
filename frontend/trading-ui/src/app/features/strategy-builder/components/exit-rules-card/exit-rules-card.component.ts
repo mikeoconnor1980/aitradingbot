@@ -6,6 +6,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
+import { InfoPopoverComponent } from "../info-popover/info-popover.component";
 
 @Component({
   selector: "app-exit-rules-card",
@@ -17,6 +18,7 @@ import { MatSelectModule } from "@angular/material/select";
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    InfoPopoverComponent,
   ],
   templateUrl: "./exit-rules-card.component.html",
   styleUrl: "./exit-rules-card.component.scss"
@@ -42,7 +44,12 @@ export class ExitRulesCardComponent implements OnInit {
     enabledControl.valueChanges
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((enabled: boolean) => {
-        enabled ? valueControl.enable() : valueControl.disable();
+        if (enabled) {
+          valueControl.enable();
+          return;
+        }
+
+        valueControl.disable();
       });
 
     if (!enabledControl.value) {

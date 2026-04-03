@@ -1,13 +1,25 @@
 <mat-card class="exit-card" [formGroup]="group">
   <mat-card-header>
-    <mat-card-title>Exit Rules</mat-card-title>
+    <mat-card-title class="exit-card__title">
+      <span>Exit Rules</span>
+      <app-info-popover
+        title="Exit Rules"
+        description="Exit rules define how the strategy closes a position, either to lock in profit, cap downside, or react when a new signal disagrees with the current trade."
+      />
+    </mat-card-title>
   </mat-card-header>
 
   <mat-card-content>
     <div class="exit-card__grid">
       <section class="exit-card__section" formGroupName="takeProfit">
         <div class="exit-card__section-header">
-          <h3>Take Profit</h3>
+          <div class="exit-card__heading">
+            <h3>Take Profit</h3>
+            <app-info-popover
+              title="Take Profit"
+              description="Take profit closes a winning position once price has moved in your favor by the configured percentage. Smaller values secure gains faster, while larger values wait for a bigger move."
+            />
+          </div>
           <mat-checkbox formControlName="enabled">Enabled</mat-checkbox>
         </div>
 
@@ -33,7 +45,13 @@
 
       <section class="exit-card__section" formGroupName="stopLoss">
         <div class="exit-card__section-header">
-          <h3>Stop Loss</h3>
+          <div class="exit-card__heading">
+            <h3>Stop Loss</h3>
+            <app-info-popover
+              title="Stop Loss"
+              description="Stop loss closes a losing position once price has moved against you by the configured percentage. It limits downside and should be sized to match the strategy's tolerance for loss."
+            />
+          </div>
           <mat-checkbox formControlName="enabled">Enabled</mat-checkbox>
         </div>
 

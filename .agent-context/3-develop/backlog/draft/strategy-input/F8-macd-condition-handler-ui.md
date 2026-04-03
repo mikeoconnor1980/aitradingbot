@@ -8,7 +8,7 @@
 **Reference:** [strategy-builder-ui-detailed.md](../../1-discover/prd/strategy-builder-ui-detailed.md)
 **Implementation Phase:** 1c (Incremental Conditions)
 **Risk Level:** Low
-**Depends On:** F5 (Condition Evaluator + Indicator Infra), F6 (Signal Mode UI)
+**Depends On:** F5 (Condition Evaluator + Indicator Infra), F6 (Signal Mode UI), F6.5 (Extract Indicator Calculators — MACD calculation)
 
 ---
 

@@ -48,17 +48,23 @@ Create strategy
 Configure parameters  
 Save strategy configuration  
 Activate strategy
+View revision history
+Compare revisions
+Restore previous versions
 
 Strategies are stored as JSON configuration.
 Each user's strategies are isolated from all other users.
 
----
+## Strategy Revision History (F3)
 
-# Dashboard
+Every save creates an immutable `StrategyRevision` record:
 
-Per-user dashboard displays:
+- Automatic change summary (compares current vs. previous JSON)
+- Source tracking (UI, API, import, or restore)
+- Full JSON snapshot for deterministic restore
+- Revision number (1, 2, 3...) per strategy
 
-bot state  
+Users can browse revision history, view diffs between any two revisions, and restore a previous version. Restoring creates a new revision with source = `Restore` and a generated label. See [Domain Model — StrategyRevision](04-domain-model.md) for entity details.
 PnL  
 open orders (with cancel, cancel-all, and modify actions)  
 positions (with close action; SL/TP display, set dialog, inline edit, and removal)  

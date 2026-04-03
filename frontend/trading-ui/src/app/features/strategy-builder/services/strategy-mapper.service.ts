@@ -2,7 +2,10 @@ import { Injectable } from "@angular/core";
 import {
   Direction,
   EntryMode,
+  EntryConditionConfig,
+  EntryConditionType,
   PositionSizeType,
+  RsiOperator,
   StrategyConfig,
 } from "../models/strategy.model";
 
@@ -16,18 +19,21 @@ export class StrategyMapperService {
     const risk = (formValue["risk"] ?? {}) as Record<string, unknown>;
     const metadata = (formValue["metadata"] ?? {}) as Record<string, unknown>;
     const entryMode = (grid["entryMode"] as EntryMode | undefined) ?? "auto_from_signal_candle";
+    const templateId = String(formValue["templateId"] ?? "grid");
+    const isSignalMode = templateId === "custom_signal";
+    const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
 
     return {
       schemaVersion: 1,
-      strategyMode: "grid",
+      strategyMode: isSignalMode ? "signal" : "grid",
       strategyName: String(formValue["strategyName"] ?? "").trim(),
       exchange: String(formValue["exchange"] ?? "Hyperliquid"),
       market: String(formValue["market"] ?? ""),
       timeframe: String(formValue["timeframe"] ?? "15m"),
       direction: (formValue["direction"] as Direction | undefined) ?? "long",
       enabled: true,
-      templateId: String(formValue["templateId"] ?? "grid"),
-      grid: {
+      templateId,
+      grid: isSignalMode ? null : {
         levels: Number(grid["levels"] ?? 0),
         spacing: Number(grid["spacing"] ?? 0),
         entryMode,
@@ -35,8 +41,8 @@ export class StrategyMapperService {
         breakdownThreshold: Number(grid["breakdownThreshold"] ?? 0),
       },
       trendFilter: null,
-      entryLogic: null,
-      entryConditions: null,
+      entryLogic: isSignalMode ? "all" : null,
+      entryConditions: isSignalMode ? this._mapConditions(conditions) : null,
       exit: {
         takeProfit: {
           enabled: !!takeProfit["enabled"],
@@ -70,6 +76,20 @@ export class StrategyMapperService {
         summary: "Created in strategy builder",
       },
     };
+  }
+
+  private _mapConditions(conditions: Record<string, unknown>[]): EntryConditionConfig[] {
+    return conditions.map((condition) => ({
+      id: String(condition["id"] ?? ""),
+      enabled: Boolean(condition["enabled"] ?? true),
+      type: String(condition["type"] ?? "rsi") as EntryConditionType,
+      label: String(condition["label"] ?? ""),
+      params: {
+        period: Number(condition["period"] ?? 14),
+        operator: String(condition["operator"] ?? "lt") as RsiOperator,
+        value: Number(condition["value"] ?? 40),
+      },
+    }));
   }
 
   private _toNullableNumber(value: unknown): number | null {

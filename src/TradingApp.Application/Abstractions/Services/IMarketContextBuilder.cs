@@ -1,3 +1,4 @@
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
 
@@ -12,4 +13,10 @@ public interface IMarketContextBuilder
     void UpdateIndicators(Candle candle);
 
     MarketContext Build(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle);
+
+    MarketContext Build(
+        Candle triggerCandle,
+        Candle? latestOneHourCandle,
+        Candle? latestFourHourCandle,
+        IReadOnlyList<IndicatorRequirement>? requiredIndicators);
 }
