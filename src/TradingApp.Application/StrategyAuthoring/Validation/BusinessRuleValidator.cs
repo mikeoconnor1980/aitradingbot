@@ -1,3 +1,4 @@
+using System.Linq;
 using TradingApp.Application.StrategyAuthoring.Models;
 
 namespace TradingApp.Application.StrategyAuthoring.Validation;
@@ -127,6 +128,18 @@ public sealed class BusinessRuleValidator
             return;
         }
 
+        var macdCount = conditions.Count(condition => condition.Type == EntryConditionType.Macd);
+        if (macdCount > 1)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "entryConditions",
+                Code = "MACD_MAX_COUNT",
+                Message = "Only one MACD condition is allowed per strategy.",
+            });
+        }
+
         for (var index = 0; index < conditions.Count; index++)
         {
             var condition = conditions[index];
@@ -183,16 +196,62 @@ public sealed class BusinessRuleValidator
                 }
             }
 
-            if (condition.Params is MacdParams macd
-                && (macd.FastPeriod <= 0 || macd.SlowPeriod <= 0 || macd.SignalPeriod <= 0))
+            if (condition.Params is MacdParams macd)
             {
-                result.Add(new ValidationError
+                if (macd.FastPeriod <= 0 || macd.SlowPeriod <= 0 || macd.SignalPeriod <= 0)
                 {
-                    Severity = ValidationSeverity.Error,
-                    FieldPath = $"entryConditions[{index}].params",
-                    Code = "MACD_PERIODS_INVALID",
-                    Message = "MACD fast, slow, and signal periods must all be greater than 0.",
-                });
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params",
+                        Code = "MACD_PERIODS_INVALID",
+                        Message = "MACD fast, slow, and signal periods must all be greater than 0.",
+                    });
+                }
+
+                if (macd.FastPeriod < 2 || macd.FastPeriod > 50)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.fastPeriod",
+                        Code = "MACD_FAST_PERIOD_RANGE",
+                        Message = "MACD fast period must be between 2 and 50.",
+                    });
+                }
+
+                if (macd.SlowPeriod < 5 || macd.SlowPeriod > 200)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.slowPeriod",
+                        Code = "MACD_SLOW_PERIOD_RANGE",
+                        Message = "MACD slow period must be between 5 and 200.",
+                    });
+                }
+
+                if (macd.SignalPeriod < 2 || macd.SignalPeriod > 50)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.signalPeriod",
+                        Code = "MACD_SIGNAL_PERIOD_RANGE",
+                        Message = "MACD signal period must be between 2 and 50.",
+                    });
+                }
+
+                if (macd.FastPeriod >= macd.SlowPeriod)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.fastPeriod",
+                        Code = "MACD_FAST_SLOW_INVALID",
+                        Message = "MACD fast period must be less than slow period.",
+                    });
+                }
             }
         }
     }

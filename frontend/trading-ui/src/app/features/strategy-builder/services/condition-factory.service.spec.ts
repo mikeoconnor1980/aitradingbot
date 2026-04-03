@@ -72,4 +72,32 @@ describe("ConditionFactoryService", () => {
       expect(group.get("value")?.valid).toBeTrue();
     });
   });
+
+  describe("createMacdCondition", () => {
+    it("should create a form group with MACD defaults", () => {
+      const group = service.createMacdCondition();
+
+      expect(group.get("type")?.value).toBe("macd");
+      expect(group.get("fastPeriod")?.value).toBe(12);
+      expect(group.get("slowPeriod")?.value).toBe(26);
+      expect(group.get("signalPeriod")?.value).toBe(9);
+      expect(group.get("operator")?.value).toBe("cross_above");
+    });
+
+    it("should apply MACD overrides", () => {
+      const group = service.createMacdCondition({
+        fastPeriod: 8,
+        slowPeriod: 21,
+        signalPeriod: 5,
+        operator: "lt",
+        label: "MACD bearish",
+      });
+
+      expect(group.get("fastPeriod")?.value).toBe(8);
+      expect(group.get("slowPeriod")?.value).toBe(21);
+      expect(group.get("signalPeriod")?.value).toBe(5);
+      expect(group.get("operator")?.value).toBe("lt");
+      expect(group.get("label")?.value).toBe("MACD bearish");
+    });
+  });
 });

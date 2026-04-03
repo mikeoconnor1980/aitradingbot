@@ -1,6 +1,6 @@
 import { Injectable, inject } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator } from "../models/strategy.model";
+import { MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator } from "../models/strategy.model";
 
 export interface CreateRsiConditionOverrides {
   id: string;
@@ -19,6 +19,16 @@ export interface CreatePriceVsEmaConditionOverrides {
   operator: PriceVsEmaOperator;
   distanceType: PriceVsEmaDistanceType;
   distanceValue: number | null;
+}
+
+export interface CreateMacdConditionOverrides {
+  id: string;
+  enabled: boolean;
+  label: string;
+  fastPeriod: number;
+  slowPeriod: number;
+  signalPeriod: number;
+  operator: MacdOperator;
 }
 
 @Injectable({ providedIn: "root" })
@@ -65,6 +75,23 @@ export class ConditionFactoryService {
     }
 
     return group;
+  }
+
+  public createMacdCondition(overrides?: Partial<CreateMacdConditionOverrides>): FormGroup {
+    if (overrides?.id !== undefined) {
+      this._advancePastId(overrides.id);
+    }
+
+    return this._fb.group({
+      id: [overrides?.id ?? this._generateId()],
+      enabled: [overrides?.enabled ?? true],
+      type: ["macd"],
+      label: [overrides?.label ?? ""],
+      fastPeriod: [overrides?.fastPeriod ?? 12, [Validators.required, Validators.min(1)]],
+      slowPeriod: [overrides?.slowPeriod ?? 26, [Validators.required, Validators.min(1)]],
+      signalPeriod: [overrides?.signalPeriod ?? 9, [Validators.required, Validators.min(1)]],
+      operator: [overrides?.operator ?? "cross_above", Validators.required],
+    });
   }
 
   private _generateId(): string {

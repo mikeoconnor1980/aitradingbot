@@ -28,6 +28,20 @@ interface EquityDataPoint {
   value: number;
 }
 
+const EQUITY_CHART_THEME = {
+  background: "#091315",
+  grid: "#162629",
+  text: "#7f9d99",
+  profit: "#3bc9a8",
+  loss: "#e07a8f",
+  warningStrong: "#b9873f",
+  comparison: "#8fc7d8",
+  profitFillTop: "rgba(59, 201, 168, 0.24)",
+  profitFillBottom: "rgba(59, 201, 168, 0.02)",
+  comparisonFillTop: "rgba(143, 199, 216, 0.12)",
+  comparisonFillBottom: "rgba(143, 199, 216, 0.02)"
+} as const;
+
 @Component({
   selector: "app-equity-chart",
   standalone: true,
@@ -111,30 +125,30 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
       width: Math.max(container.clientWidth, 320),
       height: 400,
       layout: {
-        background: { color: "#1a1a2e" },
-        textColor: "#a0a0b0"
+        background: { color: EQUITY_CHART_THEME.background },
+        textColor: EQUITY_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#2a2a3e" },
-        horzLines: { color: "#2a2a3e" }
+        vertLines: { color: EQUITY_CHART_THEME.grid },
+        horzLines: { color: EQUITY_CHART_THEME.grid }
       },
       crosshair: {
         mode: CrosshairMode.Normal
       },
       timeScale: {
-        borderColor: "#2a2a3e",
+        borderColor: EQUITY_CHART_THEME.grid,
         timeVisible: true,
         secondsVisible: false
       },
       rightPriceScale: {
-        borderColor: "#2a2a3e"
+        borderColor: EQUITY_CHART_THEME.grid
       }
     });
 
     this._primarySeries = this._chart.addSeries(AreaSeries, {
-      lineColor: "#26a69a",
-      topColor: "rgba(38, 166, 154, 0.35)",
-      bottomColor: "rgba(38, 166, 154, 0.02)",
+      lineColor: EQUITY_CHART_THEME.profit,
+      topColor: EQUITY_CHART_THEME.profitFillTop,
+      bottomColor: EQUITY_CHART_THEME.profitFillBottom,
       lineWidth: 2,
       priceLineVisible: false,
       title: this.primaryLabel
@@ -163,9 +177,9 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.comparisonData && this.comparisonData.length > 0) {
       if (!this._comparisonSeries) {
         this._comparisonSeries = this._chart.addSeries(AreaSeries, {
-          lineColor: "#60a5fa",
-          topColor: "rgba(96, 165, 250, 0.18)",
-          bottomColor: "rgba(96, 165, 250, 0.02)",
+          lineColor: EQUITY_CHART_THEME.comparison,
+          topColor: EQUITY_CHART_THEME.comparisonFillTop,
+          bottomColor: EQUITY_CHART_THEME.comparisonFillBottom,
           lineWidth: 2,
           priceLineVisible: false,
           title: this.comparisonLabel
@@ -206,7 +220,7 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
       markers.push({
         time: (Math.floor(summary.deployTimestampUtc / 1000)) as UTCTimestamp,
         position: "belowBar",
-        color: "#f59e0b",
+        color: EQUITY_CHART_THEME.warningStrong,
         shape: "circle",
         text: `Grid deployed`
       });
@@ -214,7 +228,7 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
       // Grid exit marker
       if (summary.closeTimestampUtc > 0) {
         const exitLabel = this._getExitLabel(summary);
-        const exitColor = summary.cyclePnl >= 0 ? "#22c55e" : "#ef5350";
+        const exitColor = summary.cyclePnl >= 0 ? EQUITY_CHART_THEME.profit : EQUITY_CHART_THEME.loss;
         markers.push({
           time: (Math.floor(summary.closeTimestampUtc / 1000)) as UTCTimestamp,
           position: "aboveBar",
@@ -230,7 +244,7 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
       markers.push({
         time: this._toUtcTimestamp(trade.entryTime),
         position: "belowBar",
-        color: trade.side === "Long" ? "#26a69a" : "#60a5fa",
+        color: trade.side === "Long" ? EQUITY_CHART_THEME.profit : EQUITY_CHART_THEME.comparison,
         shape: trade.side === "Long" ? "arrowUp" : "arrowDown",
         text: `${trade.side} entry`
       });
@@ -239,7 +253,7 @@ export class EquityChartComponent implements AfterViewInit, OnChanges, OnDestroy
         markers.push({
           time: this._toUtcTimestamp(trade.exitTime),
           position: "aboveBar",
-          color: (trade.pnl ?? 0) >= 0 ? "#26a69a" : "#ef5350",
+          color: (trade.pnl ?? 0) >= 0 ? EQUITY_CHART_THEME.profit : EQUITY_CHART_THEME.loss,
           shape: "arrowDown",
           text: trade.pnl != null
             ? `Exit ${trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}`

@@ -1,0 +1,89 @@
+<mat-card class="condition-item" [formGroup]="group">
+  <div class="condition-item__header">
+    <div class="condition-item__identity">
+      <mat-checkbox formControlName="enabled" color="primary">
+        <span class="condition-item__type-label">MACD</span>
+      </mat-checkbox>
+
+      <app-info-popover
+        title="MACD"
+        description="Use MACD to require momentum crossover or relative strength between the MACD and signal lines before the strategy enters a trade."
+      />
+    </div>
+
+    <mat-form-field class="condition-item__label-field" appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" placeholder="e.g. MACD bullish crossover" />
+    </mat-form-field>
+
+    <div class="condition-item__actions">
+      <button
+        mat-icon-button
+        type="button"
+        matTooltip="Duplicate"
+        [attr.aria-label]="'Duplicate MACD condition ' + (index + 1)"
+        (click)="onDuplicate()"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        color="warn"
+        matTooltip="Remove"
+        [attr.aria-label]="'Remove MACD condition ' + (index + 1)"
+        (click)="onRemove()"
+      >
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="condition-item__fields">
+    <mat-form-field appearance="outline">
+      <mat-label>Fast period</mat-label>
+      <input matInput type="number" formControlName="fastPeriod" min="1" step="1" />
+      @if (hasError("fastPeriod", "required")) {
+        <mat-error>Fast period is required.</mat-error>
+      }
+      @if (hasError("fastPeriod", "min")) {
+        <mat-error>Fast period must be at least 1.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Slow period</mat-label>
+      <input matInput type="number" formControlName="slowPeriod" min="1" step="1" />
+      @if (hasError("slowPeriod", "required")) {
+        <mat-error>Slow period is required.</mat-error>
+      }
+      @if (hasError("slowPeriod", "min")) {
+        <mat-error>Slow period must be at least 1.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Signal period</mat-label>
+      <input matInput type="number" formControlName="signalPeriod" min="1" step="1" />
+      @if (hasError("signalPeriod", "required")) {
+        <mat-error>Signal period is required.</mat-error>
+      }
+      @if (hasError("signalPeriod", "min")) {
+        <mat-error>Signal period must be at least 1.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Operator</mat-label>
+      <mat-select formControlName="operator">
+        @for (operator of operators; track operator.value) {
+          <mat-option [value]="operator.value">{{ operator.label }}</mat-option>
+        }
+      </mat-select>
+      @if (hasError("operator", "required")) {
+        <mat-error>Operator is required.</mat-error>
+      }
+    </mat-form-field>
+  </div>
+</mat-card>

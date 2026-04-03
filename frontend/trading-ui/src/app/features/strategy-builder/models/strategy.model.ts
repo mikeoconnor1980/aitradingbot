@@ -7,6 +7,7 @@ export type EntryMode = "auto_from_signal_candle" | "manual";
 export type EntryLogic = "all" | "any";
 export type EntryConditionType = "rsi" | "price_vs_ema" | "macd";
 export type RsiOperator = "lt" | "lte" | "gt" | "gte" | "cross_above" | "cross_below";
+export type MacdOperator = "cross_above" | "cross_below" | "gt" | "lt";
 export type TrendFilterType = "ema_cross" | "sma_cross" | "price_above_ema";
 export type TrendOperator = "gt" | "lt" | "gte" | "lte" | "cross_above" | "cross_below" | "above" | "below";
 export type PriceVsEmaOperator = "near" | "above" | "below" | "cross_above" | "cross_below" | "touch";
@@ -43,12 +44,19 @@ export interface PriceVsEmaParams {
   distanceValue: number | null;
 }
 
+export interface MacdParams {
+  fastPeriod: number;
+  slowPeriod: number;
+  signalPeriod: number;
+  operator: MacdOperator;
+}
+
 export interface EntryConditionConfig {
   id: string;
   enabled: boolean;
   type: EntryConditionType;
   label: string;
-  params: RsiParams | PriceVsEmaParams;
+  params: RsiParams | PriceVsEmaParams | MacdParams;
 }
 
 export interface ExitRuleConfig {
@@ -82,6 +90,7 @@ export interface StrategyMetadata {
 export interface SourceMetadata {
   entryPoint: string;
   summary: string;
+  sourceText?: string | null;
 }
 
 export interface StrategyConfig {

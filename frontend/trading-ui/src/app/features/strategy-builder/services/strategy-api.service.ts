@@ -12,6 +12,7 @@ import {
   StrategyDto,
   StrategySummaryDto,
 } from "../models/strategy.model";
+import { StrategyIntentDto } from "../models/strategy-intent.model";
 
 @Injectable({ providedIn: "root" })
 export class StrategyApiService {
@@ -81,5 +82,9 @@ export class StrategyApiService {
 
   public validateStrategy(config: StrategyConfig, context?: HttpContext): Observable<ServerValidationResult> {
     return this._apiClient.post<ServerValidationResult>("strategies/validate", config, context);
+  }
+
+  public interpretStrategy(text: string, context?: HttpContext): Observable<StrategyIntentDto> {
+    return this._apiClient.post<StrategyIntentDto>("strategies/interpret", { text }, context);
   }
 }

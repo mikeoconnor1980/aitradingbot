@@ -5,6 +5,8 @@ import {
   EntryConditionConfig,
   EntryConditionType,
   ExitRuleType,
+  MacdOperator,
+  MacdParams,
   PriceVsEmaDistanceType,
   PriceVsEmaOperator,
   PositionSizeType,
@@ -26,6 +28,7 @@ export class StrategyMapperService {
     const stopLoss = (exit["stopLoss"] ?? {}) as Record<string, unknown>;
     const risk = (formValue["risk"] ?? {}) as Record<string, unknown>;
     const metadata = (formValue["metadata"] ?? {}) as Record<string, unknown>;
+    const source = (formValue["source"] ?? {}) as Record<string, unknown>;
     const trendFilter = (formValue["trendFilter"] ?? {}) as Record<string, unknown>;
     const entryMode = (grid["entryMode"] as EntryMode | undefined) ?? "auto_from_signal_candle";
     const templateId = String(formValue["templateId"] ?? "grid");
@@ -77,8 +80,9 @@ export class StrategyMapperService {
         notes: String(metadata["notes"] ?? ""),
       },
       source: {
-        entryPoint: "ui_builder",
-        summary: "Created in strategy builder",
+        entryPoint: String(source["entryPoint"] ?? "ui_builder"),
+        summary: String(source["summary"] ?? "Created in strategy builder"),
+        sourceText: this._toNullableString(source["sourceText"]),
       },
     };
   }
@@ -119,7 +123,7 @@ export class StrategyMapperService {
     }));
   }
 
-  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams {
+  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams | MacdParams {
     const type = String(condition["type"] ?? "rsi");
 
     if (type === "price_vs_ema") {
@@ -128,6 +132,15 @@ export class StrategyMapperService {
         operator: String(condition["operator"] ?? "near") as PriceVsEmaOperator,
         distanceType: String(condition["distanceType"] ?? "percent") as PriceVsEmaDistanceType,
         distanceValue: this._toNullableNumber(condition["distanceValue"]),
+      };
+    }
+
+    if (type === "macd") {
+      return {
+        fastPeriod: Number(condition["fastPeriod"] ?? 12),
+        slowPeriod: Number(condition["slowPeriod"] ?? 26),
+        signalPeriod: Number(condition["signalPeriod"] ?? 9),
+        operator: String(condition["operator"] ?? "cross_above") as MacdOperator,
       };
     }
 
@@ -149,5 +162,14 @@ export class StrategyMapperService {
 
     const parsedValue = Number(value);
     return Number.isNaN(parsedValue) ? null : parsedValue;
+  }
+
+  private _toNullableString(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    const parsedValue = String(value).trim();
+    return parsedValue.length === 0 ? null : parsedValue;
   }
 }

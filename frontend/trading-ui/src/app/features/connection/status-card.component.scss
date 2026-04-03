@@ -16,7 +16,7 @@
     padding: 1.1rem 1.25rem;
     border: 1px solid var(--colour-border-light);
     border-radius: 1rem;
-    background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.74));
+    background: linear-gradient(145deg, rgba(8, 20, 22, 0.96), rgba(14, 30, 33, 0.86));
   }
 
   &__eyebrow {
@@ -96,12 +96,13 @@
     padding: 0.45rem 0.8rem;
     border: 1px solid var(--colour-border-subtle);
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.72);
+    background: var(--colour-surface-strong);
     color: var(--colour-text-primary);
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   }
 
   &__badge-dot {
@@ -109,25 +110,25 @@
     height: 0.55rem;
     border-radius: 50%;
     background: currentColor;
-    box-shadow: 0 0 0 0.3rem rgba(148, 163, 184, 0.08);
+    box-shadow: 0 0 0 0.3rem rgba(45, 212, 191, 0.08);
   }
 
   &__badge--connected {
     color: var(--colour-profit);
-    border-color: rgba(74, 222, 128, 0.32);
-    background: rgba(20, 83, 45, 0.2);
+    border-color: rgba(59, 201, 168, 0.22);
+    background: rgba(17, 58, 50, 0.3);
   }
 
   &__badge--reconnecting {
     color: var(--colour-warning);
-    border-color: rgba(251, 191, 36, 0.32);
-    background: rgba(120, 53, 15, 0.18);
+    border-color: rgba(202, 168, 106, 0.24);
+    background: rgba(69, 52, 28, 0.24);
   }
 
   &__badge--disconnected {
     color: var(--colour-loss);
-    border-color: rgba(248, 113, 113, 0.32);
-    background: rgba(127, 29, 29, 0.18);
+    border-color: rgba(224, 122, 143, 0.24);
+    background: rgba(74, 30, 43, 0.24);
   }
 
   &__stats {
@@ -147,7 +148,7 @@
     padding: 0.85rem 0.9rem;
     border: 1px solid var(--colour-border-subtle);
     border-radius: 0.85rem;
-    background: rgba(15, 23, 42, 0.45);
+    background: rgba(255, 255, 255, 0.018);
   }
 
   &__label {
@@ -178,17 +179,17 @@
     align-items: center;
     min-height: 4.5rem;
     padding: 0.8rem 0.9rem;
-    border: 1px solid rgba(96, 165, 250, 0.16);
+    border: 1px solid rgba(143, 199, 216, 0.12);
     border-radius: 0.85rem;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(255, 255, 255, 0.018);
     color: var(--colour-text-primary);
     font-size: 0.9rem;
     line-height: 1.5;
   }
 
   &__detail--error {
-    border-color: rgba(248, 113, 113, 0.38);
-    background: rgba(127, 29, 29, 0.22);
+    border-color: rgba(224, 122, 143, 0.28);
+    background: rgba(74, 30, 43, 0.24);
     color: var(--colour-error-text);
   }
 
@@ -204,23 +205,23 @@
   &__refresh {
     min-height: 2.6rem;
     padding: 0.65rem 1rem;
-    border: 1px solid rgba(96, 165, 250, 0.32);
+    border: 1px solid rgba(121, 207, 195, 0.20);
     border-radius: 999px;
-    background: rgba(30, 64, 175, 0.18);
-    color: #dbeafe;
+    background: rgba(121, 207, 195, 0.08);
+    color: var(--colour-text-primary);
     font-size: 0.88rem;
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 
     &:hover {
-      border-color: rgba(147, 197, 253, 0.45);
-      background: rgba(30, 64, 175, 0.3);
+      border-color: rgba(166, 227, 218, 0.28);
+      background: rgba(121, 207, 195, 0.12);
       transform: translateY(-1px);
     }
 
     &:focus-visible {
-      outline: 2px solid rgba(147, 197, 253, 0.8);
+      outline: 2px solid rgba(166, 227, 218, 0.5);
       outline-offset: 2px;
     }
   }

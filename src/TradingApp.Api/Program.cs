@@ -1,6 +1,9 @@
+using System.Globalization;
+using System.Threading.RateLimiting;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
+using TradingApp.AI;
 using TradingApp.Api.Hubs;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Infrastructure.Filters;
@@ -92,6 +95,7 @@ builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>(
 builder.Services.AddScoped<GridStrategyEngine>();
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();
+builder.Services.AddScoped<IConditionHandler, MacdConditionHandler>();
 builder.Services.AddScoped<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();
@@ -136,6 +140,7 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
 builder.Services.AddScoped<IBinanceCandleIngestionService, BinanceCandleIngestionService>();
 builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
+builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
 
 // SignalR
@@ -167,6 +172,42 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("interpret-strategy", httpContext =>
+    {
+        var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].ToString();
+        var partitionKey = !string.IsNullOrWhiteSpace(forwardedFor)
+            ? forwardedFor.Split(',', 2, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)[0]
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            });
+    });
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers["Retry-After"] =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+        }
+
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new Envelope("Too many requests. Please wait a moment.", "rate_limit"),
+            cancellationToken);
+    };
+});
+
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<HttpGlobalExceptionFilter>();
@@ -188,6 +229,7 @@ app.Logger.LogInformation(
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseCors();
+app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");
 

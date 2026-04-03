@@ -52,6 +52,23 @@ interface IndicatorToggleState {
   macd: boolean;
 }
 
+const CYCLE_CHART_THEME = {
+  background: "#091315",
+  panelBackground: "#071012",
+  grid: "#162629",
+  text: "#7f9d99",
+  accent: "#79cfc3",
+  profit: "#3bc9a8",
+  loss: "#e07a8f",
+  warning: "#caa86a",
+  warningStrong: "#b9873f",
+  band: "rgba(143, 199, 216, 0.42)",
+  bandMid: "rgba(224, 122, 143, 0.4)",
+  levelUnfilled: "rgba(143, 199, 216, 0.24)",
+  rsiOverbought: "rgba(224, 122, 143, 0.55)",
+  rsiOversold: "rgba(59, 201, 168, 0.55)"
+} as const;
+
 @Component({
   selector: "app-cycle-chart",
   standalone: true,
@@ -171,68 +188,68 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: Math.max(container.clientWidth, 320),
       height: 450,
       layout: {
-        background: { color: "#1a1a2e" },
-        textColor: "#a0a0b0"
+        background: { color: CYCLE_CHART_THEME.background },
+        textColor: CYCLE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#2a2a3e" },
-        horzLines: { color: "#2a2a3e" }
+        vertLines: { color: CYCLE_CHART_THEME.grid },
+        horzLines: { color: CYCLE_CHART_THEME.grid }
       },
       crosshair: {
         mode: CrosshairMode.Normal
       },
       timeScale: {
-        borderColor: "#2a2a3e",
+        borderColor: CYCLE_CHART_THEME.grid,
         timeVisible: true,
         secondsVisible: false
       },
       rightPriceScale: {
-        borderColor: "#2a2a3e"
+        borderColor: CYCLE_CHART_THEME.grid
       }
     });
 
     this._candleSeries = this._chart.addSeries(CandlestickSeries, {
-      upColor: "#26a69a",
-      downColor: "#ef5350",
-      borderUpColor: "#26a69a",
-      borderDownColor: "#ef5350",
-      wickUpColor: "#26a69a",
-      wickDownColor: "#ef5350"
+      upColor: CYCLE_CHART_THEME.profit,
+      downColor: CYCLE_CHART_THEME.loss,
+      borderUpColor: CYCLE_CHART_THEME.profit,
+      borderDownColor: CYCLE_CHART_THEME.loss,
+      wickUpColor: CYCLE_CHART_THEME.profit,
+      wickDownColor: CYCLE_CHART_THEME.loss
     });
 
     this._markersApi = createSeriesMarkers(this._candleSeries, []);
     this._emaFastSeries = this._chart.addSeries(LineSeries, {
-      color: "#38bdf8",
+      color: CYCLE_CHART_THEME.accent,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._emaSlowSeries = this._chart.addSeries(LineSeries, {
-      color: "#f97316",
+      color: CYCLE_CHART_THEME.warningStrong,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._emaTrendSeries = this._chart.addSeries(LineSeries, {
-      color: "#22c55e",
+      color: CYCLE_CHART_THEME.profit,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._bollingerUpperSeries = this._chart.addSeries(LineSeries, {
-      color: "rgba(168, 85, 247, 0.85)",
+      color: CYCLE_CHART_THEME.band,
       lineWidth: 1,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._bollingerMiddleSeries = this._chart.addSeries(LineSeries, {
-      color: "rgba(244, 114, 182, 0.8)",
+      color: CYCLE_CHART_THEME.bandMid,
       lineWidth: 1,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._bollingerLowerSeries = this._chart.addSeries(LineSeries, {
-      color: "rgba(168, 85, 247, 0.85)",
+      color: CYCLE_CHART_THEME.band,
       lineWidth: 1,
       lastValueVisible: false,
       priceLineVisible: false,
@@ -256,32 +273,32 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: Math.max(container.clientWidth, 320),
       height: 140,
       layout: {
-        background: { color: "#101827" },
-        textColor: "#94a3b8"
+        background: { color: CYCLE_CHART_THEME.panelBackground },
+        textColor: CYCLE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" }
+        vertLines: { color: CYCLE_CHART_THEME.grid },
+        horzLines: { color: CYCLE_CHART_THEME.grid }
       },
       timeScale: {
         visible: false,
-        borderColor: "#1f2937"
+        borderColor: CYCLE_CHART_THEME.grid
       },
       rightPriceScale: {
-        borderColor: "#1f2937"
+        borderColor: CYCLE_CHART_THEME.grid
       }
     });
 
     this._rsiSeries = this._rsiChart.addSeries(LineSeries, {
-      color: "#facc15",
+      color: CYCLE_CHART_THEME.warning,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
 
     this._rsiPriceLines = [
-      this._rsiSeries.createPriceLine({ price: 70, color: "rgba(239, 68, 68, 0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" }),
-      this._rsiSeries.createPriceLine({ price: 30, color: "rgba(34, 197, 94, 0.7)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" })
+      this._rsiSeries.createPriceLine({ price: 70, color: CYCLE_CHART_THEME.rsiOverbought, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "70" }),
+      this._rsiSeries.createPriceLine({ price: 30, color: CYCLE_CHART_THEME.rsiOversold, lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "30" })
     ];
   }
 
@@ -292,20 +309,20 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       width: Math.max(container.clientWidth, 320),
       height: 160,
       layout: {
-        background: { color: "#101827" },
-        textColor: "#94a3b8"
+        background: { color: CYCLE_CHART_THEME.panelBackground },
+        textColor: CYCLE_CHART_THEME.text
       },
       grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" }
+        vertLines: { color: CYCLE_CHART_THEME.grid },
+        horzLines: { color: CYCLE_CHART_THEME.grid }
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: "#1f2937"
+        borderColor: CYCLE_CHART_THEME.grid
       },
       rightPriceScale: {
-        borderColor: "#1f2937"
+        borderColor: CYCLE_CHART_THEME.grid
       }
     });
 
@@ -314,13 +331,13 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       lastValueVisible: false,
     });
     this._macdLineSeries = this._macdChart.addSeries(LineSeries, {
-      color: "#38bdf8",
+      color: CYCLE_CHART_THEME.accent,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
     });
     this._macdSignalSeries = this._macdChart.addSeries(LineSeries, {
-      color: "#f97316",
+      color: CYCLE_CHART_THEME.warningStrong,
       lineWidth: 2,
       lastValueVisible: false,
       priceLineVisible: false,
@@ -393,7 +410,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     // Anchor price line
     this._priceLines.push(this._candleSeries.createPriceLine({
       price: summary.anchorPrice,
-      color: "#f59e0b",
+      color: CYCLE_CHART_THEME.warningStrong,
       lineWidth: 2,
       lineStyle: 0, // Solid
       axisLabelVisible: true,
@@ -405,7 +422,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       const isFilled = this._isFilledLevel(summary, i);
       this._priceLines.push(this._candleSeries.createPriceLine({
         price: summary.levelPrices[i],
-        color: isFilled ? "#26a69a" : "rgba(96, 165, 250, 0.4)",
+        color: isFilled ? CYCLE_CHART_THEME.profit : CYCLE_CHART_THEME.levelUnfilled,
         lineWidth: 1,
         lineStyle: isFilled ? 0 : 2, // Solid if filled, dashed if not
         axisLabelVisible: false,
@@ -417,7 +434,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     if (summary.takeProfitPrice > 0) {
       this._priceLines.push(this._candleSeries.createPriceLine({
         price: summary.takeProfitPrice,
-        color: "#22c55e",
+        color: CYCLE_CHART_THEME.profit,
         lineWidth: 2,
         lineStyle: 2, // Dashed
         axisLabelVisible: true,
@@ -429,7 +446,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     if (summary.stopLossPrice && summary.stopLossPrice > 0) {
       this._priceLines.push(this._candleSeries.createPriceLine({
         price: summary.stopLossPrice,
-        color: "#ef5350",
+        color: CYCLE_CHART_THEME.loss,
         lineWidth: 2,
         lineStyle: 2, // Dashed
         axisLabelVisible: true,
@@ -453,7 +470,7 @@ export class CycleChartComponent implements AfterViewInit, OnChanges, OnDestroy 
         return {
           time: (Math.floor(event.timestampUtc / 1000)) as UTCTimestamp,
           position: isBuy ? "belowBar" as const : "aboveBar" as const,
-          color: isBuy ? "#26a69a" : "#f59e0b",
+          color: isBuy ? CYCLE_CHART_THEME.profit : CYCLE_CHART_THEME.warning,
           shape: isBuy ? "arrowUp" as const : "arrowDown" as const,
           text: `${event.side} @ ${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         };

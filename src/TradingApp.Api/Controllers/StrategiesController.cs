@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Models;
 using TradingApp.Application.Abstractions.Exceptions;
@@ -36,6 +37,22 @@ public sealed class StrategiesController : ApiController
     public IActionResult Validate([FromBody] StrategyConfig config)
     {
         var result = _validator.Validate(config);
+        return Ok(result);
+    }
+
+    [HttpPost("interpret")]
+    [EnableRateLimiting("interpret-strategy")]
+    [ProducesResponseType(typeof(StrategyIntentDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> InterpretStrategy(
+        [FromBody] InterpretStrategyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(
+            new InterpretStrategyCommand(request.Text),
+            cancellationToken);
+
         return Ok(result);
     }
 
