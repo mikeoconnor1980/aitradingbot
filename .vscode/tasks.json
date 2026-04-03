@@ -59,6 +59,16 @@
         "reevaluateOnRerun": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Start TradingView",
+      "type": "shell",
+      "command": "taskkill /IM chrome.exe /F 2>$null; Start-Process 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' -ArgumentList '--remote-debugging-port=9222','--user-data-dir=C:\\tmp\\chrome-debug-profile','https://www.tradingview.com/chart/uSi8PQzi/'; Write-Host 'Waiting for CDP...'; $i=0; while ($i -lt 15) { try { Invoke-RestMethod -Uri 'http://localhost:9222/json/version' -TimeoutSec 2 | Out-Null; Write-Host 'CDP ready on port 9222'; break } catch { Start-Sleep -Seconds 1; $i++ } }",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
     }
   ]
 }
