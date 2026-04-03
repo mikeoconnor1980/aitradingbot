@@ -20,6 +20,9 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
+| [ ] | Allow increase grid size vertically in market data tab | 3 Apr 2026 | — |
+| [ ] | Timeframe box on market data tab should be at top of price chart - i.e. raise higher up page | 3 Apr 2026 | — |
+| [ ] | Good to have a checkbox to show/hide trade entry/exit labels on chart (can clutter) | 3 Apr 2026 | — |
 | [x] | Show trades on main chart | 30 Mar 2026 | [pbi-draft-show-trades-on-chart](../3-develop/backlog/draft/pbi-draft-show-trades-on-chart.md) |
 | [ ] | Show indicators on main chart | 30 Mar 2026 | — |
 | [ ] | Backtest run deletion / archival | 30 Mar 2026 | — |

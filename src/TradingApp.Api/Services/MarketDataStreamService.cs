@@ -232,6 +232,8 @@ public sealed class MarketDataStreamService : BackgroundService
 
     private async Task RunAggregationLoopAsync(CancellationToken cancellationToken)
     {
+        try
+        {
         using var timer = new PeriodicTimer(_aggregationInterval);
 
         while (await timer.WaitForNextTickAsync(cancellationToken))
@@ -279,6 +281,11 @@ public sealed class MarketDataStreamService : BackgroundService
             }
 
             await _hubContext.Clients.All.SendAsync("ReceivePriceUpdate", update, cancellationToken);
+        }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Normal shutdown — do not propagate
         }
     }
 }
