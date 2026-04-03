@@ -204,4 +204,105 @@ public sealed class BacktestRunRepositoryTests
 
         result.Should().BeNull();
     }
+
+    [TestMethod]
+    public async Task GivenRunsWithStrategyId_WhenGetPagedSummariesByStrategyAsync_ThenReturnsOnlyMatchingRuns()
+    {
+        var strategyId = Guid.NewGuid();
+        var otherStrategyId = Guid.NewGuid();
+
+        var matchingRunOne = BacktestRun.CreateQueued(
+            symbol: "BTC",
+            intervalsJson: "[\"15m\"]",
+            startDateUtc: 1000,
+            endDateUtc: 2000,
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
+            initialCapital: 10000m,
+            strategyId: strategyId,
+            strategyRevisionId: 1);
+
+        var matchingRunTwo = BacktestRun.CreateQueued(
+            symbol: "ETH",
+            intervalsJson: "[\"1h\"]",
+            startDateUtc: 3000,
+            endDateUtc: 4000,
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
+            initialCapital: 5000m,
+            strategyId: strategyId,
+            strategyRevisionId: 2);
+
+        var otherRun = BacktestRun.CreateQueued(
+            symbol: "SOL",
+            intervalsJson: "[\"4h\"]",
+            startDateUtc: 5000,
+            endDateUtc: 6000,
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
+            initialCapital: 2500m,
+            strategyId: otherStrategyId,
+            strategyRevisionId: 1);
+
+        await using (var writeContext = CreateContext())
+        {
+            writeContext.BacktestRuns.AddRange(matchingRunOne, matchingRunTwo, otherRun);
+            await writeContext.SaveChangesAsync();
+        }
+
+        await using var readContext = CreateContext();
+        var sut = new BacktestRunRepository(readContext);
+
+        var result = await sut.GetPagedSummariesByStrategyAsync(strategyId, 1, 10);
+
+        result.TotalCount.Should().Be(2);
+        result.Items.Should().HaveCount(2);
+        result.Items.Select(item => item.StrategyId).Should().OnlyContain(id => id == strategyId);
+        result.Items.Select(item => item.StrategyRevisionId).Should().BeEquivalentTo([2, 1]);
+        result.Items.Select(item => item.StrategyName).Should().OnlyContain(name => name == null);
+    }
+
+    [TestMethod]
+    public async Task GivenMultipleMatchingRuns_WhenGetPagedSummariesByStrategyAsyncWithSmallPageSize_ThenReturnsOnlyRequestedPage()
+    {
+        var strategyId = Guid.NewGuid();
+
+        var matchingRunOne = BacktestRun.CreateQueued(
+            symbol: "BTC",
+            intervalsJson: "[\"15m\"]",
+            startDateUtc: 1000,
+            endDateUtc: 2000,
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
+            initialCapital: 10000m,
+            strategyId: strategyId,
+            strategyRevisionId: 1);
+
+        var matchingRunTwo = BacktestRun.CreateQueued(
+            symbol: "ETH",
+            intervalsJson: "[\"1h\"]",
+            startDateUtc: 3000,
+            endDateUtc: 4000,
+            strategyConfigJson: QueuedStrategyConfigJson,
+            executionConfigJson: ExecutionConfigJson,
+            initialCapital: 5000m,
+            strategyId: strategyId,
+            strategyRevisionId: 2);
+
+        await using (var writeContext = CreateContext())
+        {
+            writeContext.BacktestRuns.AddRange(matchingRunOne, matchingRunTwo);
+            await writeContext.SaveChangesAsync();
+        }
+
+        await using var readContext = CreateContext();
+        var sut = new BacktestRunRepository(readContext);
+
+        var result = await sut.GetPagedSummariesByStrategyAsync(strategyId, 1, 1);
+
+        result.TotalCount.Should().Be(2);
+        result.Items.Should().HaveCount(1);
+        result.Page.Should().Be(1);
+        result.PageSize.Should().Be(1);
+    }
 }

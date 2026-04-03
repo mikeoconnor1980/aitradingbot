@@ -119,6 +119,24 @@
           <span class="backtest-result__config-label">Intervals</span>
           <span class="backtest-result__config-value">{{ intervalsLabel }}</span>
         </div>
+        @if (result.strategyName) {
+          <div class="backtest-result__config-item">
+            <span class="backtest-result__config-label">Strategy</span>
+            <span class="backtest-result__config-value backtest-result__config-value--strategy">
+              @if (canNavigateToStrategy && result.strategyId) {
+                <button type="button" class="backtest-result__strategy-link" (click)="onNavigateToStrategy(result.strategyId)">
+                  {{ result.strategyName }}
+                </button>
+              } @else {
+                <span class="backtest-result__strategy-label backtest-result__strategy-label--deleted">{{ result.strategyName }}</span>
+              }
+
+              @if (result.strategyRevisionId) {
+                <span class="backtest-result__revision-badge">v{{ result.strategyRevisionId }}</span>
+              }
+            </span>
+          </div>
+        }
         <div class="backtest-result__config-item">
           <span class="backtest-result__config-label">Grid Levels</span>
           <span class="backtest-result__config-value">{{ gridLevels }}</span>

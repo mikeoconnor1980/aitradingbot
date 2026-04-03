@@ -1,0 +1,16 @@
+<button
+  mat-icon-button
+  type="button"
+  class="info-popover__trigger"
+  [matMenuTriggerFor]="menu"
+  [attr.aria-label]="ariaLabel"
+>
+  <mat-icon>info</mat-icon>
+</button>
+
+<mat-menu #menu="matMenu" xPosition="after" yPosition="below">
+  <section class="info-popover__panel">
+    <h4>{{ title }}</h4>
+    <p>{{ description }}</p>
+  </section>
+</mat-menu>

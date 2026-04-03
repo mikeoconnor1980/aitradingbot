@@ -1,6 +1,12 @@
 <mat-card class="risk-card" [formGroup]="group">
   <mat-card-header>
-    <mat-card-title>Risk Management</mat-card-title>
+    <mat-card-title class="risk-card__title">
+      <span>Risk Management</span>
+      <app-info-popover
+        title="Risk Management"
+        description="Risk management controls how aggressively the strategy trades. Position size sets exposure, leverage magnifies that exposure, max open trades limits simultaneous positions, and cooldown slows re-entry after a trade."
+      />
+    </mat-card-title>
   </mat-card-header>
 
   <mat-card-content>

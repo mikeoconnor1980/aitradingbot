@@ -117,9 +117,38 @@ describe("StrategyBuilderPageComponent", () => {
     expect(routerSpy.navigate).toHaveBeenCalledWith(["/strategies"]);
   });
 
+  it("should not allow save for a clean valid form", () => {
+    component.form.patchValue({ strategyName: "RSI Test" });
+    (component as any)._savedFormSnapshot = JSON.stringify(component.form.getRawValue());
+    component.form.markAsPristine();
+
+    expect(component.form.valid).toBeTrue();
+    expect(component.hasUnsavedChanges()).toBeFalse();
+    expect(component.canSave).toBeFalse();
+  });
+
+  it("should allow save only when the valid form has changes", () => {
+    component.form.patchValue({ strategyName: "RSI Test" });
+
+    expect(component.form.valid).toBeTrue();
+    expect(component.hasUnsavedChanges()).toBeTrue();
+    expect(component.canSave).toBeTrue();
+  });
+
+  it("should disable save again when changes are reverted", () => {
+    const originalName = component.form.controls["strategyName"].value;
+
+    component.form.patchValue({ strategyName: "RSI Test" });
+    expect(component.canSave).toBeTrue();
+
+    component.form.patchValue({ strategyName: originalName });
+
+    expect(component.hasUnsavedChanges()).toBeFalse();
+    expect(component.canSave).toBeFalse();
+  });
+
   it("should confirm before leaving a dirty form", () => {
     component.form.patchValue({ strategyName: "BTC Grid" });
-    component.form.markAsDirty();
 
     expect(component.hasUnsavedChanges()).toBeTrue();
 

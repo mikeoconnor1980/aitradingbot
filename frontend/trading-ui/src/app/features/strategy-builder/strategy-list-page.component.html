@@ -70,6 +70,15 @@
                 <button mat-icon-button type="button" aria-label="Edit strategy" (click)="onEdit(strategy)">
                   <mat-icon>edit</mat-icon>
                 </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  color="primary"
+                  aria-label="Backtest strategy"
+                  matTooltip="Backtest"
+                  (click)="onBacktestStrategy(strategy.id); $event.stopPropagation()">
+                  <mat-icon>science</mat-icon>
+                </button>
                 <button mat-icon-button type="button" color="warn" aria-label="Delete strategy" (click)="onDelete(strategy)">
                   <mat-icon>delete</mat-icon>
                 </button>

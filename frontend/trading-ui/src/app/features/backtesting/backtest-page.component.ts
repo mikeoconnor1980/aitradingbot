@@ -1,13 +1,16 @@
 import { HttpContext, HttpErrorResponse } from "@angular/common/http";
-import { Component, OnDestroy, OnInit, ViewChild, inject } from "@angular/core";
+import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatTabGroup, MatTabsModule } from "@angular/material/tabs";
-import { Subject, filter, forkJoin, takeUntil } from "rxjs";
+import { ActivatedRoute, Router } from "@angular/router";
+import { filter, forkJoin } from "rxjs";
 import { BacktestRequest, BacktestResult, CoverageReport } from "../../core/models/backtest.model";
 import { GridCycleSummary } from "../../core/models/backtest-debug.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../core/services/backtest.service";
+import { NotificationService } from "../../core/services/notification.service";
 import { SignalRService } from "../../core/services/signalr.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { BacktestCompareComponent } from "./backtest-compare/backtest-compare.component";
@@ -40,11 +43,16 @@ import { TradeLogTableComponent } from "./trade-log-table/trade-log-table.compon
   templateUrl: "./backtest-page.component.html",
   styleUrl: "./backtest-page.component.scss"
 })
-export class BacktestPageComponent implements OnInit, OnDestroy {
+export class BacktestPageComponent implements OnInit {
+  private static readonly GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
   private readonly _backtestService = inject(BacktestService);
   private readonly _signalRService = inject(SignalRService);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _router = inject(Router);
+  private readonly _notificationService = inject(NotificationService);
+  private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
-  private readonly _destroy$ = new Subject<void>();
 
   @ViewChild(MatTabGroup)
   public tabGroup?: MatTabGroup;
@@ -64,13 +72,22 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
   public backtestProgress = 0;
   public backtestStatus: string | null = null;
   public pendingBacktestId: string | null = null;
+  public strategyId: string | null = null;
 
   private _retryAction: (() => void) | null = null;
+  private _lastHandledViewResultId: string | null = null;
 
   public ngOnInit(): void {
+    this._route.queryParamMap
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((queryParamMap) => {
+        this._applyStrategyIdQueryParam(queryParamMap.get("strategyId"));
+        this._applyViewResultQueryParam(queryParamMap.get("viewResult"));
+      });
+
     this._signalRService.backtestProgress$.pipe(
+      takeUntilDestroyed(this._destroyRef),
       filter((p) => p.id === this.pendingBacktestId),
-      takeUntil(this._destroy$)
     ).subscribe((progress) => {
       this.backtestStatus = progress.status;
       this.backtestProgress = progress.progress;
@@ -84,11 +101,6 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
         this.apiError = progress.errorMessage ?? "Backtest failed.";
       }
     });
-  }
-
-  public ngOnDestroy(): void {
-    this._destroy$.next();
-    this._destroy$.complete();
   }
 
   public onRunBacktest(request: BacktestRequest): void {
@@ -128,8 +140,6 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     this._backtestService.validateCoverage(
       request.symbol,
       request.intervals,
-      request.startDate,
-      request.endDate,
       this._localErrorContext
     )
       .subscribe({
@@ -157,6 +167,13 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
       next: (result: BacktestResult) => {
         this.prefillConfig = result;
         this.selectedTabIndex = 0;
+
+        if (result.strategyId) {
+          void this._router.navigate(["/backtesting"], {
+            queryParams: { strategyId: result.strategyId }
+          });
+        }
+
         this._retryAction = null;
       },
       error: (error: HttpErrorResponse) => {
@@ -299,5 +316,38 @@ export class BacktestPageComponent implements OnInit, OnDestroy {
     }
 
     this.apiError = options?.defaultMessage ?? message;
+  }
+
+  private _applyStrategyIdQueryParam(strategyId: string | null): void {
+    if (strategyId === null || strategyId.trim().length === 0) {
+      this.strategyId = null;
+      return;
+    }
+
+    if (!BacktestPageComponent.GUID_PATTERN.test(strategyId)) {
+      this.strategyId = null;
+      this._notificationService.error("Strategy not found. Please select a different strategy.");
+      return;
+    }
+
+    this.strategyId = strategyId;
+  }
+
+  private _applyViewResultQueryParam(viewResultId: string | null): void {
+    if (viewResultId === null || viewResultId.trim().length === 0) {
+      this._lastHandledViewResultId = null;
+      return;
+    }
+
+    if (!BacktestPageComponent.GUID_PATTERN.test(viewResultId)) {
+      return;
+    }
+
+    if (this._lastHandledViewResultId === viewResultId) {
+      return;
+    }
+
+    this._lastHandledViewResultId = viewResultId;
+    this.onViewResult(viewResultId);
   }
 }

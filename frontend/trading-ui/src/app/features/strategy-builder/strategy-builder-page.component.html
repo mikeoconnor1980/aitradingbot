@@ -6,6 +6,13 @@
     </div>
 
     <div class="builder-page__actions">
+      @if (editId) {
+        <button mat-stroked-button type="button" color="primary" (click)="onBacktestStrategy()">
+          <mat-icon>science</mat-icon>
+          <span>Backtest this strategy</span>
+        </button>
+      }
+
       <button mat-stroked-button type="button" (click)="onCancel()">Cancel</button>
       <button mat-raised-button color="primary" type="button" [disabled]="!canSave" (click)="onSave()">
         @if (isSaving) {
@@ -33,11 +40,15 @@
         />
 
         <app-strategy-details-card [group]="form" />
-        <app-grid-config-card [group]="gridFormGroup" />
+        @if (!isSignalMode) {
+          <app-grid-config-card [group]="gridFormGroup" />
+        }
+        @if (isSignalMode) {
+          <app-entry-conditions-card [conditions]="conditionsFormArray" />
+        }
         <app-exit-rules-card [group]="exitFormGroup" />
         <app-risk-management-card [group]="riskFormGroup" />
         <app-trend-filter-card />
-        <app-entry-conditions-card />
       </div>
 
       <div class="builder-page__column builder-page__column--side">
@@ -48,6 +59,15 @@
           [infoMessages]="serverInfoMessages"
         />
         <app-json-preview-card [config]="currentConfig" />
+
+        @if (editId) {
+          <app-strategy-backtest-history [strategyId]="editId" />
+
+          <app-revision-history-panel
+            [strategyId]="editId"
+            (restored)="onRevisionRestored()"
+          />
+        }
 
         @if (isValidating) {
           <div class="builder-page__validating">Refreshing server validation...</div>

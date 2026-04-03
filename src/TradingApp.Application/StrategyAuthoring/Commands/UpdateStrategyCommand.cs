@@ -6,6 +6,7 @@ using TradingApp.Application.Abstractions.Identity;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Serialization;
+using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Domain.Entities;
 
@@ -16,13 +17,19 @@ public sealed record UpdateStrategyCommand(Guid Id, StrategyConfig Config, AppId
 public sealed class UpdateStrategyCommandHandler : CommandHandler<UpdateStrategyCommand>
 {
     private readonly IStrategyRepository _repository;
+    private readonly IStrategyRevisionRepository _revisionRepository;
+    private readonly IChangeSummaryGenerator _changeSummaryGenerator;
     private readonly IStrategyValidator _validator;
 
     public UpdateStrategyCommandHandler(
         IStrategyRepository repository,
+        IStrategyRevisionRepository revisionRepository,
+        IChangeSummaryGenerator changeSummaryGenerator,
         IStrategyValidator validator)
     {
         _repository = repository;
+        _revisionRepository = revisionRepository;
+        _changeSummaryGenerator = changeSummaryGenerator;
         _validator = validator;
     }
 
@@ -56,10 +63,21 @@ public sealed class UpdateStrategyCommandHandler : CommandHandler<UpdateStrategy
             throw new DuplicateStrategyNameException(request.Config.StrategyName);
         }
 
+        var previousConfigJson = strategy.ConfigJson;
         var configJson = JsonSerializer.Serialize(request.Config, StrategyJsonOptions.Default);
         strategy.Update(request.Config.StrategyName, configJson);
 
         await _repository.UpdateAsync(strategy, cancellationToken);
+
+        var revision = StrategyRevision.Create(
+            strategy.Id,
+            strategy.Version,
+            configJson,
+            RevisionSourceMapper.MapFrom(request.Config.Source?.EntryPoint),
+            _changeSummaryGenerator.Generate(previousConfigJson, configJson));
+
+        await _revisionRepository.AddAsync(revision, cancellationToken);
+
         return Unit.Value;
     }
 }

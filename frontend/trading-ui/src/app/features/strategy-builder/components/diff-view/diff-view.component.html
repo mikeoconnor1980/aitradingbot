@@ -1,0 +1,20 @@
+<div class="diff-view">
+  <h4 class="diff-view__title">
+    Comparing revision {{ diff.fromRevision }} -> {{ diff.toRevision }}
+  </h4>
+
+  @if (diff.changes.length === 0) {
+    <p class="diff-view__empty">No changes detected.</p>
+  } @else {
+    <div class="diff-view__changes">
+      @for (change of diff.changes; track change.path) {
+        <div class="diff-view__change">
+          <span class="diff-view__path">{{ change.path }}</span>
+          <span class="diff-view__old">{{ change.oldValue ?? "(none)" }}</span>
+          <span class="diff-view__arrow">-></span>
+          <span class="diff-view__new">{{ change.newValue ?? "(none)" }}</span>
+        </div>
+      }
+    </div>
+  }
+</div>

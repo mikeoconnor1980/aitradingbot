@@ -226,6 +226,11 @@ appsettings.Development.json
 *.db-shm
 *.db-wal
 
+# Shared local dev database baseline
+!/data/tradingapp.db
+/data/tradingapp.db-shm
+/data/tradingapp.db-wal
+
 # NuGet v3's project.json files produces more ignorable files
 *.nuget.props
 *.nuget.targets
@@ -429,5 +434,6 @@ FodyWeavers.xsd
 data/*.db
 data/*.db-shm
 data/*.db-wal
+!data/tradingapp.db
 
 .fake

@@ -1,0 +1,65 @@
+.strategy-backtest-history {
+  border: 1px solid var(--colour-border-subtle);
+  background: var(--colour-surface-dark);
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    color: var(--colour-muted);
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 0.25rem 0;
+    color: var(--colour-muted);
+  }
+
+  &__group {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  &__group + &__group {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--colour-border-subtle);
+  }
+
+  &__group-title {
+    margin: 0;
+    color: var(--colour-text-primary);
+    font-size: 0.95rem;
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 0.9rem;
+    background: var(--colour-surface-alt);
+  }
+
+  &__table {
+    width: 100%;
+  }
+
+  &__row {
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+  }
+
+  &__value--profit {
+    color: var(--colour-profit);
+    font-weight: 600;
+  }
+
+  &__value--loss {
+    color: var(--colour-loss);
+    font-weight: 600;
+  }
+}

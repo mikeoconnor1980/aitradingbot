@@ -79,7 +79,7 @@ describe("BacktestService", () => {
       intervals: ["15m", "1h", "4h"],
       startDate: "2024-01-01T00:00:00Z",
       endDate: "2024-12-31T23:59:59Z",
-      strategyConfig: request.strategyConfig,
+      strategyConfig: request.strategyConfig!,
       executionConfig: {
         feeModel: {
           makerFeeRate: 0.0001,
@@ -208,7 +208,7 @@ describe("BacktestService", () => {
       }
     };
 
-    service.validateCoverage("BTC", ["15m", "1h"], "2024-01-01T00:00:00Z", "2024-12-31T23:59:59Z").subscribe((result) => {
+      service.validateCoverage("BTC", ["15m", "1h"]).subscribe((result) => {
       expect(result.coverage["BTC/15m"].candleCount).toBe(35040);
     });
 
@@ -235,6 +235,28 @@ describe("BacktestService", () => {
     });
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/backtests?page=1&pageSize=20`);
+    expect(req.request.method).toBe("GET");
+    req.flush(mockResult);
+  });
+
+  it("should GET strategy-scoped backtest history", () => {
+    const strategyId = "35c4c2fd-7d83-4179-a8a3-98369ec19db2";
+    const mockResult: PagedResult<BacktestSummary> = {
+      items: [],
+      page: 2,
+      pageSize: 10,
+      totalCount: 0,
+      totalPages: 0
+    };
+
+    service.getBacktestsByStrategy(strategyId, 2, 10).subscribe((result) => {
+      expect(result.page).toBe(2);
+      expect(result.pageSize).toBe(10);
+    });
+
+    const req = httpMock.expectOne(
+      `${environment.apiBaseUrl}/strategies/${encodeURIComponent(strategyId)}/backtests?page=2&pageSize=10`
+    );
     expect(req.request.method).toBe("GET");
     req.flush(mockResult);
   });

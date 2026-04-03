@@ -34,7 +34,17 @@ This is the foundational investment in composable strategy evaluation. The handl
 
 ## Problem Statement
 
-`GridStrategyEngine.EvaluateAsync` always returns `SetupDetected = true` when higher-TF candles exist. There is no mechanism to evaluate composable conditions. `IMarketContextBuilder` computes hardcoded EMA 20/50/200 and RSI 14 — periods are not configurable from the strategy config. There is no handler pattern or evaluator orchestrator.
+`GridStrategyEngine.EvaluateAsync` always returns `SetupDetected = true` when higher-TF candles exist. There is no mechanism to evaluate composable conditions. `IMarketContextBuilder` (via `BacktestMarketContextBuilder`) computes hardcoded EMA 9/21/55 and RSI 14 — periods are not configurable from the strategy config. The existing `IndicatorSnapshot` model has fixed properties only. There is no handler pattern or evaluator orchestrator.
+
+### Design Decisions (from refinement)
+
+1. **Evolve `IndicatorSnapshot`** — rename to `IndicatorContext`, keep existing properties as computed shorthands, add dictionary-backed dynamic lookups (`GetRsi(period)`, `GetEma(period)`, etc.). No new model alongside.
+2. **Cross detection included** — `cross_above`/`cross_below` operators are in scope. `IndicatorContext` holds current + previous candle indicator values.
+3. **Signal direction** — when signal-mode evaluation returns `SetupDetected = true`, the signal direction is derived from the strategy's `Direction` config (Long/Short). No new enum.
+4. **CompositeStrategyEngine** — new class that delegates to `GridStrategyEngine` (grid mode) or `ConditionEvaluator` (signal mode). `GridStrategyEngine` is untouched.
+5. **Fail on unknown condition types** — unknown `EntryConditionType` values cause evaluation failure (config is invalid), not a silent skip.
+6. **Per-condition results on StrategyEvaluation** — `ConditionResults` list surfaced on `StrategyEvaluation` for logging/debugging.
+7. **Build() signature change** — `IMarketContextBuilder.Build()` gains a `requiredIndicators` parameter (extracted from config) so the builder knows which indicators to compute.
 
 ---
 
@@ -44,19 +54,21 @@ This is the foundational investment in composable strategy evaluation. The handl
 
 #### Indicator Infrastructure
 
-- [ ] `IndicatorContext` model holds computed indicator values keyed by type and period: `GetRsi(int period)`, `GetEma(int period)`, `GetMacd(int fast, int slow, int signal)` — returns nullable decimals
-- [ ] `IMarketContextBuilder` extended: `Build(triggerCandle, ...)` accepts a list of required indicators (extracted from the strategy config) and computes them
+- [ ] Rename `IndicatorSnapshot` → `IndicatorContext`; keep existing properties (`EmaFast`, `EmaSlow`, `EmaTrend`, `Rsi`, `Atr`) as computed shorthands backed by the dynamic dictionary
+- [ ] `IndicatorContext` holds dictionary-backed dynamic lookups: `GetRsi(int period) → decimal?`, `GetEma(int period) → decimal?`, `GetMacd(int fast, int slow, int signal) → decimal?`
+- [ ] `IndicatorContext` holds current + previous candle indicator values to support `cross_above` / `cross_below` detection (e.g., `GetPreviousRsi(int period) → decimal?`)
+- [ ] `IMarketContextBuilder.Build()` extended with a `requiredIndicators` parameter: `Build(triggerCandle, latestOneHourCandle, latestFourHourCandle, requiredIndicators)` — computes only the requested indicators
 - [ ] Indicator extraction utility: given a `StrategyConfig`, returns the set of required indicators (`RSI(14)`, `EMA(50)`, etc.) from trend filter + entry conditions
-- [ ] `MarketContext` extended to include `IndicatorContext`
+- [ ] `MarketContext.Indicators` property type changes from `IndicatorSnapshot` to `IndicatorContext`
 - [ ] Calculation reuses existing EMA/RSI logic (from `BacktestMarketContextBuilder` or shared `IndicatorCalculator`)
-- [ ] Cross detection (`cross_above`, `cross_below`) requires current + previous candle indicator values; `IndicatorContext` holds both
+- [ ] Grid-mode callers continue to work — `Build()` overload without `requiredIndicators` computes the existing defaults
 
 #### Condition Evaluator Engine
 
 - [ ] `IConditionEvaluator` interface: `Evaluate(StrategyConfig, MarketContext) → ConditionEvaluationResult`
 - [ ] `ConditionEvaluationResult`: `SetupDetected` (bool), `TrendFilterPassed` (bool?), `ConditionResults` (per-condition pass/fail with reason), `OverallReason` (string)
-- [ ] `IConditionHandler` interface: `string ConditionType { get; }`, `ConditionResult Evaluate(EntryConditionConfig, IndicatorContext, MarketContext)`
-- [ ] Handlers resolved by `condition.type` — unknown types produce a warning, not failure (forward compatibility)
+- [ ] `IConditionHandler` interface: `EntryConditionType ConditionType { get; }`, `ConditionResult Evaluate(EntryConditionConfig, IndicatorContext, MarketContext)`
+- [ ] Handlers resolved by `condition.Type` (the `EntryConditionType` enum) — **unknown/unregistered types cause evaluation failure** (config is invalid)
 - [ ] Entry logic: `all` = all enabled conditions pass; `any` = at least one passes; no enabled conditions = `SetupDetected = false`
 - [ ] Disabled conditions excluded from evaluation
 
@@ -67,10 +79,16 @@ This is the foundational investment in composable strategy evaluation. The handl
 
 #### Strategy Engine Routing
 
-- [ ] `IStrategyEngine.EvaluateAsync` routes by `strategyMode`:
-  - `grid` → existing `GridStrategyEngine` logic (unchanged)
-  - `signal` → `IConditionEvaluator.Evaluate()` → maps to `StrategyEvaluation`
-- [ ] This can be implemented as a `CompositeStrategyEngine` that delegates, or by modifying `GridStrategyEngine` to branch
+- [ ] New `CompositeStrategyEngine` implements `IStrategyEngine` and delegates by `strategyMode`:
+  - `Grid` → `GridStrategyEngine` (existing, unchanged)
+  - `Signal` → `ConditionEvaluator.Evaluate()` → maps to `StrategyEvaluation`
+- [ ] `GridStrategyEngine` remains unchanged — no modifications to the grid evaluation path
+- [ ] DI registration changes: `IStrategyEngine` → `CompositeStrategyEngine` (which receives `GridStrategyEngine` and `IConditionEvaluator`)
+
+#### StrategyEvaluation Enhancement
+
+- [ ] `StrategyEvaluation` extended with `ConditionResults` (list of per-condition pass/fail with reason) for logging/debugging
+- [ ] `StrategyEvaluation` extended with `Direction` (from strategy config) — populated in signal mode so downstream consumers know the intended trade direction
 
 ### Non-Functional Requirements
 
@@ -113,7 +131,7 @@ var handler = _handlers.FirstOrDefault(h => h.ConditionType == condition.Type);
 
 | Component | Layer | Action |
 |-----------|-------|--------|
-| `IndicatorContext` | Application/Trading/Models | **New** |
+| `IndicatorContext` | Application/Trading/Models | **Renamed** from `IndicatorSnapshot` — adds dynamic lookups + previous values |
 | `IConditionEvaluator` | Application/StrategyAuthoring/Services | **New** |
 | `ConditionEvaluator` | Application/StrategyAuthoring/Services | **New** |
 | `IConditionHandler` | Application/StrategyAuthoring/Services | **New** |
@@ -121,9 +139,11 @@ var handler = _handlers.FirstOrDefault(h => h.ConditionType == condition.Type);
 | `ConditionEvaluationResult` | Application/StrategyAuthoring/Models | **New** |
 | `ConditionResult` | Application/StrategyAuthoring/Models | **New** |
 | `IndicatorExtractor` | Application/StrategyAuthoring/Services | **New** — extracts required indicators from config |
-| `IMarketContextBuilder` | Application/Abstractions/Services | **Modified** — accept required indicators |
-| `MarketContext` | Application/Trading/Models | **Modified** — include `IndicatorContext` |
-| `IStrategyEngine` impl | Application/Trading/Services | **Modified** — route by `strategyMode` |
+| `CompositeStrategyEngine` | Application/Trading/Services | **New** — delegates by `StrategyMode` |
+| `IMarketContextBuilder` | Application/Abstractions/Services | **Modified** — `Build()` gains `requiredIndicators` param |
+| `MarketContext` | Application/Trading/Models | **Modified** — `Indicators` type changes to `IndicatorContext` |
+| `StrategyEvaluation` | Application/Trading/Models | **Modified** — adds `ConditionResults` + `Direction` |
+| `GridStrategyEngine` | Application/Trading/Services | **Unchanged** — no modifications |
 
 ---
 
@@ -138,15 +158,43 @@ var handler = _handlers.FirstOrDefault(h => h.ConditionType == condition.Type);
 
 ## Acceptance Criteria
 
-- [ ] **Given** `strategyMode = "signal"` with RSI condition `operator = "lt", value = 40`, **When** RSI(14) = 35, **Then** `SetupDetected = true`
+### RSI Condition Evaluation
+
+- [ ] **Given** `strategyMode = "Signal"` with RSI condition `operator = "lt", value = 40`, **When** RSI(14) = 35, **Then** `SetupDetected = true` and `Direction` matches the strategy's configured direction
 - [ ] **Given** RSI condition `operator = "lt", value = 40`, **When** RSI(14) = 45, **Then** `SetupDetected = false`
 - [ ] **Given** RSI condition `operator = "cross_above", value = 30`, **When** previous RSI = 28 and current RSI = 32, **Then** `SetupDetected = true`
-- [ ] **Given** `entryLogic = "all"` with RSI (passes) and an unknown type (warning), **When** evaluated, **Then** `SetupDetected = true` (unknown types don't block)
-- [ ] **Given** `entryLogic = "any"` with RSI (fails) and no other conditions, **Then** `SetupDetected = false`
-- [ ] **Given** one disabled RSI condition and entry logic `all`, **Then** `SetupDetected = false` (no enabled conditions)
-- [ ] **Given** `strategyMode = "grid"`, **When** evaluated, **Then** existing `GridStrategyEngine` logic runs (unchanged)
-- [ ] **Given** a strategy requiring RSI(14), **When** `IMarketContextBuilder.Build()` is called, **Then** `IndicatorContext.GetRsi(14)` returns a value
+- [ ] **Given** RSI condition `operator = "cross_below", value = 70`, **When** previous RSI = 72 and current RSI = 68, **Then** `SetupDetected = true`
+
+### Entry Logic
+
+- [ ] **Given** `entryLogic = "All"` with RSI (passes) and a second condition (passes), **When** evaluated, **Then** `SetupDetected = true`
+- [ ] **Given** `entryLogic = "All"` with RSI (passes) and a second condition (fails), **When** evaluated, **Then** `SetupDetected = false`
+- [ ] **Given** `entryLogic = "Any"` with RSI (fails) and no other enabled conditions, **Then** `SetupDetected = false`
+- [ ] **Given** `entryLogic = "Any"` with RSI (fails) and a second condition (passes), **Then** `SetupDetected = true`
+- [ ] **Given** one disabled RSI condition and entry logic `All`, **Then** `SetupDetected = false` (no enabled conditions)
+
+### Unknown/Invalid Condition Types
+
+- [ ] **Given** an entry condition with `EntryConditionType.Unknown` or unregistered type, **When** evaluated, **Then** evaluation fails (config is invalid)
+
+### Strategy Engine Routing
+
+- [ ] **Given** `strategyMode = "Grid"`, **When** evaluated via `CompositeStrategyEngine`, **Then** `GridStrategyEngine` logic runs (unchanged)
+- [ ] **Given** `strategyMode = "Signal"`, **When** evaluated via `CompositeStrategyEngine`, **Then** `ConditionEvaluator` is invoked
+
+### Indicator Infrastructure
+
+- [ ] **Given** a strategy requiring RSI(14), **When** `IMarketContextBuilder.Build()` is called with the required indicators, **Then** `IndicatorContext.GetRsi(14)` returns a computed value
+- [ ] **Given** a `cross_above` operator, **When** `Build()` is called, **Then** `IndicatorContext.GetPreviousRsi(14)` returns the previous candle's RSI value
+- [ ] **Given** `Build()` called without `requiredIndicators` (grid-mode default), **Then** existing default indicators are computed (backward compatible)
+
+### Regression Safety
+
 - [ ] **Given** existing grid strategy tests, **When** run, **Then** all pass (grid path untouched)
+
+### Observability
+
+- [ ] **Given** any signal-mode evaluation, **When** result is returned, **Then** `StrategyEvaluation.ConditionResults` contains per-condition pass/fail with human-readable reasons
 
 ### Release Notes Information
 

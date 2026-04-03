@@ -67,6 +67,26 @@
     font-weight: 600;
   }
 
+  &__strategy-link {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--colour-primary, #7dd3a5);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: underline;
+  }
+
+  &__strategy-label {
+    color: var(--colour-text-primary);
+  }
+
+  &__strategy-label--deleted {
+    color: var(--colour-muted);
+  }
+
   &__empty,
   &__loading {
     display: flex;

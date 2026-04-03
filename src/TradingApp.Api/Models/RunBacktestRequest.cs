@@ -2,14 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TradingApp.Api.Models;
 
-public sealed class RunBacktestRequest
+public sealed class RunBacktestRequest : IValidatableObject
 {
-    [Required]
-    public string Symbol { get; set; } = string.Empty;
+    public string? Symbol { get; set; }
 
-    [Required]
-    [MinLength(1)]
-    public string[] Intervals { get; set; } = [];
+    public string[]? Intervals { get; set; }
 
     [Required]
     public DateTime? StartDate { get; set; }
@@ -21,13 +18,33 @@ public sealed class RunBacktestRequest
     [Range(0.01, double.MaxValue, ErrorMessage = "initialCapital must be > 0")]
     public decimal? InitialCapital { get; set; }
 
-    [Required]
-    public StrategyConfigRequest StrategyConfig { get; set; } = null!;
+    public StrategyConfigRequest? StrategyConfig { get; set; }
 
     [Required]
     public ExecutionConfigRequest ExecutionConfig { get; set; } = null!;
 
     public bool EnableAuditLog { get; set; } = true;
+    public Guid? StrategyId { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (StrategyId.HasValue)
+        {
+            yield break;
+        }
+
+        if (string.IsNullOrWhiteSpace(Symbol))
+        {
+            yield return new ValidationResult("The Symbol field is required.", [nameof(Symbol)]);
+        }
+
+        if (Intervals is null || Intervals.Length == 0)
+        {
+            yield return new ValidationResult(
+                "The Intervals field must contain at least one interval.",
+                [nameof(Intervals)]);
+        }
+    }
 }
 
 public sealed class StrategyConfigRequest

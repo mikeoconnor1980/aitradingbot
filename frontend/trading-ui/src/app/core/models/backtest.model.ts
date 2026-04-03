@@ -8,6 +8,20 @@ export interface BacktestGridConfig {
   breakdownThreshold: number;
 }
 
+export interface BacktestRsiParams {
+  period: number;
+  operator: string;
+  value: number;
+}
+
+export interface BacktestEntryConditionConfig {
+  id: string;
+  enabled: boolean;
+  type: string;
+  label: string;
+  params: BacktestRsiParams;
+}
+
 export interface BacktestExitRuleConfig {
   enabled: boolean;
   type: string;
@@ -48,8 +62,8 @@ export interface BacktestStrategyConfig {
   templateId?: string | null;
   grid?: BacktestGridConfig | null;
   trendFilter?: null;
-  entryLogic?: null;
-  entryConditions?: null;
+  entryLogic?: string | null;
+  entryConditions?: BacktestEntryConditionConfig[] | null;
   exit: BacktestExitConfig;
   risk: BacktestRiskConfig;
   metadata?: { tags: string[]; notes: string } | null;
@@ -74,13 +88,15 @@ export interface BacktestExecutionConfigRequest {
 }
 
 export interface BacktestRequest {
-  symbol: string;
-  intervals: string[];
+  symbol?: string;
+  intervals?: string[];
   startDate: string;
   endDate: string;
   initialCapital: number;
-  strategyConfig: BacktestStrategyConfig;
+  strategyConfig?: BacktestStrategyConfig;
   executionConfig: BacktestExecutionConfigRequest;
+  enableAuditLog?: boolean;
+  strategyId?: string;
 }
 
 export interface BacktestTrade {
@@ -129,6 +145,9 @@ export interface BacktestResult {
   createdAt: string;
   equityTimeSeries?: EquitySnapshot[];
   hasAuditLog: boolean;
+  strategyId?: string | null;
+  strategyRevisionId?: number | null;
+  strategyName?: string | null;
 }
 
 export interface BacktestProgress {
@@ -150,15 +169,12 @@ export interface BacktestSummary {
   totalPnl: number;
   maxDrawdown: number;
   createdAt: string;
+  strategyId?: string | null;
+  strategyRevisionId?: number | null;
+  strategyName?: string | null;
 }
 
-export interface PagedResult<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-}
+export type { PagedResult } from "./paged-result.model";
 
 export interface CoverageReport {
   coverage: Record<string, IntervalCoverage>;

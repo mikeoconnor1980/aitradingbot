@@ -40,13 +40,18 @@ Id
 Name  
 StrategyType  
 CreatedAt  
-IsActive
+IsActive  
+IsRunning (tracks live execution state; default false; prevents destructive operations like restore while true)
 
 Example:
 
 BTC Pullback Grid
 
 Multiple strategies may exist but typically only one is active.
+
+`Strategy.SetRunningState(bool)` updates the running flag; throws if setting `true` on an inactive strategy. Restore operations throw `ConflictException` (HTTP 409) when `IsRunning` is true.
+
+Note: `IsRunning` is a stub in the POC phase — the worker does not yet update this property.
 
 ---
 

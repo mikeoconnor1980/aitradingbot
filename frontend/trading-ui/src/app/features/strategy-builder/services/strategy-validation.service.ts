@@ -14,6 +14,8 @@ export class StrategyValidationService {
 
   public validate(formValue: Record<string, unknown>): ValidationError[] {
     const errors: ValidationError[] = [];
+    const templateId = String(formValue["templateId"] ?? "grid");
+    const isSignalMode = templateId === "custom_signal";
     const name = String(formValue["strategyName"] ?? "").trim();
     const market = String(formValue["market"] ?? "").trim();
     const timeframe = String(formValue["timeframe"] ?? "").trim();
@@ -37,7 +39,9 @@ export class StrategyValidationService {
       errors.push(this._error("timeframe", "REQUIRED", "Timeframe is required."));
     }
 
-    if (grid === null) {
+    if (isSignalMode) {
+      this._validateSignalMode(formValue, errors);
+    } else if (grid === null) {
       errors.push(this._error("grid", "REQUIRED", "Grid configuration is required."));
     } else {
       const levels = Number(grid["levels"] ?? 0);
@@ -90,6 +94,63 @@ export class StrategyValidationService {
     }
 
     return errors;
+  }
+
+  private _validateSignalMode(formValue: Record<string, unknown>, errors: ValidationError[]): void {
+    const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
+
+    if (conditions.length === 0) {
+      errors.push(this._error("entryConditions", "REQUIRED", "At least one entry condition required."));
+      return;
+    }
+
+    const duplicateIndexes = this._findDuplicateConditionIndexes(conditions);
+
+    duplicateIndexes.forEach((index) => {
+      errors.push(this._error(`entryConditions[${index}]`, "DUPLICATE", "Duplicate RSI conditions are not allowed."));
+    });
+
+    conditions.forEach((condition, index) => {
+      const period = Number(condition["period"] ?? 0);
+      const value = Number(condition["value"] ?? -1);
+
+      if (period < 1) {
+        errors.push(this._error(`entryConditions[${index}].params.period`, "RANGE", "RSI period must be at least 1."));
+      }
+
+      if (value < 0 || value > 100) {
+        errors.push(this._error(`entryConditions[${index}].params.value`, "RANGE", "RSI value must be between 0 and 100."));
+      }
+    });
+  }
+
+  private _findDuplicateConditionIndexes(conditions: Record<string, unknown>[]): number[] {
+    const seenKeys = new Map<string, number>();
+    const duplicateIndexes = new Set<number>();
+
+    conditions.forEach((condition, index) => {
+      const signature = this._createConditionSignature(condition);
+      const existingIndex = seenKeys.get(signature);
+
+      if (existingIndex === undefined) {
+        seenKeys.set(signature, index);
+        return;
+      }
+
+      duplicateIndexes.add(existingIndex);
+      duplicateIndexes.add(index);
+    });
+
+    return Array.from(duplicateIndexes).sort((left, right) => left - right);
+  }
+
+  private _createConditionSignature(condition: Record<string, unknown>): string {
+    return [
+      String(condition["type"] ?? "rsi"),
+      String(condition["period"] ?? ""),
+      String(condition["operator"] ?? ""),
+      String(condition["value"] ?? ""),
+    ].join("|");
   }
 
   public validateServer(config: StrategyConfig, context?: HttpContext): Observable<ServerValidationResult> {

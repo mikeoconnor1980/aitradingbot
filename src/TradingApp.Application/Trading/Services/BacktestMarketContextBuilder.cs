@@ -1,4 +1,5 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
 
@@ -16,7 +17,18 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 
     public MarketContext Build(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle)
     {
+        return Build(triggerCandle, latestOneHourCandle, latestFourHourCandle, null);
+    }
+
+    public MarketContext Build(
+        Candle triggerCandle,
+        Candle? latestOneHourCandle,
+        Candle? latestFourHourCandle,
+        IReadOnlyList<IndicatorRequirement>? requiredIndicators)
+    {
         ArgumentNullException.ThrowIfNull(triggerCandle);
+
+        var indicatorContext = BuildIndicatorContext(requiredIndicators);
 
         return new MarketContext
         {
@@ -32,8 +44,41 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
                 EmaTrend = latestFourHourCandle?.Close ?? CalculateEma(55),
                 Rsi = CalculateRsi(14),
                 Atr = CalculateAtr(14)
-            }
+            },
+            IndicatorContext = indicatorContext
         };
+    }
+
+    private IndicatorContext? BuildIndicatorContext(IReadOnlyList<IndicatorRequirement>? requirements)
+    {
+        if (requirements is null || requirements.Count == 0)
+        {
+            return null;
+        }
+
+        var context = new IndicatorContext();
+
+        foreach (var requirement in requirements)
+        {
+            switch (requirement.Type.ToUpperInvariant())
+            {
+                case "RSI":
+                    context.SetRsi(
+                        requirement.Period,
+                        CalculateRsi(requirement.Period),
+                        CalculatePreviousRsi(requirement.Period));
+                    break;
+
+                case "EMA":
+                    context.SetEma(
+                        requirement.Period,
+                        CalculateEma(requirement.Period),
+                        CalculatePreviousEma(requirement.Period));
+                    break;
+            }
+        }
+
+        return context;
     }
 
     private decimal CalculateEma(int period)
@@ -86,6 +131,59 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 
         var relativeStrength = gains / losses;
         return 100m - (100m / (1m + relativeStrength));
+    }
+
+    private decimal CalculatePreviousRsi(int period)
+    {
+        if (_candles.Count < 3)
+        {
+            return 50m;
+        }
+
+        var endIndex = _candles.Count - 1;
+        var startIndex = Math.Max(1, endIndex - period);
+        decimal gains = 0m;
+        decimal losses = 0m;
+
+        for (var index = startIndex; index < endIndex; index++)
+        {
+            var delta = _candles[index].Close - _candles[index - 1].Close;
+            if (delta >= 0)
+            {
+                gains += delta;
+            }
+            else
+            {
+                losses += Math.Abs(delta);
+            }
+        }
+
+        if (losses == 0m)
+        {
+            return 100m;
+        }
+
+        var relativeStrength = gains / losses;
+        return 100m - (100m / (1m + relativeStrength));
+    }
+
+    private decimal CalculatePreviousEma(int period)
+    {
+        if (_candles.Count < 2)
+        {
+            return 0m;
+        }
+
+        var closes = _candles.Take(_candles.Count - 1).Select(candle => candle.Close).ToList();
+        var smoothing = 2m / (period + 1m);
+        var ema = closes[0];
+
+        for (var index = 1; index < closes.Count; index++)
+        {
+            ema = ((closes[index] - ema) * smoothing) + ema;
+        }
+
+        return ema;
     }
 
     private decimal CalculateAtr(int period)
