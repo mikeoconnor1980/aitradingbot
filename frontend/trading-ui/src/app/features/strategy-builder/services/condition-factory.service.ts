@@ -1,6 +1,6 @@
 import { Injectable, inject } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator } from "../models/strategy.model";
+import { MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, SupportResistanceOperator } from "../models/strategy.model";
 
 export interface CreateRsiConditionOverrides {
   id: string;
@@ -29,6 +29,16 @@ export interface CreateMacdConditionOverrides {
   slowPeriod: number;
   signalPeriod: number;
   operator: MacdOperator;
+}
+
+export interface CreateSupportResistanceConditionOverrides {
+  id: string;
+  enabled: boolean;
+  label: string;
+  lookback: number;
+  strength: number;
+  operator: SupportResistanceOperator;
+  tolerance: number;
 }
 
 @Injectable({ providedIn: "root" })
@@ -91,6 +101,23 @@ export class ConditionFactoryService {
       slowPeriod: [overrides?.slowPeriod ?? 26, [Validators.required, Validators.min(5), Validators.max(200)]],
       signalPeriod: [overrides?.signalPeriod ?? 9, [Validators.required, Validators.min(2), Validators.max(50)]],
       operator: [overrides?.operator ?? "cross_above_signal", Validators.required],
+    });
+  }
+
+  public createSupportResistanceCondition(overrides?: Partial<CreateSupportResistanceConditionOverrides>): FormGroup {
+    if (overrides?.id !== undefined) {
+      this._advancePastId(overrides.id);
+    }
+
+    return this._fb.group({
+      id: [overrides?.id ?? this._generateId()],
+      enabled: [overrides?.enabled ?? true],
+      type: ["support_resistance"],
+      label: [overrides?.label ?? ""],
+      lookback: [overrides?.lookback ?? 50, [Validators.required, Validators.min(10), Validators.max(500)]],
+      strength: [overrides?.strength ?? 3, [Validators.required, Validators.min(1), Validators.max(10)]],
+      operator: [overrides?.operator ?? "near_support", Validators.required],
+      tolerance: [overrides?.tolerance ?? 0.5, [Validators.required, Validators.min(0), Validators.max(10)]],
     });
   }
 

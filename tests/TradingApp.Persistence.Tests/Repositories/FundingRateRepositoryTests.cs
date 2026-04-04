@@ -99,6 +99,24 @@ public sealed class FundingRateRepositoryTests
     }
 
     [TestMethod]
+    public async Task GivenFundingRatesExist_WhenGetRangeAsync_ThenReturnsOrderedRangeWithinBounds()
+    {
+        var fundingRates = CreateFundingRates("BTC", 1000, 5);
+        var otherSymbolRate = FundingRate.Create("ETH", 2500, 0.0009m, 60000m);
+
+        await using var context = CreateContext();
+        var sut = new FundingRateRepository(context);
+        await sut.BulkInsertAsync(fundingRates.Concat([otherSymbolRate]));
+
+        await using var queryContext = CreateContext();
+        var querySut = new FundingRateRepository(queryContext);
+        var result = await querySut.GetRangeAsync("BTC", 1500, 4500);
+
+        result.Select(rate => rate.Timestamp).Should().Equal(2000, 3000, 4000);
+        result.Should().OnlyContain(rate => rate.Symbol == "BTC");
+    }
+
+    [TestMethod]
     public async Task GivenFundingRatesWithDecimals_WhenBulkInsertAsync_ThenPersistsWithinTolerance()
     {
         var fundingRate = FundingRate.Create("BTC", 1000, 0.00012345m, 51234.5678m);

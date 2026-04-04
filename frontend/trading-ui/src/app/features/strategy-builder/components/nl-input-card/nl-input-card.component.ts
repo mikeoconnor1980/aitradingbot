@@ -38,7 +38,7 @@ export class NlInputCardComponent implements OnChanges {
   public text = "";
   public isLoading = false;
   public errorMessage: string | null = null;
-  public readonly maxLength = 500;
+  public readonly maxLength = 2000;
 
   public ngOnChanges(changes: SimpleChanges): void {
     const initialTextChange = changes["initialText"];

@@ -253,6 +253,42 @@ public sealed class BusinessRuleValidator
                     });
                 }
             }
+
+            if (condition.Params is SupportResistanceParams sr)
+            {
+                if (sr.Lookback < 10 || sr.Lookback > 500)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.lookback",
+                        Code = "SR_LOOKBACK_RANGE",
+                        Message = "Support/resistance lookback must be between 10 and 500.",
+                    });
+                }
+
+                if (sr.Strength < 1 || sr.Strength > 10)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.strength",
+                        Code = "SR_STRENGTH_RANGE",
+                        Message = "Support/resistance strength must be between 1 and 10.",
+                    });
+                }
+
+                if (sr.Tolerance < 0 || sr.Tolerance > 10)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.tolerance",
+                        Code = "SR_TOLERANCE_RANGE",
+                        Message = "Support/resistance tolerance must be between 0 and 10 percent.",
+                    });
+                }
+            }
         }
     }
 

@@ -15,6 +15,19 @@
     } @else if (conditionGroups.length === 0) {
       <p class="conditions-card__message">No conditions added. Click "Add RSI", "Add Price vs EMA", or "Add MACD" to create a condition.</p>
     } @else {
+      @if (entryLogicControl !== null && conditionGroups.length > 1) {
+        <div class="conditions-card__logic-toggle">
+          <span class="conditions-card__logic-label">Entry logic</span>
+          <mat-button-toggle-group [formControl]="$any(entryLogicControl)" aria-label="Entry logic">
+            <mat-button-toggle value="all">All conditions</mat-button-toggle>
+            <mat-button-toggle value="any">Any condition</mat-button-toggle>
+          </mat-button-toggle-group>
+          <app-info-popover
+            title="Entry Logic"
+            description="'All conditions' means every condition must pass before entering a trade (AND). 'Any condition' means at least one must pass (OR). The trend filter always applies regardless."
+          />
+        </div>
+      }
       @for (group of conditionGroups; track group.value.id; let index = $index) {
         @if (getConditionType(group) === "price_vs_ema") {
           <app-price-vs-ema-condition-item
@@ -25,6 +38,13 @@
           />
         } @else if (getConditionType(group) === "macd") {
           <app-macd-condition-item
+            [group]="group"
+            [index]="index"
+            (duplicate)="onDuplicate(index)"
+            (remove)="onRemove(index)"
+          />
+        } @else if (getConditionType(group) === "support_resistance") {
+          <app-support-resistance-condition-item
             [group]="group"
             [index]="index"
             (duplicate)="onDuplicate(index)"
@@ -61,6 +81,10 @@
       >
         <mat-icon>add</mat-icon>
         <span>Add MACD</span>
+      </button>
+      <button mat-stroked-button type="button" (click)="onAddSupportResistance()">
+        <mat-icon>add</mat-icon>
+        <span>Add S/R</span>
       </button>
     </mat-card-actions>
   }

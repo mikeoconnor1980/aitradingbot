@@ -1,0 +1,108 @@
+<mat-card class="condition-item" [formGroup]="group">
+  <div class="condition-item__header">
+    <div class="condition-item__identity">
+      <mat-checkbox formControlName="enabled" color="primary">
+        <span class="condition-item__type-label">Support / Resistance</span>
+      </mat-checkbox>
+
+      <app-info-popover
+        title="Support / Resistance"
+        description="Support and resistance levels are calculated from recent swing highs and lows. Use this condition to enter trades when price is near, above, or bouncing off key levels."
+      />
+    </div>
+
+    <mat-form-field class="condition-item__label-field" appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" placeholder="e.g. Near Support Bounce" />
+    </mat-form-field>
+
+    <div class="condition-item__actions">
+      <button
+        mat-icon-button
+        type="button"
+        matTooltip="Duplicate"
+        [attr.aria-label]="'Duplicate S/R condition ' + (index + 1)"
+        (click)="onDuplicate()"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        color="warn"
+        matTooltip="Remove"
+        [attr.aria-label]="'Remove S/R condition ' + (index + 1)"
+        (click)="onRemove()"
+      >
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="condition-item__fields">
+    <mat-form-field appearance="outline">
+      <mat-label>Lookback</mat-label>
+      <input matInput type="number" formControlName="lookback" min="10" max="500" step="1" />
+      <app-info-popover
+        matSuffix
+        title="Lookback"
+        description="Number of candles to scan for swing highs and lows. Higher values find older, more established levels. Typical range: 20–100."
+      />
+      @if (hasError("lookback", "required")) {
+        <mat-error>Lookback is required.</mat-error>
+      }
+      @if (hasError("lookback", "min") || hasError("lookback", "max")) {
+        <mat-error>Lookback must be between 10 and 500.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Strength</mat-label>
+      <input matInput type="number" formControlName="strength" min="1" max="10" step="1" />
+      <app-info-popover
+        matSuffix
+        title="Strength"
+        description="Number of candles on each side of a swing point that must be lower (for support) or higher (for resistance). Higher values find stronger levels. Default: 3."
+      />
+      @if (hasError("strength", "required")) {
+        <mat-error>Strength is required.</mat-error>
+      }
+      @if (hasError("strength", "min") || hasError("strength", "max")) {
+        <mat-error>Strength must be between 1 and 10.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Operator</mat-label>
+      <mat-select formControlName="operator">
+        @for (operator of operators; track operator.value) {
+          <mat-option [value]="operator.value">{{ operator.label }}</mat-option>
+        }
+      </mat-select>
+      <app-info-popover
+        matSuffix
+        title="Operator"
+        description="Defines the relationship between price and the detected level. 'Near' checks if price is within tolerance. 'Bounce' checks if price touched and reversed."
+      />
+    </mat-form-field>
+
+    @if (needsTolerance) {
+      <mat-form-field appearance="outline">
+        <mat-label>Tolerance (%)</mat-label>
+        <input matInput type="number" formControlName="tolerance" min="0" max="10" step="0.1" />
+        <app-info-popover
+          matSuffix
+          title="Tolerance"
+          description="How close price must be to the level (as a percentage). For example, 0.5 means within 0.5% of the support or resistance level."
+        />
+        @if (hasError("tolerance", "required")) {
+          <mat-error>Tolerance is required.</mat-error>
+        }
+        @if (hasError("tolerance", "min") || hasError("tolerance", "max")) {
+          <mat-error>Tolerance must be between 0 and 10.</mat-error>
+        }
+      </mat-form-field>
+    }
+  </div>
+</mat-card>

@@ -5,7 +5,7 @@
 
 <mat-dialog-content class="ai-review-modal__content">
   <p class="ai-review-modal__meta">
-    {{ data.review.modelName }} · Rev {{ data.review.revisionNumber }} · {{ data.review.createdAtUtc | date: "short" }}
+    {{ data.review.modelName }} · Rev {{ data.review.revisionNumber }} · {{ data.review.createdAtUtc | date: "dd MMM yyyy" }}
   </p>
 
   @if (data.review.isFallback) {

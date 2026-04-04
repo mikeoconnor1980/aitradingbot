@@ -105,6 +105,13 @@ public sealed class StrategyReviewer : IStrategyReviewer
                 Recommend re-running with at least 14 days of data for meaningful performance analysis.
                 Note this limitation in your review.
                 """);
+
+            if (summary.RegimeSegmentation is not null)
+            {
+                builder.AppendLine();
+                AppendRegimeSegmentation(builder, summary.RegimeSegmentation, exploratoryOnly: true);
+            }
+
             return;
         }
 
@@ -125,13 +132,24 @@ public sealed class StrategyReviewer : IStrategyReviewer
             Period: {summary.StartDate:yyyy-MM-dd} to {summary.EndDate:yyyy-MM-dd} ({summary.DurationDays} days)
 
             Performance Metrics:
-            - Total Trades: {summary.TotalTrades}
+            - Total Trades: {summary.TotalTrades} ({summary.WinningTrades} wins, {summary.LosingTrades} losses)
             - Win Rate: {summary.WinRate:F1}%
             - Total PnL: ${summary.TotalPnL:F2}
             - Average Trade PnL: ${summary.AverageTradePnL:F2}
+            - Profit Factor: {summary.ProfitFactor:F2} (gross wins / gross losses)
             - Max Drawdown: ${summary.MaxDrawdownAbsolute:F2} ({summary.MaxDrawdownPercent:F1}%)
             - Total Fees Paid: ${summary.TotalFeesPaid:F2}
+            - Fee-to-Gross-Profit Ratio: {summary.FeeToGrossProfitRatio:F1}% (fees as % of gross profit)
             - Average Hold Time: {holdTimeFormatted}
+
+            Risk-Adjusted Metrics:
+            - Sharpe Ratio (annualized): {summary.SharpeRatio:F2}
+            - Max Consecutive Losses: {summary.MaxConsecutiveLosses}
+            - Reward:Risk Ratio: {summary.RewardRiskRatio:F2} (avg win / avg loss)
+            - Average Win: ${summary.AverageWinSize:F2}
+            - Average Loss: ${summary.AverageLossSize:F2}
+            - Largest Win: ${summary.LargestWin:F2}
+            - Largest Loss: ${summary.LargestLoss:F2}
 
             Capital:
             - Initial Capital: ${summary.InitialCapital:F2}
@@ -140,9 +158,83 @@ public sealed class StrategyReviewer : IStrategyReviewer
 
             Data Coverage: {summary.CandlesReplayed} candles replayed
             Equity Curve: {summary.EquityCurveSummary}
-
-            Incorporate this empirical data throughout your review and include Section 11 (Backtest Performance Analysis).
             """);
+
+        if (summary.TopDrawdownEpisodes.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("        Top Drawdown Episodes:");
+            foreach (var ep in summary.TopDrawdownEpisodes)
+            {
+                var recovery = ep.RecoveryDate.HasValue
+                    ? $"recovered {ep.RecoveryDate:yyyy-MM-dd} ({ep.RecoveryCandles} candles)"
+                    : "not yet recovered";
+                builder.AppendLine($"        - {ep.DepthPercent:F1}% drawdown from {ep.StartDate:yyyy-MM-dd}, trough {ep.TroughDate:yyyy-MM-dd}, {recovery}");
+            }
+        }
+
+        if (summary.RegimeSegmentation is not null)
+        {
+            builder.AppendLine();
+            AppendRegimeSegmentation(builder, summary.RegimeSegmentation, exploratoryOnly: false);
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("        Incorporate this empirical data throughout your review and include Section 11 (Backtest Performance Analysis).");
+    }
+
+    private static void AppendRegimeSegmentation(
+        StringBuilder builder,
+        RegimeSegmentationSummary segmentation,
+        bool exploratoryOnly)
+    {
+        builder.AppendLine("        --- REGIME SEGMENTATION ---");
+
+        if (!segmentation.HasAnySegmentData)
+        {
+            builder.AppendLine($"        - Regime segmentation unavailable: {segmentation.UnavailableReason}");
+            if (!string.IsNullOrWhiteSpace(segmentation.OpenInterestTrendNote))
+            {
+                builder.AppendLine($"        - Open-interest trend: {segmentation.OpenInterestTrendNote}");
+            }
+
+            return;
+        }
+
+        builder.AppendLine($"        Completed Grid Cycles Analysed: {segmentation.CompletedGridCyclesAnalysed}");
+        if (exploratoryOnly)
+        {
+            builder.AppendLine("        Treat these segment-level results as exploratory only because the overall backtest sample is insufficient.");
+        }
+
+        AppendSegmentGroup(builder, "Trend / Range", segmentation.TrendSegments);
+        AppendSegmentGroup(builder, "ATR Percentile At Deployment", segmentation.AtrPercentileSegments);
+        AppendSegmentGroup(builder, "Volatility Bucket", segmentation.VolatilitySegments);
+        AppendSegmentGroup(builder, "Funding Bucket", segmentation.FundingSegments);
+        AppendSegmentGroup(builder, "Time-of-Day / Session", segmentation.SessionSegments);
+
+        if (!string.IsNullOrWhiteSpace(segmentation.OpenInterestTrendNote))
+        {
+            builder.AppendLine("        Open-Interest Trend:");
+            builder.AppendLine($"        - {segmentation.OpenInterestTrendNote}");
+        }
+    }
+
+    private static void AppendSegmentGroup(
+        StringBuilder builder,
+        string title,
+        IReadOnlyList<RegimeSegmentStat> stats)
+    {
+        if (stats.Count == 0)
+        {
+            return;
+        }
+
+        builder.AppendLine($"        {title}:");
+        foreach (var stat in stats)
+        {
+            builder.AppendLine($"        - {stat.Segment}: {stat.CycleCount} cycles, {stat.WinRate:F1}% win rate, avg cycle PnL ${stat.AverageCyclePnl:F2}, total PnL ${stat.TotalCyclePnl:F2}, avg duration {stat.AverageCycleDurationHours:F1}h");
+        }
     }
 
     private static (string Review, bool IsFallback) NormalizeReview(string review, string strategyJson)

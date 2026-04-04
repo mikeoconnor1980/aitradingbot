@@ -32,6 +32,7 @@ public sealed class EntryConditionParamsConverter : JsonConverter<IEntryConditio
             EntryConditionType.Rsi => element.Deserialize<RsiParams>(options),
             EntryConditionType.PriceVsEma => element.Deserialize<PriceVsEmaParams>(options),
             EntryConditionType.Macd => element.Deserialize<MacdParams>(options),
+            EntryConditionType.SupportResistance => element.Deserialize<SupportResistanceParams>(options),
             _ => DeserializeUnknown(element),
         };
     }

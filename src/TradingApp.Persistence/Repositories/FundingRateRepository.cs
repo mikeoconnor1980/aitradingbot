@@ -56,4 +56,21 @@ public sealed class FundingRateRepository : IFundingRateRepository
             .Where(fundingRate => fundingRate.Symbol == symbol)
             .MaxAsync(fundingRate => (long?)fundingRate.Timestamp, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<FundingRate>> GetRangeAsync(
+        string symbol,
+        long startTimestamp,
+        long endTimestamp,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(startTimestamp);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(startTimestamp, endTimestamp);
+
+        return await _context.FundingRates
+            .Where(fundingRate => fundingRate.Symbol == symbol)
+            .Where(fundingRate => fundingRate.Timestamp >= startTimestamp && fundingRate.Timestamp <= endTimestamp)
+            .OrderBy(fundingRate => fundingRate.Timestamp)
+            .ToListAsync(cancellationToken);
+    }
 }

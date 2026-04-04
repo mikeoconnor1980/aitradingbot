@@ -98,6 +98,7 @@ builder.Services.AddScoped<GridStrategyEngine>();
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, MacdConditionHandler>();
+builder.Services.AddScoped<IConditionHandler, SupportResistanceConditionHandler>();
 builder.Services.AddScoped<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();

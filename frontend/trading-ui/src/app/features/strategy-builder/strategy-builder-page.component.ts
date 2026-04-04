@@ -35,7 +35,7 @@ import { ValidationCardComponent } from "./components/validation-card/validation
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
 import { StrategyIntentDto } from "./models/strategy-intent.model";
 import { StrategyReviewDto } from "./models/strategy-review.model";
-import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
+import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, SupportResistanceParams, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -431,6 +431,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         operator: ["gt", Validators.required],
         appliesTo: ["both", Validators.required],
       }),
+      entryLogic: ["all"],
       conditions: this._fb.array([]),
     });
   }
@@ -518,6 +519,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
             operator: "gt",
             appliesTo: "both",
           },
+          entryLogic: strategy.config.entryLogic ?? "all",
         });
 
         if (strategy.config.strategyMode === "signal") {
@@ -692,6 +694,21 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       return;
     }
 
+    if (condition.type === "support_resistance") {
+      const params = condition.params as SupportResistanceParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createSupportResistanceCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        lookback: params.lookback,
+        strength: params.strength,
+        operator: params.operator,
+        tolerance: params.tolerance,
+      }));
+      return;
+    }
+
     if (condition.type !== "rsi") {
       return;
     }
@@ -744,10 +761,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   private _populateFormFromIntent(intent: StrategyIntentDto): void {
     const config = intent.config;
     const templateId = config.templateId ?? (config.strategyMode === "signal" ? "custom_signal" : "grid");
+    const existingName = String(this.form.get("strategyName")?.value ?? "").trim();
 
     this.form.patchValue({
       templateId,
-      strategyName: config.strategyName,
+      strategyName: existingName.length > 0 ? existingName : config.strategyName,
       exchange: config.exchange,
       market: config.market,
       timeframe: config.timeframe,
@@ -782,6 +800,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         operator: "gt",
         appliesTo: "both",
       },
+      entryLogic: config.entryLogic ?? "all",
     });
 
     this._clearConditions();

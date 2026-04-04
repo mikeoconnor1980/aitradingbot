@@ -115,6 +115,26 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
                     }
 
                     break;
+
+                case "SUPPORT_RESISTANCE":
+                    var lookback = requirement.Lookback ?? 50;
+                    var strength = requirement.Strength ?? 3;
+                    var bars = GetBars();
+                    var previousBars = bars.Count > 1 ? bars.Take(bars.Count - 1).ToList() : [];
+                    var srResult = SupportResistanceCalculator.Calculate(bars, lookback, strength);
+                    var previousSrResult = SupportResistanceCalculator.Calculate(previousBars, lookback, strength);
+
+                    if (srResult?.Support.HasValue == true)
+                    {
+                        context.SetSupport(lookback, srResult.Support.Value, previousSrResult?.Support);
+                    }
+
+                    if (srResult?.Resistance.HasValue == true)
+                    {
+                        context.SetResistance(lookback, srResult.Resistance.Value, previousSrResult?.Resistance);
+                    }
+
+                    break;
             }
         }
 

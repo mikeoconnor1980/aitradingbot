@@ -119,6 +119,11 @@ export class StrategyValidationService {
         return;
       }
 
+      if (type === "support_resistance") {
+        this._validateSupportResistanceCondition(condition, index, errors);
+        return;
+      }
+
       const period = Number(condition["period"] ?? 0);
 
       if (period < 1) {
@@ -181,6 +186,16 @@ export class StrategyValidationService {
       ].join("|");
     }
 
+    if (type === "support_resistance") {
+      return [
+        type,
+        String(condition["lookback"] ?? ""),
+        String(condition["strength"] ?? ""),
+        String(condition["operator"] ?? ""),
+        String(condition["tolerance"] ?? ""),
+      ].join("|");
+    }
+
     return [
       type,
       String(condition["period"] ?? ""),
@@ -232,6 +247,24 @@ export class StrategyValidationService {
 
     if (distanceValue <= 0) {
       errors.push(this._error(`entryConditions[${index}].params.distanceValue`, "RANGE", "Distance value must be greater than 0."));
+    }
+  }
+
+  private _validateSupportResistanceCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const lookback = Number(condition["lookback"] ?? 0);
+    const strength = Number(condition["strength"] ?? 0);
+    const tolerance = Number(condition["tolerance"] ?? -1);
+
+    if (lookback < 10 || lookback > 500) {
+      errors.push(this._error(`entryConditions[${index}].params.lookback`, "RANGE", "Lookback must be between 10 and 500."));
+    }
+
+    if (strength < 1 || strength > 10) {
+      errors.push(this._error(`entryConditions[${index}].params.strength`, "RANGE", "Strength must be between 1 and 10."));
+    }
+
+    if (tolerance < 0 || tolerance > 10) {
+      errors.push(this._error(`entryConditions[${index}].params.tolerance`, "RANGE", "Tolerance must be between 0 and 10."));
     }
   }
 

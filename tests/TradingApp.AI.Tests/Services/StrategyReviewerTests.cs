@@ -1,8 +1,11 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TradingApp.AI.Services;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
+using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
 
 namespace TradingApp.AI.Tests.Services;
 
@@ -193,8 +196,13 @@ public sealed class StrategyReviewerTests
                 It.IsAny<string>(),
                 It.Is<string>(message =>
                     message.Contains("BACKTEST PERFORMANCE DATA", StringComparison.Ordinal) &&
-                    message.Contains("Win Rate: 55.3%", StringComparison.Ordinal) &&
+                    message.Contains("Win Rate: 66.7%", StringComparison.Ordinal) &&
                     message.Contains("reliable", StringComparison.Ordinal) &&
+                    message.Contains("Profit Factor:", StringComparison.Ordinal) &&
+                    message.Contains("Sharpe Ratio", StringComparison.Ordinal) &&
+                    message.Contains("Reward:Risk Ratio:", StringComparison.Ordinal) &&
+                    message.Contains("Fee-to-Gross-Profit Ratio:", StringComparison.Ordinal) &&
+                    message.Contains("Max Consecutive Losses:", StringComparison.Ordinal) &&
                     message.Contains("Section 11", StringComparison.Ordinal)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -251,6 +259,33 @@ public sealed class StrategyReviewerTests
     }
 
     [TestMethod]
+    public async Task GivenRegimeSegmentation_WhenReviewAsync_ThenIncludesSegmentedBacktestDataInPrompt()
+    {
+        const string strategyJson = "{\"grid\":{}}";
+        const string expectedReview = "## 1. Strategy Summary\n- Grid strategy with regime analysis";
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedReview);
+
+        var backtestSummary = CreateSegmentedBacktestSummary();
+
+        var result = await _sut.ReviewAsync(strategyJson, backtestSummary, CancellationToken.None);
+
+        result.ReviewMarkdown.Should().Be(expectedReview);
+        _llmClientMock.Verify(
+            client => client.CompleteAsync(
+                It.IsAny<string>(),
+                It.Is<string>(message =>
+                    message.Contains("REGIME SEGMENTATION", StringComparison.Ordinal)
+                    && message.Contains("Trend / Range", StringComparison.Ordinal)
+                    && message.Contains("Funding Bucket", StringComparison.Ordinal)
+                    && message.Contains("Historical open-interest snapshots", StringComparison.Ordinal)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
     public async Task GivenNullBacktest_WhenReviewAsync_ThenNoBacktestSectionInPrompt()
     {
         const string strategyJson = "{\"grid\":{}}";
@@ -281,7 +316,18 @@ public sealed class StrategyReviewerTests
                 startDate.AddMinutes(i * 15).ToUnixTimeMilliseconds(),
                 10000m + i * 0.5m))
             .ToList();
-        var equityJson = System.Text.Json.JsonSerializer.Serialize(equitySeries);
+        var equityJson = JsonSerializer.Serialize(equitySeries);
+
+        var trades = new List<BacktestTrade>
+        {
+            new() { TradeId = "t1", GridCycleId = "g1", EntryTimeUtc = startDate.AddHours(1).ToUnixTimeMilliseconds(), EntryPrice = 3000m, ExitTimeUtc = startDate.AddHours(5).ToUnixTimeMilliseconds(), ExitPrice = 3100m, Side = OrderSide.Buy, Size = 1m, PnL = 100m, Fees = 2m, TradeType = TradeType.GridFill },
+            new() { TradeId = "t2", GridCycleId = "g1", EntryTimeUtc = startDate.AddHours(10).ToUnixTimeMilliseconds(), EntryPrice = 3100m, ExitTimeUtc = startDate.AddHours(14).ToUnixTimeMilliseconds(), ExitPrice = 3050m, Side = OrderSide.Buy, Size = 1m, PnL = -50m, Fees = 2m, TradeType = TradeType.GridFill },
+            new() { TradeId = "t3", GridCycleId = "g2", EntryTimeUtc = startDate.AddDays(2).ToUnixTimeMilliseconds(), EntryPrice = 3050m, ExitTimeUtc = startDate.AddDays(2).AddHours(6).ToUnixTimeMilliseconds(), ExitPrice = 3150m, Side = OrderSide.Buy, Size = 1m, PnL = 100m, Fees = 2m, TradeType = TradeType.GridFill },
+            new() { TradeId = "t4", GridCycleId = "g2", EntryTimeUtc = startDate.AddDays(3).ToUnixTimeMilliseconds(), EntryPrice = 3150m, ExitTimeUtc = startDate.AddDays(3).AddHours(4).ToUnixTimeMilliseconds(), ExitPrice = 3200m, Side = OrderSide.Buy, Size = 1m, PnL = 50m, Fees = 2m, TradeType = TradeType.GridFill },
+            new() { TradeId = "t5", GridCycleId = "g3", EntryTimeUtc = startDate.AddDays(5).ToUnixTimeMilliseconds(), EntryPrice = 3200m, ExitTimeUtc = startDate.AddDays(5).AddHours(8).ToUnixTimeMilliseconds(), ExitPrice = 3170m, Side = OrderSide.Buy, Size = 1m, PnL = -30m, Fees = 2m, TradeType = TradeType.GridFill },
+            new() { TradeId = "t6", GridCycleId = "g3", EntryTimeUtc = startDate.AddDays(7).ToUnixTimeMilliseconds(), EntryPrice = 3170m, ExitTimeUtc = startDate.AddDays(7).AddHours(6).ToUnixTimeMilliseconds(), ExitPrice = 3250m, Side = OrderSide.Buy, Size = 1m, PnL = 80m, Fees = 2m, TradeType = TradeType.GridFill },
+        };
+        var tradesJson = JsonSerializer.Serialize(trades);
 
         var run = BacktestRun.Create(
             symbol: "ETH",
@@ -293,19 +339,181 @@ public sealed class StrategyReviewerTests
             initialCapital: 10000m,
             candlesReplayed: durationDays * 96,
             elapsedMs: 1500,
-            totalTrades: 47,
-            winningTrades: 26,
-            losingTrades: 21,
-            winRate: 55.3m,
+            totalTrades: 6,
+            winningTrades: 4,
+            losingTrades: 2,
+            winRate: 66.7m,
             totalPnl: 234.56m,
             maxDrawdown: 150m,
             averageTradePnl: 4.99m,
             averageHoldTimeMinutes: 252.0,
             hedgesOpened: 0,
             totalFeesPaid: 12.34m,
-            tradesJson: "[]",
+            tradesJson: tradesJson,
             equityTimeSeriesJson: equityJson);
 
         return BacktestSummaryForReview.FromBacktestRun(run);
+    }
+
+    private static BacktestSummaryForReview? CreateSegmentedBacktestSummary()
+    {
+        var startDate = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var endDate = startDate.AddDays(45);
+
+        var equitySeries = Enumerable.Range(0, 45 * 96)
+            .Select(i => new EquitySnapshot(
+                startDate.AddMinutes(i * 15).ToUnixTimeMilliseconds(),
+                10000m + i))
+            .ToList();
+
+        var candleLog = new List<CandleEvaluationEntry>
+        {
+            new()
+            {
+                TimestampUtc = startDate.AddHours(1).ToUnixTimeMilliseconds(),
+                Open = 105m,
+                High = 107m,
+                Low = 104m,
+                Close = 106m,
+                Volume = 1200m,
+                IsWarmup = false,
+                EmaFast = 104m,
+                EmaSlow = 100m,
+                EmaTrend = 98m,
+                Rsi = 58m,
+                Atr = 1m,
+                SetupDetected = true,
+                GridLifecycleState = "Deploying",
+                PositionSize = 0m,
+                PositionAvgEntry = 0m,
+                SignalsEmitted = ["DeployGrid"],
+                GridCycleId = "cycle-asia"
+            },
+            new()
+            {
+                TimestampUtc = startDate.AddHours(10).ToUnixTimeMilliseconds(),
+                Open = 100m,
+                High = 100.5m,
+                Low = 99.5m,
+                Close = 100m,
+                Volume = 1100m,
+                IsWarmup = false,
+                EmaFast = 100.2m,
+                EmaSlow = 100.1m,
+                EmaTrend = 100m,
+                Rsi = 49m,
+                Atr = 2m,
+                SetupDetected = true,
+                GridLifecycleState = "Deploying",
+                PositionSize = 0m,
+                PositionAvgEntry = 0m,
+                SignalsEmitted = ["DeployGrid"],
+                GridCycleId = "cycle-europe"
+            },
+            new()
+            {
+                TimestampUtc = startDate.AddHours(18).ToUnixTimeMilliseconds(),
+                Open = 109m,
+                High = 111m,
+                Low = 108m,
+                Close = 110m,
+                Volume = 1800m,
+                IsWarmup = false,
+                EmaFast = 108m,
+                EmaSlow = 100m,
+                EmaTrend = 97m,
+                Rsi = 64m,
+                Atr = 4m,
+                SetupDetected = true,
+                GridLifecycleState = "Deploying",
+                PositionSize = 0m,
+                PositionAvgEntry = 0m,
+                SignalsEmitted = ["DeployGrid"],
+                GridCycleId = "cycle-us"
+            }
+        };
+
+        var gridCycles = new List<GridCycleEntry>
+        {
+            new()
+            {
+                GridCycleId = "cycle-asia",
+                DeployTimestampUtc = candleLog[0].TimestampUtc,
+                AnchorPrice = 100m,
+                LevelsPlaced = 4,
+                LevelPrices = [99.5m, 99m],
+                LevelsFilled = 2,
+                TakeProfitPrice = 101m,
+                StopLossPrice = 97m,
+                ExitReason = "TakeProfit",
+                CyclePnl = 45m,
+                CycleDurationMs = (long)TimeSpan.FromHours(5).TotalMilliseconds,
+                CloseTimestampUtc = startDate.AddHours(6).ToUnixTimeMilliseconds(),
+            },
+            new()
+            {
+                GridCycleId = "cycle-europe",
+                DeployTimestampUtc = candleLog[1].TimestampUtc,
+                AnchorPrice = 100m,
+                LevelsPlaced = 4,
+                LevelPrices = [99.7m, 99.2m],
+                LevelsFilled = 3,
+                TakeProfitPrice = 100.8m,
+                StopLossPrice = 97m,
+                ExitReason = "StopLoss",
+                CyclePnl = -20m,
+                CycleDurationMs = (long)TimeSpan.FromHours(7).TotalMilliseconds,
+                CloseTimestampUtc = startDate.AddHours(17).ToUnixTimeMilliseconds(),
+            },
+            new()
+            {
+                GridCycleId = "cycle-us",
+                DeployTimestampUtc = candleLog[2].TimestampUtc,
+                AnchorPrice = 100m,
+                LevelsPlaced = 4,
+                LevelPrices = [99.4m, 98.8m],
+                LevelsFilled = 4,
+                TakeProfitPrice = 101.4m,
+                StopLossPrice = 96.5m,
+                ExitReason = "TakeProfit",
+                CyclePnl = 80m,
+                CycleDurationMs = (long)TimeSpan.FromHours(4).TotalMilliseconds,
+                CloseTimestampUtc = startDate.AddHours(22).ToUnixTimeMilliseconds(),
+            }
+        };
+
+        var fundingRates = new List<FundingRate>
+        {
+            FundingRate.Create("ETH", startDate.ToUnixTimeMilliseconds(), -0.0002m, 100m),
+            FundingRate.Create("ETH", startDate.AddHours(8).ToUnixTimeMilliseconds(), 0m, 100m),
+            FundingRate.Create("ETH", startDate.AddHours(16).ToUnixTimeMilliseconds(), 0.0002m, 100m),
+        };
+
+        var run = BacktestRun.Create(
+            symbol: "ETH",
+            intervalsJson: "[\"15m\"]",
+            startDateUtc: startDate.ToUnixTimeMilliseconds(),
+            endDateUtc: endDate.ToUnixTimeMilliseconds(),
+            strategyConfigJson: "{\"grid\":{}}",
+            executionConfigJson: "{\"makerFee\":0.0002}",
+            initialCapital: 10000m,
+            candlesReplayed: 45 * 96,
+            elapsedMs: 1500,
+            totalTrades: 24,
+            winningTrades: 15,
+            losingTrades: 9,
+            winRate: 62.5m,
+            totalPnl: 105m,
+            maxDrawdown: 180m,
+            averageTradePnl: 4.38m,
+            averageHoldTimeMinutes: 240d,
+            hedgesOpened: 1,
+            totalFeesPaid: 18m,
+            tradesJson: "[]",
+            equityTimeSeriesJson: JsonSerializer.Serialize(equitySeries),
+            candleLogJson: JsonSerializer.Serialize(candleLog),
+            gridCycleLogJson: JsonSerializer.Serialize(gridCycles));
+
+        return BacktestSummaryForReview.FromBacktestRun(run, fundingRates);
     }
 }

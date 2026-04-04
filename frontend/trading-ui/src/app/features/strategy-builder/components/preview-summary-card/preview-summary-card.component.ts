@@ -93,7 +93,9 @@ export class PreviewSummaryCardComponent {
       return parts.join(" ");
     }
 
-    parts.push(`Entry when ${conditionTexts.join(" and ")}.`);
+    const entryLogic = String(formValue["entryLogic"] ?? "all");
+    const joiner = entryLogic === "any" ? " or " : " and ";
+    parts.push(`Entry when ${conditionTexts.join(joiner)}.`);
     return parts.join(" ");
   }
 
@@ -157,6 +159,10 @@ export class PreviewSummaryCardComponent {
       return this._buildMacdConditionText(condition);
     }
 
+    if (type === "support_resistance") {
+      return this._buildSupportResistanceConditionText(condition);
+    }
+
     const period = Number(condition["period"] ?? 14);
     const operator = String(condition["operator"] ?? "lt") as RsiOperator;
     const value = this._formatNumber(condition["value"]);
@@ -213,6 +219,22 @@ export class PreviewSummaryCardComponent {
     };
 
     return `MACD(${fast},${slow},${signal}) ${operatorMap[operator] ?? operator}`;
+  }
+
+  private _buildSupportResistanceConditionText(condition: Record<string, unknown>): string {
+    const lookback = Number(condition["lookback"] ?? 50);
+    const operator = String(condition["operator"] ?? "near_support");
+    const tolerance = Number(condition["tolerance"] ?? 0.5);
+    const operatorMap: Record<string, string> = {
+      near_support: `near support (±${tolerance}%)`,
+      near_resistance: `near resistance (±${tolerance}%)`,
+      above_support: "above support",
+      below_resistance: "below resistance",
+      bounce_support: `bounce off support (±${tolerance}%)`,
+      bounce_resistance: `bounce off resistance (±${tolerance}%)`,
+    };
+
+    return `S/R(${lookback}) ${operatorMap[operator] ?? operator}`;
   }
 
   private _getConditions(formValue: Record<string, unknown>): Record<string, unknown>[] {

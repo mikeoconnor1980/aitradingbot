@@ -68,6 +68,7 @@ public sealed class EntryConditionConfigConverter : JsonConverter<EntryCondition
             "rsi" => EntryConditionType.Rsi,
             "price_vs_ema" => EntryConditionType.PriceVsEma,
             "macd" => EntryConditionType.Macd,
+            "support_resistance" => EntryConditionType.SupportResistance,
             _ => EntryConditionType.Unknown,
         };
     }
