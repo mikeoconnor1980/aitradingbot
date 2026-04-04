@@ -25,6 +25,15 @@
     display: flex;
     gap: 0.75rem;
     align-items: center;
+    flex-wrap: wrap;
+  }
+
+  &__action-wrapper {
+    display: inline-flex;
+  }
+
+  &__action-button {
+    min-width: 9.5rem;
   }
 
   &__layout {
@@ -89,8 +98,13 @@
       width: 100%;
       justify-content: stretch;
 
+      .builder-page__action-wrapper,
       button {
         flex: 1;
+      }
+
+      .builder-page__action-button {
+        width: 100%;
       }
     }
   }

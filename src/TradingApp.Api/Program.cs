@@ -205,6 +205,26 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
+    options.AddPolicy("review-strategy", httpContext =>
+    {
+        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString();
+
+        if (partitionKey is null)
+        {
+            return RateLimitPartition.GetNoLimiter("unknown");
+        }
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 1,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            });
+    });
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))

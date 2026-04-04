@@ -8,11 +8,15 @@ import { MatCardModule } from "@angular/material/card";
 import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router } from "@angular/router";
 import { debounceTime, map, of, startWith, switchMap, tap } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { NotificationService } from "../../core/services/notification.service";
+import { formatErrorPayload } from "../../core/utils/error-utils";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
+import { AiReviewCardComponent } from "./components/ai-review-card/ai-review-card.component";
+import { AiReviewModalComponent, AiReviewModalData } from "./components/ai-review-modal/ai-review-modal.component";
 import { AssumptionsPanelComponent } from "./components/assumptions-panel/assumptions-panel.component";
 import { ConfidenceBadgeComponent } from "./components/confidence-badge/confidence-badge.component";
 import { EntryConditionsCardComponent } from "./components/entry-conditions-card/entry-conditions-card.component";
@@ -30,6 +34,7 @@ import { TrendFilterCardComponent } from "./components/trend-filter-card/trend-f
 import { ValidationCardComponent } from "./components/validation-card/validation-card.component";
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
 import { StrategyIntentDto } from "./models/strategy-intent.model";
+import { StrategyReviewDto } from "./models/strategy-review.model";
 import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
@@ -45,6 +50,7 @@ import { StrategyValidationService } from "./services/strategy-validation.servic
     MatCardModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     NlInputCardComponent,
     ConfidenceBadgeComponent,
     AssumptionsPanelComponent,
@@ -56,6 +62,7 @@ import { StrategyValidationService } from "./services/strategy-validation.servic
     TrendFilterCardComponent,
     EntryConditionsCardComponent,
     PreviewSummaryCardComponent,
+    AiReviewCardComponent,
     RevisionHistoryPanelComponent,
     StrategyBacktestHistoryComponent,
     ValidationCardComponent,
@@ -78,6 +85,10 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
   private _savedFormSnapshot = "";
+  private _currentRevisionNumber: number | null = null;
+  private _reviewCooldownKey: string | null = null;
+  private _reviewCooldownEndsAtUtc = 0;
+  private _cooldownIntervalId: ReturnType<typeof setInterval> | null = null;
 
   public form: FormGroup = this._buildForm();
   public editId: string | null = null;
@@ -90,6 +101,15 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   public serverErrors: ValidationError[] = [];
   public serverWarnings: ValidationError[] = [];
   public serverInfoMessages: ValidationError[] = [];
+  public currentReview: StrategyReviewDto | null = null;
+  public isReviewing = false;
+  public reviewCooldownSeconds = 0;
+
+  public constructor() {
+    this._destroyRef.onDestroy(() => {
+      this._clearCooldownTimer();
+    });
+  }
 
   public ngOnInit(): void {
     this.editId = this._route.snapshot.paramMap.get("id");
@@ -153,6 +173,38 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   public get allErrors(): ValidationError[] {
     return this.clientErrors.concat(this.serverErrors);
+  }
+
+  public get canRequestReview(): boolean {
+    return this.editId !== null && this._currentRevisionNumber !== null && !this.isReviewing && !this.isReviewCooldownActive;
+  }
+
+  public get aiReviewButtonLabel(): string {
+    if (this.isReviewCooldownActive) {
+      return `AI Review (${this.reviewCooldownSeconds}s)`;
+    }
+
+    return "AI Review";
+  }
+
+  public get aiReviewTooltip(): string {
+    if (this.editId === null) {
+      return "Save the strategy before requesting an AI review.";
+    }
+
+    if (this.isReviewCooldownActive) {
+      return `Try again in ${this.reviewCooldownSeconds} seconds.`;
+    }
+
+    if (this.isReviewing) {
+      return "AI review in progress.";
+    }
+
+    return "";
+  }
+
+  public get isReviewCooldownActive(): boolean {
+    return this.reviewCooldownSeconds > 0 && this._reviewCooldownKey === this._getCurrentReviewKey();
   }
 
   public onTemplateSelected(templateId: string): void {
@@ -274,6 +326,47 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
+  public onRequestReview(): void {
+    if (!this.canRequestReview || this.editId === null || this._currentRevisionNumber === null) {
+      return;
+    }
+
+    this.isReviewing = true;
+
+    this._strategyApi.requestReview(this.editId, this._currentRevisionNumber, this._localErrorContext).subscribe({
+      next: (review: StrategyReviewDto) => {
+        this.currentReview = review;
+        this._startReviewCooldown();
+        this._notifications.success("AI review complete.");
+      },
+      error: (error: HttpErrorResponse) => {
+        this._notifications.error(this._buildReviewErrorMessage(error));
+        this.isReviewing = false;
+      },
+      complete: () => {
+        this.isReviewing = false;
+      }
+    });
+  }
+
+  public onViewFullReview(): void {
+    if (this.currentReview === null) {
+      return;
+    }
+
+    const dialogData: AiReviewModalData = {
+      review: this.currentReview
+    };
+
+    this._dialog.open(AiReviewModalComponent, {
+      data: dialogData,
+      width: "960px",
+      maxWidth: "90vw",
+      maxHeight: "90vh",
+      autoFocus: false
+    });
+  }
+
   public onRevisionRestored(): void {
     if (this.editId === null) {
       return;
@@ -388,6 +481,9 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   private _loadStrategy(id: string): void {
     this.isLoading = true;
+    this.currentReview = null;
+    this._currentRevisionNumber = null;
+
     this._strategyApi.getStrategy(id, this._localErrorContext).subscribe({
       next: (strategy) => {
         const templateId = strategy.config.templateId ?? (strategy.config.strategyMode === "signal" ? "custom_signal" : "grid");
@@ -439,6 +535,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
         this.nlSourceText = strategy.config.source?.sourceText ?? "";
         this.nlResult = null;
+  this._currentRevisionNumber = strategy.version;
+  this._loadReviewIfAvailable(id, strategy.version);
 
         this._savedFormSnapshot = this._createFormSnapshot();
         this.form.markAsPristine();
@@ -726,5 +824,100 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     const controlName = segments.pop() as string;
     const groupSelector = segments.map((segment: string) => `[formgroupname="${segment}"]`).join(" ");
     return `${groupSelector} [formcontrolname="${controlName}"]`;
+  }
+
+  private _loadReviewIfAvailable(strategyId: string, revisionNumber: number): void {
+    this.currentReview = null;
+    this._syncCooldownState();
+
+    this._strategyApi.getReview(strategyId, revisionNumber, this._localErrorContext).subscribe({
+      next: (review: StrategyReviewDto) => {
+        this.currentReview = review;
+      },
+      error: (error: HttpErrorResponse) => {
+        if (error.status === 404) {
+          return;
+        }
+
+        this._notifications.error("Failed to load AI review.");
+      }
+    });
+  }
+
+  private _buildReviewErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 429) {
+      return "AI review is limited to one request per minute. Please wait and try again.";
+    }
+
+    if (error.status === 0) {
+      return "Unable to reach API. Check your connection and try again.";
+    }
+
+    return formatErrorPayload(error);
+  }
+
+  private _startReviewCooldown(): void {
+    const currentKey = this._getCurrentReviewKey();
+    if (currentKey === null) {
+      return;
+    }
+
+    this._reviewCooldownKey = currentKey;
+    this._reviewCooldownEndsAtUtc = Date.now() + 60_000;
+    this._clearCooldownTimer();
+    this._updateReviewCooldownSeconds();
+
+    this._cooldownIntervalId = setInterval(() => {
+      this._updateReviewCooldownSeconds();
+
+      if (this.reviewCooldownSeconds === 0) {
+        this._clearCooldownTimer();
+      }
+    }, 1000);
+  }
+
+  private _syncCooldownState(): void {
+    if (this._reviewCooldownKey !== this._getCurrentReviewKey()) {
+      this.reviewCooldownSeconds = 0;
+      this._clearCooldownTimer();
+      return;
+    }
+
+    this._updateReviewCooldownSeconds();
+
+    if (this.reviewCooldownSeconds > 0 && this._cooldownIntervalId === null) {
+      this._cooldownIntervalId = setInterval(() => {
+        this._updateReviewCooldownSeconds();
+
+        if (this.reviewCooldownSeconds === 0) {
+          this._clearCooldownTimer();
+        }
+      }, 1000);
+    }
+  }
+
+  private _updateReviewCooldownSeconds(): void {
+    const millisecondsRemaining = this._reviewCooldownEndsAtUtc - Date.now();
+    this.reviewCooldownSeconds = Math.max(0, Math.ceil(millisecondsRemaining / 1000));
+
+    if (this.reviewCooldownSeconds === 0) {
+      this._reviewCooldownKey = null;
+      this._reviewCooldownEndsAtUtc = 0;
+    }
+  }
+
+  private _clearCooldownTimer(): void {
+    if (this._cooldownIntervalId !== null) {
+      clearInterval(this._cooldownIntervalId);
+      this._cooldownIntervalId = null;
+    }
+  }
+
+  private _getCurrentReviewKey(): string | null {
+    if (this.editId === null || this._currentRevisionNumber === null) {
+      return null;
+    }
+
+    return `${this.editId}:${this._currentRevisionNumber}`;
   }
 }

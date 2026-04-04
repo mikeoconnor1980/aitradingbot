@@ -13,6 +13,7 @@ import {
   StrategySummaryDto,
 } from "../models/strategy.model";
 import { StrategyIntentDto } from "../models/strategy-intent.model";
+import { StrategyReviewDto } from "../models/strategy-review.model";
 
 @Injectable({ providedIn: "root" })
 export class StrategyApiService {
@@ -86,5 +87,24 @@ export class StrategyApiService {
 
   public interpretStrategy(text: string, context?: HttpContext): Observable<StrategyIntentDto> {
     return this._apiClient.post<StrategyIntentDto>("strategies/interpret", { text }, context);
+  }
+
+  public requestReview(strategyId: string, revisionNumber: number, context?: HttpContext): Observable<StrategyReviewDto> {
+    const encodedStrategyId = encodeURIComponent(strategyId);
+
+    return this._apiClient.post<StrategyReviewDto>(
+      `strategies/${encodedStrategyId}/versions/${revisionNumber}/review`,
+      null,
+      context
+    );
+  }
+
+  public getReview(strategyId: string, revisionNumber: number, context?: HttpContext): Observable<StrategyReviewDto> {
+    const encodedStrategyId = encodeURIComponent(strategyId);
+
+    return this._apiClient.get<StrategyReviewDto>(
+      `strategies/${encodedStrategyId}/versions/${revisionNumber}/review`,
+      context
+    );
   }
 }

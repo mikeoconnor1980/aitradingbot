@@ -1,0 +1,23 @@
+<h2 mat-dialog-title class="ai-review-modal__title">
+  <mat-icon>rate_review</mat-icon>
+  <span>AI Strategy Review</span>
+</h2>
+
+<mat-dialog-content class="ai-review-modal__content">
+  <p class="ai-review-modal__meta">
+    {{ data.review.modelName }} · Rev {{ data.review.revisionNumber }} · {{ data.review.createdAtUtc | date: "short" }}
+  </p>
+
+  <div class="ai-review-modal__markdown" [innerHTML]="reviewHtml"></div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="ai-review-modal__actions">
+  <span matTooltip="Coming Soon">
+    <button mat-stroked-button type="button" disabled>
+      <mat-icon>auto_fix_high</mat-icon>
+      <span>Apply Suggestions</span>
+    </button>
+  </span>
+
+  <button mat-raised-button type="button" color="primary" (click)="onClose()">Close</button>
+</mat-dialog-actions>

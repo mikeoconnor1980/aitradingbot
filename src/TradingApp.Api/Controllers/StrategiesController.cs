@@ -171,6 +171,55 @@ public sealed class StrategiesController : ApiController
         return Ok(revision);
     }
 
+    [HttpPost("{id:guid}/versions/{rev:int}/review")]
+    [EnableRateLimiting("review-strategy")]
+    [ProducesResponseType(typeof(StrategyReviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ReviewStrategy(
+        Guid id,
+        int rev,
+        CancellationToken cancellationToken = default)
+    {
+        if (rev < 1)
+        {
+            throw new DomainException("rev must be greater than or equal to 1");
+        }
+
+        var review = await Mediator.Send(
+            new RequestStrategyReviewCommand(id, rev, IdentityService.Identity),
+            cancellationToken);
+
+        return Ok(review);
+    }
+
+    [HttpGet("{id:guid}/versions/{rev:int}/review")]
+    [ProducesResponseType(typeof(StrategyReviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetReview(
+        Guid id,
+        int rev,
+        CancellationToken cancellationToken = default)
+    {
+        if (rev < 1)
+        {
+            throw new DomainException("rev must be greater than or equal to 1");
+        }
+
+        var review = await Mediator.Send(
+            new GetStrategyReviewQuery(id, rev, IdentityService.Identity),
+            cancellationToken);
+
+        if (review is null)
+        {
+            return NotFound(new Envelope("No review found for this revision.", "not_found"));
+        }
+
+        return Ok(review);
+    }
+
     [HttpGet("{id:guid}/diff")]
     [ProducesResponseType(typeof(StrategyDiffDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
