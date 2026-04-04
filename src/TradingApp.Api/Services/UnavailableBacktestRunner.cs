@@ -12,7 +12,7 @@ public sealed class UnavailableBacktestRunner : IBacktestRunner
             "Backtest execution is not available in the API host yet. The concrete strategy pipeline services are not registered, so the endpoint can validate and read saved results but cannot run new backtests.");
     }
 
-    public Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int>? onProgress, CancellationToken cancellationToken = default)
+    public Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int, long>? onProgress, CancellationToken cancellationToken = default)
     {
         return RunAsync(config, cancellationToken);
     }

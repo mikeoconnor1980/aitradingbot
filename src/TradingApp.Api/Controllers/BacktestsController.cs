@@ -8,8 +8,7 @@ using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Backtesting;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.Backtesting.Models;using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Serialization;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Trading;
@@ -22,14 +21,17 @@ public sealed class BacktestsController : ApiController
 {
     private static readonly string[] RequiredBacktestIntervals = ["15m", "1h", "4h"];
     private readonly IStrategyRepository _strategyRepository;
+    private readonly BacktestCancellationManager _cancellationManager;
 
     public BacktestsController(
         IMediator mediator,
         IdentityService identityService,
-        IStrategyRepository strategyRepository)
+        IStrategyRepository strategyRepository,
+        BacktestCancellationManager cancellationManager)
         : base(mediator, identityService)
     {
         _strategyRepository = strategyRepository;
+        _cancellationManager = cancellationManager;
     }
 
     [HttpPost]
@@ -205,6 +207,20 @@ public sealed class BacktestsController : ApiController
     {
         var result = await Mediator.Send(new GetBacktestDebugQuery(id, cycleId), cancellationToken);
         return result is not null ? Ok(result) : NoContent();
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public IActionResult CancelAsync(Guid id)
+    {
+        if (!_cancellationManager.TryCancel(id))
+        {
+            throw new DomainException("Backtest is not currently running or queued.");
+        }
+
+        return NoContent();
     }
 
     private static void ValidateManualRequest(RunBacktestRequest request)

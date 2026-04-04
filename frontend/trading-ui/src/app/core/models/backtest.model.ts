@@ -110,6 +110,7 @@ export interface BacktestTrade {
   fees: number;
   tradeType: string;
   gridCycleId?: string | null;
+  exitReason?: string | null;
 }
 
 export interface EquitySnapshot {
@@ -155,6 +156,7 @@ export interface BacktestProgress {
   status: string;
   progress: number;
   totalCandles: number;
+  currentTimestamp?: number | null;
   errorMessage?: string | null;
 }
 

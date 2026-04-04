@@ -127,7 +127,8 @@ public static class BacktestRunResponseMapper
                 Pnl = trade.PnL,
                 Fees = trade.Fees,
                 TradeType = trade.TradeType.ToString(),
-                GridCycleId = trade.GridCycleId
+                GridCycleId = trade.GridCycleId,
+                ExitReason = trade.ExitReason
             })
             .ToList();
     }

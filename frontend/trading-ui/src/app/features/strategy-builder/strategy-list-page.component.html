@@ -73,6 +73,14 @@
                 <button
                   mat-icon-button
                   type="button"
+                  aria-label="Duplicate strategy"
+                  matTooltip="Duplicate"
+                  (click)="onDuplicate(strategy); $event.stopPropagation()">
+                  <mat-icon>content_copy</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
                   color="primary"
                   aria-label="Backtest strategy"
                   matTooltip="Backtest"

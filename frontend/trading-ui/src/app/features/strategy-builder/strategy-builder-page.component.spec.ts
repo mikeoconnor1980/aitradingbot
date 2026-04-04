@@ -32,7 +32,8 @@ describe("StrategyBuilderPageComponent", () => {
           provide: ActivatedRoute,
           useValue: {
             snapshot: {
-              paramMap: convertToParamMap({})
+              paramMap: convertToParamMap({}),
+              queryParamMap: convertToParamMap({})
             }
           }
         },

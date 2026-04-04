@@ -34,7 +34,7 @@
             <h3>
               @switch (backtestStatus) {
                 @case ("Queued") { Backtest queued... }
-                @case ("Running") { Running backtest — {{ backtestProgress }}% }
+                @case ("Running") { Running backtest — {{ backtestProgress }}%@if (backtestCurrentDate) { <span class="backtest-page__progress-date"> · {{ backtestCurrentDate }}</span>} }
                 @default { Processing... }
               }
             </h3>
@@ -42,6 +42,9 @@
               [mode]="backtestStatus === 'Running' ? 'determinate' : 'indeterminate'"
               [value]="backtestProgress">
             </mat-progress-bar>
+            <button mat-button type="button" class="backtest-page__cancel-btn" (click)="onCancelBacktest()">
+              Cancel
+            </button>
           </div>
         }
 
@@ -71,6 +74,7 @@
                   </div>
                 </mat-tab>
 
+                @if (latestResult.strategyConfig.strategyMode !== "signal") {
                 <mat-tab label="Grid Cycles">
                   <div class="backtest-page__results-tab-content">
                     <app-grid-cycle-viewer
@@ -81,6 +85,7 @@
                     </app-grid-cycle-viewer>
                   </div>
                 </mat-tab>
+                }
 
                 <mat-tab label="Trade Log">
                   <div class="backtest-page__results-tab-content">

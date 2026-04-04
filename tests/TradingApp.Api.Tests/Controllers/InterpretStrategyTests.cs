@@ -74,11 +74,11 @@ public sealed class InterpretStrategyTests : BaseControllerTests
     }
 
     [TestMethod]
-    public async Task GivenTextExceeding500Chars_WhenInterpretStrategy_ThenReturns400()
+    public async Task GivenTextExceeding2000Chars_WhenInterpretStrategy_ThenReturns400()
     {
         var client = GetTestClient();
 
-        var response = await client.PostAsJsonAsync(BaseUrl, new { text = new string('a', 501) });
+        var response = await client.PostAsJsonAsync(BaseUrl, new { text = new string('a', 2001) });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         _llmClientMock.Verify(

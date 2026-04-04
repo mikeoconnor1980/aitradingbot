@@ -118,6 +118,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     if (this.editId !== null) {
       this._loadStrategy(this.editId);
+    } else {
+      const duplicateFrom = this._route.snapshot.queryParamMap.get("duplicateFrom");
+      if (duplicateFrom !== null) {
+        this._duplicateStrategy(duplicateFrom);
+      }
     }
   }
 
@@ -548,6 +553,73 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         this._notifications.error("Failed to load strategy.");
         this.isLoading = false;
         void this._router.navigate(["/strategies"]);
+      }
+    });
+  }
+
+  private _duplicateStrategy(sourceId: string): void {
+    this.isLoading = true;
+
+    this._strategyApi.getStrategy(sourceId, this._localErrorContext).subscribe({
+      next: (strategy) => {
+        const templateId = strategy.config.templateId ?? (strategy.config.strategyMode === "signal" ? "custom_signal" : "grid");
+        this.form.patchValue({
+          templateId,
+          strategyName: `${strategy.config.strategyName} (Copy)`,
+          exchange: strategy.config.exchange,
+          market: strategy.config.market,
+          timeframe: strategy.config.timeframe,
+          direction: strategy.config.direction,
+          grid: {
+            levels: strategy.config.grid?.levels ?? 10,
+            spacing: strategy.config.grid?.spacing ?? 0.5,
+            entryMode: strategy.config.grid?.entryMode ?? "auto_from_signal_candle",
+            anchorPrice: strategy.config.grid?.anchorPrice ?? null,
+            breakdownThreshold: strategy.config.grid?.breakdownThreshold ?? 1.5,
+          },
+          exit: strategy.config.exit,
+          risk: strategy.config.risk,
+          metadata: { tags: [], notes: "" },
+          source: {
+            entryPoint: strategy.config.source?.entryPoint ?? "ui_builder",
+            summary: strategy.config.source?.summary ?? "Created in strategy builder",
+            sourceText: strategy.config.source?.sourceText ?? null,
+          },
+          trendFilter: strategy.config.trendFilter ?? {
+            enabled: false,
+            type: "ema_cross",
+            period: 200,
+            fastPeriod: 50,
+            slowPeriod: 200,
+            operator: "gt",
+            appliesTo: "both",
+          },
+          entryLogic: strategy.config.entryLogic ?? "all",
+        });
+
+        if (strategy.config.strategyMode === "signal") {
+          this.form.patchValue({ templateId: strategy.config.templateId ?? "custom_signal" });
+          this.form.get("grid")?.disable();
+          this._clearConditions();
+
+          for (const condition of strategy.config.entryConditions ?? []) {
+            this._addLoadedCondition(condition);
+          }
+        } else {
+          this.form.get("grid")?.enable();
+          this._clearConditions();
+        }
+
+        this.nlSourceText = strategy.config.source?.sourceText ?? "";
+        this.nlResult = null;
+
+        this._savedFormSnapshot = this._createFormSnapshot();
+        this.form.markAsDirty();
+        this.isLoading = false;
+      },
+      error: () => {
+        this._notifications.error("Failed to load strategy for duplication.");
+        this.isLoading = false;
       }
     });
   }

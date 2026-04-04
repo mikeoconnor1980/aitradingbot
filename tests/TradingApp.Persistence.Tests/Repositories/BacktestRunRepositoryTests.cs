@@ -221,6 +221,7 @@ public sealed class BacktestRunRepositoryTests
             initialCapital: 10000m,
             strategyId: strategyId,
             strategyRevisionId: 1);
+        MarkAsCompleted(matchingRunOne);
 
         var matchingRunTwo = BacktestRun.CreateQueued(
             symbol: "ETH",
@@ -232,6 +233,7 @@ public sealed class BacktestRunRepositoryTests
             initialCapital: 5000m,
             strategyId: strategyId,
             strategyRevisionId: 2);
+        MarkAsCompleted(matchingRunTwo);
 
         var otherRun = BacktestRun.CreateQueued(
             symbol: "SOL",
@@ -243,6 +245,7 @@ public sealed class BacktestRunRepositoryTests
             initialCapital: 2500m,
             strategyId: otherStrategyId,
             strategyRevisionId: 1);
+        MarkAsCompleted(otherRun);
 
         await using (var writeContext = CreateContext())
         {
@@ -277,6 +280,7 @@ public sealed class BacktestRunRepositoryTests
             initialCapital: 10000m,
             strategyId: strategyId,
             strategyRevisionId: 1);
+        MarkAsCompleted(matchingRunOne);
 
         var matchingRunTwo = BacktestRun.CreateQueued(
             symbol: "ETH",
@@ -288,6 +292,7 @@ public sealed class BacktestRunRepositoryTests
             initialCapital: 5000m,
             strategyId: strategyId,
             strategyRevisionId: 2);
+        MarkAsCompleted(matchingRunTwo);
 
         await using (var writeContext = CreateContext())
         {
@@ -304,5 +309,24 @@ public sealed class BacktestRunRepositoryTests
         result.Items.Should().HaveCount(1);
         result.Page.Should().Be(1);
         result.PageSize.Should().Be(1);
+    }
+
+    private static void MarkAsCompleted(BacktestRun run)
+    {
+        run.MarkCompleted(
+            candlesReplayed: 100,
+            elapsedMs: 500,
+            totalTrades: 0,
+            winningTrades: 0,
+            losingTrades: 0,
+            winRate: 0m,
+            totalPnl: 0m,
+            maxDrawdown: 0m,
+            averageTradePnl: 0m,
+            averageHoldTimeMinutes: 0,
+            hedgesOpened: 0,
+            totalFeesPaid: 0m,
+            tradesJson: "[]",
+            equityTimeSeriesJson: "[]");
     }
 }

@@ -10,6 +10,6 @@ public interface IBacktestRunner
 
     Task<BacktestResult> RunAsync(
         BacktestConfig config,
-        Action<int, int>? onProgress,
+        Action<int, int, long>? onProgress,
         CancellationToken cancellationToken = default);
 }

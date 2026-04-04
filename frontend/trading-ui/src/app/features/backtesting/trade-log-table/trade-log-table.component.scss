@@ -57,6 +57,16 @@
     font-weight: 600;
   }
 
+  &__exit-reason--profit {
+    color: var(--colour-profit);
+    font-weight: 500;
+  }
+
+  &__exit-reason--loss {
+    color: var(--colour-loss);
+    font-weight: 500;
+  }
+
   &__empty {
     padding: 1rem 1.25rem;
     border: 1px dashed var(--colour-border-subtle);

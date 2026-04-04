@@ -71,6 +71,7 @@ export class BacktestPageComponent implements OnInit {
   public selectedTabIndex = 0;
   public backtestProgress = 0;
   public backtestStatus: string | null = null;
+  public backtestCurrentDate: string | null = null;
   public pendingBacktestId: string | null = null;
   public strategyId: string | null = null;
 
@@ -91,6 +92,9 @@ export class BacktestPageComponent implements OnInit {
     ).subscribe((progress) => {
       this.backtestStatus = progress.status;
       this.backtestProgress = progress.progress;
+      this.backtestCurrentDate = progress.currentTimestamp
+        ? new Date(progress.currentTimestamp).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+        : null;
 
       if (progress.status === "Completed") {
         this._loadCompletedResult(progress.id);
@@ -99,6 +103,10 @@ export class BacktestPageComponent implements OnInit {
         this.pendingBacktestId = null;
         this.backtestStatus = null;
         this.apiError = progress.errorMessage ?? "Backtest failed.";
+      } else if (progress.status === "Cancelled") {
+        this.isRunning = false;
+        this.pendingBacktestId = null;
+        this.backtestStatus = null;
       }
     });
   }
@@ -110,6 +118,7 @@ export class BacktestPageComponent implements OnInit {
     this.validationErrorMessage = null;
     this.backtestProgress = 0;
     this.backtestStatus = "Queued";
+    this.backtestCurrentDate = null;
     this.cycleSummaries = [];
     this._retryAction = () => this.onRunBacktest(request);
 
@@ -126,6 +135,18 @@ export class BacktestPageComponent implements OnInit {
           notFoundMessage: "No candle data was found for that selection. Validate coverage before running again.",
           preserveRetry: error.status === 0
         });
+      }
+    });
+  }
+
+  public onCancelBacktest(): void {
+    if (!this.pendingBacktestId) {
+      return;
+    }
+
+    this._backtestService.cancelBacktest(this.pendingBacktestId, this._localErrorContext).subscribe({
+      error: () => {
+        this._notificationService.error("Failed to cancel backtest.");
       }
     });
   }

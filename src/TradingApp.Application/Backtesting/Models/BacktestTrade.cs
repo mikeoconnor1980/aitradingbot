@@ -16,4 +16,5 @@ public sealed class BacktestTrade
     public decimal? PnL { get; init; }
     public required decimal Fees { get; init; }
     public required TradeType TradeType { get; init; }
+    public string? ExitReason { get; init; }
 }

@@ -47,6 +47,11 @@ export class BacktestService {
     );
   }
 
+  public cancelBacktest(id: string, context?: HttpContext): Observable<void> {
+    const encodedId = encodeURIComponent(id);
+    return this._apiClient.post<void>(`backtests/${encodedId}/cancel`, null, context);
+  }
+
   public getBacktestList(page = 1, pageSize = 20, context?: HttpContext): Observable<PagedResult<BacktestSummary>> {
     return this._apiClient.get<PagedResult<BacktestSummary>>(
       `backtests?page=${page}&pageSize=${pageSize}`,

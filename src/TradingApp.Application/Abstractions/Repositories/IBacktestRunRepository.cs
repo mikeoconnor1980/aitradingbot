@@ -22,4 +22,5 @@ public interface IBacktestRunRepository
         CancellationToken cancellationToken = default);
     Task AddAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default);
     Task UpdateAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
