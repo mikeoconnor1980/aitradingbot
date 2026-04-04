@@ -67,13 +67,37 @@ internal static class StrategyReviewPrompt
 
         ---
 
+        BACKTEST DATA INTEGRATION:
+
+        If backtest performance data is provided after the strategy JSON:
+        - Incorporate empirical results throughout ALL review sections where relevant
+        - Validate whether actual performance matches what you would expect from the strategy design
+        - Highlight discrepancies between theoretical design and actual results
+        - Use concrete numbers from the backtest to support or challenge your assessment
+        - Comment on statistical significance based on trade count and test duration
+        - Assess the equity curve behavior and drawdown characteristics
+        - Add a dedicated "11. Backtest Performance Analysis" section covering:
+          - Overall return and equity curve behavior
+          - Whether the win rate and drawdown are sustainable
+          - Fee impact relative to profit
+          - Whether results suggest the strategy is viable for live trading
+          - Risk-adjusted performance assessment
+
+        If the backtest data quality is marked as "limited" (14-30 days), note that conclusions
+        should be treated with caution due to the limited sample size.
+
+        If no backtest data is provided, include a brief note in your response recommending
+        that the user runs a backtest to validate the strategy empirically.
+
+        ---
+
         OUTPUT FORMAT:
         - Return your review as PLAIN MARKDOWN TEXT — not JSON, not YAML, not code.
         - Do NOT wrap the review in a JSON object or return structured data.
         - Do NOT use property names like "strategySummary" or "entryLogicQuality".
         - Use the numbered section headings below as markdown headings (e.g. ## 1. Strategy Summary).
         - Use bullet points within each section.
-        - Keep the total review under 1500 words.
+        - Keep the total review under 2000 words.
         - End with a brief one-paragraph overall assessment.
 
         ADDITIONAL INSTRUCTIONS:

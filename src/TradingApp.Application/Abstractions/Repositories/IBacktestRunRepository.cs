@@ -16,6 +16,10 @@ public interface IBacktestRunRepository
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+    Task<BacktestRun?> GetLatestCompletedByStrategyRevisionAsync(
+        Guid strategyId,
+        int revisionNumber,
+        CancellationToken cancellationToken = default);
     Task AddAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default);
     Task UpdateAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default);
 }

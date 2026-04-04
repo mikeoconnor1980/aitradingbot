@@ -5,6 +5,7 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Identity;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Domain.Entities;
 
@@ -22,18 +23,21 @@ public sealed class RequestStrategyReviewCommandHandler
     private readonly IStrategyRepository _strategyRepository;
     private readonly IStrategyRevisionRepository _revisionRepository;
     private readonly IStrategyReviewRepository _reviewRepository;
+    private readonly IBacktestRunRepository _backtestRunRepository;
     private readonly IStrategyReviewer _reviewer;
 
     public RequestStrategyReviewCommandHandler(
         IStrategyRepository strategyRepository,
         IStrategyRevisionRepository revisionRepository,
         IStrategyReviewRepository reviewRepository,
+        IBacktestRunRepository backtestRunRepository,
         IStrategyReviewer reviewer,
         IOptions<LlmReviewOptions> options)
     {
         _strategyRepository = strategyRepository;
         _revisionRepository = revisionRepository;
         _reviewRepository = reviewRepository;
+        _backtestRunRepository = backtestRunRepository;
         _reviewer = reviewer;
         _options = options;
     }
@@ -59,7 +63,16 @@ public sealed class RequestStrategyReviewCommandHandler
             ?? throw new NotFoundException(
                 $"Revision {request.RevisionNumber} not found for strategy {request.StrategyId}.");
 
-        var result = await _reviewer.ReviewAsync(revision.ConfigJson, cancellationToken);
+        var latestBacktest = await _backtestRunRepository.GetLatestCompletedByStrategyRevisionAsync(
+            request.StrategyId,
+            request.RevisionNumber,
+            cancellationToken);
+
+        var backtestSummary = latestBacktest is not null
+            ? BacktestSummaryForReview.FromBacktestRun(latestBacktest)
+            : null;
+
+        var result = await _reviewer.ReviewAsync(revision.ConfigJson, backtestSummary, cancellationToken);
         var review = StrategyReview.Create(
             request.StrategyId,
             request.RevisionNumber,

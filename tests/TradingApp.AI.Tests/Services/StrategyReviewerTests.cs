@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using TradingApp.AI.Services;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Backtesting.Models;
+using TradingApp.Domain.Entities;
 
 namespace TradingApp.AI.Tests.Services;
 
@@ -29,7 +31,7 @@ public sealed class StrategyReviewerTests
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedReview);
 
-        var result = await _sut.ReviewAsync(strategyJson, CancellationToken.None);
+        var result = await _sut.ReviewAsync(strategyJson, null, CancellationToken.None);
 
         result.ReviewMarkdown.Should().Be(expectedReview);
         result.IsFallback.Should().BeFalse();
@@ -51,7 +53,7 @@ public sealed class StrategyReviewerTests
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("```markdown\n## 1. Strategy Summary\n- Clean output\n```");
 
-        var result = await _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
+        var result = await _sut.ReviewAsync("{\"grid\":{}}", null, CancellationToken.None);
 
         result.ReviewMarkdown.Should().Be("## 1. Strategy Summary\n- Clean output");
         result.IsFallback.Should().BeFalse();
@@ -83,7 +85,7 @@ public sealed class StrategyReviewerTests
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(strategyJson);
 
-        var result = await _sut.ReviewAsync(strategyJson, CancellationToken.None);
+        var result = await _sut.ReviewAsync(strategyJson, null, CancellationToken.None);
 
         result.ReviewMarkdown.Should().NotStartWith("{");
         result.ReviewMarkdown.Should().Contain("##");
@@ -115,7 +117,7 @@ public sealed class StrategyReviewerTests
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(jsonReview);
 
-        var result = await _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
+        var result = await _sut.ReviewAsync("{\"grid\":{}}", null, CancellationToken.None);
 
         result.IsFallback.Should().BeFalse();
         result.ReviewMarkdown.Should().Contain("## 1. Strategy Summary");
@@ -139,7 +141,7 @@ public sealed class StrategyReviewerTests
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(wrappedReview);
 
-        var result = await _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
+        var result = await _sut.ReviewAsync("{\"grid\":{}}", null, CancellationToken.None);
 
         result.IsFallback.Should().BeFalse();
         result.ReviewMarkdown.Should().Contain("## 1. Strategy Summary");
@@ -154,7 +156,7 @@ public sealed class StrategyReviewerTests
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("LLM unavailable"));
 
-        var act = () => _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
+        var act = () => _sut.ReviewAsync("{\"grid\":{}}", null, CancellationToken.None);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -165,8 +167,145 @@ public sealed class StrategyReviewerTests
     [DataRow("   ")]
     public async Task GivenInvalidInput_WhenReviewAsync_ThenThrowsArgumentException(string? strategyJson)
     {
-        var act = () => _sut.ReviewAsync(strategyJson!, CancellationToken.None);
+        var act = () => _sut.ReviewAsync(strategyJson!, null, CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [TestMethod]
+    public async Task GivenBacktestSummary_WhenReviewAsync_ThenIncludesBacktestDataInPrompt()
+    {
+        const string strategyJson = "{\"grid\":{}}";
+        const string expectedReview = "## 1. Strategy Summary\n- Grid strategy with backtest";
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedReview);
+
+        var backtestSummary = CreateTestBacktestSummary(durationDays: 45);
+
+        var result = await _sut.ReviewAsync(strategyJson, backtestSummary, CancellationToken.None);
+
+        result.ReviewMarkdown.Should().Be(expectedReview);
+        result.IsFallback.Should().BeFalse();
+        _llmClientMock.Verify(
+            client => client.CompleteAsync(
+                It.IsAny<string>(),
+                It.Is<string>(message =>
+                    message.Contains("BACKTEST PERFORMANCE DATA", StringComparison.Ordinal) &&
+                    message.Contains("Win Rate: 55.3%", StringComparison.Ordinal) &&
+                    message.Contains("reliable", StringComparison.Ordinal) &&
+                    message.Contains("Section 11", StringComparison.Ordinal)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenInsufficientBacktest_WhenReviewAsync_ThenIncludesBacktestNoteInPrompt()
+    {
+        const string strategyJson = "{\"grid\":{}}";
+        const string expectedReview = "## 1. Strategy Summary\n- Grid strategy note only";
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedReview);
+
+        var backtestSummary = CreateTestBacktestSummary(durationDays: 7);
+
+        var result = await _sut.ReviewAsync(strategyJson, backtestSummary, CancellationToken.None);
+
+        result.ReviewMarkdown.Should().Be(expectedReview);
+        _llmClientMock.Verify(
+            client => client.CompleteAsync(
+                It.IsAny<string>(),
+                It.Is<string>(message =>
+                    message.Contains("BACKTEST NOTE", StringComparison.Ordinal) &&
+                    message.Contains("insufficient for statistical analysis", StringComparison.Ordinal) &&
+                    !message.Contains("BACKTEST PERFORMANCE DATA", StringComparison.Ordinal)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenLimitedBacktest_WhenReviewAsync_ThenIncludesCautionNote()
+    {
+        const string strategyJson = "{\"grid\":{}}";
+        const string expectedReview = "## 1. Strategy Summary\n- Grid strategy with caution";
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedReview);
+
+        var backtestSummary = CreateTestBacktestSummary(durationDays: 20);
+
+        var result = await _sut.ReviewAsync(strategyJson, backtestSummary, CancellationToken.None);
+
+        _llmClientMock.Verify(
+            client => client.CompleteAsync(
+                It.IsAny<string>(),
+                It.Is<string>(message =>
+                    message.Contains("BACKTEST PERFORMANCE DATA", StringComparison.Ordinal) &&
+                    message.Contains("CAUTION: limited sample", StringComparison.Ordinal)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenNullBacktest_WhenReviewAsync_ThenNoBacktestSectionInPrompt()
+    {
+        const string strategyJson = "{\"grid\":{}}";
+        const string expectedReview = "## 1. Strategy Summary\n- Grid strategy";
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedReview);
+
+        var result = await _sut.ReviewAsync(strategyJson, null, CancellationToken.None);
+
+        _llmClientMock.Verify(
+            client => client.CompleteAsync(
+                It.IsAny<string>(),
+                It.Is<string>(message =>
+                    !message.Contains("BACKTEST", StringComparison.Ordinal)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    private static BacktestSummaryForReview? CreateTestBacktestSummary(int durationDays)
+    {
+        var startDate = new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var endDate = startDate.AddDays(durationDays);
+
+        var equitySeries = Enumerable.Range(0, durationDays * 96) // 96 candles per day @ 15m
+            .Select(i => new EquitySnapshot(
+                startDate.AddMinutes(i * 15).ToUnixTimeMilliseconds(),
+                10000m + i * 0.5m))
+            .ToList();
+        var equityJson = System.Text.Json.JsonSerializer.Serialize(equitySeries);
+
+        var run = BacktestRun.Create(
+            symbol: "ETH",
+            intervalsJson: "[\"15m\"]",
+            startDateUtc: startDate.ToUnixTimeMilliseconds(),
+            endDateUtc: endDate.ToUnixTimeMilliseconds(),
+            strategyConfigJson: "{\"grid\":{}}",
+            executionConfigJson: "{\"makerFee\":0.0002}",
+            initialCapital: 10000m,
+            candlesReplayed: durationDays * 96,
+            elapsedMs: 1500,
+            totalTrades: 47,
+            winningTrades: 26,
+            losingTrades: 21,
+            winRate: 55.3m,
+            totalPnl: 234.56m,
+            maxDrawdown: 150m,
+            averageTradePnl: 4.99m,
+            averageHoldTimeMinutes: 252.0,
+            hedgesOpened: 0,
+            totalFeesPaid: 12.34m,
+            tradesJson: "[]",
+            equityTimeSeriesJson: equityJson);
+
+        return BacktestSummaryForReview.FromBacktestRun(run);
     }
 }

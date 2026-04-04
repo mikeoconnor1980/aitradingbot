@@ -105,6 +105,20 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
         };
     }
 
+    public async Task<BacktestRun?> GetLatestCompletedByStrategyRevisionAsync(
+        Guid strategyId,
+        int revisionNumber,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.BacktestRuns
+            .AsNoTracking()
+            .Where(r => r.StrategyId == strategyId
+                && r.StrategyRevisionId == revisionNumber
+                && r.Status == Domain.Enums.BacktestStatus.Completed)
+            .OrderByDescending(r => r.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task AddAsync(BacktestRun backtestRun, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(backtestRun);
