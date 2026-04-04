@@ -68,7 +68,10 @@ internal static class StrategyReviewPrompt
         ---
 
         OUTPUT FORMAT:
-        - Return your review as markdown using the numbered section headings above.
+        - Return your review as PLAIN MARKDOWN TEXT — not JSON, not YAML, not code.
+        - Do NOT wrap the review in a JSON object or return structured data.
+        - Do NOT use property names like "strategySummary" or "entryLogicQuality".
+        - Use the numbered section headings below as markdown headings (e.g. ## 1. Strategy Summary).
         - Use bullet points within each section.
         - Keep the total review under 1500 words.
         - End with a brief one-paragraph overall assessment.

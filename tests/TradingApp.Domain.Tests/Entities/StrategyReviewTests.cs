@@ -14,14 +14,28 @@ public sealed class StrategyReviewTests
             strategyId,
             1,
             "## Review\n- Looks good",
-            "gemini-2.5-flash-lite");
+            "gemini-2.5-flash");
 
         review.Id.Should().NotBeEmpty();
         review.StrategyId.Should().Be(strategyId);
         review.RevisionNumber.Should().Be(1);
         review.ReviewMarkdown.Should().Be("## Review\n- Looks good");
-        review.ModelName.Should().Be("gemini-2.5-flash-lite");
+        review.ModelName.Should().Be("gemini-2.5-flash");
+        review.IsFallback.Should().BeFalse();
         review.CreatedAtUtc.Should().BePositive();
+    }
+
+    [TestMethod]
+    public void GivenIsFallbackTrue_WhenCreate_ThenIsFallbackSet()
+    {
+        var review = StrategyReview.Create(
+            Guid.NewGuid(),
+            1,
+            "## Fallback review",
+            "gemini-2.5-flash",
+            isFallback: true);
+
+        review.IsFallback.Should().BeTrue();
     }
 
     [TestMethod]

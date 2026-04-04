@@ -85,14 +85,14 @@ public sealed class StrategyReviewTests : BaseControllerTests
     }
 
     [TestMethod]
-    public async Task GivenSavedStrategy_WhenReviewRequested_ThenReturns200WithReview()
+    public async Task GivenSavedStrategy_WhenReviewRequested_ThenReturns201WithReview()
     {
         var client = GetTestClient();
         var strategyId = await CreateStrategyAsync(client);
 
         var response = await PostReviewAsync(client, strategyId, 1);
 
-        var review = await response.ReadAndAssertSuccessAsync<StrategyReviewDto>();
+        var review = await response.ReadAndAssertCreatedAsync<StrategyReviewDto>();
         review.StrategyId.Should().Be(strategyId);
         review.RevisionNumber.Should().Be(1);
         review.ReviewMarkdown.Should().Contain("Strategy Summary");
@@ -165,7 +165,7 @@ public sealed class StrategyReviewTests : BaseControllerTests
         var strategyId = await CreateStrategyAsync(client);
 
         var firstResponse = await PostReviewAsync(client, strategyId, 1, "203.0.113.21");
-        firstResponse.AssertStatusCode(HttpStatusCode.OK);
+        firstResponse.AssertStatusCode(HttpStatusCode.Created);
 
         _reviewLlmClientMock
             .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -173,7 +173,7 @@ public sealed class StrategyReviewTests : BaseControllerTests
 
         var secondResponse = await PostReviewAsync(client, strategyId, 1, "203.0.113.22");
 
-        var review = await secondResponse.ReadAndAssertSuccessAsync<StrategyReviewDto>();
+        var review = await secondResponse.ReadAndAssertCreatedAsync<StrategyReviewDto>();
         review.ReviewMarkdown.Should().Contain("Updated review content");
 
         var getResponse = await client.GetAsync($"{BaseUrl}/{strategyId}/versions/1/review");
@@ -188,7 +188,7 @@ public sealed class StrategyReviewTests : BaseControllerTests
         var strategyId = await CreateStrategyAsync(client);
 
         var firstResponse = await PostReviewAsync(client, strategyId, 1, "203.0.113.20");
-        firstResponse.AssertStatusCode(HttpStatusCode.OK);
+        firstResponse.AssertStatusCode(HttpStatusCode.Created);
 
         var secondResponse = await PostReviewAsync(client, strategyId, 1, "203.0.113.20");
 

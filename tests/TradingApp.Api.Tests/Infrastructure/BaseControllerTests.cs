@@ -82,6 +82,14 @@ public static class HttpResponseExtensions
         return content!;
     }
 
+    public static async Task<T> ReadAndAssertCreatedAsync<T>(this HttpResponseMessage response)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var content = await response.Content.ReadFromJsonAsync<T>(BaseControllerTestsJson.Options);
+        content.Should().NotBeNull();
+        return content!;
+    }
+
     public static void AssertStatusCode(this HttpResponseMessage response, HttpStatusCode expected)
     {
         response.StatusCode.Should().Be(expected);

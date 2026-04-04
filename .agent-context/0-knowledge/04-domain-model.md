@@ -132,6 +132,30 @@ File: `src/TradingApp.Domain/Entities/StrategyRevision.cs`
 
 ---
 
+# StrategyReview
+
+Immutable review record created when a user requests an AI analysis of a saved strategy revision.
+
+Fields:
+
+Id (Guid)
+StrategyId
+RevisionNumber (references StrategyRevision linked by (StrategyId, RevisionNumber))
+ReviewMarkdown (full AI-generated review in Markdown format)
+ModelName (LLM model name used to generate the review; e.g., "gemini-2.5-flash-lite")
+CreatedAtUtc (Unix milliseconds)
+
+Behavior:
+
+- `StrategyReview.Create(strategyId, revisionNumber, reviewMarkdown, modelName)` — static factory; validates all inputs including positive revision number and non-empty markdown/model name; generates unique Guid Id; sets CreatedAtUtc
+- Immutable after creation (private setters)
+- Linked to StrategyRevision via composite key (StrategyId, RevisionNumber); reviews are created on-demand when requested
+- When a review is re-requested for the same revision, the prior review is overwritten (upsert pattern)
+
+File: `src/TradingApp.Domain/Entities/StrategyReview.cs`
+
+---
+
 # RevisionSource
 
 Enum indicating how a revision was created.

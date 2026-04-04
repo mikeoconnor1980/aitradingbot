@@ -10,6 +10,13 @@
       </mat-panel-description>
     </mat-expansion-panel-header>
 
+    @if (review.isFallback) {
+      <div class="ai-review-card__fallback-banner">
+        <mat-icon>warning</mat-icon>
+        <span>Template-based summary — the AI model returned an unusable response.</span>
+      </div>
+    }
+
     <div class="ai-review-card__summary" [innerHTML]="summaryHtml"></div>
 
     @if (isTruncated) {

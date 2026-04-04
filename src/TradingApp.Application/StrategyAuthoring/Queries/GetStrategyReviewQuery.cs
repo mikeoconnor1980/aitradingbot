@@ -57,6 +57,7 @@ public sealed class GetStrategyReviewQueryHandler
             RevisionNumber = review.RevisionNumber,
             ReviewMarkdown = review.ReviewMarkdown,
             ModelName = review.ModelName,
+            IsFallback = review.IsFallback,
             CreatedAtUtc = review.CreatedAtUtc,
         };
     }
