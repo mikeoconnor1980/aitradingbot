@@ -65,6 +65,25 @@ Every save creates an immutable `StrategyRevision` record:
 - Revision number (1, 2, 3...) per strategy
 
 Users can browse revision history, view diffs between any two revisions, and restore a previous version. Restoring creates a new revision with source = `Restore` and a generated label. See [Domain Model — StrategyRevision](04-domain-model.md) for entity details.
+
+## AI Strategy Review (F4)
+
+Users can request an AI analysis of any saved strategy revision:
+
+- Click "AI Review" button in the strategy builder to analyze the currently loaded revision
+- Server generates a Markdown review covering entry logic quality, exit completeness, risk management, weaknesses, market regime fit, complexity, and execution realism
+- Review persists per revision; re-requesting overwrites the prior review for that revision
+- Rate limit: 1 request per minute per IP
+- Persisted review loads automatically when opening a strategy with saved review
+
+Review UI:
+
+- Collapsible summary card in the strategy builder showing first portion of markdown
+- Full-review modal with complete formatted markdown and review metadata (model name, timestamp)
+- Cooldown timer in UI enforces server-side rate limit display
+- Apply Suggestions button placeholder (not yet implemented; disabled)
+
+See [LLM Context & Sentiment Architecture](17-llm-context-sentiment-architecture.md) for endpoint details and review analysis scope.
 PnL  
 open orders (with cancel, cancel-all, and modify actions)  
 positions (with close action; SL/TP display, set dialog, inline edit, and removal)  

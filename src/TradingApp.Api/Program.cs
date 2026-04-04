@@ -207,12 +207,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("review-strategy", httpContext =>
     {
-        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString();
-
-        if (partitionKey is null)
-        {
-            return RateLimitPartition.GetNoLimiter("unknown");
-        }
+        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey,

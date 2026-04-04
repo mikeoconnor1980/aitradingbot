@@ -535,8 +535,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
         this.nlSourceText = strategy.config.source?.sourceText ?? "";
         this.nlResult = null;
-  this._currentRevisionNumber = strategy.version;
-  this._loadReviewIfAvailable(id, strategy.version);
+        this._currentRevisionNumber = strategy.version;
+        this._loadReviewIfAvailable(id, strategy.version);
 
         this._savedFormSnapshot = this._createFormSnapshot();
         this.form.markAsPristine();

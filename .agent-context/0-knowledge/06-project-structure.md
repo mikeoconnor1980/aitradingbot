@@ -28,7 +28,8 @@ src/TradingApp.Application/
 │   ├── Identity/          # AppIdentity (UserId, Email; static System identity)
 │   ├── Repositories/      # Repository interfaces (ICandleRepository, IFundingRateRepository, IBacktestRunRepository, IStrategyRepository)
 │   └── Services/          # Pipeline interfaces (IStrategyEngine, IGridController, IRiskEngine, IPositionManager,
-│                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner, IStrategyInterpreter) + infrastructure client contracts
+│                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner, IStrategyInterpreter, IStrategyReviewer)
+│                          #   + infrastructure client contracts (ILlmClient, IReviewLlmClient)
 ├── Backtesting/           # Backtest CQRS handlers + engine
 │   ├── Models/            # Engine models: BacktestConfig, BacktestResult, BacktestTrade, FeeModel, SimulatedFill/Order/Position, ReplayData
 │   │                      # Response DTOs: BacktestRunResponse, BacktestRunSummary, BacktestTradeResponse,
@@ -47,9 +48,9 @@ src/TradingApp.Application/
 │   └── Models/            # MarketContext, StrategyEvaluation, IndicatorSnapshot,
 │                          #   GridState, GridLifecycle, PositionState, TradingSignal,
 │                          #   OrderRequest, OrderSide, OrderType, TradeType
-├── StrategyAuthoring/     # Strategy CRUD and schema — models, CQRS, serialization, validation
-│   ├── Commands/          # CreateStrategyCommand, UpdateStrategyCommand, DeleteStrategyCommand (+ handlers)
-│   ├── Queries/           # GetStrategiesQuery (→ List<StrategySummaryDto>), GetStrategyByIdQuery (→ StrategyDto)
+├── StrategyAuthoring/     # Strategy CRUD, schema, and AI review — models, CQRS, serialization, validation
+│   ├── Commands/          # CreateStrategyCommand, UpdateStrategyCommand, DeleteStrategyCommand, RequestStrategyReviewCommand (+ handlers)
+│   ├── Queries/           # GetStrategiesQuery (→ List<StrategySummaryDto>), GetStrategyByIdQuery (→ StrategyDto), GetStrategyReviewQuery
 │   ├── Models/            # StrategyConfig (implements IStrategyConfig), GridConfig, ExitConfig, RiskConfig,
 │   │                      #   TrendFilterConfig, EntryConditionConfig, typed params (RsiParams, PriceVsEmaParams,
 │   │                      #   MacdParams), enums (StrategyMode, EntryConditionType, Direction, EntryLogic, etc.)
@@ -74,11 +75,14 @@ MediatR is registered in the Api host to scan the Application assembly.
 src/TradingApp.AI/
 ├── Models/                 # LLM request/response shapes (ChatMessage, ChatCompletionRequest/Response)
 ├── Prompts/
-│   └── StrategyInterpreterPrompt.cs  # System prompt template for NL→StrategyConfig interpretation
+│   ├── StrategyInterpreterPrompt.cs  # System prompt template for NL→StrategyConfig interpretation
+│   └── StrategyReviewPrompt.cs       # System prompt template for strategy revision analysis
 ├── Services/
-│   ├── OpenAiCompatibleLlmClient.cs  # ILlmClient implementation; works with Gemini, Ollama, or any OpenAI-compatible endpoint
-│   └── StrategyInterpreter.cs        # IStrategyInterpreter implementation; calls LLM, parses response, returns StrategyIntentDto
-└── AiServiceExtensions.cs            # DI registration (AddAI); binds LlmOptions, registers typed HttpClient and services
+│   ├── OpenAiCompatibleLlmClient.cs  # ILlmClient implementation; works with Gemini, Ollama, or any OpenAI-compatible endpoint; bound to LlmOptions
+│   ├── ReviewLlmClient.cs            # IReviewLlmClient implementation; independent OpenAI-compatible client; bound to LlmReviewOptions
+│   ├── StrategyInterpreter.cs        # IStrategyInterpreter implementation; calls LLM, parses response, returns StrategyIntentDto
+│   └── StrategyReviewer.cs           # IStrategyReviewer implementation; calls review LLM, generates Markdown review, handles normalization
+└── AiServiceExtensions.cs            # DI registration (AddAI); binds LlmOptions + LlmReviewOptions, registers typed HttpClients and services
 ```
 
 Registered via `AiServiceExtensions.AddAI()` in the Api host DI composition root.

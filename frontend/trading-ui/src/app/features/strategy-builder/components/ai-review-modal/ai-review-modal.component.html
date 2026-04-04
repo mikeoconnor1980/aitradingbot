@@ -8,6 +8,13 @@
     {{ data.review.modelName }} · Rev {{ data.review.revisionNumber }} · {{ data.review.createdAtUtc | date: "short" }}
   </p>
 
+  @if (data.review.isFallback) {
+    <div class="ai-review-modal__fallback-banner">
+      <mat-icon>warning</mat-icon>
+      <span>The AI model returned an unusable response. This is a template-based summary, not a full AI review. Try re-running the review.</span>
+    </div>
+  }
+
   <div class="ai-review-modal__markdown" [innerHTML]="reviewHtml"></div>
 </mat-dialog-content>
 

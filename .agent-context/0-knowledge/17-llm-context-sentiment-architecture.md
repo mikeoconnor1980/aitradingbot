@@ -1,11 +1,12 @@
 # LLM Context & Sentiment Architecture
 
-The system supports two complementary LLM integration patterns:
+The system supports three complementary LLM integration patterns:
 
 1. **LLM as Context Provider** (this document) — Generates qualitative market signals (sentiment, macro regime, event risk); influences risk behaviour
 2. **LLM as Strategy Interpreter** (see [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md)) — Converts natural language strategy descriptions to executable `StrategyConfig`; runs on-demand during strategy authoring
+3. **LLM as Strategy Reviewer** — Provides critical feedback on saved strategy revisions; independent LLM configuration; on-demand per-revision analysis
 
-Both use `OpenAiCompatibleLlmClient` (in `TradingApp.AI`) to support multiple LLM providers (Gemini, Ollama, etc.).
+All three patterns use OpenAI-compatible HTTP clients (in `TradingApp.AI`) to support multiple LLM providers (Gemini, Ollama, OpenAI, etc.).
 
 ---
 

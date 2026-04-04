@@ -7,6 +7,7 @@ public sealed class StrategyReview
     public int RevisionNumber { get; private set; }
     public string ReviewMarkdown { get; private set; } = string.Empty;
     public string ModelName { get; private set; } = string.Empty;
+    public bool IsFallback { get; private set; }
     public long CreatedAtUtc { get; private set; }
 
     private StrategyReview()
@@ -17,7 +18,8 @@ public sealed class StrategyReview
         Guid strategyId,
         int revisionNumber,
         string reviewMarkdown,
-        string modelName)
+        string modelName,
+        bool isFallback = false)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(revisionNumber, 1);
         ArgumentException.ThrowIfNullOrWhiteSpace(reviewMarkdown);
@@ -35,6 +37,7 @@ public sealed class StrategyReview
             RevisionNumber = revisionNumber,
             ReviewMarkdown = reviewMarkdown,
             ModelName = modelName,
+            IsFallback = isFallback,
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
         };
     }

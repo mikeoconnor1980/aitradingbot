@@ -173,7 +173,7 @@ public sealed class StrategiesController : ApiController
 
     [HttpPost("{id:guid}/versions/{rev:int}/review")]
     [EnableRateLimiting("review-strategy")]
-    [ProducesResponseType(typeof(StrategyReviewDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(StrategyReviewDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status429TooManyRequests)]
@@ -191,7 +191,7 @@ public sealed class StrategiesController : ApiController
             new RequestStrategyReviewCommand(id, rev, IdentityService.Identity),
             cancellationToken);
 
-        return Ok(review);
+        return CreatedAtAction(nameof(GetReview), new { id, rev }, review);
     }
 
     [HttpGet("{id:guid}/versions/{rev:int}/review")]

@@ -43,6 +43,8 @@ public sealed class ReviewLlmClient : IReviewLlmClient
                 new ChatMessage { Role = "system", Content = systemPrompt },
                 new ChatMessage { Role = "user", Content = userMessage },
             ],
+            Temperature = 0.4m,
+            ResponseFormat = new ResponseFormat { Type = "text" },
         };
 
         using var response = await _httpClient.PostAsJsonAsync(

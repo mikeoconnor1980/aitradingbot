@@ -267,6 +267,10 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(review => review.CreatedAtUtc)
                 .IsRequired();
 
+            entity.Property(review => review.IsFallback)
+                .IsRequired()
+                .HasDefaultValue(false);
+
             entity.HasOne<Strategy>()
                 .WithMany()
                 .HasForeignKey(review => review.StrategyId)

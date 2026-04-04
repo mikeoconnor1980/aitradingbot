@@ -31,7 +31,8 @@ public sealed class StrategyReviewerTests
 
         var result = await _sut.ReviewAsync(strategyJson, CancellationToken.None);
 
-        result.Should().Be(expectedReview);
+        result.ReviewMarkdown.Should().Be(expectedReview);
+        result.IsFallback.Should().BeFalse();
         _llmClientMock.Verify(
             client => client.CompleteAsync(
                 It.Is<string>(prompt => prompt.Contains("You are an expert trading strategy reviewer.", StringComparison.Ordinal)),
@@ -52,11 +53,12 @@ public sealed class StrategyReviewerTests
 
         var result = await _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
 
-        result.Should().Be("## 1. Strategy Summary\n- Clean output");
+        result.ReviewMarkdown.Should().Be("## 1. Strategy Summary\n- Clean output");
+        result.IsFallback.Should().BeFalse();
     }
 
     [TestMethod]
-    public async Task GivenRawJsonResponse_WhenReviewAsync_ThenReturnsFormattedFallbackReview()
+    public async Task GivenRawJsonResponse_WhenReviewAsync_ThenRecoversFromJsonStructure()
     {
         const string strategyJson = """
             {
@@ -83,10 +85,66 @@ public sealed class StrategyReviewerTests
 
         var result = await _sut.ReviewAsync(strategyJson, CancellationToken.None);
 
-        result.Should().Contain("## 1. Strategy Summary");
-        result.Should().Contain("ETH RSI Buy");
-        result.Should().Contain("## 3. Exit Logic Completeness");
-        result.Should().NotStartWith("{");
+        result.ReviewMarkdown.Should().NotStartWith("{");
+        result.ReviewMarkdown.Should().Contain("##");
+    }
+
+    [TestMethod]
+    public async Task GivenStructuredJsonReview_WhenReviewAsync_ThenConvertsToMarkdownWithoutFallback()
+    {
+        const string jsonReview = """
+            {
+              "review": {
+                "strategySummary": {
+                  "type": "Mean Reversion / Oversold",
+                  "description": "This strategy buys ETH when RSI drops below 40."
+                },
+                "entryLogicQuality": {
+                  "clarity": "The entry signal is clear: RSI < 40.",
+                  "weaknesses": ["Single indicator — no confirmation signal."]
+                },
+                "riskManagement": {
+                  "leverage": "1x — conservative",
+                  "stopLoss": "5% fixed — reasonable"
+                }
+              }
+            }
+            """;
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonReview);
+
+        var result = await _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
+
+        result.IsFallback.Should().BeFalse();
+        result.ReviewMarkdown.Should().Contain("## 1. Strategy Summary");
+        result.ReviewMarkdown.Should().Contain("Mean Reversion / Oversold");
+        result.ReviewMarkdown.Should().Contain("## 2. Entry Logic Quality");
+        result.ReviewMarkdown.Should().Contain("Single indicator");
+        result.ReviewMarkdown.Should().Contain("## 3. Risk Management");
+        result.ReviewMarkdown.Should().NotStartWith("{");
+    }
+
+    [TestMethod]
+    public async Task GivenMarkdownWrappedInJsonString_WhenReviewAsync_ThenExtractsMarkdownWithoutFallback()
+    {
+        const string wrappedReview = """
+            {
+              "review": "## 1. Strategy Summary\n\n- **Type:** Mean reversion strategy.\n- **Description:** Buys ETH when RSI drops below 40.\n\n## 2. Entry Logic Quality\n\n- The entry signal is clear and straightforward."
+            }
+            """;
+
+        _llmClientMock
+            .Setup(client => client.CompleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(wrappedReview);
+
+        var result = await _sut.ReviewAsync("{\"grid\":{}}", CancellationToken.None);
+
+        result.IsFallback.Should().BeFalse();
+        result.ReviewMarkdown.Should().Contain("## 1. Strategy Summary");
+        result.ReviewMarkdown.Should().Contain("Mean reversion strategy");
+        result.ReviewMarkdown.Should().NotStartWith("{");
     }
 
     [TestMethod]

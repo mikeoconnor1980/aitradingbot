@@ -4,5 +4,6 @@ export interface StrategyReviewDto {
   revisionNumber: number;
   reviewMarkdown: string;
   modelName: string;
+  isFallback: boolean;
   createdAtUtc: number;
 }

@@ -59,17 +59,18 @@ public sealed class RequestStrategyReviewCommandHandler
             ?? throw new NotFoundException(
                 $"Revision {request.RevisionNumber} not found for strategy {request.StrategyId}.");
 
+        var result = await _reviewer.ReviewAsync(revision.ConfigJson, cancellationToken);
+        var review = StrategyReview.Create(
+            request.StrategyId,
+            request.RevisionNumber,
+            result.ReviewMarkdown,
+            _options.Value.ModelName,
+            result.IsFallback);
+
         await _reviewRepository.DeleteByStrategyAndRevisionAsync(
             request.StrategyId,
             request.RevisionNumber,
             cancellationToken);
-
-        var reviewMarkdown = await _reviewer.ReviewAsync(revision.ConfigJson, cancellationToken);
-        var review = StrategyReview.Create(
-            request.StrategyId,
-            request.RevisionNumber,
-            reviewMarkdown,
-            _options.Value.ModelName);
 
         await _reviewRepository.AddAsync(review, cancellationToken);
 
@@ -80,6 +81,7 @@ public sealed class RequestStrategyReviewCommandHandler
             RevisionNumber = review.RevisionNumber,
             ReviewMarkdown = review.ReviewMarkdown,
             ModelName = review.ModelName,
+            IsFallback = review.IsFallback,
             CreatedAtUtc = review.CreatedAtUtc,
         };
     }
