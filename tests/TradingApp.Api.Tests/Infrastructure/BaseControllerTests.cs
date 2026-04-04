@@ -27,6 +27,11 @@ public abstract class BaseControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseSetting("LlmReview:Provider", "Gemini");
+                builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmReview:ModelName", "test-review-model");
+                builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
+                builder.UseSetting("LlmReview:TimeoutSeconds", "30");
                 ConfigureWebHost(builder);
                 builder.ConfigureServices(services =>
                 {

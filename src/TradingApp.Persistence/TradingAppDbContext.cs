@@ -16,6 +16,7 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<BacktestRun> BacktestRuns => Set<BacktestRun>();
     public DbSet<Strategy> Strategies => Set<Strategy>();
     public DbSet<StrategyRevision> StrategyRevisions => Set<StrategyRevision>();
+    public DbSet<StrategyReview> StrategyReviews => Set<StrategyReview>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -239,6 +240,41 @@ public sealed class TradingAppDbContext : DbContext
             entity.HasIndex(revision => new { revision.StrategyId, revision.RevisionNumber })
                 .IsUnique()
                 .HasDatabaseName("IX_StrategyRevisions_StrategyId_RevisionNumber");
+        });
+
+        modelBuilder.Entity<StrategyReview>(entity =>
+        {
+            entity.ToTable("StrategyReviews");
+
+            entity.HasKey(review => review.Id);
+
+            entity.Property(review => review.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(review => review.StrategyId)
+                .IsRequired();
+
+            entity.Property(review => review.RevisionNumber)
+                .IsRequired();
+
+            entity.Property(review => review.ReviewMarkdown)
+                .IsRequired();
+
+            entity.Property(review => review.ModelName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(review => review.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<Strategy>()
+                .WithMany()
+                .HasForeignKey(review => review.StrategyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(review => new { review.StrategyId, review.RevisionNumber })
+                .IsUnique()
+                .HasDatabaseName("IX_StrategyReviews_StrategyId_RevisionNumber");
         });
     }
 }

@@ -1,0 +1,33 @@
+@if (review) {
+  <mat-expansion-panel class="ai-review-card" [expanded]="true">
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>rate_review</mat-icon>
+        <span>AI Review</span>
+      </mat-panel-title>
+      <mat-panel-description>
+        {{ review.modelName }} · Rev {{ review.revisionNumber }} · {{ review.createdAtUtc | date: "short" }}
+      </mat-panel-description>
+    </mat-expansion-panel-header>
+
+    <div class="ai-review-card__summary" [innerHTML]="summaryHtml"></div>
+
+    @if (isTruncated) {
+      <p class="ai-review-card__truncated">Preview truncated.</p>
+    }
+
+    <div class="ai-review-card__actions">
+      <button mat-stroked-button type="button" color="primary" (click)="onViewFull()">
+        <mat-icon>open_in_full</mat-icon>
+        <span>View Full Review</span>
+      </button>
+
+      <span matTooltip="Coming Soon">
+        <button mat-stroked-button type="button" disabled>
+          <mat-icon>auto_fix_high</mat-icon>
+          <span>Apply Suggestions</span>
+        </button>
+      </span>
+    </div>
+  </mat-expansion-panel>
+}

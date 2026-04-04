@@ -1,0 +1,55 @@
+:host {
+  display: block;
+}
+
+.ai-review-card {
+  background: var(--colour-surface-dark);
+  border: 1px solid var(--colour-border-subtle);
+
+  &__summary {
+    max-height: 16rem;
+    overflow: hidden;
+    color: var(--colour-text-primary);
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  &__truncated {
+    margin: 0.75rem 0 0;
+    color: var(--colour-muted);
+    font-size: 0.8rem;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+}
+
+:host ::ng-deep .ai-review-card .mat-content {
+  align-items: center;
+}
+
+:host ::ng-deep .ai-review-card .mat-expansion-panel-body {
+  padding-top: 0.25rem;
+}
+
+:host ::ng-deep .ai-review-card__summary h1,
+:host ::ng-deep .ai-review-card__summary h2,
+:host ::ng-deep .ai-review-card__summary h3 {
+  margin: 0.8rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+:host ::ng-deep .ai-review-card__summary p,
+:host ::ng-deep .ai-review-card__summary ul,
+:host ::ng-deep .ai-review-card__summary ol {
+  margin: 0.45rem 0;
+}
+
+:host ::ng-deep .ai-review-card__summary ul,
+:host ::ng-deep .ai-review-card__summary ol {
+  padding-left: 1.2rem;
+}

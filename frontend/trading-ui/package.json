@@ -23,6 +23,7 @@
     "@angular/router": "^19.2.0",
     "@microsoft/signalr": "^10.0.0",
     "lightweight-charts": "^5.1.0",
+    "marked": "^17.0.5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -32,6 +33,7 @@
     "@angular/cli": "^19.2.22",
     "@angular/compiler-cli": "^19.2.0",
     "@types/jasmine": "~5.1.0",
+    "@types/marked": "^5.0.2",
     "angular-eslint": "21.0.1",
     "eslint": "^9.39.1",
     "jasmine-core": "~5.6.0",

@@ -52,6 +52,11 @@ public sealed class MarketDataHubTests
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");
                 builder.UseSetting("Hyperliquid:Network", "testnet");
+                builder.UseSetting("LlmReview:Provider", "Gemini");
+                builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmReview:ModelName", "test-review-model");
+                builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
+                builder.UseSetting("LlmReview:TimeoutSeconds", "30");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<IHyperliquidWebSocketClient>();
@@ -127,6 +132,11 @@ public sealed class MarketDataHubTests
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");
                 builder.UseSetting("Hyperliquid:Network", "testnet");
+                builder.UseSetting("LlmReview:Provider", "Gemini");
+                builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmReview:ModelName", "test-review-model");
+                builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
+                builder.UseSetting("LlmReview:TimeoutSeconds", "30");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<IHyperliquidWebSocketClient>();

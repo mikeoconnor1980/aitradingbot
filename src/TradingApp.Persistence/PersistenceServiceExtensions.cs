@@ -25,6 +25,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<IFundingRateRepository, FundingRateRepository>();
         services.AddScoped<IStrategyRepository, StrategyRepository>();
         services.AddScoped<IStrategyRevisionRepository, StrategyRevisionRepository>();
+        services.AddScoped<IStrategyReviewRepository, StrategyReviewRepository>();
 
         return services;
     }
