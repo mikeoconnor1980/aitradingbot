@@ -74,6 +74,7 @@ describe("StrategyMapperService", () => {
       type: "swing_low",
       value: null,
       lookback: 5,
+      atrMultiplier: null,
     });
   });
 

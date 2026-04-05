@@ -1,0 +1,32 @@
+.optimizer-history-list {
+  overflow: auto;
+  border: 1px solid var(--colour-border-subtle);
+  border-radius: 1rem;
+  background: var(--colour-surface-dark);
+
+  &__table {
+    width: 100%;
+  }
+
+  &__loading,
+  &__empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
+    border: 1px dashed var(--colour-border-subtle);
+    border-radius: 1rem;
+    color: var(--colour-muted);
+    background: var(--colour-surface-dark);
+  }
+
+  &__progress-cell {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 180px;
+  }
+
+  &__row--selected {
+    background: rgba(121, 207, 195, 0.12);
+  }
+}

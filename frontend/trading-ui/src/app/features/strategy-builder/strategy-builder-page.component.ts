@@ -122,6 +122,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       const duplicateFrom = this._route.snapshot.queryParamMap.get("duplicateFrom");
       if (duplicateFrom !== null) {
         this._duplicateStrategy(duplicateFrom);
+      } else {
+        const prefillConfig = history.state?.["prefillConfig"] as StrategyConfig | undefined;
+        if (prefillConfig !== undefined) {
+          this._populateFormFromIntent({ config: prefillConfig });
+        }
       }
     }
   }
@@ -406,6 +411,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           type: ["fixed_percent"],
           value: [6, [Validators.min(0.01), Validators.max(50)]],
           lookback: [null, [Validators.min(1)]],
+          atrMultiplier: [3, [Validators.min(0.1), Validators.max(10)]],
+          trailingStopWarmup: [3, [Validators.min(0), Validators.max(20)]],
         }),
         exitOnOppositeSignal: [false],
       }),
@@ -830,7 +837,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     this._populateFormFromIntent(result);
   }
 
-  private _populateFormFromIntent(intent: StrategyIntentDto): void {
+  private _populateFormFromIntent(intent: { config: StrategyConfig }): void {
     const config = intent.config;
     const templateId = config.templateId ?? (config.strategyMode === "signal" ? "custom_signal" : "grid");
     const existingName = String(this.form.get("strategyName")?.value ?? "").trim();
@@ -853,6 +860,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
           type: config.exit.stopLoss.type,
           value: config.exit.stopLoss.value ?? null,
           lookback: config.exit.stopLoss.lookback ?? null,
+          atrMultiplier: config.exit.stopLoss.atrMultiplier ?? 3,
+          trailingStopWarmup: config.exit.stopLoss.trailingStopWarmup ?? 3,
         },
         exitOnOppositeSignal: config.exit.exitOnOppositeSignal,
       },

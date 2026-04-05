@@ -42,6 +42,11 @@ export const routes: Routes = [
     loadComponent: () => import("./features/backtesting/backtest-page.component").then((m) => m.BacktestPageComponent),
     title: "Backtesting"
   },
+  {
+    path: "optimizer",
+    loadComponent: () => import("./features/optimizer/optimizer-page.component").then((m) => m.OptimizerPageComponent),
+    title: "Strategy Optimizer"
+  },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },
   { path: "**", redirectTo: "dashboard" }
 ];

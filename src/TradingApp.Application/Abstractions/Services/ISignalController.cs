@@ -12,6 +12,7 @@ public interface ISignalController
     Task<IReadOnlyList<TradingSignal>> ProcessAsync(
         StrategyEvaluation evaluation,
         MarketContext context,
+        GridState gridState,
         PositionState positionState,
         IStrategyConfig strategyConfig,
         CancellationToken cancellationToken = default);

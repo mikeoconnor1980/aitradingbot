@@ -216,6 +216,126 @@ namespace TradingApp.Persistence.Migrations
                     b.ToTable("FundingRates", (string)null);
                 });
 
+            modelBuilder.Entity("TradingApp.Domain.Entities.OptimizationResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("AverageHoldTimeMinutes")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("AverageTradePnl")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("FitnessScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("LosingTrades")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("MaxDrawdown")
+                        .HasColumnType("REAL");
+
+                    b.Property<Guid>("OptimizationRunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Rank")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SignalDescription")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StrategyConfigJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("TotalFeesPaid")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("TotalPnl")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("TotalTrades")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("WinRate")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("WinningTrades")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OptimizationRunId")
+                        .HasDatabaseName("IX_OptimizationResults_RunId");
+
+                    b.HasIndex("OptimizationRunId", "Rank")
+                        .IsUnique()
+                        .HasDatabaseName("IX_OptimizationResults_RunId_Rank");
+
+                    b.ToTable("OptimizationResults", (string)null);
+                });
+
+            modelBuilder.Entity("TradingApp.Domain.Entities.OptimizationRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CompletedCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CreatedAtUtc")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("ElapsedMs")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("EndDateUtc")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("InitialCapital")
+                        .HasColumnType("REAL");
+
+                    b.Property<int>("QualifiedCount")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("StartDateUtc")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SweepConfigJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThresholdsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TotalCombinations")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc")
+                        .HasDatabaseName("IX_OptimizationRuns_CreatedAtUtc");
+
+                    b.ToTable("OptimizationRuns", (string)null);
+                });
+
             modelBuilder.Entity("TradingApp.Domain.Entities.Strategy", b =>
                 {
                     b.Property<Guid>("Id")
@@ -344,6 +464,15 @@ namespace TradingApp.Persistence.Migrations
                         .HasDatabaseName("IX_StrategyRevisions_StrategyId_RevisionNumber");
 
                     b.ToTable("StrategyRevisions", (string)null);
+                });
+
+            modelBuilder.Entity("TradingApp.Domain.Entities.OptimizationResult", b =>
+                {
+                    b.HasOne("TradingApp.Domain.Entities.OptimizationRun", null)
+                        .WithMany()
+                        .HasForeignKey("OptimizationRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TradingApp.Domain.Entities.StrategyReview", b =>
