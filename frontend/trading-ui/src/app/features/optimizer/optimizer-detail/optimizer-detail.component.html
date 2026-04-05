@@ -8,34 +8,82 @@
     <mat-card-content class="optimizer-detail__content">
       <section class="optimizer-detail__metrics">
         <div class="optimizer-detail__metric">
-          <span class="optimizer-detail__label">Fitness</span>
+          <span class="optimizer-detail__label" matTooltip="Composite quality score blending profitability, consistency, and risk. Higher = better overall strategy. Use to compare and rank results.">Fitness</span>
           <strong>{{ result.fitnessScore | number:"1.2-2" }}</strong>
         </div>
         <div class="optimizer-detail__metric">
-          <span class="optimizer-detail__label">Total PnL</span>
+          <span class="optimizer-detail__label" matTooltip="Net dollar profit or loss across all trades. Positive = profitable strategy.">Total PnL</span>
           <strong>{{ result.totalPnl | number:"1.2-2" }}</strong>
         </div>
         <div class="optimizer-detail__metric">
-          <span class="optimizer-detail__label">Win Rate</span>
+          <span class="optimizer-detail__label" matTooltip="How often trades end in profit. 50% = half win. 100% = all trades won. Higher is better but watch trade count — 100% on 3 trades is less meaningful than 60% on 50.">Win Rate</span>
           <strong>{{ result.winRate | number:"1.0-2" }}%</strong>
         </div>
         <div class="optimizer-detail__metric">
-          <span class="optimizer-detail__label">Max Drawdown</span>
+          <span class="optimizer-detail__label" matTooltip="Worst peak-to-valley drop in portfolio value during the test. Lower = less risk. A $1000 strategy with $200 max drawdown means you'd have been down 20% at the worst point.">Max Drawdown</span>
           <strong>{{ result.maxDrawdown | number:"1.2-2" }}</strong>
         </div>
         <div class="optimizer-detail__metric">
-          <span class="optimizer-detail__label">Trades</span>
+          <span class="optimizer-detail__label" matTooltip="Total number of completed round-trip trades">Trades</span>
           <strong>{{ result.totalTrades }}</strong>
         </div>
         <div class="optimizer-detail__metric">
-          <span class="optimizer-detail__label">Avg Hold</span>
-          <strong>{{ result.averageHoldTimeMinutes | number:"1.0-0" }}m</strong>
+          <span class="optimizer-detail__label" matTooltip="Average time a position was held before closing">Avg Hold</span>
+          <strong>{{ result.averageHoldTimeMinutes | duration }}</strong>
         </div>
       </section>
 
+      @if (result.sharpeRatio != null || result.sortinoRatio != null || result.profitFactor != null || result.calmarRatio != null) {
+        <section class="optimizer-detail__metrics">
+          <h4 class="optimizer-detail__label" style="grid-column:1/-1;margin:0">Risk Metrics</h4>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Measures how consistent profits are relative to risk. Higher = more reliable returns with less variance. Below 0 = losing. 1–2 = good. 2–3 = very good. 3+ = excellent — profits are very steady.">Sharpe</span>
+            <strong>{{ result.sharpeRatio != null ? (result.sharpeRatio | number:"1.2-2") : "—" }}</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Like Sharpe but only cares about losing trades’ variability — ignores upside swings. 1–2 = acceptable. 2–5 = good. 5+ = excellent. Shows 10.00 when there are no losing trades (capped).">Sortino</span>
+            <strong>{{ result.sortinoRatio != null ? (result.sortinoRatio | number:"1.2-2") : "—" }}</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="How much you earn for every dollar you lose. E.g. 2.0 = £2 profit per £1 lost. Below 1 = losing money. 1.5–2 = good. 2–3 = very good. Shows 100.00 when there are no losing trades (capped).">Profit Factor</span>
+            <strong>{{ result.profitFactor != null ? (result.profitFactor | number:"1.2-2") : "—" }}</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Profit relative to the worst drawdown. E.g. 5.0 = earned 5x more than the worst dip. Below 1 = drawdown exceeds total profit. 1–3 = OK. 3–5 = good. 5+ = excellent. Shows 100.00 if no drawdown (capped).">Calmar</span>
+            <strong>{{ result.calmarRatio != null ? (result.calmarRatio | number:"1.2-2") : "—" }}</strong>
+          </div>
+        </section>
+      }
+
+      @if (result.oosFitnessScore != null) {
+        <section class="optimizer-detail__metrics">
+          <h4 class="optimizer-detail__label" style="grid-column:1/-1;margin:0">Out-of-Sample</h4>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Fitness score on data the optimizer never trained on — a key indicator of whether the strategy will work live">OOS Fitness</span>
+            <strong>{{ result.oosFitnessScore | number:"1.2-2" }}</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Profit/loss on unseen out-of-sample data">OOS PnL</span>
+            <strong>{{ result.oosTotalPnl | number:"1.2-2" }}</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Win rate achieved on unseen out-of-sample data">OOS Win Rate</span>
+            <strong>{{ result.oosWinRate | number:"1.0-2" }}%</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Maximum drawdown on unseen out-of-sample data">OOS Max DD</span>
+            <strong>{{ result.oosMaxDrawdown | number:"1.2-2" }}</strong>
+          </div>
+          <div class="optimizer-detail__metric">
+            <span class="optimizer-detail__label" matTooltip="Number of trades completed on unseen out-of-sample data">OOS Trades</span>
+            <strong>{{ result.oosTotalTrades }}</strong>
+          </div>
+        </section>
+      }
+
       <section class="optimizer-detail__config-grid">
         <div class="optimizer-detail__config-item">
-          <span class="optimizer-detail__label">Entry Logic</span>
+          <span class="optimizer-detail__label" matTooltip="How multiple entry conditions are combined: 'all' requires every condition to be true (AND logic), 'any' requires at least one (OR logic)">Entry Logic</span>
           <strong>{{ strategyConfig.entryLogic ?? "n/a" }}</strong>
         </div>
         <div class="optimizer-detail__config-item">

@@ -11,6 +11,7 @@ public sealed class BacktestConfig
     public required decimal InitialCapital { get; init; }
     public required IStrategyConfig Strategy { get; init; }
     public required ExecutionConfig Execution { get; init; }
+    public string TriggerTimeframe { get; init; } = "15m";
     public int WarmupPeriod { get; init; } = 200;
     public bool EnableAuditLog { get; init; } = true;
 }

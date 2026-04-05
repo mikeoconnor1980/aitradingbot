@@ -52,7 +52,12 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef></th>
         <td mat-cell *matCellDef="let run">
-          <button mat-button type="button" (click)="onOpenResult(run.id)">Open</button>
+          @if (run.status === 'Queued' || run.status === 'Running') {
+            <button mat-button type="button" color="warn" (click)="onCancelRun(run.id)">Cancel</button>
+          } @else {
+            <button mat-button type="button" (click)="onOpenResult(run.id)">Open</button>
+          }
+          <button mat-button type="button" (click)="onReuseConfig(run.id)">Reuse Config</button>
         </td>
       </ng-container>
 

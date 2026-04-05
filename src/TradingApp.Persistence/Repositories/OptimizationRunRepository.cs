@@ -59,6 +59,7 @@ public sealed class OptimizationRunRepository : IOptimizationRunRepository
                 run.TotalCombinations,
                 run.CompletedCount,
                 run.QualifiedCount,
+                run.FailedCount,
                 run.ElapsedMs,
                 run.CreatedAtUtc,
             })
@@ -94,6 +95,7 @@ public sealed class OptimizationRunRepository : IOptimizationRunRepository
                 TotalCombinations = run.TotalCombinations,
                 CompletedCount = run.CompletedCount,
                 QualifiedCount = run.QualifiedCount,
+                FailedCount = run.FailedCount,
                 ElapsedMs = run.ElapsedMs,
                 CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(run.CreatedAtUtc).UtcDateTime,
                 TopFitnessScore = topResult?.FitnessScore,

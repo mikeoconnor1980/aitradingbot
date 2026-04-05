@@ -117,7 +117,8 @@ public sealed class StrategyScheduler
             PositionSize = _positionState.Size,
             PositionAvgEntry = _positionState.AverageEntryPrice,
             SignalsEmitted = signals.Select(signal => signal.SignalType).ToList(),
-            GridCycleId = _gridState.GridCycleId
+            GridCycleId = _gridState.GridCycleId,
+            Regime = evaluation.Regime
         });
 
         if (signals.Count == 0)

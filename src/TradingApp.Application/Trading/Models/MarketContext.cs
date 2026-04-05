@@ -16,5 +16,6 @@ public sealed class MarketContext
     public Candle? LatestFourHourCandle { get; init; }
     public required IndicatorSnapshot Indicators { get; init; }
     public IndicatorContext? IndicatorContext { get; init; }
+    public LlmContext? LlmContext { get; init; }
     public decimal AccountEquity { get; set; }
 }

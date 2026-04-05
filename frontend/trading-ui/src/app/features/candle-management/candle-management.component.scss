@@ -1,0 +1,133 @@
+$color-muted: var(--colour-muted);
+$color-text-light: var(--colour-text-primary);
+$color-positive: var(--colour-profit);
+$color-negative: var(--colour-loss);
+
+.candle-management-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+  color: $color-text-light;
+}
+
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.symbol-card {
+  .mat-mdc-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.symbol-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.symbol-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.symbol-actions {
+  margin-left: auto;
+}
+
+.ingestion-badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 500;
+
+  &--active {
+    background: rgba(45, 212, 191, 0.15);
+    color: #2dd4bf;
+  }
+}
+
+.coverage-table {
+  width: 100%;
+
+  .mat-mdc-header-cell {
+    font-weight: 600;
+  }
+}
+
+.interval-label {
+  font-family: "Roboto Mono", monospace;
+
+  &--backtest {
+    font-weight: 600;
+    color: #2dd4bf;
+  }
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+
+  &__icon {
+    font-size: 1rem;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &--ok {
+    color: $color-positive;
+  }
+
+  &--missing {
+    color: $color-negative;
+  }
+
+  &--ingesting {
+    color: #f59e0b;
+  }
+}
+
+.error-banner {
+  color: $color-negative;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.success-banner {
+  color: $color-positive;
+  padding: 0.5rem;
+  border-radius: 4px;
+  background: rgba(45, 212, 191, 0.1);
+}
+
+.error-card {
+  border-left: 3px solid $color-negative;
+}

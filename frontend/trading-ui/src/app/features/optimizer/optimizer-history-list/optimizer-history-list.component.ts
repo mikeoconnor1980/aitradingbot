@@ -31,6 +31,12 @@ export class OptimizerHistoryListComponent implements OnInit, OnChanges {
   @Output()
   public openResult = new EventEmitter<string>();
 
+  @Output()
+  public reuseConfig = new EventEmitter<string>();
+
+  @Output()
+  public cancelRun = new EventEmitter<string>();
+
   public readonly displayedColumns = ["createdAt", "symbol", "status", "progress", "qualifiedCount", "topFitnessScore", "topTotalPnl", "actions"];
   public results: OptimizationRunSummary[] = [];
   public totalCount = 0;
@@ -81,6 +87,14 @@ export class OptimizerHistoryListComponent implements OnInit, OnChanges {
 
   public onOpenResult(id: string): void {
     this.openResult.emit(id);
+  }
+
+  public onReuseConfig(id: string): void {
+    this.reuseConfig.emit(id);
+  }
+
+  public onCancelRun(id: string): void {
+    this.cancelRun.emit(id);
   }
 
   public getProgressValue(run: OptimizationRunSummary): number {

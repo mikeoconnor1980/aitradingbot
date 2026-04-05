@@ -43,6 +43,11 @@ export const routes: Routes = [
     title: "Backtesting"
   },
   {
+    path: "candle-data",
+    loadComponent: () => import("./features/candle-management/candle-management.component").then((m) => m.CandleManagementComponent),
+    title: "Candle Data"
+  },
+  {
     path: "optimizer",
     loadComponent: () => import("./features/optimizer/optimizer-page.component").then((m) => m.OptimizerPageComponent),
     title: "Strategy Optimizer"

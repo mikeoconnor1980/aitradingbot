@@ -6,6 +6,7 @@ using TradingApp.Application.Abstractions.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Optimization;
 using TradingApp.Application.Optimization.Models;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Infrastructure.Binance;
 
 namespace TradingApp.Api.Controllers;
@@ -43,6 +44,8 @@ public sealed class OptimizationsController : ApiController
 
         var bounds = BuildBounds(request);
         var thresholds = BuildThresholds(request);
+        var walkForward = BuildWalkForwardConfig(request);
+        var evolutionary = BuildEvolutionaryConfig(request);
         var config = new SweepConfig
         {
             Symbol = request.Symbol.Trim(),
@@ -53,6 +56,8 @@ public sealed class OptimizationsController : ApiController
             SampleSize = request.SampleSize,
             Bounds = bounds,
             Thresholds = thresholds,
+            WalkForward = walkForward,
+            Evolutionary = evolutionary,
         };
 
         var response = await Mediator.Send(new RunOptimizationCommand(config), cancellationToken);
@@ -88,6 +93,15 @@ public sealed class OptimizationsController : ApiController
     {
         var response = await Mediator.Send(new GetOptimizationResultQuery(id), cancellationToken);
         return Ok(response);
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await Mediator.Send(new CancelOptimizationCommand(id), cancellationToken);
+        return NoContent();
     }
 
     private static void ValidateRequest(RunOptimizationRequest request)
@@ -127,15 +141,77 @@ public sealed class OptimizationsController : ApiController
         ValidateRange(takeProfitMin, takeProfitMax, "takeProfit");
         ValidateRange(leverageMin, leverageMax, "leverage");
 
+        var directions = ParseDirections(request.Directions) ?? defaults.Directions;
+        var timeframes = FilterValid(request.Timeframes, ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d"]) ?? defaults.Timeframes;
+
+        // Map operator string arrays, filtering to known valid ones
+        var rsiOperators = FilterValid(request.RsiOperators, ["lt", "lte", "gt", "gte", "cross_above", "cross_below"]) ?? defaults.RsiOperators;
+        var macdOperators = FilterValid(request.MacdOperators, ["cross_above_signal", "cross_below_signal", "above_zero", "below_zero", "histogram_rising", "histogram_falling"]) ?? defaults.MacdOperators;
+        var priceVsEmaOperators = FilterValid(request.PriceVsEmaOperators, ["near", "above", "below", "cross_above", "cross_below", "touch"]) ?? defaults.PriceVsEmaOperators;
+
+        // ExitOnOppositeSignal: if caller sends a specific bool, only sweep that value; otherwise use defaults (both)
+        var exitOnOppositeSignalOptions = request.ExitOnOppositeSignal.HasValue
+            ? [request.ExitOnOppositeSignal.Value]
+            : defaults.ExitOnOppositeSignalOptions;
+
         return defaults with
         {
+            Directions = directions,
+            Timeframes = timeframes,
             StopLossMin = stopLossMin,
             StopLossMax = stopLossMax,
             TakeProfitMin = takeProfitMin,
             TakeProfitMax = takeProfitMax,
             LeverageMin = leverageMin,
             LeverageMax = leverageMax,
+            RsiOperators = rsiOperators,
+            RsiPeriods = request.RsiPeriods is { Length: > 0 } ? request.RsiPeriods : defaults.RsiPeriods,
+            RsiThresholds = request.RsiThresholds is { Length: > 0 } ? request.RsiThresholds : defaults.RsiThresholds,
+            MacdOperators = macdOperators,
+            MacdFastPeriods = request.MacdFastPeriods is { Length: > 0 } ? request.MacdFastPeriods : defaults.MacdFastPeriods,
+            MacdSlowPeriods = request.MacdSlowPeriods is { Length: > 0 } ? request.MacdSlowPeriods : defaults.MacdSlowPeriods,
+            PriceVsEmaOperators = priceVsEmaOperators,
+            EmaPeriods = request.EmaPeriods is { Length: > 0 } ? request.EmaPeriods : defaults.EmaPeriods,
+            EmaProximityPercents = request.EmaProximityPercents is { Length: > 0 } ? request.EmaProximityPercents : defaults.EmaProximityPercents,
+            ExitOnOppositeSignalOptions = exitOnOppositeSignalOptions,
+            MaxOpenTradesOptions = request.MaxOpenTradesOptions is { Length: > 0 } ? request.MaxOpenTradesOptions : defaults.MaxOpenTradesOptions,
+            CooldownCandlesOptions = request.CooldownCandlesOptions is { Length: > 0 } ? request.CooldownCandlesOptions : defaults.CooldownCandlesOptions,
+            IncludeTrendFilter = request.IncludeTrendFilter ?? defaults.IncludeTrendFilter,
+            PositionSizeOptions = request.PositionSizePercent.HasValue ? [request.PositionSizePercent.Value] : defaults.PositionSizeOptions,
         };
+    }
+
+    private static Direction[]? ParseDirections(string[]? input)
+    {
+        if (input is not { Length: > 0 })
+        {
+            return null;
+        }
+
+        var parsed = input
+            .Select(direction => Enum.TryParse<Direction>(direction, ignoreCase: true, out var result) ? result : (Direction?)null)
+            .Where(direction => direction.HasValue)
+            .Select(direction => direction!.Value)
+            .Distinct()
+            .ToArray();
+
+        return parsed.Length > 0 ? parsed : null;
+    }
+
+    private static string[]? FilterValid(string[]? input, string[] allowed)
+    {
+        if (input is not { Length: > 0 })
+        {
+            return null;
+        }
+
+        var filtered = input
+            .Select(value => value.Trim().ToLowerInvariant())
+            .Where(value => allowed.Contains(value))
+            .Distinct()
+            .ToArray();
+
+        return filtered.Length > 0 ? filtered : null;
     }
 
     private static FitnessThresholds BuildThresholds(RunOptimizationRequest request)
@@ -177,5 +253,62 @@ public sealed class OptimizationsController : ApiController
         {
             throw new DomainException($"{label} max must be greater than or equal to min");
         }
+    }
+
+    private static WalkForwardConfig BuildWalkForwardConfig(RunOptimizationRequest request)
+    {
+        var defaults = new WalkForwardConfig();
+
+        var splitPercent = request.WalkForwardSplitPercent ?? defaults.ValidationSplitPercent;
+
+        if (splitPercent is <= 0m or >= 100m)
+        {
+            throw new DomainException("walkForwardSplitPercent must be between 0 and 100 (exclusive)");
+        }
+
+        return new WalkForwardConfig
+        {
+            Enabled = request.WalkForwardEnabled ?? defaults.Enabled,
+            ValidationSplitPercent = splitPercent,
+        };
+    }
+
+    private static EvolutionaryConfig BuildEvolutionaryConfig(RunOptimizationRequest request)
+    {
+        var defaults = new EvolutionaryConfig();
+
+        var generations = request.EvolutionaryGenerations ?? defaults.Generations;
+        var eliteCount = request.EvolutionaryEliteCount ?? defaults.EliteCount;
+        var mutationRate = request.EvolutionaryMutationRate ?? defaults.MutationRate;
+        var crossoverRate = request.EvolutionaryCrossoverRate ?? defaults.CrossoverRate;
+
+        if (generations is < 0 or > 20)
+        {
+            throw new DomainException("evolutionaryGenerations must be between 0 and 20");
+        }
+
+        if (eliteCount < 2)
+        {
+            throw new DomainException("evolutionaryEliteCount must be at least 2");
+        }
+
+        if (mutationRate is < 0m or > 1m)
+        {
+            throw new DomainException("evolutionaryMutationRate must be between 0 and 1");
+        }
+
+        if (crossoverRate is < 0m or > 1m)
+        {
+            throw new DomainException("evolutionaryCrossoverRate must be between 0 and 1");
+        }
+
+        return new EvolutionaryConfig
+        {
+            Enabled = request.EvolutionaryEnabled ?? defaults.Enabled,
+            Generations = generations,
+            EliteCount = eliteCount,
+            MutationRate = mutationRate,
+            CrossoverRate = crossoverRate,
+        };
     }
 }

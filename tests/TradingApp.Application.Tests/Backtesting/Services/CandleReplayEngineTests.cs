@@ -139,6 +139,52 @@ public sealed class CandleReplayEngineTests
             .WithMessage("Insufficient warmup data for BTC/15m*");
     }
 
+    [TestMethod]
+    public async Task GivenFourHourTriggerTimeframe_WhenLoadAsync_ThenUsesFourHourCandlesAsTriggerSeries()
+    {
+        var config = CreateConfig(startDateUtc: 12 * OneHourMs, endDateUtc: 24 * OneHourMs, warmupPeriod: 2, triggerTimeframe: "4h");
+
+        SetupCandles("15m", CreateCandles("15m", 4 * OneHourMs, 8 * OneHourMs, 12 * OneHourMs, 16 * OneHourMs));
+        SetupCandles("1h", CreateCandles("1h", 4 * OneHourMs, 8 * OneHourMs, 12 * OneHourMs));
+        SetupCandles("4h", CreateCandles("4h", 1 * OneHourMs, 4 * OneHourMs, 8 * OneHourMs, 12 * OneHourMs, 16 * OneHourMs));
+
+        var replayData = await _sut.LoadAsync(config);
+
+        replayData.TriggerCandles.Should().BeSameAs(replayData.Candles4h);
+        replayData.TriggerTimeframe.Should().Be("4h");
+        replayData.WarmupEndIndex.Should().Be(3);
+    }
+
+    [TestMethod]
+    public async Task GivenOneHourTriggerTimeframe_WhenLoadAsync_ThenUsesOneHourCandlesAsTriggerSeries()
+    {
+        var config = CreateConfig(startDateUtc: 12 * OneHourMs, endDateUtc: 13 * OneHourMs, warmupPeriod: 2, triggerTimeframe: "1h");
+
+        SetupCandles("15m", CreateCandles("15m", 10 * OneHourMs, 11 * OneHourMs, 12 * OneHourMs));
+        SetupCandles("1h", CreateCandles("1h", 8 * OneHourMs, 10 * OneHourMs, 11 * OneHourMs, 12 * OneHourMs));
+        SetupCandles("4h", CreateCandles("4h", 4 * OneHourMs, 8 * OneHourMs));
+
+        var replayData = await _sut.LoadAsync(config);
+
+        replayData.TriggerCandles.Should().BeSameAs(replayData.Candles1h);
+        replayData.TriggerTimeframe.Should().Be("1h");
+    }
+
+    [TestMethod]
+    public async Task GivenDefaultTriggerTimeframe_WhenLoadAsync_ThenUsesFifteenMinCandlesAsTriggerSeries()
+    {
+        var config = CreateConfig(startDateUtc: 12 * OneHourMs, endDateUtc: 13 * OneHourMs, warmupPeriod: 2);
+
+        SetupCandles("15m", CreateCandles("15m", 11 * OneHourMs + 30 * 60L * 1000L, 11 * OneHourMs + 45 * 60L * 1000L, 12 * OneHourMs, 12 * OneHourMs + FifteenMinutesMs));
+        SetupCandles("1h", CreateCandles("1h", 10 * OneHourMs, 11 * OneHourMs));
+        SetupCandles("4h", CreateCandles("4h", 4 * OneHourMs, 8 * OneHourMs));
+
+        var replayData = await _sut.LoadAsync(config);
+
+        replayData.TriggerCandles.Should().BeSameAs(replayData.Candles15m);
+        replayData.TriggerTimeframe.Should().Be("15m");
+    }
+
     private void SetupCandles(string interval, IReadOnlyList<Candle> candles)
     {
         _candleRepositoryMock
@@ -152,7 +198,7 @@ public sealed class CandleReplayEngineTests
             .ReturnsAsync(candles);
     }
 
-    private static BacktestConfig CreateConfig(long startDateUtc, long endDateUtc, int warmupPeriod)
+    private static BacktestConfig CreateConfig(long startDateUtc, long endDateUtc, int warmupPeriod, string triggerTimeframe = "15m")
     {
         return new BacktestConfig
         {
@@ -161,6 +207,7 @@ public sealed class CandleReplayEngineTests
             StartDateUtc = startDateUtc,
             EndDateUtc = endDateUtc,
             InitialCapital = 10_000m,
+            TriggerTimeframe = triggerTimeframe,
             Strategy = new StrategyConfig
             {
                 SchemaVersion = 1,

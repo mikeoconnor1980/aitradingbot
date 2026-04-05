@@ -41,10 +41,23 @@ public sealed class GridStrategyEngine : IStrategyEngine
             });
         }
 
+        var regime = context.LlmContext?.DerivedRegime ?? MarketRegime.Normal;
+
+        if (regime == MarketRegime.RiskOff)
+        {
+            return Task.FromResult(new StrategyEvaluation
+            {
+                SetupDetected = false,
+                Regime = regime,
+                Reason = "Regime is RiskOff — new grid entries are blocked."
+            });
+        }
+
         return Task.FromResult(new StrategyEvaluation
         {
             SetupDetected = true,
-            Reason = "Grid setup available."
+            Regime = regime,
+            Reason = $"Grid setup available. Regime: {regime}."
         });
     }
 }

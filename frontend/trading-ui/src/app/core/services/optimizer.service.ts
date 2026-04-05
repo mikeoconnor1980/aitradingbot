@@ -19,4 +19,8 @@ export class OptimizerService {
   public getOptimizationList(page = 1, pageSize = 10, context?: HttpContext): Observable<OptimizationListResult> {
     return this._apiClient.get<OptimizationListResult>(`optimizations?page=${page}&pageSize=${pageSize}`, context);
   }
+
+  public cancelOptimization(id: string, context?: HttpContext): Observable<void> {
+    return this._apiClient.post<void>(`optimizations/${encodeURIComponent(id)}/cancel`, null, context);
+  }
 }

@@ -42,10 +42,12 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         for (var sampleIndex = 0; sampleIndex < sampleSize; sampleIndex++)
         {
             var template = Templates[rng.Next(Templates.Length)];
-            var conditions = GenerateEntryConditions(template, bounds, rng, sampleIndex);
+            var direction = NextFrom(bounds.Directions, rng);
+            var timeframe = NextFrom(bounds.Timeframes, rng);
+            var conditions = GenerateEntryConditions(template, bounds, rng, sampleIndex, direction);
             var exit = GenerateExitConfig(bounds, rng);
             var risk = GenerateRiskConfig(bounds, rng);
-            var trendFilter = GenerateTrendFilter(bounds, rng);
+            var trendFilter = GenerateTrendFilter(bounds, rng, direction);
 
             var config = new StrategyConfig
             {
@@ -54,8 +56,8 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
                 StrategyName = $"Optimizer-{sampleIndex + 1}",
                 Exchange = "Hyperliquid",
                 Market = symbol,
-                Timeframe = "15m",
-                Direction = Direction.Long,
+                Timeframe = timeframe,
+                Direction = direction,
                 Enabled = true,
                 TemplateId = "custom_signal",
                 EntryLogic = template.EntryLogic,
@@ -65,7 +67,7 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
                 Risk = risk,
             };
 
-            results.Add(new GeneratedStrategy(config, BuildDescription(conditions, template.EntryLogic, exit, risk, trendFilter)));
+            results.Add(new GeneratedStrategy(config, BuildDescription(conditions, template.EntryLogic, exit, risk, trendFilter, direction)));
         }
 
         return results;
@@ -75,7 +77,8 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         SignalTemplate template,
         ParameterBounds bounds,
         Random rng,
-        int sampleIndex)
+        int sampleIndex,
+        Direction direction)
     {
         var conditions = new List<EntryConditionConfig>(template.ConditionTypes.Count);
 
@@ -86,41 +89,9 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
 
             conditions.Add(conditionType switch
             {
-                EntryConditionType.Rsi => new EntryConditionConfig
-                {
-                    Id = conditionId,
-                    Enabled = true,
-                    Type = EntryConditionType.Rsi,
-                    Label = "RSI Oversold",
-                    Params = new RsiParams
-                    {
-                        Period = NextFrom(bounds.RsiPeriods, rng),
-                        Operator = "lt",
-                        Value = NextFrom(bounds.RsiThresholds, rng),
-                    },
-                },
-                EntryConditionType.Macd => new EntryConditionConfig
-                {
-                    Id = conditionId,
-                    Enabled = true,
-                    Type = EntryConditionType.Macd,
-                    Label = "MACD Bullish Cross",
-                    Params = CreateMacdParams(bounds, rng),
-                },
-                EntryConditionType.PriceVsEma => new EntryConditionConfig
-                {
-                    Id = conditionId,
-                    Enabled = true,
-                    Type = EntryConditionType.PriceVsEma,
-                    Label = "Price Near EMA",
-                    Params = new PriceVsEmaParams
-                    {
-                        Period = NextFrom(bounds.EmaPeriods, rng),
-                        Operator = "near",
-                        DistanceType = "percent",
-                        DistanceValue = NextFrom(bounds.EmaProximityPercents, rng),
-                    },
-                },
+                EntryConditionType.Rsi => GenerateRsiCondition(conditionId, bounds, rng, direction),
+                EntryConditionType.Macd => GenerateMacdCondition(conditionId, bounds, rng, direction),
+                EntryConditionType.PriceVsEma => GeneratePriceVsEmaCondition(conditionId, bounds, rng),
                 _ => throw new InvalidOperationException($"Unsupported optimizer entry condition type: {conditionType}.")
             });
         }
@@ -128,8 +99,117 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         return conditions;
     }
 
-    private static MacdParams CreateMacdParams(ParameterBounds bounds, Random rng)
+    private static EntryConditionConfig GenerateRsiCondition(string conditionId, ParameterBounds bounds, Random rng, Direction direction)
     {
+        var rsiOperator = NextFrom(bounds.RsiOperators, rng);
+
+        // Adjust threshold based on operator semantics and direction
+        var threshold = NextFrom(bounds.RsiThresholds, rng);
+        var label = rsiOperator switch
+        {
+            "gt" or "gte" or "cross_above" => "RSI Overbought",
+            _ => "RSI Oversold"
+        };
+
+        // For short direction with "lt" operators, flip to overbought territory
+        if (direction == Direction.Short && rsiOperator is "lt" or "lte")
+        {
+            threshold = 100m - threshold;
+            rsiOperator = rsiOperator == "lt" ? "gt" : "gte";
+            label = "RSI Overbought";
+        }
+
+        return new EntryConditionConfig
+        {
+            Id = conditionId,
+            Enabled = true,
+            Type = EntryConditionType.Rsi,
+            Label = label,
+            Params = new RsiParams
+            {
+                Period = NextFrom(bounds.RsiPeriods, rng),
+                Operator = rsiOperator,
+                Value = threshold,
+            },
+        };
+    }
+
+    private static EntryConditionConfig GenerateMacdCondition(string conditionId, ParameterBounds bounds, Random rng, Direction direction)
+    {
+        var macdParams = CreateMacdParams(bounds, rng, direction);
+
+        var label = macdParams.Operator switch
+        {
+            "cross_above_signal" => "MACD Bullish Cross",
+            "cross_below_signal" => "MACD Bearish Cross",
+            "above_zero" => "MACD Above Zero",
+            "below_zero" => "MACD Below Zero",
+            "histogram_rising" => "MACD Histogram Rising",
+            "histogram_falling" => "MACD Histogram Falling",
+            _ => "MACD Signal"
+        };
+
+        return new EntryConditionConfig
+        {
+            Id = conditionId,
+            Enabled = true,
+            Type = EntryConditionType.Macd,
+            Label = label,
+            Params = macdParams,
+        };
+    }
+
+    private static EntryConditionConfig GeneratePriceVsEmaCondition(string conditionId, ParameterBounds bounds, Random rng)
+    {
+        var emaOperator = NextFrom(bounds.PriceVsEmaOperators, rng);
+        var period = NextFrom(bounds.EmaPeriods, rng);
+
+        var label = emaOperator switch
+        {
+            "near" => $"Price Near EMA({period})",
+            "above" => $"Price Above EMA({period})",
+            "below" => $"Price Below EMA({period})",
+            "cross_above" => $"Price Cross Above EMA({period})",
+            "cross_below" => $"Price Cross Below EMA({period})",
+            _ => $"PriceVsEma({period})"
+        };
+
+        // Only "near" uses distance parameters
+        var distanceType = emaOperator == "near" ? "percent" : "percent";
+        var distanceValue = emaOperator == "near" ? NextFrom(bounds.EmaProximityPercents, rng) : 0m;
+
+        return new EntryConditionConfig
+        {
+            Id = conditionId,
+            Enabled = true,
+            Type = EntryConditionType.PriceVsEma,
+            Label = label,
+            Params = new PriceVsEmaParams
+            {
+                Period = period,
+                Operator = emaOperator,
+                DistanceType = distanceType,
+                DistanceValue = distanceValue,
+            },
+        };
+    }
+
+    private static MacdParams CreateMacdParams(ParameterBounds bounds, Random rng, Direction direction)
+    {
+        var macdOperator = NextFrom(bounds.MacdOperators, rng);
+
+        // For short direction, flip bullish→bearish operators
+        if (direction == Direction.Short)
+        {
+            macdOperator = macdOperator switch
+            {
+                "cross_above_signal" => "cross_below_signal",
+                "above_zero" => "below_zero",
+                "histogram_rising" => "histogram_falling",
+                _ => macdOperator
+            };
+        }
+
         var attempts = 0;
 
         while (true)
@@ -145,7 +225,7 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
                     FastPeriod = fast,
                     SlowPeriod = slow,
                     SignalPeriod = signal,
-                    Operator = "cross_above_signal",
+                    Operator = macdOperator,
                 };
             }
 
@@ -173,7 +253,7 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
                 Type = ExitRuleType.FixedPercent,
                 Value = NextFromRange(bounds.StopLossMin, bounds.StopLossMax, bounds.StopLossStep, rng),
             },
-            ExitOnOppositeSignal = false,
+            ExitOnOppositeSignal = NextFrom(bounds.ExitOnOppositeSignalOptions, rng),
         };
     }
 
@@ -184,34 +264,52 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
             PositionSizeType = PositionSizeType.PercentWallet,
             PositionSizeValue = NextFrom(bounds.PositionSizeOptions, rng),
             Leverage = NextFromRange(bounds.LeverageMin, bounds.LeverageMax, bounds.LeverageStep, rng),
-            MaxOpenTrades = 1,
-            CooldownValue = 1,
+            MaxOpenTrades = NextFrom(bounds.MaxOpenTradesOptions, rng),
+            CooldownValue = NextFrom(bounds.CooldownCandlesOptions, rng),
             CooldownUnit = CooldownUnit.Candles,
             AllowSameCandleReentry = false,
         };
     }
 
-    private static TrendFilterConfig? GenerateTrendFilter(ParameterBounds bounds, Random rng)
+    private static TrendFilterConfig? GenerateTrendFilter(ParameterBounds bounds, Random rng, Direction direction)
     {
         if (!bounds.IncludeTrendFilter || bounds.TrendFilterPairs.Length == 0 || rng.Next(2) == 0)
         {
             return null;
         }
 
+        var filterType = NextFrom(bounds.TrendFilterTypes, rng);
+        var filterOperator = NextFrom(bounds.TrendFilterOperators, rng);
         var pair = NextFrom(bounds.TrendFilterPairs, rng);
+
         if (pair.Length != 2 || pair[0] <= 0 || pair[1] <= 0 || pair[0] >= pair[1])
         {
             throw new InvalidOperationException("Trend filter pairs must contain exactly two ascending positive periods.");
         }
 
+        // PriceAboveEma uses only the slow period as a single EMA
+        if (filterType == TrendFilterType.PriceAboveEma)
+        {
+            return new TrendFilterConfig
+            {
+                Enabled = true,
+                Type = filterType,
+                Period = pair[1],
+                FastPeriod = 0,
+                SlowPeriod = 0,
+                Operator = filterOperator,
+                AppliesTo = direction,
+            };
+        }
+
         return new TrendFilterConfig
         {
             Enabled = true,
-            Type = TrendFilterType.EmaCross,
+            Type = filterType,
             FastPeriod = pair[0],
             SlowPeriod = pair[1],
-            Operator = TrendOperator.Above,
-            AppliesTo = Direction.Long,
+            Operator = filterOperator,
+            AppliesTo = direction,
         };
     }
 
@@ -220,17 +318,34 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         EntryLogic entryLogic,
         ExitConfig exit,
         RiskConfig risk,
-        TrendFilterConfig? trendFilter)
+        TrendFilterConfig? trendFilter,
+        Direction direction)
     {
         var parts = conditions.Select(BuildConditionDescription).ToList();
         var separator = entryLogic == EntryLogic.All ? " + " : " | ";
         var description = string.Join(separator, parts);
 
         description += $" | {entryLogic} | SL:{Format(exit.StopLoss.Value)}% TP:{Format(exit.TakeProfit.Value)}% Lev:{Format(risk.Leverage)}x Size:{Format(risk.PositionSizeValue)}%";
+        description += $" | {direction.ToString().ToUpperInvariant()}";
+
+        if (exit.ExitOnOppositeSignal)
+        {
+            description += " | ExitOnOpp";
+        }
+
+        if (risk.MaxOpenTrades > 1)
+        {
+            description += $" | MaxTrades:{risk.MaxOpenTrades}";
+        }
 
         if (trendFilter is not null && trendFilter.Enabled)
         {
-            description += $" | Trend:EMA({trendFilter.FastPeriod},{trendFilter.SlowPeriod})";
+            var trendDesc = trendFilter.Type switch
+            {
+                TrendFilterType.PriceAboveEma => $"Trend:PriceEMA({trendFilter.Period})",
+                _ => $"Trend:EMA({trendFilter.FastPeriod},{trendFilter.SlowPeriod})"
+            };
+            description += $" | {trendDesc} {trendFilter.Operator}";
         }
 
         return description;
@@ -242,7 +357,8 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         {
             RsiParams rsi => $"RSI({rsi.Period}) {rsi.Operator} {Format(rsi.Value)}",
             MacdParams macd => $"MACD({macd.FastPeriod},{macd.SlowPeriod},{macd.SignalPeriod}) {macd.Operator}",
-            PriceVsEmaParams priceVsEma => $"Price near EMA({priceVsEma.Period}) <= {Format(priceVsEma.DistanceValue)}%",
+            PriceVsEmaParams { Operator: "near" } priceVsEma => $"Price near EMA({priceVsEma.Period}) <= {Format(priceVsEma.DistanceValue)}%",
+            PriceVsEmaParams priceVsEma => $"Price {priceVsEma.Operator} EMA({priceVsEma.Period})",
             _ => condition.Type.ToString(),
         };
     }
@@ -286,14 +402,21 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         EnsureRange(bounds.TakeProfitMin, bounds.TakeProfitMax, bounds.TakeProfitStep, nameof(bounds.TakeProfitMin));
         EnsureRange(bounds.LeverageMin, bounds.LeverageMax, bounds.LeverageStep, nameof(bounds.LeverageMin));
 
-        if (bounds.PositionSizeOptions.Length == 0
+        if (bounds.Directions.Length == 0
+            || bounds.PositionSizeOptions.Length == 0
             || bounds.RsiPeriods.Length == 0
             || bounds.RsiThresholds.Length == 0
+            || bounds.RsiOperators.Length == 0
             || bounds.MacdFastPeriods.Length == 0
             || bounds.MacdSlowPeriods.Length == 0
             || bounds.MacdSignalPeriods.Length == 0
+            || bounds.MacdOperators.Length == 0
             || bounds.EmaPeriods.Length == 0
-            || bounds.EmaProximityPercents.Length == 0)
+            || bounds.EmaProximityPercents.Length == 0
+            || bounds.PriceVsEmaOperators.Length == 0
+            || bounds.ExitOnOppositeSignalOptions.Length == 0
+            || bounds.MaxOpenTradesOptions.Length == 0
+            || bounds.CooldownCandlesOptions.Length == 0)
         {
             throw new InvalidOperationException("Optimizer bounds must include at least one option for each parameter family.");
         }

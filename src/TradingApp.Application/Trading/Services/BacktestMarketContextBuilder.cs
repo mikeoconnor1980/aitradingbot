@@ -38,6 +38,9 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
     // S/R previous result cache (keyed by lookback_strength)
     private readonly Dictionary<string, SupportResistanceResult?> _prevSr = new(StringComparer.Ordinal);
 
+    // Synthetic regime provider for LLM context in backtest mode
+    private readonly SyntheticRegimeProvider _syntheticRegimeProvider = new();
+
     private bool _dynamicInitialized;
 
     public void UpdateIndicators(Candle candle)
@@ -51,6 +54,7 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
         _emaTrend.Add(candle.Close);
         _rsi14.Add(candle.Close);
         _atr14.Add(candle.High, candle.Low, candle.Close);
+        _syntheticRegimeProvider.Update(_atr14.Current ?? 0m);
 
         if (_dynamicInitialized)
         {
@@ -74,6 +78,17 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 
         var indicatorContext = BuildIndicatorContext(requiredIndicators);
 
+        var indicators = new IndicatorSnapshot
+        {
+            EmaFast = _emaFast.Current ?? 0m,
+            EmaSlow = _emaSlow.Current ?? 0m,
+            EmaTrend = latestFourHourCandle?.Close ?? _emaTrend.Current ?? 0m,
+            Rsi = _rsi14.Current ?? 50m,
+            Atr = _atr14.Current ?? 0m
+        };
+
+        var llmContext = _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp);
+
         return new MarketContext
         {
             Symbol = triggerCandle.Symbol,
@@ -82,15 +97,9 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             PreviousCandle = GetPreviousCandle(triggerCandle),
             LatestOneHourCandle = latestOneHourCandle,
             LatestFourHourCandle = latestFourHourCandle,
-            Indicators = new IndicatorSnapshot
-            {
-                EmaFast = _emaFast.Current ?? 0m,
-                EmaSlow = _emaSlow.Current ?? 0m,
-                EmaTrend = latestFourHourCandle?.Close ?? _emaTrend.Current ?? 0m,
-                Rsi = _rsi14.Current ?? 50m,
-                Atr = _atr14.Current ?? 0m
-            },
-            IndicatorContext = indicatorContext
+            Indicators = indicators,
+            IndicatorContext = indicatorContext,
+            LlmContext = llmContext
         };
     }
 

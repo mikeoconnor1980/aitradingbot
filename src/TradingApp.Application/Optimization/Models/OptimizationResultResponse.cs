@@ -15,4 +15,13 @@ public sealed class OptimizationResultResponse
     public required decimal TotalFeesPaid { get; init; }
     public required decimal AverageTradePnl { get; init; }
     public required double AverageHoldTimeMinutes { get; init; }
+    public decimal? SharpeRatio { get; init; }
+    public decimal? SortinoRatio { get; init; }
+    public decimal? ProfitFactor { get; init; }
+    public decimal? CalmarRatio { get; init; }
+    public decimal? OosTotalPnl { get; init; }
+    public decimal? OosWinRate { get; init; }
+    public decimal? OosMaxDrawdown { get; init; }
+    public int? OosTotalTrades { get; init; }
+    public decimal? OosFitnessScore { get; init; }
 }

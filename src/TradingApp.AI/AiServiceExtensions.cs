@@ -24,6 +24,11 @@ public static class AiServiceExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services.AddOptions<LlmContextOptions>()
+            .Bind(configuration.GetSection(LlmContextOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddHttpClient<ILlmClient, OpenAiCompatibleLlmClient>((serviceProvider, client) =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<LlmOptions>>().Value;
@@ -52,8 +57,23 @@ public static class AiServiceExtensions
             }
         });
 
+        services.AddHttpClient<ILlmContextClient, LlmContextClient>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<LlmContextOptions>>().Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+
+            if (!string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", options.ApiKey);
+            }
+        });
+
         services.AddScoped<IStrategyInterpreter, StrategyInterpreter>();
         services.AddScoped<IStrategyReviewer, StrategyReviewer>();
+        services.AddSingleton<ILlmContextProvider, LlmContextProvider>();
 
         return services;
     }

@@ -6,4 +6,5 @@ public enum StrategyEntryPoint
     NaturalLanguage,
     PineImport,
     Migration,
+    Optimizer,
 }

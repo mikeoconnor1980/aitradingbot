@@ -22,9 +22,11 @@ internal static class OptimizationRunResponseMapper
             TotalCombinations = run.TotalCombinations,
             CompletedCount = run.CompletedCount,
             QualifiedCount = run.QualifiedCount,
+            FailedCount = run.FailedCount,
             ElapsedMs = run.ElapsedMs,
             ErrorMessage = run.ErrorMessage,
             CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(run.CreatedAtUtc).UtcDateTime,
+            SweepConfigJson = run.SweepConfigJson,
             Results = (results ?? []).OrderBy(result => result.Rank).Select(ToResponse).ToList(),
         };
     }
@@ -48,6 +50,15 @@ internal static class OptimizationRunResponseMapper
             TotalFeesPaid = result.TotalFeesPaid,
             AverageTradePnl = result.AverageTradePnl,
             AverageHoldTimeMinutes = result.AverageHoldTimeMinutes,
+            SharpeRatio = result.SharpeRatio,
+            SortinoRatio = result.SortinoRatio,
+            ProfitFactor = result.ProfitFactor,
+            CalmarRatio = result.CalmarRatio,
+            OosTotalPnl = result.OosTotalPnl,
+            OosWinRate = result.OosWinRate,
+            OosMaxDrawdown = result.OosMaxDrawdown,
+            OosTotalTrades = result.OosTotalTrades,
+            OosFitnessScore = result.OosFitnessScore,
         };
     }
 }

@@ -220,6 +220,30 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(result => result.AverageTradePnl)
                 .HasConversion<double>();
 
+            entity.Property(result => result.OosTotalPnl)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.OosWinRate)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.OosMaxDrawdown)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.OosFitnessScore)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.SharpeRatio)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.SortinoRatio)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.ProfitFactor)
+                .HasConversion<double?>();
+
+            entity.Property(result => result.CalmarRatio)
+                .HasConversion<double?>();
+
             entity.HasOne<OptimizationRun>()
                 .WithMany()
                 .HasForeignKey(result => result.OptimizationRunId)

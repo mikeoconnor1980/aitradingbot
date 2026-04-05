@@ -5,12 +5,14 @@
 
   <mat-card-content>
     <form [formGroup]="form" class="optimizer-config-form__grid">
+
+      <!-- Market Settings -->
       <section class="optimizer-config-form__section">
         <h3 class="optimizer-config-form__section-title">Market Settings</h3>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Symbol</mat-label>
-          <input matInput formControlName="symbol" placeholder="BTCUSDT">
+          <input matInput formControlName="symbol" placeholder="BTC">
           @if (hasControlError("symbol")) {
             <mat-error>{{ getControlErrorMessage("symbol") }}</mat-error>
           }
@@ -47,66 +49,180 @@
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Sample Size</mat-label>
           <input matInput type="number" step="10" formControlName="sampleSize">
+          <mat-icon matSuffix matTooltip="Number of random parameter combinations to test from the total search space. Higher = more thorough but slower." class="optimizer-config-form__info-icon">info_outline</mat-icon>
           @if (hasControlError("sampleSize")) {
             <mat-error>{{ getControlErrorMessage("sampleSize") }}</mat-error>
           }
         </mat-form-field>
       </section>
 
+      <!-- Direction -->
       <section class="optimizer-config-form__section">
-        <h3 class="optimizer-config-form__section-title">Parameter Bounds</h3>
+        <h3 class="optimizer-config-form__section-title">Direction</h3>
+        <mat-radio-group formControlName="direction" color="primary" class="optimizer-config-form__radio-row">
+          <mat-radio-button value="Long">Long</mat-radio-button>
+          <mat-radio-button value="Short">Short</mat-radio-button>
+        </mat-radio-group>
+      </section>
 
+      <!-- Timeframes -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Timeframes</h3>
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Stop Loss Min (%)</mat-label>
-          <input matInput type="number" step="0.1" formControlName="stopLossMin">
-          @if (hasControlError("stopLossMin")) {
-            <mat-error>{{ getControlErrorMessage("stopLossMin") }}</mat-error>
+          <mat-label>Timeframes</mat-label>
+          <mat-select formControlName="timeframes" multiple>
+            @for (tf of availableTimeframes; track tf.value) {
+              <mat-option [value]="tf.value">{{ tf.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </section>
+
+      <!-- Parameter Bounds (Range Sliders) -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Parameter Bounds
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Ranges the optimizer will sweep through when generating strategy combinations">info_outline</mat-icon>
+        </h3>
+
+        <div class="optimizer-config-form__range-group">
+          <label class="optimizer-config-form__range-label">
+            Stop Loss: {{ form.controls.stopLossMin.value }}% — {{ form.controls.stopLossMax.value }}%
+          </label>
+          <mat-slider min="0.5" max="10" step="0.5" discrete [displayWith]="formatSliderLabel">
+            <input matSliderStartThumb [formControl]="form.controls.stopLossMin">
+            <input matSliderEndThumb [formControl]="form.controls.stopLossMax">
+          </mat-slider>
+        </div>
+
+        <div class="optimizer-config-form__range-group">
+          <label class="optimizer-config-form__range-label">
+            Take Profit: {{ form.controls.takeProfitMin.value }}% — {{ form.controls.takeProfitMax.value }}%
+          </label>
+          <mat-slider min="0.5" max="15" step="0.5" discrete [displayWith]="formatSliderLabel">
+            <input matSliderStartThumb [formControl]="form.controls.takeProfitMin">
+            <input matSliderEndThumb [formControl]="form.controls.takeProfitMax">
+          </mat-slider>
+        </div>
+
+        <mat-form-field appearance="outline" class="optimizer-config-form__field--narrow">
+          <mat-label>Leverage (x)</mat-label>
+          <input matInput type="number" [formControl]="form.controls.leverage">
+          @if (hasControlError("leverage")) {
+            <mat-error>{{ getControlErrorMessage("leverage") }}</mat-error>
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Stop Loss Max (%)</mat-label>
-          <input matInput type="number" step="0.1" formControlName="stopLossMax">
-          @if (hasControlError("stopLossMax")) {
-            <mat-error>{{ getControlErrorMessage("stopLossMax") }}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Take Profit Min (%)</mat-label>
-          <input matInput type="number" step="0.1" formControlName="takeProfitMin">
-          @if (hasControlError("takeProfitMin")) {
-            <mat-error>{{ getControlErrorMessage("takeProfitMin") }}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Take Profit Max (%)</mat-label>
-          <input matInput type="number" step="0.1" formControlName="takeProfitMax">
-          @if (hasControlError("takeProfitMax")) {
-            <mat-error>{{ getControlErrorMessage("takeProfitMax") }}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Leverage Min</mat-label>
-          <input matInput type="number" step="1" formControlName="leverageMin">
-          @if (hasControlError("leverageMin")) {
-            <mat-error>{{ getControlErrorMessage("leverageMin") }}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Leverage Max</mat-label>
-          <input matInput type="number" step="1" formControlName="leverageMax">
-          @if (hasControlError("leverageMax")) {
-            <mat-error>{{ getControlErrorMessage("leverageMax") }}</mat-error>
+        <mat-form-field appearance="outline" class="optimizer-config-form__field--narrow">
+          <mat-label>Position Size (%)</mat-label>
+          <input matInput type="number" [formControl]="form.controls.positionSizePercent">
+          @if (hasControlError("positionSizePercent")) {
+            <mat-error>{{ getControlErrorMessage("positionSizePercent") }}</mat-error>
           }
         </mat-form-field>
       </section>
 
+      <!-- RSI Operators -->
       <section class="optimizer-config-form__section">
-        <h3 class="optimizer-config-form__section-title">Fitness Thresholds</h3>
+        <h3 class="optimizer-config-form__section-title">RSI
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Relative Strength Index — a momentum oscillator (0–100) measuring speed and magnitude of price changes">info_outline</mat-icon>
+        </h3>
+        <div class="optimizer-config-form__chip-group">
+          <label class="optimizer-config-form__chip-label">Periods</label>
+          <mat-chip-listbox multiple [formControl]="form.controls.rsiPeriods">
+            @for (p of availableRsiPeriods; track p) {
+              <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+        <div class="optimizer-config-form__chip-group">
+          <label class="optimizer-config-form__chip-label">Thresholds</label>
+          <mat-chip-listbox multiple [formControl]="form.controls.rsiThresholds">
+            @for (t of availableRsiThresholds; track t) {
+              <mat-chip-option [value]="t">{{ t }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+        <div class="optimizer-config-form__checkbox-row">
+          @for (opt of filteredRsiOptions; track opt.key) {
+            <mat-checkbox [formControlName]="opt.controlName" color="primary">{{ opt.label }}</mat-checkbox>
+          }
+        </div>
+      </section>
+
+      <!-- MACD Operators -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">MACD
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Moving Average Convergence Divergence — a trend-following momentum indicator using the difference between fast and slow exponential moving averages">info_outline</mat-icon>
+        </h3>
+        <div class="optimizer-config-form__chip-group">
+          <label class="optimizer-config-form__chip-label">Fast Periods</label>
+          <mat-chip-listbox multiple [formControl]="form.controls.macdFastPeriods">
+            @for (p of availableMacdFastPeriods; track p) {
+              <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+        <div class="optimizer-config-form__chip-group">
+          <label class="optimizer-config-form__chip-label">Slow Periods</label>
+          <mat-chip-listbox multiple [formControl]="form.controls.macdSlowPeriods">
+            @for (p of availableMacdSlowPeriods; track p) {
+              <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+        <div class="optimizer-config-form__checkbox-row">
+          @for (opt of filteredMacdOptions; track opt.key) {
+            <mat-checkbox [formControlName]="opt.controlName" color="primary">{{ opt.label }}</mat-checkbox>
+          }
+        </div>
+      </section>
+
+      <!-- Price vs EMA Operators -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Price vs EMA
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Exponential Moving Average — a smoothed average of recent prices. Tests whether price is near, above, or below the EMA.">info_outline</mat-icon>
+        </h3>
+        <div class="optimizer-config-form__chip-group">
+          <label class="optimizer-config-form__chip-label">EMA Periods</label>
+          <mat-chip-listbox multiple [formControl]="form.controls.emaPeriods">
+            @for (p of availableEmaPeriods; track p) {
+              <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+        <div class="optimizer-config-form__chip-group">
+          <label class="optimizer-config-form__chip-label">Proximity (%)</label>
+          <mat-chip-listbox multiple [formControl]="form.controls.emaProximityPercents">
+            @for (p of availableEmaProximity; track p) {
+              <mat-chip-option [value]="p">{{ p }}%</mat-chip-option>
+            }
+          </mat-chip-listbox>
+        </div>
+        <div class="optimizer-config-form__checkbox-row">
+          @for (opt of filteredEmaOptions; track opt.key) {
+            <mat-checkbox [formControlName]="opt.controlName" color="primary">{{ opt.label }}</mat-checkbox>
+          }
+        </div>
+      </section>
+
+      <!-- Exit & Risk Options -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Exit & Risk Options
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Controls how positions are closed and risk managed">info_outline</mat-icon>
+        </h3>
+        <div class="optimizer-config-form__checkbox-row">
+          <mat-checkbox formControlName="exitOnOppositeSignal" color="primary"
+            matTooltip="Close the position when entry conditions trigger in the opposite direction">Exit on Opposite Signal</mat-checkbox>
+          <mat-checkbox formControlName="includeTrendFilter" color="primary"
+            matTooltip="Add an EMA-based trend filter to avoid counter-trend entries">Include Trend Filter</mat-checkbox>
+        </div>
+      </section>
+
+      <!-- Fitness Thresholds -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Fitness Thresholds
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Minimum quality criteria — combinations that fail any threshold are discarded before ranking">info_outline</mat-icon>
+        </h3>
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>Minimum Win Rate (%)</mat-label>
@@ -133,6 +249,72 @@
         </mat-form-field>
       </section>
 
+      <!-- Walk-Forward Validation -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Walk-Forward Validation
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Splits historical data into in-sample (training) and out-of-sample (unseen) periods to detect overfitting. A strategy that performs well OOS is more likely to work live.">info_outline</mat-icon>
+        </h3>
+        <div class="optimizer-config-form__checkbox-row">
+          <mat-checkbox formControlName="walkForwardEnabled" color="primary"
+            matTooltip="Reserve a portion of data that the optimizer never trains on, then validate top results against it">Enable Walk-Forward OOS Validation</mat-checkbox>
+        </div>
+        @if (form.controls.walkForwardEnabled.value) {
+          <div class="optimizer-config-form__range-group">
+            <label class="optimizer-config-form__range-label">
+              OOS Split: {{ form.controls.walkForwardSplitPercent.value }}%
+              <mat-icon class="optimizer-config-form__info-icon" matTooltip="Percentage of historical data reserved for out-of-sample validation. E.g. 20% means the last 20% of data is unseen by the optimizer.">info_outline</mat-icon>
+            </label>
+            <mat-slider min="5" max="50" step="5" discrete [displayWith]="formatSliderLabel">
+              <input matSliderThumb [formControl]="form.controls.walkForwardSplitPercent">
+            </mat-slider>
+          </div>
+        }
+      </section>
+
+      <!-- Evolutionary Optimization -->
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Evolutionary Optimization
+          <mat-icon class="optimizer-config-form__info-icon" matTooltip="Uses genetic algorithm breeding to evolve better strategies across generations — top performers are crossed and mutated to explore the search space more efficiently">info_outline</mat-icon>
+        </h3>
+        <div class="optimizer-config-form__checkbox-row">
+          <mat-checkbox formControlName="evolutionaryEnabled" color="primary"
+            matTooltip="After the initial random sweep, breed top strategies across multiple generations to find better combinations">Enable Evolutionary Breeding</mat-checkbox>
+        </div>
+        @if (form.controls.evolutionaryEnabled.value) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Generations</mat-label>
+            <input matInput type="number" step="1" formControlName="evolutionaryGenerations">
+            <mat-icon matSuffix matTooltip="Number of breeding cycles to run. Each generation creates new offspring from the best strategies." class="optimizer-config-form__info-icon">info_outline</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Elite Count</mat-label>
+            <input matInput type="number" step="1" formControlName="evolutionaryEliteCount">
+            <mat-icon matSuffix matTooltip="Number of top strategies preserved unchanged into the next generation (elitism prevents losing the best solutions)" class="optimizer-config-form__info-icon">info_outline</mat-icon>
+          </mat-form-field>
+
+          <div class="optimizer-config-form__range-group">
+            <label class="optimizer-config-form__range-label">
+              Mutation Rate: {{ form.controls.evolutionaryMutationRate.value }}%
+              <mat-icon class="optimizer-config-form__info-icon" matTooltip="Probability of randomly changing a parameter in offspring. Higher = more exploration, lower = more exploitation.">info_outline</mat-icon>
+            </label>
+            <mat-slider min="0" max="100" step="5" discrete [displayWith]="formatSliderLabel">
+              <input matSliderThumb [formControl]="form.controls.evolutionaryMutationRate">
+            </mat-slider>
+          </div>
+
+          <div class="optimizer-config-form__range-group">
+            <label class="optimizer-config-form__range-label">
+              Crossover Rate: {{ form.controls.evolutionaryCrossoverRate.value }}%
+              <mat-icon class="optimizer-config-form__info-icon" matTooltip="Probability of combining parameters from two parent strategies to create offspring">info_outline</mat-icon>
+            </label>
+            <mat-slider min="0" max="100" step="5" discrete [displayWith]="formatSliderLabel">
+              <input matSliderThumb [formControl]="form.controls.evolutionaryCrossoverRate">
+            </mat-slider>
+          </div>
+        }
+      </section>
+
       @if (formErrorMessage) {
         <p class="optimizer-config-form__error">{{ formErrorMessage }}</p>
       }
@@ -140,9 +322,15 @@
   </mat-card-content>
 
   <mat-card-actions class="optimizer-config-form__actions">
-    <button mat-flat-button type="button" color="primary" (click)="onSubmit()" [disabled]="isRunning || form.invalid">
+    <p class="optimizer-config-form__estimate">
+      ~{{ estimatedCombinations | number }} possible combinations
+      @if (form.controls.sampleSize.value < estimatedCombinations) {
+        · sampling {{ form.controls.sampleSize.value | number }} ({{ (form.controls.sampleSize.value / estimatedCombinations * 100) | number:"1.0-1" }}%)
+      }
+    </p>
+    <button mat-flat-button type="button" color="primary" (click)="onSubmit()" [disabled]="form.invalid">
       @if (isRunning) {
-        <mat-spinner diameter="18"></mat-spinner>
+        Queue Optimization
       } @else {
         Run Optimization
       }

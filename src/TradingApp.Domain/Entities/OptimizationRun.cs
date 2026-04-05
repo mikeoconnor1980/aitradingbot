@@ -14,6 +14,7 @@ public sealed class OptimizationRun
     public int TotalCombinations { get; private set; }
     public int CompletedCount { get; private set; }
     public int QualifiedCount { get; private set; }
+    public int FailedCount { get; private set; }
     public OptimizationStatus Status { get; private set; }
     public string? ErrorMessage { get; private set; }
     public long ElapsedMs { get; private set; }
@@ -76,14 +77,16 @@ public sealed class OptimizationRun
         TotalCombinations = total;
     }
 
-    public void MarkCompleted(int qualifiedCount, long elapsedMs)
+    public void MarkCompleted(int qualifiedCount, int failedCount, long elapsedMs)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(qualifiedCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(failedCount);
         ArgumentOutOfRangeException.ThrowIfNegative(elapsedMs);
 
         Status = OptimizationStatus.Completed;
         CompletedCount = TotalCombinations;
         QualifiedCount = qualifiedCount;
+        FailedCount = failedCount;
         ElapsedMs = elapsedMs;
         ErrorMessage = null;
     }
@@ -94,5 +97,11 @@ public sealed class OptimizationRun
 
         Status = OptimizationStatus.Failed;
         ErrorMessage = errorMessage;
+    }
+
+    public void MarkCancelled()
+    {
+        Status = OptimizationStatus.Cancelled;
+        ErrorMessage = null;
     }
 }

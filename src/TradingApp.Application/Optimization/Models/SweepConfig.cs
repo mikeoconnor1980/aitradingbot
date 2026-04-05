@@ -11,4 +11,6 @@ public sealed record SweepConfig
     public int MaxDegreeOfParallelism { get; init; }
     public ParameterBounds Bounds { get; init; } = new();
     public FitnessThresholds Thresholds { get; init; } = new();
+    public WalkForwardConfig WalkForward { get; init; } = new();
+    public EvolutionaryConfig Evolutionary { get; init; } = new();
 }

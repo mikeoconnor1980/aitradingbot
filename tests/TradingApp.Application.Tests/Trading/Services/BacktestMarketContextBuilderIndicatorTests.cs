@@ -1,4 +1,5 @@
 using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 
@@ -103,6 +104,29 @@ public sealed class BacktestMarketContextBuilderIndicatorTests
         result.IndicatorContext.Should().NotBeNull();
         result.IndicatorContext!.GetSma(5).Should().Be(107m);
         result.IndicatorContext.GetPreviousSma(5).Should().Be(106m);
+    }
+
+    [TestMethod]
+    public void GivenSufficientCandles_WhenBuild_ThenLlmContextIsPopulated()
+    {
+        var sut = new BacktestMarketContextBuilder();
+        var candles = CreateCandles(100);
+
+        foreach (var candle in candles)
+        {
+            sut.UpdateIndicators(candle);
+        }
+
+        var result = sut.Build(candles[^1], null, null);
+
+        result.LlmContext.Should().NotBeNull();
+        result.LlmContext!.DerivedRegime.Should().BeOneOf(
+            MarketRegime.Aggressive,
+            MarketRegime.Normal,
+            MarketRegime.Defensive,
+            MarketRegime.RiskOff);
+        result.LlmContext.Summary.Should().StartWith("Synthetic:");
+        result.LlmContext.GeneratedAtUtc.Should().Be(candles[^1].Timestamp);
     }
 
     private static List<Candle> CreateCandles(int count)

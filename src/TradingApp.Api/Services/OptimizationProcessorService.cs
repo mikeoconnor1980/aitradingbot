@@ -14,17 +14,20 @@ namespace TradingApp.Api.Services;
 public sealed class OptimizationProcessorService : BackgroundService
 {
     private readonly OptimizationJobQueue _queue;
+    private readonly OptimizationCancellationRegistry _cancellationRegistry;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHubContext<MarketDataHub> _hubContext;
     private readonly ILogger<OptimizationProcessorService> _logger;
 
     public OptimizationProcessorService(
         OptimizationJobQueue queue,
+        OptimizationCancellationRegistry cancellationRegistry,
         IServiceScopeFactory scopeFactory,
         IHubContext<MarketDataHub> hubContext,
         ILogger<OptimizationProcessorService> logger)
     {
         _queue = queue;
+        _cancellationRegistry = cancellationRegistry;
         _scopeFactory = scopeFactory;
         _hubContext = hubContext;
         _logger = logger;
@@ -66,6 +69,17 @@ public sealed class OptimizationProcessorService : BackgroundService
             return;
         }
 
+        if (run.Status == Domain.Enums.OptimizationStatus.Cancelled)
+        {
+            _logger.LogInformation("Optimization run {OptimizationRunId} was cancelled before processing, skipping", job.OptimizationRunId);
+            await BroadcastProgressAsync(run);
+            return;
+        }
+
+        using var jobCts = _cancellationRegistry.Register(job.OptimizationRunId);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, jobCts.Token);
+        var jobToken = linkedCts.Token;
+
         run.MarkRunning();
         await repository.UpdateAsync(run, stoppingToken);
         await BroadcastProgressAsync(run);
@@ -76,7 +90,7 @@ public sealed class OptimizationProcessorService : BackgroundService
 
         try
         {
-            var result = await sweepRunner.RunAsync(job.Config, OnProgress, stoppingToken);
+            var result = await sweepRunner.RunAsync(job.Config, OnProgress, jobToken);
             await Task.WhenAll(progressTasks);
 
             var resultEntities = result.TopResults
@@ -94,13 +108,22 @@ public sealed class OptimizationProcessorService : BackgroundService
                     ranked.BacktestResult.LosingTrades,
                     ranked.BacktestResult.TotalFeesPaid,
                     ranked.BacktestResult.AverageTradePnL,
-                    ranked.BacktestResult.AverageHoldTime.TotalMinutes))
+                    ranked.BacktestResult.AverageHoldTime.TotalMinutes,
+                    ranked.OutOfSample?.TotalPnl,
+                    ranked.OutOfSample?.WinRate,
+                    ranked.OutOfSample?.MaxDrawdown,
+                    ranked.OutOfSample?.TotalTrades,
+                    ranked.OutOfSample?.FitnessScore,
+                    ranked.Metrics?.SharpeRatio,
+                    ranked.Metrics?.SortinoRatio,
+                    ranked.Metrics?.ProfitFactor,
+                    ranked.Metrics?.CalmarRatio))
                 .ToList();
 
             await repository.AddResultsAsync(resultEntities, stoppingToken);
 
             stopwatch.Stop();
-            run.MarkCompleted(result.TotalQualified, Math.Max(1, stopwatch.ElapsedMilliseconds));
+            run.MarkCompleted(result.TotalQualified, result.TotalFailed, Math.Max(1, stopwatch.ElapsedMilliseconds));
             await repository.UpdateAsync(run, stoppingToken);
             await BroadcastProgressAsync(run);
 
@@ -117,6 +140,13 @@ public sealed class OptimizationProcessorService : BackgroundService
             await BroadcastProgressAsync(run);
             throw;
         }
+        catch (OperationCanceledException) when (jobCts.IsCancellationRequested)
+        {
+            _logger.LogInformation("Optimization {OptimizationRunId} was cancelled by user", run.Id);
+            run.MarkCancelled();
+            await repository.UpdateAsync(run, CancellationToken.None);
+            await BroadcastProgressAsync(run);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Optimization {OptimizationRunId} failed", run.Id);
@@ -126,23 +156,24 @@ public sealed class OptimizationProcessorService : BackgroundService
         }
         finally
         {
+            _cancellationRegistry.Remove(job.OptimizationRunId);
             progressLock.Dispose();
         }
 
-        void OnProgress(int completed, int total)
+        void OnProgress(SweepProgress progress)
         {
-            progressTasks.Add(PersistProgressAsync(completed, total));
+            progressTasks.Add(PersistProgressAsync(progress));
         }
 
-        async Task PersistProgressAsync(int completed, int total)
+        async Task PersistProgressAsync(SweepProgress progress)
         {
-            await progressLock.WaitAsync(stoppingToken);
+            await progressLock.WaitAsync(jobToken);
 
             try
             {
-                run.UpdateProgress(completed, total);
-                await repository.UpdateAsync(run, stoppingToken);
-                await BroadcastProgressAsync(run);
+                run.UpdateProgress(progress.Completed, progress.Total);
+                await repository.UpdateAsync(run, jobToken);
+                await BroadcastProgressAsync(run, progress.Phase, progress.EstimatedRemainingMs);
             }
             catch (Exception ex)
             {
@@ -155,7 +186,7 @@ public sealed class OptimizationProcessorService : BackgroundService
         }
     }
 
-    private Task BroadcastProgressAsync(OptimizationRun run)
+    private Task BroadcastProgressAsync(OptimizationRun run, string? phase = null, long? estimatedRemainingMs = null)
     {
         return _hubContext.Clients.All.SendAsync("ReceiveOptimizationProgress", new
         {
@@ -164,6 +195,8 @@ public sealed class OptimizationProcessorService : BackgroundService
             completed = run.CompletedCount,
             total = run.TotalCombinations,
             errorMessage = run.ErrorMessage,
+            phase,
+            estimatedRemainingMs,
         });
     }
 }

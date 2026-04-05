@@ -2,12 +2,14 @@ import { DecimalPipe } from "@angular/common";
 import { Component, EventEmitter, Input, Output } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { DurationPipe } from "../../../core/pipes/duration.pipe";
 import { OptimizationResult, OptimizationRun, parseOptimizationStrategyConfig } from "../../../core/models/optimizer.model";
 
 @Component({
   selector: "app-optimizer-detail",
   standalone: true,
-  imports: [DecimalPipe, MatButtonModule, MatCardModule],
+  imports: [DecimalPipe, DurationPipe, MatButtonModule, MatCardModule, MatTooltipModule],
   templateUrl: "./optimizer-detail.component.html",
   styleUrl: "./optimizer-detail.component.scss"
 })

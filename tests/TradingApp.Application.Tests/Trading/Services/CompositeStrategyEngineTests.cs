@@ -43,7 +43,7 @@ public sealed class CompositeStrategyEngineTests
         var result = await _sut.EvaluateAsync(context, config);
 
         result.SetupDetected.Should().BeTrue();
-        result.Reason.Should().Be("Grid setup available.");
+        result.Reason.Should().StartWith("Grid setup available.");
         _conditionEvaluatorMock.Verify(
             evaluator => evaluator.Evaluate(It.IsAny<StrategyConfig>(), It.IsAny<MarketContext>()),
             Times.Never);

@@ -5,6 +5,7 @@ using TradingApp.Api.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Candles.Commands;
 using TradingApp.Application.Candles.Models;
+using TradingApp.Application.Candles.Queries;
 using TradingApp.Infrastructure.Binance;
 using TradingApp.Infrastructure.Hyperliquid;
 
@@ -16,6 +17,20 @@ public sealed class CandlesController : ApiController
     public CandlesController(IMediator mediator, IdentityService identityService)
         : base(mediator, identityService)
     {
+    }
+
+    [HttpGet("coverage")]
+    [ProducesResponseType(typeof(AllCandleCoverageResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCoverageAsync(CancellationToken cancellationToken)
+    {
+        var symbols = BinanceAssetMapper.ValidSymbols.ToList();
+        var intervals = BinanceAssetMapper.ValidIntervals.ToList();
+
+        var result = await Mediator.Send(
+            new GetAllCandleCoverageQuery(symbols, intervals),
+            cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpPost("ingest")]
