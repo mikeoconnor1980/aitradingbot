@@ -312,6 +312,16 @@ export class StrategyValidationService {
       return;
     }
 
+    if (type === "atr_trailing") {
+      const atrMultiplier = this._toNullableNumber(rule["atrMultiplier"]);
+
+      if (atrMultiplier === null || atrMultiplier <= 0) {
+        errors.push(this._error(`${fieldPath}.atrMultiplier`, "REQUIRED", `${label} ATR multiplier must be greater than 0.`));
+      }
+
+      return;
+    }
+
     const value = this._toNullableNumber(rule["value"]);
 
     if (value === null) {

@@ -1,0 +1,151 @@
+<mat-card class="optimizer-config-form">
+  <mat-card-header>
+    <mat-card-title>Configure Optimization</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" class="optimizer-config-form__grid">
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Market Settings</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Symbol</mat-label>
+          <input matInput formControlName="symbol" placeholder="BTCUSDT">
+          @if (hasControlError("symbol")) {
+            <mat-error>{{ getControlErrorMessage("symbol") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Start Date</mat-label>
+          <input matInput [matDatepicker]="startPicker" [max]="maxSelectableDate" formControlName="startDate">
+          <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+          @if (hasControlError("startDate")) {
+            <mat-error>{{ getControlErrorMessage("startDate") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>End Date</mat-label>
+          <input matInput [matDatepicker]="endPicker" [max]="maxSelectableDate" formControlName="endDate">
+          <mat-datepicker-toggle matIconSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+          @if (hasControlError("endDate")) {
+            <mat-error>{{ getControlErrorMessage("endDate") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Initial Capital ($)</mat-label>
+          <input matInput type="number" step="100" formControlName="initialCapital">
+          @if (hasControlError("initialCapital")) {
+            <mat-error>{{ getControlErrorMessage("initialCapital") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Sample Size</mat-label>
+          <input matInput type="number" step="10" formControlName="sampleSize">
+          @if (hasControlError("sampleSize")) {
+            <mat-error>{{ getControlErrorMessage("sampleSize") }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Parameter Bounds</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Stop Loss Min (%)</mat-label>
+          <input matInput type="number" step="0.1" formControlName="stopLossMin">
+          @if (hasControlError("stopLossMin")) {
+            <mat-error>{{ getControlErrorMessage("stopLossMin") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Stop Loss Max (%)</mat-label>
+          <input matInput type="number" step="0.1" formControlName="stopLossMax">
+          @if (hasControlError("stopLossMax")) {
+            <mat-error>{{ getControlErrorMessage("stopLossMax") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Take Profit Min (%)</mat-label>
+          <input matInput type="number" step="0.1" formControlName="takeProfitMin">
+          @if (hasControlError("takeProfitMin")) {
+            <mat-error>{{ getControlErrorMessage("takeProfitMin") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Take Profit Max (%)</mat-label>
+          <input matInput type="number" step="0.1" formControlName="takeProfitMax">
+          @if (hasControlError("takeProfitMax")) {
+            <mat-error>{{ getControlErrorMessage("takeProfitMax") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Leverage Min</mat-label>
+          <input matInput type="number" step="1" formControlName="leverageMin">
+          @if (hasControlError("leverageMin")) {
+            <mat-error>{{ getControlErrorMessage("leverageMin") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Leverage Max</mat-label>
+          <input matInput type="number" step="1" formControlName="leverageMax">
+          @if (hasControlError("leverageMax")) {
+            <mat-error>{{ getControlErrorMessage("leverageMax") }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      <section class="optimizer-config-form__section">
+        <h3 class="optimizer-config-form__section-title">Fitness Thresholds</h3>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Minimum Win Rate (%)</mat-label>
+          <input matInput type="number" step="1" formControlName="minWinRate">
+          @if (hasControlError("minWinRate")) {
+            <mat-error>{{ getControlErrorMessage("minWinRate") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Minimum Trades</mat-label>
+          <input matInput type="number" step="1" formControlName="minTotalTrades">
+          @if (hasControlError("minTotalTrades")) {
+            <mat-error>{{ getControlErrorMessage("minTotalTrades") }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Maximum Drawdown (%)</mat-label>
+          <input matInput type="number" step="0.1" formControlName="maxDrawdownPercent">
+          @if (hasControlError("maxDrawdownPercent")) {
+            <mat-error>{{ getControlErrorMessage("maxDrawdownPercent") }}</mat-error>
+          }
+        </mat-form-field>
+      </section>
+
+      @if (formErrorMessage) {
+        <p class="optimizer-config-form__error">{{ formErrorMessage }}</p>
+      }
+    </form>
+  </mat-card-content>
+
+  <mat-card-actions class="optimizer-config-form__actions">
+    <button mat-flat-button type="button" color="primary" (click)="onSubmit()" [disabled]="isRunning || form.invalid">
+      @if (isRunning) {
+        <mat-spinner diameter="18"></mat-spinner>
+      } @else {
+        Run Optimization
+      }
+    </button>
+  </mat-card-actions>
+</mat-card>

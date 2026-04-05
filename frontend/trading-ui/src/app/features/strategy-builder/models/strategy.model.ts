@@ -1,6 +1,6 @@
 export type StrategyMode = "grid" | "signal";
 export type Direction = "long" | "short" | "both";
-export type ExitRuleType = "fixed_percent" | "swing_low";
+export type ExitRuleType = "fixed_percent" | "swing_low" | "atr_trailing";
 export type PositionSizeType = "percent_wallet" | "fixed_notional";
 export type CooldownUnit = "candles" | "minutes";
 export type EntryMode = "auto_from_signal_candle" | "manual";
@@ -72,6 +72,8 @@ export interface ExitRuleConfig {
   type: ExitRuleType;
   value?: number | null;
   lookback?: number | null;
+  atrMultiplier?: number | null;
+  trailingStopWarmup?: number | null;
 }
 
 export interface ExitConfig {

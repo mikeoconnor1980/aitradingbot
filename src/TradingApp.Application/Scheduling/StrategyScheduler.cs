@@ -172,6 +172,7 @@ public sealed class StrategyScheduler
             return _signalController.ProcessAsync(
                 evaluation,
                 context,
+                _gridState,
                 _positionState,
                 _strategyConfig,
                 cancellationToken);

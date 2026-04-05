@@ -67,13 +67,14 @@ describe("AppComponent", () => {
     expect(linkTexts).not.toContain("Connection");
   });
 
-  it("should have exactly 5 nav links including Strategies", () => {
+  it("should have exactly 6 nav links including Optimizer and Strategies", () => {
     fixture.detectChanges();
 
     const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".app-shell__link")) as HTMLAnchorElement[];
     const linkTexts = navLinks.map((link: HTMLAnchorElement) => link.textContent?.trim() ?? "");
 
-    expect(navLinks.length).toBe(5);
+    expect(navLinks.length).toBe(6);
+    expect(linkTexts).toContain("Optimizer");
     expect(linkTexts).toContain("Strategies");
   });
 

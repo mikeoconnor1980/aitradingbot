@@ -38,6 +38,10 @@ export class ExitRulesCardComponent implements OnInit {
     return this.group.get("stopLoss.type")?.value === "swing_low";
   }
 
+  public get isAtrTrailingStopLoss(): boolean {
+    return this.group.get("stopLoss.type")?.value === "atr_trailing";
+  }
+
   private _syncDisabledState(groupName: string): void {
     const enabledControl = this.group.get(`${groupName}.enabled`);
     const valueControl = this.group.get(`${groupName}.value`);
@@ -90,25 +94,41 @@ export class ExitRulesCardComponent implements OnInit {
   private _applyStopLossType(enabled: boolean): void {
     const valueControl = this.group.get("stopLoss.value");
     const lookbackControl = this.group.get("stopLoss.lookback");
+    const atrMultiplierControl = this.group.get("stopLoss.atrMultiplier");
+    const warmupControl = this.group.get("stopLoss.trailingStopWarmup");
 
-    if (valueControl === null || lookbackControl === null) {
+    if (valueControl === null || lookbackControl === null || atrMultiplierControl === null || warmupControl === null) {
       return;
     }
 
     if (!enabled) {
       valueControl.disable();
       lookbackControl.disable();
+      atrMultiplierControl.disable();
+      warmupControl.disable();
+      return;
+    }
+
+    if (this.isAtrTrailingStopLoss) {
+      valueControl.disable();
+      lookbackControl.disable();
+      atrMultiplierControl.enable();
+      warmupControl.enable();
       return;
     }
 
     if (this.isSwingLowStopLoss) {
       valueControl.disable();
       lookbackControl.enable();
+      atrMultiplierControl.disable();
+      warmupControl.disable();
       return;
     }
 
     valueControl.enable();
     lookbackControl.disable();
+    atrMultiplierControl.disable();
+    warmupControl.disable();
   }
 
   public hasError(path: string, errorCode: string): boolean {

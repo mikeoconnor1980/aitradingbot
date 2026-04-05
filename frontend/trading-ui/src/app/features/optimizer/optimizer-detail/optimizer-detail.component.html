@@ -1,0 +1,74 @@
+@if (result && strategyConfig) {
+  <mat-card class="optimizer-detail">
+    <mat-card-header>
+      <mat-card-title>#{{ result.rank }} · {{ result.signalDescription }}</mat-card-title>
+      <mat-card-subtitle>{{ strategyConfig.market }} · {{ strategyConfig.timeframe }} · {{ strategyConfig.direction }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content class="optimizer-detail__content">
+      <section class="optimizer-detail__metrics">
+        <div class="optimizer-detail__metric">
+          <span class="optimizer-detail__label">Fitness</span>
+          <strong>{{ result.fitnessScore | number:"1.2-2" }}</strong>
+        </div>
+        <div class="optimizer-detail__metric">
+          <span class="optimizer-detail__label">Total PnL</span>
+          <strong>{{ result.totalPnl | number:"1.2-2" }}</strong>
+        </div>
+        <div class="optimizer-detail__metric">
+          <span class="optimizer-detail__label">Win Rate</span>
+          <strong>{{ result.winRate | number:"1.0-2" }}%</strong>
+        </div>
+        <div class="optimizer-detail__metric">
+          <span class="optimizer-detail__label">Max Drawdown</span>
+          <strong>{{ result.maxDrawdown | number:"1.2-2" }}</strong>
+        </div>
+        <div class="optimizer-detail__metric">
+          <span class="optimizer-detail__label">Trades</span>
+          <strong>{{ result.totalTrades }}</strong>
+        </div>
+        <div class="optimizer-detail__metric">
+          <span class="optimizer-detail__label">Avg Hold</span>
+          <strong>{{ result.averageHoldTimeMinutes | number:"1.0-0" }}m</strong>
+        </div>
+      </section>
+
+      <section class="optimizer-detail__config-grid">
+        <div class="optimizer-detail__config-item">
+          <span class="optimizer-detail__label">Entry Logic</span>
+          <strong>{{ strategyConfig.entryLogic ?? "n/a" }}</strong>
+        </div>
+        <div class="optimizer-detail__config-item">
+          <span class="optimizer-detail__label">Conditions</span>
+          <strong>{{ strategyConfig.entryConditions?.length ?? 0 }}</strong>
+        </div>
+        <div class="optimizer-detail__config-item">
+          <span class="optimizer-detail__label">Take Profit</span>
+          <strong>{{ strategyConfig.exit.takeProfit.value ?? 0 }}%</strong>
+        </div>
+        <div class="optimizer-detail__config-item">
+          <span class="optimizer-detail__label">Stop Loss</span>
+          <strong>{{ strategyConfig.exit.stopLoss.value ?? 0 }}%</strong>
+        </div>
+        <div class="optimizer-detail__config-item">
+          <span class="optimizer-detail__label">Leverage</span>
+          <strong>{{ strategyConfig.risk.leverage }}x</strong>
+        </div>
+        <div class="optimizer-detail__config-item">
+          <span class="optimizer-detail__label">Position Size</span>
+          <strong>{{ strategyConfig.risk.positionSizeValue }}</strong>
+        </div>
+      </section>
+    </mat-card-content>
+
+    <mat-card-actions class="optimizer-detail__actions">
+      <button mat-flat-button color="primary" type="button" (click)="onCreateStrategy()" [disabled]="!canCreateStrategy">
+        Create Strategy
+      </button>
+    </mat-card-actions>
+  </mat-card>
+} @else {
+  <mat-card class="optimizer-detail optimizer-detail--empty">
+    <mat-card-content>Select a ranked result to inspect its parameters.</mat-card-content>
+  </mat-card>
+}

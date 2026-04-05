@@ -83,6 +83,33 @@ public sealed class BusinessRuleValidator
                 Message = "Stop loss lookback must be > 0 when type is swing_low.",
             });
         }
+
+        if (exit.StopLoss.Enabled
+            && exit.StopLoss.Type == ExitRuleType.AtrTrailing
+            && (exit.StopLoss.AtrMultiplier is null || exit.StopLoss.AtrMultiplier <= 0))
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "exit.stopLoss.atrMultiplier",
+                Code = "SL_ATR_MULTIPLIER_REQUIRED",
+                Message = "ATR multiplier must be > 0 when type is atr_trailing.",
+            });
+        }
+
+        if (exit.StopLoss.Enabled
+            && exit.StopLoss.Type == ExitRuleType.AtrTrailing
+            && exit.StopLoss.TrailingStopWarmup.HasValue
+            && exit.StopLoss.TrailingStopWarmup < 0)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "exit.stopLoss.trailingStopWarmup",
+                Code = "SL_WARMUP_INVALID",
+                Message = "Trailing stop warmup must be >= 0 when specified.",
+            });
+        }
     }
 
     private static void ValidateRisk(RiskConfig risk, ValidationResult result)

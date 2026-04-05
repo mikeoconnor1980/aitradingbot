@@ -56,6 +56,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = true, Reason = "RSI below 30." },
             CreateMarketContext(close: 50_000m),
+            CreateGridState(),
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
             DefaultConfig);
 
@@ -77,6 +78,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = false, Reason = "RSI above 30." },
             CreateMarketContext(close: 50_000m),
+            CreateGridState(),
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
             DefaultConfig);
 
@@ -89,6 +91,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = false },
             CreateMarketContext(close: 47_000m),
+            CreateGridState(),
             CreatePositionState(size: 0.02m, averageEntryPrice: 50_000m),
             DefaultConfig);
 
@@ -109,6 +112,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = false },
             CreateMarketContext(close: 51_500m),
+            CreateGridState(),
             CreatePositionState(size: 0.02m, averageEntryPrice: 50_000m),
             DefaultConfig);
 
@@ -129,6 +133,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = false },
             CreateMarketContext(close: 50_500m),
+            CreateGridState(),
             CreatePositionState(size: 0.02m, averageEntryPrice: 50_000m),
             DefaultConfig);
 
@@ -141,6 +146,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = true },
             CreateMarketContext(close: 0m),
+            CreateGridState(),
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
             DefaultConfig);
 
@@ -162,6 +168,7 @@ public sealed class SignalControllerTests
         var signals = await _sut.ProcessAsync(
             new StrategyEvaluation { SetupDetected = true, Reason = "RSI below 30." },
             CreateMarketContext(close: 50_000m, accountEquity: 10_000m),
+            CreateGridState(),
             CreatePositionState(size: 0m, averageEntryPrice: 0m),
             config);
 
@@ -178,6 +185,16 @@ public sealed class SignalControllerTests
             Size = size,
             AverageEntryPrice = averageEntryPrice,
             UnrealisedPnL = 0m
+        };
+    }
+
+    private static GridState CreateGridState()
+    {
+        return new GridState
+        {
+            Lifecycle = GridLifecycle.Inactive,
+            FilledLevels = 0,
+            TotalLevels = 0,
         };
     }
 

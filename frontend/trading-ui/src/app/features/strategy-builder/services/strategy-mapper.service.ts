@@ -103,7 +103,7 @@ export class StrategyMapperService {
     };
   }
 
-  private _mapStopLoss(stopLoss: Record<string, unknown>): { enabled: boolean; type: ExitRuleType; value?: number | null; lookback?: number | null } {
+  private _mapStopLoss(stopLoss: Record<string, unknown>): { enabled: boolean; type: ExitRuleType; value?: number | null; lookback?: number | null; atrMultiplier?: number | null; trailingStopWarmup?: number | null } {
     const enabled = Boolean(stopLoss["enabled"] ?? false);
     const type = (stopLoss["type"] as ExitRuleType | undefined) ?? "fixed_percent";
 
@@ -112,6 +112,8 @@ export class StrategyMapperService {
       type,
       value: enabled && type === "fixed_percent" ? this._toNullableNumber(stopLoss["value"]) : null,
       lookback: enabled && type === "swing_low" ? this._toNullableNumber(stopLoss["lookback"]) : null,
+      atrMultiplier: enabled && type === "atr_trailing" ? this._toNullableNumber(stopLoss["atr_multiplier"] ?? stopLoss["atrMultiplier"]) : null,
+      trailingStopWarmup: enabled && type === "atr_trailing" ? this._toNullableNumber(stopLoss["trailing_stop_warmup"] ?? stopLoss["trailingStopWarmup"]) : null,
     };
   }
 

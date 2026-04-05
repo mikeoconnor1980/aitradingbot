@@ -21,6 +21,7 @@ public static class PersistenceServiceExtensions
             options.UseSqlite(connectionString));
 
         services.AddScoped<IBacktestRunRepository, BacktestRunRepository>();
+        services.AddScoped<IOptimizationRunRepository, OptimizationRunRepository>();
         services.AddScoped<ICandleRepository, CandleRepository>();
         services.AddScoped<IFundingRateRepository, FundingRateRepository>();
         services.AddScoped<IStrategyRepository, StrategyRepository>();

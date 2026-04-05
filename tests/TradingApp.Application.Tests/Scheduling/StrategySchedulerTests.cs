@@ -142,6 +142,7 @@ public sealed class StrategySchedulerTests
             .Setup(controller => controller.ProcessAsync(
                 It.IsAny<StrategyEvaluation>(),
                 It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
                 It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()))
@@ -253,6 +254,7 @@ public sealed class StrategySchedulerTests
             controller => controller.ProcessAsync(
                 It.IsAny<StrategyEvaluation>(),
                 It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
                 It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()),
@@ -288,6 +290,7 @@ public sealed class StrategySchedulerTests
             controller => controller.ProcessAsync(
                 It.IsAny<StrategyEvaluation>(),
                 It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
                 It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()),

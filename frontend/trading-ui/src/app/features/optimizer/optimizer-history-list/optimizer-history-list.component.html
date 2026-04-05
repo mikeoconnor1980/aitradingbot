@@ -1,0 +1,71 @@
+@if (isLoading) {
+  <div class="optimizer-history-list__loading">
+    <mat-spinner diameter="28"></mat-spinner>
+  </div>
+} @else if (errorMessage) {
+  <div class="optimizer-history-list__empty">{{ errorMessage }}</div>
+} @else if (results.length === 0) {
+  <div class="optimizer-history-list__empty">No optimizer runs yet.</div>
+} @else {
+  <div class="optimizer-history-list">
+    <table mat-table [dataSource]="results" class="optimizer-history-list__table">
+      <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef>Created</th>
+        <td mat-cell *matCellDef="let run">{{ run.createdAt | date:"medium" }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="symbol">
+        <th mat-header-cell *matHeaderCellDef>Symbol</th>
+        <td mat-cell *matCellDef="let run">{{ run.symbol }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Status</th>
+        <td mat-cell *matCellDef="let run">{{ run.status }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="progress">
+        <th mat-header-cell *matHeaderCellDef>Progress</th>
+        <td mat-cell *matCellDef="let run">
+          <div class="optimizer-history-list__progress-cell">
+            <mat-progress-bar [mode]="run.status === 'Running' ? 'determinate' : 'determinate'" [value]="getProgressValue(run)"></mat-progress-bar>
+            <span>{{ run.completedCount }}/{{ run.totalCombinations }}</span>
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="qualifiedCount">
+        <th mat-header-cell *matHeaderCellDef>Qualified</th>
+        <td mat-cell *matCellDef="let run">{{ run.qualifiedCount }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="topFitnessScore">
+        <th mat-header-cell *matHeaderCellDef>Top Fitness</th>
+        <td mat-cell *matCellDef="let run">{{ run.topFitnessScore ?? 0 | number:"1.2-2" }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="topTotalPnl">
+        <th mat-header-cell *matHeaderCellDef>Top PnL</th>
+        <td mat-cell *matCellDef="let run">{{ run.topTotalPnl ?? 0 | number:"1.2-2" }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let run">
+          <button mat-button type="button" (click)="onOpenResult(run.id)">Open</button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns" [class.optimizer-history-list__row--selected]="row.id === selectedId"></tr>
+    </table>
+
+    <mat-paginator
+      [length]="totalCount"
+      [pageIndex]="page - 1"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  </div>
+}

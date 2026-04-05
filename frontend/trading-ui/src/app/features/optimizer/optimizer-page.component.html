@@ -1,0 +1,75 @@
+<section class="optimizer-page">
+  <header class="optimizer-page__header">
+    <h2 class="optimizer-page__title">Strategy Optimizer</h2>
+    <p class="optimizer-page__subtitle">Sweep signal-strategy parameter combinations, rank the strongest results, and promote winners directly into the builder.</p>
+  </header>
+
+  <mat-tab-group class="optimizer-page__tabs" animationDuration="0ms" [(selectedIndex)]="selectedTabIndex">
+    <mat-tab label="Configure">
+      <div class="optimizer-page__tab-content">
+        <app-optimizer-config-form [isRunning]="isRunning" (runOptimization)="onRunOptimization($event)"></app-optimizer-config-form>
+
+        @if (apiError) {
+          <div class="optimizer-page__error-banner">
+            <p>{{ apiError }}</p>
+            <div class="optimizer-page__error-actions">
+              <button mat-button type="button" (click)="dismissApiError()">Dismiss</button>
+            </div>
+          </div>
+        }
+
+        @if (isRunning && optimizationStatus) {
+          <div class="optimizer-page__run-status">
+            <h3>
+              @switch (optimizationStatus) {
+                @case ("Queued") { Optimization queued... }
+                @case ("Running") { Running optimization — {{ progressPercent }}% }
+                @default { Processing... }
+              }
+            </h3>
+            <p>{{ optimizationCompleted }} / {{ optimizationTotal }} combinations completed</p>
+            <mat-progress-bar [mode]="optimizationStatus === 'Running' ? 'determinate' : 'indeterminate'" [value]="progressPercent"></mat-progress-bar>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Results">
+      <div class="optimizer-page__tab-content">
+        @if (latestRun && latestRun.results.length > 0) {
+          <section class="optimizer-page__results-grid">
+            <app-optimizer-results-table
+              [results]="latestRun.results"
+              [selectedRank]="selectedResult?.rank ?? null"
+              (selectResult)="onSelectResult($event)">
+            </app-optimizer-results-table>
+
+            <app-optimizer-detail
+              [run]="latestRun"
+              [result]="selectedResult"
+              (createStrategy)="onCreateStrategy($event)">
+            </app-optimizer-detail>
+          </section>
+        } @else if (latestRun && latestRun.status === 'Completed') {
+          <div class="optimizer-page__empty">
+            <p>The run completed, but no configurations met the fitness thresholds.</p>
+          </div>
+        } @else {
+          <div class="optimizer-page__empty">
+            <p>Run an optimization or open a historical run to inspect ranked results.</p>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="History">
+      <div class="optimizer-page__tab-content">
+        <app-optimizer-history-list
+          [refreshToken]="historyRefreshToken"
+          [selectedId]="latestRun?.id ?? null"
+          (openResult)="onOpenHistoryResult($event)">
+        </app-optimizer-history-list>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</section>

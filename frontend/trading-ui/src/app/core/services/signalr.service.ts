@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { BacktestProgress } from "../models/backtest.model";
 import { ConnectionStatus } from "../models/connection-status.model";
+import { OptimizationProgress } from "../models/optimizer.model";
 import { PriceUpdate } from "../models/price-update.model";
 import { AccountStateService } from "./account-state.service";
 import { FillEvent } from "../models/fill-event.model";
@@ -23,6 +24,7 @@ export class SignalRService implements OnDestroy {
   private readonly _priceUpdate$ = new Subject<PriceUpdate>();
   private readonly _fillEvent$ = new Subject<FillEvent>();
   private readonly _backtestProgress$ = new Subject<BacktestProgress>();
+  private readonly _optimizationProgress$ = new Subject<OptimizationProgress>();
   private readonly _connectionStatus$ = new BehaviorSubject<ConnectionStatus>(SignalRService.DISCONNECTED_STATUS);
   private readonly _transportConnectionStatus$ = new BehaviorSubject<ConnectionStatus>(SignalRService.DISCONNECTED_STATUS);
   private readonly _statusBySource = new Map<string, ConnectionStatus>([["SignalR", SignalRService.DISCONNECTED_STATUS]]);
@@ -34,6 +36,7 @@ export class SignalRService implements OnDestroy {
   public readonly priceUpdate$: Observable<PriceUpdate> = this._priceUpdate$.asObservable();
   public readonly fillEvent$: Observable<FillEvent> = this._fillEvent$.asObservable();
   public readonly backtestProgress$: Observable<BacktestProgress> = this._backtestProgress$.asObservable();
+  public readonly optimizationProgress$: Observable<OptimizationProgress> = this._optimizationProgress$.asObservable();
   public readonly connectionStatus$: Observable<ConnectionStatus> = this._connectionStatus$.asObservable();
   public readonly transportConnectionStatus$: Observable<ConnectionStatus> = this._transportConnectionStatus$.asObservable();
 
@@ -53,6 +56,7 @@ export class SignalRService implements OnDestroy {
     this._priceUpdate$.complete();
     this._fillEvent$.complete();
     this._backtestProgress$.complete();
+    this._optimizationProgress$.complete();
     this._connectionStatus$.complete();
     this._transportConnectionStatus$.complete();
   }
@@ -64,6 +68,10 @@ export class SignalRService implements OnDestroy {
 
     this._hubConnection.on("ReceiveBacktestProgress", (progress: BacktestProgress) => {
       this._backtestProgress$.next(progress);
+    });
+
+    this._hubConnection.on("ReceiveOptimizationProgress", (progress: OptimizationProgress) => {
+      this._optimizationProgress$.next(progress);
     });
 
     this._hubConnection.on("ReceiveConnectionStatus", (status: ConnectionStatus) => {

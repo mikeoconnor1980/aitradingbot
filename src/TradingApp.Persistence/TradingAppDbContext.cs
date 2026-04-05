@@ -14,6 +14,8 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<Candle> Candles => Set<Candle>();
     public DbSet<FundingRate> FundingRates => Set<FundingRate>();
     public DbSet<BacktestRun> BacktestRuns => Set<BacktestRun>();
+    public DbSet<OptimizationRun> OptimizationRuns => Set<OptimizationRun>();
+    public DbSet<OptimizationResult> OptimizationResults => Set<OptimizationResult>();
     public DbSet<Strategy> Strategies => Set<Strategy>();
     public DbSet<StrategyRevision> StrategyRevisions => Set<StrategyRevision>();
     public DbSet<StrategyReview> StrategyReviews => Set<StrategyReview>();
@@ -149,6 +151,86 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(backtestRun => backtestRun.StrategyId)
                 .HasDatabaseName("IX_BacktestRuns_StrategyId");
+        });
+
+        modelBuilder.Entity<OptimizationRun>(entity =>
+        {
+            entity.ToTable("OptimizationRuns");
+
+            entity.HasKey(run => run.Id);
+
+            entity.Property(run => run.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(run => run.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(run => run.SweepConfigJson)
+                .IsRequired();
+
+            entity.Property(run => run.ThresholdsJson)
+                .IsRequired();
+
+            entity.Property(run => run.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(run => run.ErrorMessage)
+                .HasMaxLength(2000);
+
+            entity.Property(run => run.InitialCapital)
+                .HasConversion<double>();
+
+            entity.HasIndex(run => run.CreatedAtUtc)
+                .HasDatabaseName("IX_OptimizationRuns_CreatedAtUtc");
+        });
+
+        modelBuilder.Entity<OptimizationResult>(entity =>
+        {
+            entity.ToTable("OptimizationResults");
+
+            entity.HasKey(result => result.Id);
+
+            entity.Property(result => result.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(result => result.StrategyConfigJson)
+                .IsRequired();
+
+            entity.Property(result => result.SignalDescription)
+                .IsRequired();
+
+            entity.Property(result => result.FitnessScore)
+                .HasConversion<double>();
+
+            entity.Property(result => result.TotalPnl)
+                .HasConversion<double>();
+
+            entity.Property(result => result.WinRate)
+                .HasConversion<double>();
+
+            entity.Property(result => result.MaxDrawdown)
+                .HasConversion<double>();
+
+            entity.Property(result => result.TotalFeesPaid)
+                .HasConversion<double>();
+
+            entity.Property(result => result.AverageTradePnl)
+                .HasConversion<double>();
+
+            entity.HasOne<OptimizationRun>()
+                .WithMany()
+                .HasForeignKey(result => result.OptimizationRunId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(result => result.OptimizationRunId)
+                .HasDatabaseName("IX_OptimizationResults_RunId");
+
+            entity.HasIndex(result => new { result.OptimizationRunId, result.Rank })
+                .IsUnique()
+                .HasDatabaseName("IX_OptimizationResults_RunId_Rank");
         });
 
         modelBuilder.Entity<Strategy>(entity =>
