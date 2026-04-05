@@ -5,7 +5,11 @@ using TradingApp.Application.Backtesting.Models;
 
 namespace TradingApp.Application.Backtesting;
 
-public sealed record GetBacktestListQuery(int Page, int PageSize) : Query<PagedResult<BacktestRunSummary>>;
+public sealed record GetBacktestListQuery(
+    int Page,
+    int PageSize,
+    string? Symbol = null,
+    IReadOnlyList<Guid>? StrategyIds = null) : Query<PagedResult<BacktestRunSummary>>;
 
 public sealed class GetBacktestListQueryHandler : QueryHandler<GetBacktestListQuery, PagedResult<BacktestRunSummary>>
 {
@@ -24,6 +28,11 @@ public sealed class GetBacktestListQueryHandler : QueryHandler<GetBacktestListQu
         ArgumentOutOfRangeException.ThrowIfLessThan(request.PageSize, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(request.PageSize, 100);
 
-        return await _repository.GetPagedSummariesAsync(request.Page, request.PageSize, cancellationToken);
+        return await _repository.GetPagedSummariesAsync(
+            request.Page,
+            request.PageSize,
+            request.Symbol,
+            request.StrategyIds,
+            cancellationToken);
     }
 }

@@ -52,11 +52,24 @@ export class BacktestService {
     return this._apiClient.post<void>(`backtests/${encodedId}/cancel`, null, context);
   }
 
-  public getBacktestList(page = 1, pageSize = 20, context?: HttpContext): Observable<PagedResult<BacktestSummary>> {
-    return this._apiClient.get<PagedResult<BacktestSummary>>(
-      `backtests?page=${page}&pageSize=${pageSize}`,
-      context
-    );
+  public getBacktestList(
+    page = 1,
+    pageSize = 20,
+    symbol?: string,
+    strategy?: string,
+    context?: HttpContext
+  ): Observable<PagedResult<BacktestSummary>> {
+    let url = `backtests?page=${page}&pageSize=${pageSize}`;
+
+    if (symbol) {
+      url += `&symbol=${encodeURIComponent(symbol)}`;
+    }
+
+    if (strategy) {
+      url += `&strategy=${encodeURIComponent(strategy)}`;
+    }
+
+    return this._apiClient.get<PagedResult<BacktestSummary>>(url, context);
   }
 
   public getBacktestsByStrategy(

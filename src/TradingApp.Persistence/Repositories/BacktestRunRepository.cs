@@ -30,10 +30,23 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
     public async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(
         int page,
         int pageSize,
+        string? symbol = null,
+        IReadOnlyList<Guid>? strategyIds = null,
         CancellationToken cancellationToken = default)
     {
         var query = _context.BacktestRuns
             .Where(backtestRun => backtestRun.Status == Domain.Enums.BacktestStatus.Completed);
+
+        if (!string.IsNullOrWhiteSpace(symbol))
+        {
+            query = query.Where(backtestRun => backtestRun.Symbol == symbol);
+        }
+
+        if (strategyIds is { Count: > 0 })
+        {
+            query = query.Where(backtestRun => backtestRun.StrategyId.HasValue
+                && strategyIds.Contains(backtestRun.StrategyId.Value));
+        }
 
         return await GetPagedSummariesCoreAsync(query, page, pageSize, cancellationToken);
     }

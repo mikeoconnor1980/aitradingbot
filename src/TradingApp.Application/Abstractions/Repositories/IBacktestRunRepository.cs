@@ -15,6 +15,8 @@ public interface IBacktestRunRepository
     Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(
         int page,
         int pageSize,
+        string? symbol = null,
+        IReadOnlyList<Guid>? strategyIds = null,
         CancellationToken cancellationToken = default);
     Task<BacktestRun?> GetLatestCompletedByStrategyRevisionAsync(
         Guid strategyId,

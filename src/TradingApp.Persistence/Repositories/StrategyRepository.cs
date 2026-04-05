@@ -62,6 +62,17 @@ public sealed class StrategyRepository : IStrategyRepository
         return await query.AnyAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Guid>> SearchIdsByNameAsync(
+        string nameContains,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Strategies
+            .AsNoTracking()
+            .Where(strategy => EF.Functions.Like(strategy.Name, $"%{nameContains}%"))
+            .Select(strategy => strategy.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Strategy strategy, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(strategy);
