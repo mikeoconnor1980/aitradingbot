@@ -14,6 +14,7 @@ public static class RevisionSourceMapper
             StrategyEntryPoint.NaturalLanguage => RevisionSource.Api,
             StrategyEntryPoint.PineImport => RevisionSource.Import,
             StrategyEntryPoint.Migration => RevisionSource.Import,
+            StrategyEntryPoint.Optimizer => RevisionSource.Optimizer,
             _ => throw new ArgumentOutOfRangeException(nameof(entryPoint), entryPoint, "Unmapped entry point"),
         };
     }

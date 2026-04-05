@@ -46,10 +46,21 @@ public sealed class BacktestRunner : IBacktestRunner
 
     public Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
     {
-        return RunAsync(config, onProgress: null, cancellationToken);
+        return RunCoreAsync(config, preloadedData: null, onProgress: null, cancellationToken);
     }
 
-    public async Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int, long>? onProgress, CancellationToken cancellationToken = default)
+    public Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int, long>? onProgress, CancellationToken cancellationToken = default)
+    {
+        return RunCoreAsync(config, preloadedData: null, onProgress, cancellationToken);
+    }
+
+    public Task<BacktestResult> RunAsync(BacktestConfig config, ReplayData preloadedData, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(preloadedData);
+        return RunCoreAsync(config, preloadedData, onProgress: null, cancellationToken);
+    }
+
+    private async Task<BacktestResult> RunCoreAsync(BacktestConfig config, ReplayData? preloadedData, Action<int, int, long>? onProgress, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(config);
         ValidateConfig(config);
@@ -70,6 +81,7 @@ public sealed class BacktestRunner : IBacktestRunner
         }
 
         var positionManager = _positionManager;
+        var triggerTimeframe = config.TriggerTimeframe;
         var scheduler = new StrategyScheduler(
             _marketContextBuilder,
             _strategyEngine,
@@ -77,6 +89,7 @@ public sealed class BacktestRunner : IBacktestRunner
             _riskEngine,
             positionManager,
             config.Strategy,
+            triggerTimeframe: triggerTimeframe,
             auditCollector: collector,
             signalController: _signalController,
             initialCapital: config.InitialCapital,
@@ -86,8 +99,9 @@ public sealed class BacktestRunner : IBacktestRunner
 
         try
         {
-            var replayData = await replayEngine.LoadAsync(config, cancellationToken);
-            var totalCandles = Math.Max(0, replayData.Candles15m.Count - replayData.WarmupEndIndex);
+            var replayData = preloadedData ?? await replayEngine.LoadAsync(config, cancellationToken);
+            var triggerCandles = replayData.TriggerCandles;
+            var totalCandles = Math.Max(0, triggerCandles.Count - replayData.WarmupEndIndex);
             onProgress?.Invoke(0, totalCandles, config.StartDateUtc);
             var tradeLog = new List<BacktestTrade>();
             var equityTimeSeries = new List<EquitySnapshot>();
@@ -107,14 +121,14 @@ public sealed class BacktestRunner : IBacktestRunner
             for (var index = 0; index < replayData.WarmupEndIndex; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var warmupCandle = replayData.Candles15m[index];
+                var warmupCandle = triggerCandles[index];
                 _executionContextAccessor.CurrentTimestampUtc = warmupCandle.Timestamp;
                 _marketContextBuilder.UpdateIndicators(warmupCandle);
 
                 if (auditCollector is not null)
                 {
-                    var warmupOneHourCandle = CandleReplayEngine.GetLatestClosedCandle(replayData.Candles1h, warmupCandle.Timestamp);
-                    var warmupFourHourCandle = CandleReplayEngine.GetLatestClosedCandle(replayData.Candles4h, warmupCandle.Timestamp);
+                    var warmupOneHourCandle = ResolveOneHourCandle(replayData, warmupCandle, triggerTimeframe);
+                    var warmupFourHourCandle = ResolveFourHourCandle(replayData, warmupCandle, triggerTimeframe);
                     var warmupContext = _marketContextBuilder.Build(
                         warmupCandle,
                         warmupOneHourCandle,
@@ -144,11 +158,11 @@ public sealed class BacktestRunner : IBacktestRunner
                 }
             }
 
-            for (var index = replayData.WarmupEndIndex; index < replayData.Candles15m.Count; index++)
+            for (var index = replayData.WarmupEndIndex; index < triggerCandles.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var candle = replayData.Candles15m[index];
+                var candle = triggerCandles[index];
                 _executionContextAccessor.CurrentTimestampUtc = candle.Timestamp;
                 var fills = executionEngine.ProcessCandle(candle);
 
@@ -186,8 +200,8 @@ public sealed class BacktestRunner : IBacktestRunner
 
                 _marketContextBuilder.UpdateIndicators(candle);
 
-                latestOneHourCandle = CandleReplayEngine.GetLatestClosedCandle(replayData.Candles1h, candle.Timestamp);
-                latestFourHourCandle = CandleReplayEngine.GetLatestClosedCandle(replayData.Candles4h, candle.Timestamp);
+                latestOneHourCandle = ResolveOneHourCandle(replayData, candle, triggerTimeframe);
+                latestFourHourCandle = ResolveFourHourCandle(replayData, candle, triggerTimeframe);
 
                 var position = executionEngine.GetPosition();
                 scheduler.UpdateState(
@@ -231,7 +245,7 @@ public sealed class BacktestRunner : IBacktestRunner
                 equityTimeSeries,
                 config.InitialCapital,
                 gridCycles,
-                Math.Max(0, replayData.Candles15m.Count - replayData.WarmupEndIndex));
+                Math.Max(0, triggerCandles.Count - replayData.WarmupEndIndex));
 
             return new BacktestResult
             {
@@ -285,9 +299,8 @@ public sealed class BacktestRunner : IBacktestRunner
             throw new ArgumentException("At least one interval must be specified.");
         }
 
-        // Note: CandleReplayEngine always loads 15m, 1h, 4h regardless of config.Intervals.
-        // This validation ensures config explicitly lists the required intervals.
-        EnsureRequiredInterval(config.Intervals, "15m");
+        // Note: CandleReplayEngine loads 15m, 1h, 4h for context regardless of trigger timeframe.
+        // Ensure the config lists required context intervals.
         EnsureRequiredInterval(config.Intervals, "1h");
         EnsureRequiredInterval(config.Intervals, "4h");
 
@@ -639,5 +652,27 @@ public sealed class BacktestRunner : IBacktestRunner
         public decimal? StopLossPrice { get; set; }
 
         public string ExitReason { get; set; } = "Unknown";
+    }
+
+    /// <summary>
+    /// Resolves the latest closed 1h candle for context, taking into account
+    /// the trigger timeframe. If trigger IS 1h, the current candle is the 1h candle.
+    /// </summary>
+    private static Candle? ResolveOneHourCandle(ReplayData replayData, Candle currentCandle, string triggerTimeframe)
+    {
+        return string.Equals(triggerTimeframe, "1h", StringComparison.OrdinalIgnoreCase)
+            ? currentCandle
+            : CandleReplayEngine.GetLatestClosedCandle(replayData.Candles1h, currentCandle.Timestamp);
+    }
+
+    /// <summary>
+    /// Resolves the latest closed 4h candle for context, taking into account
+    /// the trigger timeframe. If trigger IS 4h, the current candle is the 4h candle.
+    /// </summary>
+    private static Candle? ResolveFourHourCandle(ReplayData replayData, Candle currentCandle, string triggerTimeframe)
+    {
+        return string.Equals(triggerTimeframe, "4h", StringComparison.OrdinalIgnoreCase)
+            ? currentCandle
+            : CandleReplayEngine.GetLatestClosedCandle(replayData.Candles4h, currentCandle.Timestamp);
     }
 }

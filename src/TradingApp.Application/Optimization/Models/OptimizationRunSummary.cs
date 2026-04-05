@@ -8,6 +8,7 @@ public sealed class OptimizationRunSummary
     public required int TotalCombinations { get; init; }
     public required int CompletedCount { get; init; }
     public required int QualifiedCount { get; init; }
+    public required int FailedCount { get; init; }
     public required long ElapsedMs { get; init; }
     public required DateTime CreatedAt { get; init; }
     public decimal? TopFitnessScore { get; init; }

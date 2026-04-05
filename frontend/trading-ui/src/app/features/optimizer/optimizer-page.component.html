@@ -7,7 +7,7 @@
   <mat-tab-group class="optimizer-page__tabs" animationDuration="0ms" [(selectedIndex)]="selectedTabIndex">
     <mat-tab label="Configure">
       <div class="optimizer-page__tab-content">
-        <app-optimizer-config-form [isRunning]="isRunning" (runOptimization)="onRunOptimization($event)"></app-optimizer-config-form>
+        <app-optimizer-config-form #configForm [isRunning]="isRunning" (runOptimization)="onRunOptimization($event)"></app-optimizer-config-form>
 
         @if (apiError) {
           <div class="optimizer-page__error-banner">
@@ -27,7 +27,15 @@
                 @default { Processing... }
               }
             </h3>
-            <p>{{ optimizationCompleted }} / {{ optimizationTotal }} combinations completed</p>
+            <p>
+              {{ optimizationCompleted }} / {{ optimizationTotal }} combinations completed
+              @if (progressPhase) {
+                <span class="optimizer-page__phase"> · {{ progressPhase }}</span>
+              }
+            </p>
+            @if (estimatedRemainingFormatted) {
+              <p class="optimizer-page__eta">~{{ estimatedRemainingFormatted }} remaining</p>
+            }
             <mat-progress-bar [mode]="optimizationStatus === 'Running' ? 'determinate' : 'indeterminate'" [value]="progressPercent"></mat-progress-bar>
           </div>
         }
@@ -67,7 +75,9 @@
         <app-optimizer-history-list
           [refreshToken]="historyRefreshToken"
           [selectedId]="latestRun?.id ?? null"
-          (openResult)="onOpenHistoryResult($event)">
+          (openResult)="onOpenHistoryResult($event)"
+          (reuseConfig)="onReuseConfig($event)"
+          (cancelRun)="onCancelRun($event)">
         </app-optimizer-history-list>
       </div>
     </mat-tab>

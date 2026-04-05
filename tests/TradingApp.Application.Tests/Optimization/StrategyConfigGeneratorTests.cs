@@ -35,13 +35,13 @@ public sealed class StrategyConfigGeneratorTests
     }
 
     [TestMethod]
-    public void GivenDefaultBounds_WhenGenerate_ThenAllConfigsAreSignalModeLong()
+    public void GivenDefaultBounds_WhenGenerate_ThenAllConfigsAreSignalMode()
     {
         var results = _generator.Generate("BTC", new ParameterBounds(), 30, seed: 456);
 
         results.Should().OnlyContain(strategy =>
             strategy.Config.StrategyMode == StrategyMode.Signal
-            && strategy.Config.Direction == Direction.Long
+            && (strategy.Config.Direction == Direction.Long || strategy.Config.Direction == Direction.Short)
             && strategy.Config.Market == "BTC");
     }
 
@@ -110,5 +110,26 @@ public sealed class StrategyConfigGeneratorTests
 
         conditionTypes.Should().Contain([EntryConditionType.Rsi, EntryConditionType.Macd, EntryConditionType.PriceVsEma]);
         results.Select(strategy => strategy.Config.EntryConditions?.Count ?? 0).Should().Contain(count => count > 1);
+    }
+
+    [TestMethod]
+    public void GivenMultipleTimeframes_WhenGenerate_ThenStrategiesUseProvidedTimeframes()
+    {
+        var bounds = new ParameterBounds { Timeframes = ["5m", "15m", "1h"] };
+        var results = _generator.Generate("BTC", bounds, 100, seed: 3030);
+
+        var timeframes = results.Select(s => s.Config.Timeframe).Distinct().ToArray();
+
+        timeframes.Should().BeSubsetOf(["5m", "15m", "1h"]);
+        timeframes.Should().HaveCountGreaterThan(1, "with 100 samples across 3 timeframes, multiple should appear");
+    }
+
+    [TestMethod]
+    public void GivenSingleTimeframe_WhenGenerate_ThenAllStrategiesUseThatTimeframe()
+    {
+        var bounds = new ParameterBounds { Timeframes = ["4h"] };
+        var results = _generator.Generate("BTC", bounds, 20, seed: 4040);
+
+        results.Should().OnlyContain(s => s.Config.Timeframe == "4h");
     }
 }

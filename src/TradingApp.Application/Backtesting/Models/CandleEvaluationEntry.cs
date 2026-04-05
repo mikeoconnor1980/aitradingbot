@@ -26,4 +26,5 @@ public sealed record CandleEvaluationEntry
     public required IReadOnlyList<string> SignalsEmitted { get; init; }
     public string? GridCycleId { get; init; }
     public ChartIndicatorValues? Indicators { get; init; }
+    public MarketRegime? Regime { get; init; }
 }

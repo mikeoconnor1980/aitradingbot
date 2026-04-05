@@ -1,5 +1,5 @@
 .optimizer-page {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 1rem;
 
@@ -52,6 +52,16 @@
     color: var(--colour-text-primary);
   }
 
+  &__phase {
+    color: var(--colour-muted);
+    font-style: italic;
+  }
+
+  &__eta {
+    font-size: 0.85rem;
+    color: var(--colour-muted);
+  }
+
   &__error-actions {
     display: flex;
     justify-content: flex-end;
@@ -59,7 +69,7 @@
 
   &__results-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.7fr);
     gap: 1rem;
     align-items: start;
   }

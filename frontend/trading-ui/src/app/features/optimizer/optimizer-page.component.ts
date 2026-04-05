@@ -7,7 +7,7 @@ import { MatTabGroup, MatTabsModule } from "@angular/material/tabs";
 import { Router } from "@angular/router";
 import { filter } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
-import { OptimizationResult, OptimizationRun, RunOptimizationRequest, parseOptimizationStrategyConfig } from "../../core/models/optimizer.model";
+import { OptimizationResult, OptimizationRun, RunOptimizationRequest, parseOptimizationStrategyConfig, parseSweepConfig } from "../../core/models/optimizer.model";
 import { OptimizerService } from "../../core/services/optimizer.service";
 import { SignalRService } from "../../core/services/signalr.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
@@ -41,6 +41,9 @@ export class OptimizerPageComponent implements OnInit {
   @ViewChild(MatTabGroup)
   public tabGroup?: MatTabGroup;
 
+  @ViewChild("configForm")
+  public configForm?: OptimizerConfigFormComponent;
+
   public latestRun: OptimizationRun | null = null;
   public selectedResult: OptimizationResult | null = null;
   public selectedTabIndex = 0;
@@ -50,6 +53,8 @@ export class OptimizerPageComponent implements OnInit {
   public optimizationStatus: string | null = null;
   public optimizationCompleted = 0;
   public optimizationTotal = 0;
+  public progressPhase: string | null = null;
+  public estimatedRemainingFormatted: string | null = null;
   public historyRefreshToken = 0;
 
   public ngOnInit(): void {
@@ -60,6 +65,8 @@ export class OptimizerPageComponent implements OnInit {
       this.optimizationStatus = progress.status;
       this.optimizationCompleted = progress.completed;
       this.optimizationTotal = progress.total;
+      this.progressPhase = progress.phase ?? null;
+      this.estimatedRemainingFormatted = this._formatRemainingMs(progress.estimatedRemainingMs);
 
       if (progress.status === "Completed") {
         this._loadOptimization(progress.id, true);
@@ -80,6 +87,8 @@ export class OptimizerPageComponent implements OnInit {
     this.optimizationStatus = "Queued";
     this.optimizationCompleted = 0;
     this.optimizationTotal = 0;
+    this.progressPhase = null;
+    this.estimatedRemainingFormatted = null;
     this.latestRun = null;
     this.selectedResult = null;
 
@@ -104,6 +113,43 @@ export class OptimizerPageComponent implements OnInit {
 
   public onOpenHistoryResult(id: string): void {
     this._loadOptimization(id, true);
+  }
+
+  public onReuseConfig(id: string): void {
+    this._optimizerService.getOptimization(id, this._localErrorContext).subscribe({
+      next: (run) => {
+        const config = parseSweepConfig(run.sweepConfigJson);
+
+        if (config && this.configForm) {
+          this.configForm.prefill(config);
+          this.selectedTabIndex = 0;
+        }
+      },
+      error: (error: HttpErrorResponse) => {
+        this.apiError = error.status === 0
+          ? "Unable to reach API. Check your connection and try again."
+          : formatErrorPayload(error);
+      }
+    });
+  }
+
+  public onCancelRun(id: string): void {
+    this._optimizerService.cancelOptimization(id, this._localErrorContext).subscribe({
+      next: () => {
+        if (this.pendingOptimizationId === id) {
+          this.isRunning = false;
+          this.pendingOptimizationId = null;
+          this.optimizationStatus = null;
+        }
+
+        this.historyRefreshToken += 1;
+      },
+      error: (error: HttpErrorResponse) => {
+        this.apiError = error.status === 0
+          ? "Unable to reach API. Check your connection and try again."
+          : formatErrorPayload(error);
+      }
+    });
   }
 
   public onSelectResult(result: OptimizationResult): void {
@@ -171,5 +217,21 @@ export class OptimizerPageComponent implements OnInit {
           : formatErrorPayload(error);
       }
     });
+  }
+
+  private _formatRemainingMs(ms: number | null | undefined): string | null {
+    if (ms == null || ms <= 0) {
+      return null;
+    }
+
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes > 0) {
+      return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+    }
+
+    return `${seconds}s`;
   }
 }

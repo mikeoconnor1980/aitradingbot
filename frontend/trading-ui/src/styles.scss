@@ -80,3 +80,8 @@ body {
 	--mdc-snackbar-supporting-text-color: var(--colour-info);
 	--mat-snack-bar-button-color: var(--colour-info);
 }
+
+// Optimizer signal tooltip — wider to show full description
+.optimizer-results-table__signal-tooltip {
+	max-width: 480px !important;
+}

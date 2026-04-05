@@ -11,8 +11,10 @@ public sealed class OptimizationRunResponse
     public required int TotalCombinations { get; init; }
     public required int CompletedCount { get; init; }
     public required int QualifiedCount { get; init; }
+    public required int FailedCount { get; init; }
     public required long ElapsedMs { get; init; }
     public string? ErrorMessage { get; init; }
     public required DateTime CreatedAt { get; init; }
+    public string? SweepConfigJson { get; init; }
     public required IReadOnlyList<OptimizationResultResponse> Results { get; init; }
 }

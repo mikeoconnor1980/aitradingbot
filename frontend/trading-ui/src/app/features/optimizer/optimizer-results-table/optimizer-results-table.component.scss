@@ -6,6 +6,32 @@
 
   &__table {
     width: 100%;
+
+    th.mat-mdc-header-cell,
+    td.mat-mdc-cell {
+      padding: 0.5rem 0.6rem;
+      font-size: 0.82rem;
+    }
+
+    th[matTooltip] {
+      cursor: help;
+    }
+
+    td.mat-mdc-cell {
+      white-space: nowrap;
+    }
+  }
+
+  &__signal-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    max-width: 260px;
+    line-height: 1.3;
+    font-size: 0.78rem;
   }
 
   &__row {

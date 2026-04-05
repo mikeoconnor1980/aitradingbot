@@ -6,4 +6,5 @@ public enum OptimizationStatus
     Running,
     Completed,
     Failed,
+    Cancelled,
 }

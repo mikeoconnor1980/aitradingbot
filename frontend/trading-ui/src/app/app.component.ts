@@ -1,22 +1,28 @@
 import { CommonModule } from "@angular/common";
 import { Component, DestroyRef, OnInit, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
+import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { HelpPanelComponent } from "./core/components/help-panel.component";
 import { ConnectionStatus } from "./core/models/connection-status.model";
 import { HealthResponse } from "./core/models/health-response.model";
 import { HealthService } from "./core/services/health.service";
+import { HelpService } from "./core/services/help.service";
 import { SignalRService } from "./core/services/signalr.service";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, HelpPanelComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })
 export class AppComponent implements OnInit {
   private readonly _signalRService = inject(SignalRService);
   private readonly _healthService = inject(HealthService);
+  private readonly _helpService = inject(HelpService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public title = "Trading Dashboard";
@@ -71,5 +77,9 @@ export class AppComponent implements OnInit {
     }
 
     return this.connectionStatus.status;
+  }
+
+  public onToggleHelp(): void {
+    this._helpService.toggle();
   }
 }

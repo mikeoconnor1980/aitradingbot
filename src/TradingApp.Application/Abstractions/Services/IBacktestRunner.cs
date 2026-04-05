@@ -12,4 +12,9 @@ public interface IBacktestRunner
         BacktestConfig config,
         Action<int, int, long>? onProgress,
         CancellationToken cancellationToken = default);
+
+    Task<BacktestResult> RunAsync(
+        BacktestConfig config,
+        ReplayData preloadedData,
+        CancellationToken cancellationToken = default);
 }

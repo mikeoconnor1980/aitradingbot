@@ -1,5 +1,5 @@
 <div class="optimizer-results-table">
-  <table mat-table [dataSource]="results" class="optimizer-results-table__table">
+  <table mat-table [dataSource]="results()" class="optimizer-results-table__table">
     <ng-container matColumnDef="rank">
       <th mat-header-cell *matHeaderCellDef>Rank</th>
       <td mat-cell *matCellDef="let result">#{{ result.rank }}</td>
@@ -7,26 +7,28 @@
 
     <ng-container matColumnDef="signalDescription">
       <th mat-header-cell *matHeaderCellDef>Signal</th>
-      <td mat-cell *matCellDef="let result">{{ result.signalDescription }}</td>
+      <td mat-cell *matCellDef="let result" [matTooltip]="result.signalDescription" matTooltipClass="optimizer-results-table__signal-tooltip">
+        <span class="optimizer-results-table__signal-text">{{ result.signalDescription }}</span>
+      </td>
     </ng-container>
 
     <ng-container matColumnDef="fitnessScore">
-      <th mat-header-cell *matHeaderCellDef>Fitness</th>
+      <th mat-header-cell *matHeaderCellDef matTooltip="Overall quality score — higher = better strategy">Fitness</th>
       <td mat-cell *matCellDef="let result">{{ result.fitnessScore | number:"1.2-2" }}</td>
     </ng-container>
 
     <ng-container matColumnDef="totalPnl">
-      <th mat-header-cell *matHeaderCellDef>Total PnL</th>
+      <th mat-header-cell *matHeaderCellDef matTooltip="Net dollar profit or loss across all trades">Total PnL</th>
       <td mat-cell *matCellDef="let result" [class]="getPnlClass(result.totalPnl)">{{ result.totalPnl | number:"1.2-2" }}</td>
     </ng-container>
 
     <ng-container matColumnDef="winRate">
-      <th mat-header-cell *matHeaderCellDef>Win Rate</th>
+      <th mat-header-cell *matHeaderCellDef matTooltip="How often trades end in profit">Win Rate</th>
       <td mat-cell *matCellDef="let result">{{ result.winRate | number:"1.0-2" }}%</td>
     </ng-container>
 
     <ng-container matColumnDef="maxDrawdown">
-      <th mat-header-cell *matHeaderCellDef>Max DD</th>
+      <th mat-header-cell *matHeaderCellDef matTooltip="Worst drop from peak — lower = safer">Max DD</th>
       <td mat-cell *matCellDef="let result">{{ result.maxDrawdown | number:"1.2-2" }}</td>
     </ng-container>
 
@@ -35,10 +37,30 @@
       <td mat-cell *matCellDef="let result">{{ result.totalTrades }}</td>
     </ng-container>
 
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <ng-container matColumnDef="sharpeRatio">
+      <th mat-header-cell *matHeaderCellDef matTooltip="How consistent profits are vs risk. 1–2 = good. 3+ = excellent.">Sharpe</th>
+      <td mat-cell *matCellDef="let result">{{ result.sharpeRatio != null ? (result.sharpeRatio | number:"1.2-2") : "—" }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="profitFactor">
+      <th mat-header-cell *matHeaderCellDef matTooltip="Profit per dollar lost. 2.0 = £2 earned per £1 lost. 100 = no losses.">PF</th>
+      <td mat-cell *matCellDef="let result">{{ result.profitFactor != null ? (result.profitFactor | number:"1.2-2") : "—" }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="oosFitnessScore">
+      <th mat-header-cell *matHeaderCellDef matTooltip="Quality score on unseen data — tests if the strategy works beyond its training period">OOS Fitness</th>
+      <td mat-cell *matCellDef="let result">{{ result.oosFitnessScore != null ? (result.oosFitnessScore | number:"1.2-2") : "—" }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="oosTotalPnl">
+      <th mat-header-cell *matHeaderCellDef matTooltip="Profit/loss on unseen data the optimizer never trained on">OOS PnL</th>
+      <td mat-cell *matCellDef="let result" [class]="result.oosTotalPnl != null ? getPnlClass(result.oosTotalPnl) : ''">{{ result.oosTotalPnl != null ? (result.oosTotalPnl | number:"1.2-2") : "—" }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
     <tr
       mat-row
-      *matRowDef="let row; columns: displayedColumns"
+      *matRowDef="let row; columns: displayedColumns()"
       class="optimizer-results-table__row"
       [class.optimizer-results-table__row--selected]="row.rank === selectedRank"
       (click)="onSelect(row)">

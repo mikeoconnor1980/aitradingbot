@@ -1,0 +1,148 @@
+<section class="candle-management-page">
+  <header class="page-header">
+    <div>
+      <h2>Candle Data</h2>
+      <p class="subtitle">Backtest candle availability per asset and interval</p>
+    </div>
+
+    <div class="controls">
+      @if (getMissingSymbolCount() > 0 && !isAnyIngesting()) {
+        <button mat-raised-button color="accent" type="button" (click)="onIngestAll()">
+          <mat-icon>cloud_download</mat-icon>
+          Ingest All Missing ({{ getMissingSymbolCount() }} symbols)
+        </button>
+      }
+
+      <button mat-raised-button color="primary" type="button" (click)="onRefresh()" [disabled]="isLoading">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  @if (isLoading && !coverage) {
+    <mat-progress-bar mode="indeterminate" />
+  }
+
+  @if (loadError) {
+    <mat-card class="error-card">
+      <mat-card-content>
+        <p class="error-banner">{{ loadError }}</p>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (coverage) {
+    @for (symbol of coverage.symbols; track symbol.symbol) {
+      <mat-card class="symbol-card">
+        <mat-card-header>
+          <mat-card-title class="symbol-title">
+            <span class="symbol-name">{{ symbol.symbol }}</span>
+            @if (getIngestionState(symbol.symbol).isIngesting) {
+              <span class="ingestion-badge ingestion-badge--active">Ingesting…</span>
+            }
+          </mat-card-title>
+
+          <div class="symbol-actions">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="onIngest(symbol.symbol)"
+              [disabled]="getIngestionState(symbol.symbol).isIngesting || isAnyIngesting()"
+              matTooltip="Ingest 15m, 1h, 4h candles from Binance">
+              <mat-icon>cloud_download</mat-icon>
+              Ingest
+            </button>
+          </div>
+        </mat-card-header>
+
+        @if (getIngestionState(symbol.symbol).isIngesting) {
+          <mat-progress-bar mode="indeterminate" />
+        }
+
+        @if (getIngestionState(symbol.symbol).error; as error) {
+          <mat-card-content>
+            <p class="error-banner">{{ error }}</p>
+          </mat-card-content>
+        }
+
+        @if (getIngestionState(symbol.symbol).result; as result) {
+          <mat-card-content>
+            <p class="success-banner">
+              Inserted {{ formatNumber(result.totalInserted) }} candles
+              ({{ formatNumber(result.totalSkipped) }} skipped)
+              in {{ (result.elapsedMs / 1000).toFixed(1) }}s
+            </p>
+          </mat-card-content>
+        }
+
+        <mat-card-content>
+          <table mat-table [dataSource]="symbol.intervals" class="coverage-table">
+            <ng-container matColumnDef="interval">
+              <th mat-header-cell *matHeaderCellDef>Interval</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="interval-label" [class.interval-label--backtest]="isBacktestInterval(row.interval)">
+                  {{ row.interval }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="from">
+              <th mat-header-cell *matHeaderCellDef>From</th>
+              <td mat-cell *matCellDef="let row">{{ formatDate(row.from) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="to">
+              <th mat-header-cell *matHeaderCellDef>To</th>
+              <td mat-cell *matCellDef="let row">{{ formatDate(row.to) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="candleCount">
+              <th mat-header-cell *matHeaderCellDef>Candles</th>
+              <td mat-cell *matCellDef="let row">{{ formatNumber(row.candleCount) }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let row">
+                @if (getIntervalIngestionState(symbol.symbol, row.interval).isIngesting) {
+                  <span class="status-chip status-chip--ingesting">
+                    <mat-icon class="status-chip__icon">sync</mat-icon>
+                    Ingesting…
+                  </span>
+                } @else if (row.candleCount > 0) {
+                  <span class="status-chip status-chip--ok">
+                    <mat-icon class="status-chip__icon">check_circle</mat-icon>
+                    Available
+                  </span>
+                } @else {
+                  <span class="status-chip status-chip--missing">
+                    <mat-icon class="status-chip__icon">cancel</mat-icon>
+                    No data
+                  </span>
+                }
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row">
+                <button
+                  mat-icon-button
+                  type="button"
+                  (click)="onIngestInterval(symbol.symbol, row.interval)"
+                  [disabled]="getIntervalIngestionState(symbol.symbol, row.interval).isIngesting || isAnyIngesting()"
+                  [matTooltip]="'Ingest ' + row.interval + ' candles from Binance'">
+                  <mat-icon>cloud_download</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="intervalColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: intervalColumns;"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</section>

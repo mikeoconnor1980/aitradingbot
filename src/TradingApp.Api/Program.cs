@@ -97,6 +97,7 @@ builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
 builder.Services.AddSingleton<BacktestJobQueue>();
 builder.Services.AddSingleton<BacktestCancellationManager>();
 builder.Services.AddSingleton<OptimizationJobQueue>();
+builder.Services.AddSingleton<OptimizationCancellationRegistry>();
 builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
 builder.Services.AddScoped<GridStrategyEngine>();
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();

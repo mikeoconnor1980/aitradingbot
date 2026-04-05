@@ -11,9 +11,13 @@ namespace TradingApp.Application.Backtesting.Services;
 /// </summary>
 public sealed class CandleReplayEngine
 {
-    private const string TriggerInterval = "15m";
     private const string OneHourInterval = "1h";
     private const string FourHourInterval = "4h";
+
+    private static readonly HashSet<string> SupportedTriggerIntervals = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "15m", "1h", "4h"
+    };
 
     private readonly ICandleRepository _candleRepository;
 
@@ -26,10 +30,16 @@ public sealed class CandleReplayEngine
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        var warmupStartUtc = CalculateWarmupStartUtc(config);
+        var triggerTimeframe = config.TriggerTimeframe;
+        if (!SupportedTriggerIntervals.Contains(triggerTimeframe))
+        {
+            throw new ArgumentException($"Unsupported trigger timeframe: {triggerTimeframe}. Supported: 15m, 1h, 4h");
+        }
+
+        var warmupStartUtc = CalculateWarmupStartUtc(config, triggerTimeframe);
         var candles15mTask = _candleRepository.GetCandlesAsync(
             config.Symbol,
-            TriggerInterval,
+            "15m",
             warmupStartUtc,
             config.EndDateUtc,
             cancellationToken: cancellationToken);
@@ -53,15 +63,19 @@ public sealed class CandleReplayEngine
         var sorted15m = DeduplicateByTimestamp(candles15mTask.Result);
         var sorted1h = DeduplicateByTimestamp(candles1hTask.Result);
         var sorted4h = DeduplicateByTimestamp(candles4hTask.Result);
-        var warmupEndIndex = DetermineWarmupEndIndex(sorted15m, config);
 
-        ValidateDataAvailability(config, sorted15m, sorted1h, sorted4h, warmupEndIndex);
+        var triggerCandles = GetCandlesByTimeframe(triggerTimeframe, sorted15m, sorted1h, sorted4h);
+        var warmupEndIndex = DetermineWarmupEndIndex(triggerCandles, config);
+
+        ValidateDataAvailability(config, triggerTimeframe, triggerCandles, sorted15m, sorted1h, sorted4h, warmupEndIndex);
 
         return new ReplayData
         {
             Candles15m = sorted15m,
             Candles1h = sorted1h,
             Candles4h = sorted4h,
+            TriggerCandles = triggerCandles,
+            TriggerTimeframe = triggerTimeframe,
             WarmupEndIndex = warmupEndIndex
         };
     }
@@ -102,15 +116,17 @@ public sealed class CandleReplayEngine
 
     private static void ValidateDataAvailability(
         BacktestConfig config,
+        string triggerTimeframe,
+        IReadOnlyList<Candle> triggerCandles,
         IReadOnlyList<Candle> candles15m,
         IReadOnlyList<Candle> candles1h,
         IReadOnlyList<Candle> candles4h,
         int warmupEndIndex)
     {
-        if (candles15m.Count == 0 || warmupEndIndex >= candles15m.Count)
+        if (triggerCandles.Count == 0 || warmupEndIndex >= triggerCandles.Count)
         {
             throw new NotFoundException(
-                $"No candle data found for {config.Symbol}/{TriggerInterval} between {config.StartDateUtc} and {config.EndDateUtc}");
+                $"No candle data found for {config.Symbol}/{triggerTimeframe} between {config.StartDateUtc} and {config.EndDateUtc}");
         }
 
         if (candles1h.Count == 0)
@@ -128,39 +144,54 @@ public sealed class CandleReplayEngine
         if (warmupEndIndex < config.WarmupPeriod)
         {
             throw new NotFoundException(
-                $"Insufficient warmup data for {config.Symbol}/{TriggerInterval}. Need {config.WarmupPeriod} candles before start date, found {warmupEndIndex}.");
+                $"Insufficient warmup data for {config.Symbol}/{triggerTimeframe}. Need {config.WarmupPeriod} candles before start date, found {warmupEndIndex}.");
         }
 
-        var firstEvaluationCandle = candles15m[warmupEndIndex];
-        if (GetLatestClosedCandle(candles1h, firstEvaluationCandle.Timestamp) is null)
+        var firstEvaluationCandle = triggerCandles[warmupEndIndex];
+
+        // Only validate context for timeframes above the trigger
+        if (string.Compare(triggerTimeframe, OneHourInterval, StringComparison.OrdinalIgnoreCase) < 0
+            && GetLatestClosedCandle(candles1h, firstEvaluationCandle.Timestamp) is null)
         {
             throw new NotFoundException(
                 $"Missing {OneHourInterval} candle data for {config.Symbol}. Cannot run backtest without higher-timeframe context.");
         }
 
-        if (GetLatestClosedCandle(candles4h, firstEvaluationCandle.Timestamp) is null)
+        if (string.Compare(triggerTimeframe, FourHourInterval, StringComparison.OrdinalIgnoreCase) < 0
+            && GetLatestClosedCandle(candles4h, firstEvaluationCandle.Timestamp) is null)
         {
             throw new NotFoundException(
                 $"Missing {FourHourInterval} candle data for {config.Symbol}. Cannot run backtest without higher-timeframe context.");
         }
     }
 
-    private static int DetermineWarmupEndIndex(IReadOnlyList<Candle> candles15m, BacktestConfig config)
+    private static IReadOnlyList<Candle> GetCandlesByTimeframe(
+        string timeframe,
+        IReadOnlyList<Candle> candles15m,
+        IReadOnlyList<Candle> candles1h,
+        IReadOnlyList<Candle> candles4h) => timeframe.ToLowerInvariant() switch
     {
-        for (var index = 0; index < candles15m.Count; index++)
+        "1h" => candles1h,
+        "4h" => candles4h,
+        _ => candles15m
+    };
+
+    private static int DetermineWarmupEndIndex(IReadOnlyList<Candle> triggerCandles, BacktestConfig config)
+    {
+        for (var index = 0; index < triggerCandles.Count; index++)
         {
-            if (candles15m[index].Timestamp >= config.StartDateUtc)
+            if (triggerCandles[index].Timestamp >= config.StartDateUtc)
             {
                 return index;
             }
         }
 
-        return candles15m.Count;
+        return triggerCandles.Count;
     }
 
-    private static long CalculateWarmupStartUtc(BacktestConfig config)
+    private static long CalculateWarmupStartUtc(BacktestConfig config, string triggerTimeframe)
     {
-        var warmupDurationUtc = checked(config.WarmupPeriod * GetIntervalMs(TriggerInterval));
+        var warmupDurationUtc = checked(config.WarmupPeriod * GetIntervalMs(triggerTimeframe));
         return Math.Max(0L, config.StartDateUtc - warmupDurationUtc);
     }
 
@@ -171,10 +202,10 @@ public sealed class CandleReplayEngine
         return Math.Max(0L, alignedWarmupStartUtc - intervalMs);
     }
 
-    private static long GetIntervalMs(string interval) => interval switch
+    private static long GetIntervalMs(string interval) => interval.ToLowerInvariant() switch
     {
         "5m" => 5L * 60L * 1000L,
-        TriggerInterval => 15L * 60L * 1000L,
+        "15m" => 15L * 60L * 1000L,
         OneHourInterval => 60L * 60L * 1000L,
         FourHourInterval => 4L * 60L * 60L * 1000L,
         _ => throw new ArgumentException($"Unsupported interval: {interval}", nameof(interval))

@@ -16,4 +16,9 @@ public sealed class UnavailableBacktestRunner : IBacktestRunner
     {
         return RunAsync(config, cancellationToken);
     }
+
+    public Task<BacktestResult> RunAsync(BacktestConfig config, ReplayData preloadedData, CancellationToken cancellationToken = default)
+    {
+        return RunAsync(config, cancellationToken);
+    }
 }

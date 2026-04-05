@@ -227,6 +227,9 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<double>("AverageTradePnl")
                         .HasColumnType("REAL");
 
+                    b.Property<double?>("CalmarRatio")
+                        .HasColumnType("REAL");
+
                     b.Property<double>("FitnessScore")
                         .HasColumnType("REAL");
 
@@ -236,15 +239,39 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<double>("MaxDrawdown")
                         .HasColumnType("REAL");
 
+                    b.Property<double?>("OosFitnessScore")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("OosMaxDrawdown")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("OosTotalPnl")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("OosTotalTrades")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("OosWinRate")
+                        .HasColumnType("REAL");
+
                     b.Property<Guid>("OptimizationRunId")
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("ProfitFactor")
+                        .HasColumnType("REAL");
 
                     b.Property<int>("Rank")
                         .HasColumnType("INTEGER");
 
+                    b.Property<double?>("SharpeRatio")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("SignalDescription")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("SortinoRatio")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("StrategyConfigJson")
                         .IsRequired()
@@ -297,6 +324,9 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("INTEGER");
 
                     b.Property<double>("InitialCapital")
                         .HasColumnType("REAL");

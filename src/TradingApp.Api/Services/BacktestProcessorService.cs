@@ -223,6 +223,7 @@ public sealed class BacktestProcessorService : BackgroundService
             Strategy = strategyConfig,
             Execution = executionConfig,
             EnableAuditLog = run.AuditLogEnabled,
+            TriggerTimeframe = strategyConfig.Timeframe,
         };
     }
 }
