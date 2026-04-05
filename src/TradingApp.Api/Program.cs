@@ -93,11 +93,13 @@ builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMe
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
 builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
 builder.Services.AddSingleton<BacktestJobQueue>();
+builder.Services.AddSingleton<BacktestCancellationManager>();
 builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
 builder.Services.AddScoped<GridStrategyEngine>();
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, MacdConditionHandler>();
+builder.Services.AddScoped<IConditionHandler, SupportResistanceConditionHandler>();
 builder.Services.AddScoped<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();

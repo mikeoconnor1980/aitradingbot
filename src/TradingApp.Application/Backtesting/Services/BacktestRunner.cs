@@ -49,7 +49,7 @@ public sealed class BacktestRunner : IBacktestRunner
         return RunAsync(config, onProgress: null, cancellationToken);
     }
 
-    public async Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int>? onProgress, CancellationToken cancellationToken = default)
+    public async Task<BacktestResult> RunAsync(BacktestConfig config, Action<int, int, long>? onProgress, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(config);
         ValidateConfig(config);
@@ -88,7 +88,7 @@ public sealed class BacktestRunner : IBacktestRunner
         {
             var replayData = await replayEngine.LoadAsync(config, cancellationToken);
             var totalCandles = Math.Max(0, replayData.Candles15m.Count - replayData.WarmupEndIndex);
-            onProgress?.Invoke(0, totalCandles);
+            onProgress?.Invoke(0, totalCandles, config.StartDateUtc);
             var tradeLog = new List<BacktestTrade>();
             var equityTimeSeries = new List<EquitySnapshot>();
             var currentGridState = scheduler.GetGridState();
@@ -222,7 +222,7 @@ public sealed class BacktestRunner : IBacktestRunner
                 var candlesProcessed = index - replayData.WarmupEndIndex + 1;
                 if (candlesProcessed % 100 == 0 || candlesProcessed == totalCandles)
                 {
-                    onProgress?.Invoke(candlesProcessed, totalCandles);
+                    onProgress?.Invoke(candlesProcessed, totalCandles, candle.Timestamp);
                 }
             }
 
@@ -404,7 +404,8 @@ public sealed class BacktestRunner : IBacktestRunner
                 Size = closedSize,
                 PnL = CalculateTradePnl(openTrade.Side, openTrade.EntryPrice, fill.FillPrice, closedSize),
                 Fees = openTrade.Fees + allocatedExitFee,
-                TradeType = openTrade.TradeType
+                TradeType = openTrade.TradeType,
+                ExitReason = fill.CloseReason?.ToString()
             };
 
             var openTradeIndex = tradeLog.IndexOf(openTrade);

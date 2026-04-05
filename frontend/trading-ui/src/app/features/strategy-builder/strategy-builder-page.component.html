@@ -80,7 +80,7 @@
           <app-grid-config-card [group]="gridFormGroup" />
         }
         @if (isSignalMode) {
-          <app-entry-conditions-card [conditions]="conditionsFormArray" />
+          <app-entry-conditions-card [conditions]="conditionsFormArray" [entryLogicControl]="form.get('entryLogic')!" />
         }
         <app-exit-rules-card [group]="exitFormGroup" />
         <app-risk-management-card [group]="riskFormGroup" />

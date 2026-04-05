@@ -8,8 +8,7 @@ using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Models;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Backtesting;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.Backtesting.Models;using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Serialization;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Trading;
@@ -22,14 +21,17 @@ public sealed class BacktestsController : ApiController
 {
     private static readonly string[] RequiredBacktestIntervals = ["15m", "1h", "4h"];
     private readonly IStrategyRepository _strategyRepository;
+    private readonly BacktestCancellationManager _cancellationManager;
 
     public BacktestsController(
         IMediator mediator,
         IdentityService identityService,
-        IStrategyRepository strategyRepository)
+        IStrategyRepository strategyRepository,
+        BacktestCancellationManager cancellationManager)
         : base(mediator, identityService)
     {
         _strategyRepository = strategyRepository;
+        _cancellationManager = cancellationManager;
     }
 
     [HttpPost]
@@ -100,6 +102,8 @@ public sealed class BacktestsController : ApiController
     public async Task<IActionResult> GetBacktestsAsync(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
+        [FromQuery] string? symbol = null,
+        [FromQuery] string? strategy = null,
         CancellationToken cancellationToken = default)
     {
         if (page < 1)
@@ -112,7 +116,27 @@ public sealed class BacktestsController : ApiController
             throw new DomainException("pageSize must be between 1 and 100");
         }
 
-        var result = await Mediator.Send(new GetBacktestListQuery(page, pageSize), cancellationToken);
+        IReadOnlyList<Guid>? strategyIds = null;
+
+        if (!string.IsNullOrWhiteSpace(strategy))
+        {
+            strategyIds = await _strategyRepository.SearchIdsByNameAsync(strategy.Trim(), cancellationToken);
+
+            if (strategyIds.Count == 0)
+            {
+                return Ok(new PagedResult<BacktestSummaryDto>
+                {
+                    Items = [],
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = 0,
+                });
+            }
+        }
+
+        var result = await Mediator.Send(
+            new GetBacktestListQuery(page, pageSize, symbol?.Trim(), strategyIds),
+            cancellationToken);
         var strategyNames = await GetStrategyNamesByIdAsync(result.Items.Select(summary => summary.StrategyId), cancellationToken);
 
         return Ok(new PagedResult<BacktestSummaryDto>
@@ -205,6 +229,20 @@ public sealed class BacktestsController : ApiController
     {
         var result = await Mediator.Send(new GetBacktestDebugQuery(id, cycleId), cancellationToken);
         return result is not null ? Ok(result) : NoContent();
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public IActionResult CancelAsync(Guid id)
+    {
+        if (!_cancellationManager.TryCancel(id))
+        {
+            throw new DomainException("Backtest is not currently running or queued.");
+        }
+
+        return NoContent();
     }
 
     private static void ValidateManualRequest(RunBacktestRequest request)

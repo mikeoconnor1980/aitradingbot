@@ -393,7 +393,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     public async Task GivenNoBacktests_WhenGetList_ThenReturnsEmptyPagedResult()
     {
         _backtestRunRepositoryMock
-            .Setup(repository => repository.GetPagedSummariesAsync(1, 20, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetPagedSummariesAsync(1, 20, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PagedResult<BacktestRunSummary>
             {
                 Items = [],
@@ -422,7 +422,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         var secondId = Guid.NewGuid();
 
         _backtestRunRepositoryMock
-            .Setup(repository => repository.GetPagedSummariesAsync(2, 1, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetPagedSummariesAsync(2, 1, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PagedResult<BacktestRunSummary>
             {
                 Items =
@@ -467,7 +467,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         result.TotalPages.Should().Be(2);
 
         _backtestRunRepositoryMock.Verify(
-            repository => repository.GetPagedSummariesAsync(2, 1, It.IsAny<CancellationToken>()),
+            repository => repository.GetPagedSummariesAsync(2, 1, null, null, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -488,7 +488,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
         body.GetProperty("errorCode").GetString().Should().Be("validation_error");
 
         _backtestRunRepositoryMock.Verify(
-            repository => repository.GetPagedSummariesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            repository => repository.GetPagedSummariesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyList<Guid>?>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

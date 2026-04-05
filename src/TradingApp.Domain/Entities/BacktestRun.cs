@@ -151,6 +151,12 @@ public sealed class BacktestRun
         ErrorMessage = errorMessage;
     }
 
+    public void MarkCancelled()
+    {
+        Status = BacktestStatus.Cancelled;
+        ErrorMessage = "Backtest was cancelled by user.";
+    }
+
     public static BacktestRun Create(
         string symbol,
         string intervalsJson,

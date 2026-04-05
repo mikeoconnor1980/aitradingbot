@@ -70,21 +70,34 @@ public sealed class CandleReplayEngine
     {
         ArgumentNullException.ThrowIfNull(higherTimeframeCandles);
 
-        Candle? latest = null;
-
-        foreach (var candle in higherTimeframeCandles)
+        if (higherTimeframeCandles.Count == 0)
         {
-            var closeTimeUtc = candle.Timestamp + GetIntervalMs(candle.Interval);
-            if (closeTimeUtc <= triggerCandleOpenTimeUtc)
-            {
-                latest = candle;
-                continue;
-            }
-
-            break;
+            return null;
         }
 
-        return latest;
+        var intervalMs = GetIntervalMs(higherTimeframeCandles[0].Interval);
+        var targetTimestamp = triggerCandleOpenTimeUtc - intervalMs;
+
+        var low = 0;
+        var high = higherTimeframeCandles.Count - 1;
+        var resultIndex = -1;
+
+        while (low <= high)
+        {
+            var mid = low + ((high - low) / 2);
+
+            if (higherTimeframeCandles[mid].Timestamp <= targetTimestamp)
+            {
+                resultIndex = mid;
+                low = mid + 1;
+            }
+            else
+            {
+                high = mid - 1;
+            }
+        }
+
+        return resultIndex >= 0 ? higherTimeframeCandles[resultIndex] : null;
     }
 
     private static void ValidateDataAvailability(

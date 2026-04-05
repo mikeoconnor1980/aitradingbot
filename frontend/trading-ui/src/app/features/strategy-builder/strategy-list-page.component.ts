@@ -51,6 +51,12 @@ export class StrategyListPageComponent implements OnInit {
     });
   }
 
+  public onDuplicate(strategy: StrategySummaryDto): void {
+    void this._router.navigate(["/strategies/new"], {
+      queryParams: { duplicateFrom: strategy.id }
+    });
+  }
+
   public onDelete(strategy: StrategySummaryDto): void {
     const dialogData: ConfirmDialogData = {
       title: "Delete Strategy",

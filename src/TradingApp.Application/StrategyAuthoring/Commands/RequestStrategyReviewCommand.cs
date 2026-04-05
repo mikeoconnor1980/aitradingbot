@@ -24,6 +24,7 @@ public sealed class RequestStrategyReviewCommandHandler
     private readonly IStrategyRevisionRepository _revisionRepository;
     private readonly IStrategyReviewRepository _reviewRepository;
     private readonly IBacktestRunRepository _backtestRunRepository;
+    private readonly IFundingRateRepository _fundingRateRepository;
     private readonly IStrategyReviewer _reviewer;
 
     public RequestStrategyReviewCommandHandler(
@@ -31,6 +32,7 @@ public sealed class RequestStrategyReviewCommandHandler
         IStrategyRevisionRepository revisionRepository,
         IStrategyReviewRepository reviewRepository,
         IBacktestRunRepository backtestRunRepository,
+        IFundingRateRepository fundingRateRepository,
         IStrategyReviewer reviewer,
         IOptions<LlmReviewOptions> options)
     {
@@ -38,6 +40,7 @@ public sealed class RequestStrategyReviewCommandHandler
         _revisionRepository = revisionRepository;
         _reviewRepository = reviewRepository;
         _backtestRunRepository = backtestRunRepository;
+        _fundingRateRepository = fundingRateRepository;
         _reviewer = reviewer;
         _options = options;
     }
@@ -68,8 +71,18 @@ public sealed class RequestStrategyReviewCommandHandler
             request.RevisionNumber,
             cancellationToken);
 
+        IReadOnlyList<FundingRate> fundingRates = [];
+        if (latestBacktest is not null)
+        {
+            fundingRates = await _fundingRateRepository.GetRangeAsync(
+                latestBacktest.Symbol,
+                latestBacktest.StartDateUtc,
+                latestBacktest.EndDateUtc,
+                cancellationToken);
+        }
+
         var backtestSummary = latestBacktest is not null
-            ? BacktestSummaryForReview.FromBacktestRun(latestBacktest)
+            ? BacktestSummaryForReview.FromBacktestRun(latestBacktest, fundingRates)
             : null;
 
         var result = await _reviewer.ReviewAsync(revision.ConfigJson, backtestSummary, cancellationToken);

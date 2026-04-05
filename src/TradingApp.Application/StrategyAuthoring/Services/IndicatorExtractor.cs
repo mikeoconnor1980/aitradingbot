@@ -130,6 +130,15 @@ public static class IndicatorExtractor
                     SignalPeriod = macd.SignalPeriod
                 });
                 break;
+
+            case EntryConditionType.SupportResistance when condition.Params is SupportResistanceParams sr:
+                AddIfNew(seen, requirements, new IndicatorRequirement
+                {
+                    Type = "SUPPORT_RESISTANCE",
+                    Lookback = sr.Lookback,
+                    Strength = sr.Strength
+                });
+                break;
         }
     }
 
@@ -138,7 +147,7 @@ public static class IndicatorExtractor
         List<IndicatorRequirement> requirements,
         IndicatorRequirement requirement)
     {
-        var key = $"{requirement.Type}:{requirement.Period}:{requirement.FastPeriod}:{requirement.SlowPeriod}:{requirement.SignalPeriod}";
+        var key = $"{requirement.Type}:{requirement.Period}:{requirement.FastPeriod}:{requirement.SlowPeriod}:{requirement.SignalPeriod}:{requirement.Lookback}:{requirement.Strength}";
         if (seen.Add(key))
         {
             requirements.Add(requirement);

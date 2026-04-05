@@ -18,7 +18,7 @@ import { BacktestTrade } from "../../../core/models/backtest.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../../core/services/backtest.service";
 
-type SortableColumn = "entryTime" | "exitTime" | "entryPrice" | "exitPrice" | "side" | "size" | "pnl" | "fees";
+type SortableColumn = "entryTime" | "exitTime" | "entryPrice" | "exitPrice" | "side" | "size" | "pnl" | "fees" | "exitReason";
 type SortDirection = "asc" | "desc" | null;
 type SetupDetectedFilter = "all" | "true" | "false";
 
@@ -205,6 +205,48 @@ export class TradeLogTableComponent {
     return "—";
   }
 
+  public getTradeOrderEvents(debugData: BacktestDebugResponse, trade: BacktestTrade): OrderEvent[] {
+    const entryMs = new Date(trade.entryTime).getTime();
+    const exitMs = trade.exitTime ? new Date(trade.exitTime).getTime() : Number.MAX_SAFE_INTEGER;
+    const bufferMs = 60_000;
+
+    return debugData.orderEvents.filter((event: OrderEvent) => {
+      const eventMs = typeof event.timestampUtc === "number" && event.timestampUtc > 1e12
+        ? event.timestampUtc
+        : event.timestampUtc * 1000;
+      return eventMs >= entryMs - bufferMs && eventMs <= exitMs + bufferMs;
+    });
+  }
+
+  public formatExitReason(reason: string | null | undefined): string {
+    if (!reason) {
+      return "—";
+    }
+
+    switch (reason) {
+      case "TakeProfitTriggered":
+        return "Take Profit";
+      case "StopLossTriggered":
+        return "Stop Loss";
+      case "GridRedeployed":
+        return "Grid Redeployed";
+      case "ManualCancel":
+        return "Manual Cancel";
+      default:
+        return reason;
+    }
+  }
+
+  public getExitReasonClass(reason: string | null | undefined): string {
+    if (!reason) {
+      return "";
+    }
+
+    return reason === "TakeProfitTriggered"
+      ? "trade-log__exit-reason--profit"
+      : "trade-log__exit-reason--loss";
+  }
+
   public getAvailableSignalTypes(debugData: BacktestDebugResponse): string[] {
     const signalTypes = new Set<string>();
 
@@ -388,6 +430,8 @@ export class TradeLogTableComponent {
         return trade.pnl ?? 0;
       case "fees":
         return trade.fees;
+      case "exitReason":
+        return trade.exitReason ?? "";
       default:
         return 0;
     }

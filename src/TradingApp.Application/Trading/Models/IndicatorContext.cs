@@ -98,6 +98,30 @@ public sealed class IndicatorContext
 
     public decimal? GetPreviousMacdHistogram(int fast, int slow, int signal) => GetValue(_previous, CreateMacdHistogramKey(fast, slow, signal));
 
+    public void SetSupport(int lookback, decimal currentValue, decimal? previousValue = null)
+    {
+        _current[CreateSupportKey(lookback)] = currentValue;
+
+        if (previousValue.HasValue)
+        {
+            _previous[CreateSupportKey(lookback)] = previousValue.Value;
+        }
+    }
+
+    public void SetResistance(int lookback, decimal currentValue, decimal? previousValue = null)
+    {
+        _current[CreateResistanceKey(lookback)] = currentValue;
+
+        if (previousValue.HasValue)
+        {
+            _previous[CreateResistanceKey(lookback)] = previousValue.Value;
+        }
+    }
+
+    public decimal? GetSupport(int lookback) => GetValue(_current, CreateSupportKey(lookback));
+
+    public decimal? GetResistance(int lookback) => GetValue(_current, CreateResistanceKey(lookback));
+
     private static decimal? GetValue(IReadOnlyDictionary<string, decimal> source, string key)
     {
         return source.TryGetValue(key, out var value) ? value : null;
@@ -114,4 +138,8 @@ public sealed class IndicatorContext
     private static string CreateMacdSignalKey(int fast, int slow, int signal) => $"MACD:{fast}:{slow}:{signal}:signal";
 
     private static string CreateMacdHistogramKey(int fast, int slow, int signal) => $"MACD:{fast}:{slow}:{signal}:histogram";
+
+    private static string CreateSupportKey(int lookback) => $"SUPPORT:{lookback}";
+
+    private static string CreateResistanceKey(int lookback) => $"RESISTANCE:{lookback}";
 }

@@ -6,4 +6,5 @@ public enum EntryConditionType
     Rsi,
     PriceVsEma,
     Macd,
+    SupportResistance,
 }

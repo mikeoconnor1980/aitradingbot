@@ -19,17 +19,20 @@ namespace TradingApp.Api.Services;
 public sealed class BacktestProcessorService : BackgroundService
 {
     private readonly BacktestJobQueue _queue;
+    private readonly BacktestCancellationManager _cancellationManager;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHubContext<MarketDataHub> _hubContext;
     private readonly ILogger<BacktestProcessorService> _logger;
 
     public BacktestProcessorService(
         BacktestJobQueue queue,
+        BacktestCancellationManager cancellationManager,
         IServiceScopeFactory scopeFactory,
         IHubContext<MarketDataHub> hubContext,
         ILogger<BacktestProcessorService> logger)
     {
         _queue = queue;
+        _cancellationManager = cancellationManager;
         _scopeFactory = scopeFactory;
         _hubContext = hubContext;
         _logger = logger;
@@ -74,10 +77,15 @@ public sealed class BacktestProcessorService : BackgroundService
         var config = BuildConfig(backtestRun);
         var stopwatch = Stopwatch.StartNew();
         var lastBroadcastPercent = -1;
+        long lastCandleTimestamp = 0;
+
+        using var jobCts = _cancellationManager.Register(job.BacktestRunId);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, jobCts.Token);
+        var linkedToken = linkedCts.Token;
 
         try
         {
-            var result = await runner.RunAsync(config, OnProgress, stoppingToken);
+            var result = await runner.RunAsync(config, OnProgress, linkedToken);
             stopwatch.Stop();
 
             backtestRun.MarkCompleted(
@@ -105,7 +113,7 @@ public sealed class BacktestProcessorService : BackgroundService
                     ? BacktestRunResponseMapper.SerializeGridCycleLog(result.GridCycleLog)
                     : null);
 
-            await repository.UpdateAsync(backtestRun, stoppingToken);
+            await repository.UpdateAsync(backtestRun, CancellationToken.None);
             await BroadcastStatusAsync(backtestRun);
 
             _logger.LogInformation(
@@ -119,15 +127,25 @@ public sealed class BacktestProcessorService : BackgroundService
             await BroadcastStatusAsync(backtestRun);
             throw;
         }
+        catch (OperationCanceledException) when (jobCts.IsCancellationRequested)
+        {
+            _logger.LogInformation("Backtest {BacktestRunId} cancelled by user", job.BacktestRunId);
+            await repository.DeleteAsync(job.BacktestRunId, CancellationToken.None);
+            await BroadcastCancelledAsync(job.BacktestRunId);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Backtest {BacktestRunId} failed", job.BacktestRunId);
             backtestRun.MarkFailed(ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message);
-            await repository.UpdateAsync(backtestRun, stoppingToken);
+            await repository.UpdateAsync(backtestRun, CancellationToken.None);
             await BroadcastStatusAsync(backtestRun);
         }
+        finally
+        {
+            _cancellationManager.Remove(job.BacktestRunId);
+        }
 
-        void OnProgress(int candlesProcessed, int totalCandles)
+        void OnProgress(int candlesProcessed, int totalCandles, long currentTimestamp)
         {
             if (backtestRun.TotalCandles == 0 && totalCandles > 0)
             {
@@ -135,16 +153,17 @@ public sealed class BacktestProcessorService : BackgroundService
             }
 
             backtestRun.UpdateProgress(candlesProcessed);
+            lastCandleTimestamp = currentTimestamp;
 
             if (backtestRun.Progress != lastBroadcastPercent)
             {
                 lastBroadcastPercent = backtestRun.Progress;
-                _ = BroadcastProgressAsync(backtestRun);
+                _ = BroadcastProgressAsync(backtestRun, lastCandleTimestamp);
             }
         }
     }
 
-    private Task BroadcastProgressAsync(BacktestRun backtestRun)
+    private Task BroadcastProgressAsync(BacktestRun backtestRun, long currentTimestamp)
     {
         return _hubContext.Clients.All.SendAsync("ReceiveBacktestProgress", new
         {
@@ -152,6 +171,7 @@ public sealed class BacktestProcessorService : BackgroundService
             status = backtestRun.Status.ToString(),
             progress = backtestRun.Progress,
             totalCandles = backtestRun.TotalCandles,
+            currentTimestamp,
         });
     }
 
@@ -164,6 +184,17 @@ public sealed class BacktestProcessorService : BackgroundService
             progress = backtestRun.Progress,
             totalCandles = backtestRun.TotalCandles,
             errorMessage = backtestRun.ErrorMessage,
+        });
+    }
+
+    private Task BroadcastCancelledAsync(Guid backtestRunId)
+    {
+        return _hubContext.Clients.All.SendAsync("ReceiveBacktestProgress", new
+        {
+            id = backtestRunId,
+            status = "Cancelled",
+            progress = 0,
+            totalCandles = 0,
         });
     }
 

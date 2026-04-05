@@ -35,7 +35,7 @@ import { ValidationCardComponent } from "./components/validation-card/validation
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
 import { StrategyIntentDto } from "./models/strategy-intent.model";
 import { StrategyReviewDto } from "./models/strategy-review.model";
-import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, ValidationError } from "./models/strategy.model";
+import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, SupportResistanceParams, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -118,6 +118,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     if (this.editId !== null) {
       this._loadStrategy(this.editId);
+    } else {
+      const duplicateFrom = this._route.snapshot.queryParamMap.get("duplicateFrom");
+      if (duplicateFrom !== null) {
+        this._duplicateStrategy(duplicateFrom);
+      }
     }
   }
 
@@ -431,6 +436,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         operator: ["gt", Validators.required],
         appliesTo: ["both", Validators.required],
       }),
+      entryLogic: ["all"],
       conditions: this._fb.array([]),
     });
   }
@@ -518,6 +524,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
             operator: "gt",
             appliesTo: "both",
           },
+          entryLogic: strategy.config.entryLogic ?? "all",
         });
 
         if (strategy.config.strategyMode === "signal") {
@@ -546,6 +553,73 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         this._notifications.error("Failed to load strategy.");
         this.isLoading = false;
         void this._router.navigate(["/strategies"]);
+      }
+    });
+  }
+
+  private _duplicateStrategy(sourceId: string): void {
+    this.isLoading = true;
+
+    this._strategyApi.getStrategy(sourceId, this._localErrorContext).subscribe({
+      next: (strategy) => {
+        const templateId = strategy.config.templateId ?? (strategy.config.strategyMode === "signal" ? "custom_signal" : "grid");
+        this.form.patchValue({
+          templateId,
+          strategyName: `${strategy.config.strategyName} (Copy)`,
+          exchange: strategy.config.exchange,
+          market: strategy.config.market,
+          timeframe: strategy.config.timeframe,
+          direction: strategy.config.direction,
+          grid: {
+            levels: strategy.config.grid?.levels ?? 10,
+            spacing: strategy.config.grid?.spacing ?? 0.5,
+            entryMode: strategy.config.grid?.entryMode ?? "auto_from_signal_candle",
+            anchorPrice: strategy.config.grid?.anchorPrice ?? null,
+            breakdownThreshold: strategy.config.grid?.breakdownThreshold ?? 1.5,
+          },
+          exit: strategy.config.exit,
+          risk: strategy.config.risk,
+          metadata: { tags: [], notes: "" },
+          source: {
+            entryPoint: strategy.config.source?.entryPoint ?? "ui_builder",
+            summary: strategy.config.source?.summary ?? "Created in strategy builder",
+            sourceText: strategy.config.source?.sourceText ?? null,
+          },
+          trendFilter: strategy.config.trendFilter ?? {
+            enabled: false,
+            type: "ema_cross",
+            period: 200,
+            fastPeriod: 50,
+            slowPeriod: 200,
+            operator: "gt",
+            appliesTo: "both",
+          },
+          entryLogic: strategy.config.entryLogic ?? "all",
+        });
+
+        if (strategy.config.strategyMode === "signal") {
+          this.form.patchValue({ templateId: strategy.config.templateId ?? "custom_signal" });
+          this.form.get("grid")?.disable();
+          this._clearConditions();
+
+          for (const condition of strategy.config.entryConditions ?? []) {
+            this._addLoadedCondition(condition);
+          }
+        } else {
+          this.form.get("grid")?.enable();
+          this._clearConditions();
+        }
+
+        this.nlSourceText = strategy.config.source?.sourceText ?? "";
+        this.nlResult = null;
+
+        this._savedFormSnapshot = this._createFormSnapshot();
+        this.form.markAsDirty();
+        this.isLoading = false;
+      },
+      error: () => {
+        this._notifications.error("Failed to load strategy for duplication.");
+        this.isLoading = false;
       }
     });
   }
@@ -692,6 +766,21 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       return;
     }
 
+    if (condition.type === "support_resistance") {
+      const params = condition.params as SupportResistanceParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createSupportResistanceCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        lookback: params.lookback,
+        strength: params.strength,
+        operator: params.operator,
+        tolerance: params.tolerance,
+      }));
+      return;
+    }
+
     if (condition.type !== "rsi") {
       return;
     }
@@ -744,10 +833,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   private _populateFormFromIntent(intent: StrategyIntentDto): void {
     const config = intent.config;
     const templateId = config.templateId ?? (config.strategyMode === "signal" ? "custom_signal" : "grid");
+    const existingName = String(this.form.get("strategyName")?.value ?? "").trim();
 
     this.form.patchValue({
       templateId,
-      strategyName: config.strategyName,
+      strategyName: existingName.length > 0 ? existingName : config.strategyName,
       exchange: config.exchange,
       market: config.market,
       timeframe: config.timeframe,
@@ -782,6 +872,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         operator: "gt",
         appliesTo: "both",
       },
+      entryLogic: config.entryLogic ?? "all",
     });
 
     this._clearConditions();

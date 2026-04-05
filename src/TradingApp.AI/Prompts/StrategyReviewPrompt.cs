@@ -76,10 +76,23 @@ internal static class StrategyReviewPrompt
         - Use concrete numbers from the backtest to support or challenge your assessment
         - Comment on statistical significance based on trade count and test duration
         - Assess the equity curve behavior and drawdown characteristics
+        - Use the risk-adjusted metrics to evaluate sustainability:
+          - Profit Factor < 1.0 means losing strategy; 1.0-1.5 is marginal; > 2.0 is strong
+          - Sharpe Ratio < 0.5 is weak; 0.5-1.0 is acceptable; > 1.5 is strong
+          - Reward:Risk Ratio < 1.0 means average loss exceeds average win
+          - Fee-to-Gross-Profit above 30% indicates fee drag is material
+          - Max Consecutive Losses helps assess psychological and capital sustainability
+        - If drawdown episodes are provided, analyse their severity, duration, and recovery
+            - If regime segmentation is provided, identify which regimes or sessions produced the strongest and weakest outcomes
+            - Call out when results depend too heavily on one volatility bucket, funding bucket, or session
+            - If open-interest trend segmentation is unavailable, treat it as a data gap rather than inferring that signal
         - Add a dedicated "11. Backtest Performance Analysis" section covering:
           - Overall return and equity curve behavior
           - Whether the win rate and drawdown are sustainable
-          - Fee impact relative to profit
+          - Profit factor and reward:risk ratio assessment
+          - Fee impact relative to gross profit
+          - Sharpe ratio interpretation
+          - Drawdown episode analysis (depth, duration, recovery)
           - Whether results suggest the strategy is viable for live trading
           - Risk-adjusted performance assessment
 

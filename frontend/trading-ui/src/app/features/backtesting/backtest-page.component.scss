@@ -55,6 +55,16 @@
     color: var(--colour-text-primary);
   }
 
+  &__cancel-btn {
+    align-self: flex-end;
+    margin-top: 0.5rem;
+  }
+
+  &__progress-date {
+    color: var(--colour-text-secondary);
+    font-weight: 400;
+  }
+
   &__error-actions {
     display: flex;
     gap: 0.5rem;

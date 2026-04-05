@@ -17,6 +17,8 @@ import {
   RsiOperator,
   RsiParams,
   StrategyConfig,
+  SupportResistanceOperator,
+  SupportResistanceParams,
 } from "../models/strategy.model";
 
 @Injectable({ providedIn: "root" })
@@ -54,7 +56,7 @@ export class StrategyMapperService {
         breakdownThreshold: Number(grid["breakdownThreshold"] ?? 0),
       },
       trendFilter: isSignalMode ? this._mapTrendFilter(trendFilter) : null,
-      entryLogic: isSignalMode ? "all" : null,
+      entryLogic: isSignalMode ? (String(formValue["entryLogic"] ?? "all") as "all" | "any") : null,
       entryConditions: isSignalMode ? this._mapConditions(conditions) : null,
       exit: {
         takeProfit: {
@@ -123,7 +125,7 @@ export class StrategyMapperService {
     }));
   }
 
-  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams | MacdParams {
+  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams | MacdParams | SupportResistanceParams {
     const type = String(condition["type"] ?? "rsi");
 
     if (type === "price_vs_ema") {
@@ -141,6 +143,15 @@ export class StrategyMapperService {
         slowPeriod: Number(condition["slowPeriod"] ?? 26),
         signalPeriod: Number(condition["signalPeriod"] ?? 9),
         operator: String(condition["operator"] ?? "cross_above_signal") as MacdOperator,
+      };
+    }
+
+    if (type === "support_resistance") {
+      return {
+        lookback: Number(condition["lookback"] ?? 50),
+        strength: Number(condition["strength"] ?? 3),
+        operator: String(condition["operator"] ?? "near_support") as SupportResistanceOperator,
+        tolerance: Number(condition["tolerance"] ?? 0.5),
       };
     }
 

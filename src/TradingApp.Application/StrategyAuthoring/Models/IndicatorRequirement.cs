@@ -14,4 +14,8 @@ public sealed record IndicatorRequirement
     public int? SlowPeriod { get; init; }
 
     public int? SignalPeriod { get; init; }
+
+    public int? Lookback { get; init; }
+
+    public int? Strength { get; init; }
 }

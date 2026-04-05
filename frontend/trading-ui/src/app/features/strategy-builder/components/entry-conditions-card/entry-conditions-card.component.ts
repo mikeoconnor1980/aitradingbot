@@ -1,6 +1,7 @@
 import { Component, Input, inject } from "@angular/core";
-import { FormArray, FormGroup, ReactiveFormsModule } from "@angular/forms";
+import { AbstractControl, FormArray, FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
+import { MatButtonToggleModule } from "@angular/material/button-toggle";
 import { MatCardModule } from "@angular/material/card";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -13,6 +14,7 @@ import { InfoPopoverComponent } from "../info-popover/info-popover.component";
 import { MacdConditionItemComponent } from "../macd-condition-item/macd-condition-item.component";
 import { PriceVsEmaConditionItemComponent } from "../price-vs-ema-condition-item/price-vs-ema-condition-item.component";
 import { RsiConditionItemComponent } from "../rsi-condition-item/rsi-condition-item.component";
+import { SupportResistanceConditionItemComponent } from "../support-resistance-condition-item/support-resistance-condition-item.component";
 
 @Component({
   selector: "app-entry-conditions-card",
@@ -20,6 +22,7 @@ import { RsiConditionItemComponent } from "../rsi-condition-item/rsi-condition-i
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatCardModule,
     MatCheckboxModule,
     MatFormFieldModule,
@@ -31,6 +34,7 @@ import { RsiConditionItemComponent } from "../rsi-condition-item/rsi-condition-i
     RsiConditionItemComponent,
     PriceVsEmaConditionItemComponent,
     MacdConditionItemComponent,
+    SupportResistanceConditionItemComponent,
   ],
   templateUrl: "./entry-conditions-card.component.html",
   styleUrl: "./entry-conditions-card.component.scss"
@@ -39,6 +43,7 @@ export class EntryConditionsCardComponent {
   private readonly _conditionFactory = inject(ConditionFactoryService);
 
   @Input() public conditions: FormArray | null = null;
+  @Input() public entryLogicControl: AbstractControl | null = null;
 
   public get conditionGroups(): FormGroup[] {
     return (this.conditions?.controls as FormGroup[]) ?? [];
@@ -80,6 +85,14 @@ export class EntryConditionsCardComponent {
     this.conditions.push(this._conditionFactory.createMacdCondition());
   }
 
+  public onAddSupportResistance(): void {
+    if (this.conditions === null) {
+      return;
+    }
+
+    this.conditions.push(this._conditionFactory.createSupportResistanceCondition());
+  }
+
   public onDuplicate(index: number): void {
     if (this.conditions === null) {
       return;
@@ -112,6 +125,18 @@ export class EntryConditionsCardComponent {
         slowPeriod: values["slowPeriod"] as number,
         signalPeriod: values["signalPeriod"] as number,
         operator: values["operator"] as "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling",
+      }));
+      return;
+    }
+
+    if (String(values["type"] ?? "rsi") === "support_resistance") {
+      this.conditions.insert(index + 1, this._conditionFactory.createSupportResistanceCondition({
+        enabled: values["enabled"] as boolean,
+        label: values["label"] as string,
+        lookback: values["lookback"] as number,
+        strength: values["strength"] as number,
+        operator: values["operator"] as "near_support" | "near_resistance" | "above_support" | "below_resistance" | "bounce_support" | "bounce_resistance",
+        tolerance: values["tolerance"] as number,
       }));
       return;
     }

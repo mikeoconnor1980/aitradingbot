@@ -5,7 +5,8 @@ export type PositionSizeType = "percent_wallet" | "fixed_notional";
 export type CooldownUnit = "candles" | "minutes";
 export type EntryMode = "auto_from_signal_candle" | "manual";
 export type EntryLogic = "all" | "any";
-export type EntryConditionType = "rsi" | "price_vs_ema" | "macd";
+export type EntryConditionType = "rsi" | "price_vs_ema" | "macd" | "support_resistance";
+export type SupportResistanceOperator = "near_support" | "near_resistance" | "above_support" | "below_resistance" | "bounce_support" | "bounce_resistance";
 export type RsiOperator = "lt" | "lte" | "gt" | "gte" | "cross_above" | "cross_below";
 export type MacdOperator = "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling";
 export type TrendFilterType = "ema_cross" | "sma_cross" | "price_above_ema";
@@ -51,12 +52,19 @@ export interface MacdParams {
   operator: MacdOperator;
 }
 
+export interface SupportResistanceParams {
+  lookback: number;
+  strength: number;
+  operator: SupportResistanceOperator;
+  tolerance: number;
+}
+
 export interface EntryConditionConfig {
   id: string;
   enabled: boolean;
   type: EntryConditionType;
   label: string;
-  params: RsiParams | PriceVsEmaParams | MacdParams;
+  params: RsiParams | PriceVsEmaParams | MacdParams | SupportResistanceParams;
 }
 
 export interface ExitRuleConfig {

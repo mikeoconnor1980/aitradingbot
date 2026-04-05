@@ -58,6 +58,12 @@
                     <mat-icon>{{ getSortIcon("fees") }}</mat-icon>
                   </button>
                 </th>
+                <th>
+                  <button type="button" class="trade-log__sort-button" (click)="onSort('exitReason')">
+                    <span>Exit Reason</span>
+                    <mat-icon>{{ getSortIcon("exitReason") }}</mat-icon>
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -88,11 +94,12 @@
                     {{ trade.pnl !== null ? "$" + (trade.pnl | number: "1.2-2") : "—" }}
                   </td>
                   <td>${{ trade.fees | number: "1.4-4" }}</td>
+                  <td [class]="getExitReasonClass(trade.exitReason)">{{ formatExitReason(trade.exitReason) }}</td>
                 </tr>
 
                 @if (isExpanded(trade)) {
                   <tr class="trade-log__details-row">
-                    <td colspan="9" class="trade-log__details-cell">
+                    <td colspan="10" class="trade-log__details-cell">
                       @if (isLoading(trade)) {
                         <div class="trade-log__loading">Loading debug data...</div>
                       } @else {
@@ -172,8 +179,9 @@
                             <section class="trade-log__section">
                               <h4 class="trade-log__section-title">Order Events</h4>
 
-                              @if (debugData.orderEvents.length === 0) {
-                                <div class="trade-log__section-empty">No order events recorded for this cycle.</div>
+                              @let tradeEvents = getTradeOrderEvents(debugData, trade);
+                              @if (tradeEvents.length === 0) {
+                                <div class="trade-log__section-empty">No order events recorded for this trade.</div>
                               } @else {
                                 <div class="trade-log__section-table-wrapper">
                                   <table class="trade-log__events-table">
@@ -189,7 +197,7 @@
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      @for (event of debugData.orderEvents; track event.timestampUtc + event.orderId + event.eventType) {
+                                      @for (event of tradeEvents; track event.timestampUtc + event.orderId + event.eventType) {
                                         <tr>
                                           <td>{{ event.timestampUtc | date: "d MMM yyyy, h:mm a" }}</td>
                                           <td>

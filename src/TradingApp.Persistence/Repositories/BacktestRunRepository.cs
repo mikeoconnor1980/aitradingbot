@@ -30,9 +30,25 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
     public async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(
         int page,
         int pageSize,
+        string? symbol = null,
+        IReadOnlyList<Guid>? strategyIds = null,
         CancellationToken cancellationToken = default)
     {
-        return await GetPagedSummariesCoreAsync(_context.BacktestRuns, page, pageSize, cancellationToken);
+        var query = _context.BacktestRuns
+            .Where(backtestRun => backtestRun.Status == Domain.Enums.BacktestStatus.Completed);
+
+        if (!string.IsNullOrWhiteSpace(symbol))
+        {
+            query = query.Where(backtestRun => backtestRun.Symbol == symbol);
+        }
+
+        if (strategyIds is { Count: > 0 })
+        {
+            query = query.Where(backtestRun => backtestRun.StrategyId.HasValue
+                && strategyIds.Contains(backtestRun.StrategyId.Value));
+        }
+
+        return await GetPagedSummariesCoreAsync(query, page, pageSize, cancellationToken);
     }
 
     public async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesByStrategyAsync(
@@ -42,7 +58,8 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
         CancellationToken cancellationToken = default)
     {
         var query = _context.BacktestRuns
-            .Where(backtestRun => backtestRun.StrategyId == strategyId);
+            .Where(backtestRun => backtestRun.StrategyId == strategyId
+                && backtestRun.Status == Domain.Enums.BacktestStatus.Completed);
 
         return await GetPagedSummariesCoreAsync(query, page, pageSize, cancellationToken);
     }
@@ -133,5 +150,12 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
 
         _context.BacktestRuns.Update(backtestRun);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await _context.BacktestRuns
+            .Where(backtestRun => backtestRun.Id == id)
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }

@@ -20,6 +20,21 @@
     color: var(--colour-muted);
   }
 
+  &__filters {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__filter-field {
+    width: 200px;
+  }
+
+  &__clear-filters {
+    color: var(--colour-muted);
+  }
+
   &__table-wrapper {
     overflow-x: auto;
     border: 1px solid var(--colour-border-subtle);
