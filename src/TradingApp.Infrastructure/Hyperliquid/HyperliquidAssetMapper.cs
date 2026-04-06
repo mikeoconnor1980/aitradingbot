@@ -34,6 +34,11 @@ public static class HyperliquidAssetMapper
             return displayName[..^5];
         }
 
+        if (displayName.EndsWith("-USD", StringComparison.OrdinalIgnoreCase))
+        {
+            return displayName[..^4];
+        }
+
         return displayName;
     }
 

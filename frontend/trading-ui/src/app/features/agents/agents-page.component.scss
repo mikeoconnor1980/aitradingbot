@@ -62,4 +62,32 @@
   &__empty-hint {
     font-size: 0.9em;
   }
+
+  &__queue {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  &__queue-item {
+    display: inline-block;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background-color: var(--mat-sys-surface-container-high);
+    color: var(--mat-sys-on-surface-variant);
+    white-space: nowrap;
+  }
+
+  &__scheduled-kill {
+    display: inline-flex;
+    align-items: center;
+    color: var(--mat-sys-error);
+  }
+
+  &__scheduled-kill-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
 }

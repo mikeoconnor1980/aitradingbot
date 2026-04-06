@@ -6,5 +6,6 @@ public enum TradeType
     TakeProfit,
     HedgeOpen,
     HedgeClose,
-    SignalEntry
+    SignalEntry,
+    Manual,
 }

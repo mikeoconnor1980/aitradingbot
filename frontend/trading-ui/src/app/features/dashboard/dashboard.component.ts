@@ -19,6 +19,7 @@ import { HyperliquidApiService } from "../../core/services/hyperliquid-api.servi
 import { NotificationService } from "../../core/services/notification.service";
 import { OrderService } from "../../core/services/order.service";
 import { AccountStateService } from "../../core/services/account-state.service";
+import { AgentService } from "../../core/services/agent.service";
 import { ConfirmDialogComponent } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AccountSummaryComponent } from "./account-summary/account-summary.component";
 import { CloseAllDialogComponent, CloseAllResult } from "./positions-table/close-all-dialog/close-all-dialog.component";
@@ -51,6 +52,7 @@ export class DashboardComponent implements OnInit {
   private readonly _orderService = inject(OrderService);
   private readonly _notifications = inject(NotificationService);
   private readonly _accountState = inject(AccountStateService);
+  private readonly _agentService = inject(AgentService);
   private readonly _refresh$ = new Subject<void>();
   private readonly _pendingOrderIds = new Set<string>();
   private readonly _pendingPositionKeys = new Set<string>();
@@ -266,7 +268,12 @@ export class DashboardComponent implements OnInit {
         size: Math.abs(position.size)
       };
 
-      this._orderService.placeOrder(closeRequest).subscribe({
+      const agentId = this._agentService.selectedAgentId;
+      const close$ = agentId
+        ? this._agentService.placeOrderViaAgent(agentId, closeRequest)
+        : this._orderService.placeOrder(closeRequest);
+
+      close$.subscribe({
         next: () => {
           this._pendingPositionKeys.delete(positionKey);
           this.positionsTable?.setLoading(positionKey, false);
@@ -301,30 +308,62 @@ export class DashboardComponent implements OnInit {
       currentPositions.forEach((position) => this._pendingPositionKeys.add(position.asset + position.side));
       this.positions = [];
 
-      this._orderService.closeAllPositions(currentPositions).pipe(last()).subscribe({
-        next: (progress: CloseAllProgress) => {
-          currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
-          this.positionsTable?.setGlobalLoading(false);
+      const agentId = this._agentService.selectedAgentId;
 
-          if (progress.failed === 0) {
-            this._notifications.success(`Closed ${progress.succeeded} positions`);
-          } else if (progress.succeeded === 0) {
+      if (agentId) {
+        // Route each close through the agent as individual PlaceOrder commands
+        const closeRequests = currentPositions.map((p) => {
+          const req: PlaceOrderRequest = {
+            asset: p.asset,
+            side: p.side === "Long" ? "sell" : "buy",
+            orderType: "market",
+            price: null,
+            size: Math.abs(p.size)
+          };
+          return this._agentService.placeOrderViaAgent(agentId, req);
+        });
+
+        forkJoin(closeRequests).subscribe({
+          next: () => {
+            currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
+            this.positionsTable?.setGlobalLoading(false);
+            this._notifications.success(`Queued ${currentPositions.length} close orders for agent`);
+            this._refresh$.next();
+          },
+          error: () => {
+            currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
+            this.positionsTable?.setGlobalLoading(false);
+            this._notifications.error("Failed to queue close orders");
+            this.positions = savedPositions;
+            this._refresh$.next();
+          }
+        });
+      } else {
+        this._orderService.closeAllPositions(currentPositions).pipe(last()).subscribe({
+          next: (progress: CloseAllProgress) => {
+            currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
+            this.positionsTable?.setGlobalLoading(false);
+
+            if (progress.failed === 0) {
+              this._notifications.success(`Closed ${progress.succeeded} positions`);
+            } else if (progress.succeeded === 0) {
+              this._notifications.error("Failed to close positions");
+              this.positions = savedPositions;
+            } else {
+              this._notifications.warning(`Closed ${progress.succeeded}/${progress.total} positions (${progress.failed} failed)`);
+            }
+
+            this._refresh$.next();
+          },
+          error: () => {
+            currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
+            this.positionsTable?.setGlobalLoading(false);
             this._notifications.error("Failed to close positions");
             this.positions = savedPositions;
-          } else {
-            this._notifications.warning(`Closed ${progress.succeeded}/${progress.total} positions (${progress.failed} failed)`);
+            this._refresh$.next();
           }
-
-          this._refresh$.next();
-        },
-        error: () => {
-          currentPositions.forEach((position) => this._pendingPositionKeys.delete(position.asset + position.side));
-          this.positionsTable?.setGlobalLoading(false);
-          this._notifications.error("Failed to close positions");
-          this.positions = savedPositions;
-          this._refresh$.next();
-        }
-      });
+        });
+      }
     });
   }
 
@@ -380,7 +419,14 @@ export class DashboardComponent implements OnInit {
 
     this.positionsTable?.setLoading(positionKey, true);
 
-    this._orderService.modifyTriggerOrder(orderId, request).subscribe({
+    const agentId = this._agentService.selectedAgentId;
+    const closingSide = this._getClosingSide(position);
+    const modify$: Observable<unknown> = agentId
+      ? this._agentService.modifyTriggerOrderViaAgent(
+          agentId, orderId, position.asset, closingSide, newPrice, Math.abs(position.size), field)
+      : this._orderService.modifyTriggerOrder(orderId, request);
+
+    modify$.subscribe({
       next: () => {
         this.positionsTable?.setLoading(positionKey, false);
         this._notifications.success(field === "sl" ? "Stop loss updated" : "Take profit updated");
@@ -404,7 +450,12 @@ export class DashboardComponent implements OnInit {
     const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
     this.positionsTable?.setLoading(positionKey, true);
 
-    this._orderService.cancelTriggerOrder(orderId).subscribe({
+    const agentId = this._agentService.selectedAgentId;
+    const cancel$: Observable<unknown> = agentId
+      ? this._agentService.cancelTriggerOrderViaAgent(agentId, orderId, position.asset)
+      : this._orderService.cancelTriggerOrder(orderId);
+
+    cancel$.subscribe({
       next: () => {
         this.positionsTable?.setLoading(positionKey, false);
         this._notifications.success(field === "sl" ? "Stop loss removed" : "Take profit removed");
@@ -504,6 +555,7 @@ export class DashboardComponent implements OnInit {
     const closingSide = this._getClosingSide(position);
     const size = Math.abs(position.size);
     const requests: Observable<unknown>[] = [];
+    const agentId = this._agentService.selectedAgentId;
 
     if (result.stopLossPrice != null) {
       const request: PlaceTriggerOrderRequest = {
@@ -513,7 +565,9 @@ export class DashboardComponent implements OnInit {
         triggerPrice: result.stopLossPrice,
         tpslType: "sl"
       };
-      requests.push(this._orderService.placeTriggerOrder(request));
+      requests.push(agentId
+        ? this._agentService.placeTriggerOrderViaAgent(agentId, request)
+        : this._orderService.placeTriggerOrder(request));
     }
 
     if (result.takeProfitPrice != null) {
@@ -524,7 +578,9 @@ export class DashboardComponent implements OnInit {
         triggerPrice: result.takeProfitPrice,
         tpslType: "tp"
       };
-      requests.push(this._orderService.placeTriggerOrder(request));
+      requests.push(agentId
+        ? this._agentService.placeTriggerOrderViaAgent(agentId, request)
+        : this._orderService.placeTriggerOrder(request));
     }
 
     return requests;

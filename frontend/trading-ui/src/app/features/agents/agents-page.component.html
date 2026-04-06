@@ -90,6 +90,24 @@
             </td>
           </ng-container>
 
+          <!-- Queue Column -->
+          <ng-container matColumnDef="queue">
+            <th mat-header-cell *matHeaderCellDef>Queue</th>
+            <td mat-cell *matCellDef="let agent">
+              @if (getQueuedCommands(agent.agentId).length > 0) {
+                <div class="agents-page__queue">
+                  @for (cmd of getQueuedCommands(agent.agentId); track cmd.commandId) {
+                    <span class="agents-page__queue-item" [matTooltip]="getTimeSince(cmd.createdAtUtc)">
+                      {{ formatCommandType(cmd.type) }}
+                    </span>
+                  }
+                </div>
+              } @else {
+                <span class="agents-page__idle">&mdash;</span>
+              }
+            </td>
+          </ng-container>
+
           <!-- Actions Column -->
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Actions</th>
@@ -111,6 +129,29 @@
                   (click)="onStopTrading(agent)">
                   <mat-icon>stop</mat-icon>
                 </button>
+              }
+              @if (canKill(agent)) {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Kill Switch — revoke access"
+                  (click)="onKillAgent(agent)">
+                  <mat-icon>block</mat-icon>
+                </button>
+              }
+              @if (isKilled(agent)) {
+                <button
+                  mat-icon-button
+                  color="primary"
+                  matTooltip="Reinstate — allow reconnection"
+                  (click)="onReinstateAgent(agent)">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              }
+              @if (isScheduledKill(agent) && !isKilled(agent)) {
+                <span class="agents-page__scheduled-kill" matTooltip="Scheduled kill at {{ agent.killedAtUtc }}">
+                  <mat-icon class="agents-page__scheduled-kill-icon">schedule</mat-icon>
+                </span>
               }
             </td>
           </ng-container>

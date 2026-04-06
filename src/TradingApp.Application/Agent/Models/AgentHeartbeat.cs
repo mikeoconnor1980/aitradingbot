@@ -14,12 +14,25 @@ public sealed class AgentHeartbeat
     public ActiveStrategyInfo? ActiveStrategy { get; init; }
     public string? LastError { get; init; }
     public DateTimeOffset TimestampUtc { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Results from order commands completed since the last heartbeat.
+    /// </summary>
+    public IReadOnlyList<OrderCommandResult> OrderResults { get; init; } = [];
 }
 
 /// <summary>
-/// Response to a heartbeat, containing any pending command for the agent.
+/// Response to a heartbeat, containing any pending commands for the agent.
 /// </summary>
 public sealed class HeartbeatResponse
 {
-    public AgentCommand? PendingCommand { get; init; }
+    public IReadOnlyList<AgentCommand> PendingCommands { get; init; } = [];
+
+    /// <summary>
+    /// When true, the agent must stop all activity and shut down.
+    /// </summary>
+    public bool MustShutdown { get; init; }
+
+    /// <summary>Reason shown to the agent operator.</summary>
+    public string? ShutdownReason { get; init; }
 }

@@ -214,6 +214,106 @@ public sealed class LiveExecutionEngine : IExecutionEngine
         }
     }
 
+    public async Task<string> PlaceTriggerOrderAsync(string asset, string side, decimal size, decimal triggerPrice, string tpslType, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(asset);
+
+        var coin = HyperliquidAssetMapper.ToCoin(asset);
+        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
+        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+
+        var action = HyperliquidEip712.BuildTriggerOrderAction(assetIndex, isBuy, triggerPrice, size, tpslType);
+
+        var nonce = _nonceProvider.GetNextNonce();
+        var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
+        var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet);
+        var (r, s, v) = _signer.SignHash(eip712Hash);
+
+        var payload = new
+        {
+            action,
+            nonce,
+            signature = new { r, s, v },
+            vaultAddress = (string?)null,
+        };
+
+        _logger.LogInformation(
+            "Placing trigger order: Asset={Asset}, Side={Side}, TriggerPrice={TriggerPrice}, Size={Size}, TpslType={TpslType}",
+            asset, side, triggerPrice, size, tpslType);
+
+        var exchangeResponse = await _restClient
+            .PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
+
+        var orderId = ExtractOrderId(exchangeResponse);
+
+        if (string.IsNullOrEmpty(orderId))
+        {
+            _logger.LogWarning("Trigger order rejected by exchange: Asset={Asset}", asset);
+            return string.Empty;
+        }
+
+        _logger.LogInformation("Trigger order placed: OrderId={OrderId}, Asset={Asset}", orderId, asset);
+        return orderId;
+    }
+
+    public async Task ModifyTriggerOrderAsync(string orderId, string asset, string side, decimal triggerPrice, decimal size, string tpslType, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
+
+        var coin = HyperliquidAssetMapper.ToCoin(asset);
+        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
+        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+
+        var action = new HyperliquidModifyAction
+        {
+            Modifies =
+            [
+                new HyperliquidModifyEntry
+                {
+                    OrderId = long.Parse(orderId),
+                    Order = new HyperliquidModifyOrderParams
+                    {
+                        AssetIndex = assetIndex,
+                        IsBuy = isBuy,
+                        Price = ToWireDecimal(triggerPrice),
+                        Size = ToWireDecimal(size),
+                        ReduceOnly = true,
+                        OrderType = new HyperliquidOrderType
+                        {
+                            Trigger = new HyperliquidTriggerParams
+                            {
+                                TriggerPx = ToWireDecimal(triggerPrice),
+                                IsMarket = true,
+                                Tpsl = tpslType,
+                            },
+                        },
+                    },
+                },
+            ],
+        };
+
+        var nonce = _nonceProvider.GetNextNonce();
+        var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
+        var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet);
+        var (r, s, v) = _signer.SignHash(eip712Hash);
+
+        var payload = new
+        {
+            action,
+            nonce,
+            signature = new { r, s, v },
+            vaultAddress = (string?)null,
+        };
+
+        _logger.LogInformation(
+            "Modifying trigger order: OrderId={OrderId}, Asset={Asset}, TriggerPrice={TriggerPrice}, Size={Size}, TpslType={TpslType}",
+            orderId, asset, triggerPrice, size, tpslType);
+
+        await _restClient.PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
+    }
+
     private async Task<int> ResolveAssetIndexAsync(string coin, CancellationToken cancellationToken)
     {
         if (_assetIndexCache.TryGetValue(coin, out var cached))
@@ -293,5 +393,13 @@ public sealed class LiveExecutionEngine : IExecutionEngine
         var magnitude = (int)Math.Floor(Math.Log10((double)Math.Abs(value)));
         var factor = (decimal)Math.Pow(10, significantFigures - 1 - magnitude);
         return Math.Round(value * factor) / factor;
+    }
+
+    private static string ToWireDecimal(decimal value)
+    {
+        var formatted = value.ToString("0.############################", System.Globalization.CultureInfo.InvariantCulture);
+        return formatted.Contains('.')
+            ? formatted.TrimEnd('0').TrimEnd('.')
+            : formatted;
     }
 }

@@ -65,6 +65,20 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         max open trades, and cooldown between entries.
         Strategies execute on confirmed candle closes only for deterministic execution.
 
+        ### Connected Agents
+        Manage execution agents (Workers) that run your trading strategies. Shows agent ID,
+        machine name, wallet address, active strategy, last heartbeat, and pending command queue.
+        Actions:
+        - **Start Trading** — select a saved strategy and deploy it to the agent.
+        - **Stop Trading** — gracefully stop the strategy, cancel open orders, disconnect WebSocket.
+        - **Kill Switch** — force an agent to stop and block it from reconnecting. Choose "Kill Now"
+          for immediate effect, or "Schedule Kill" to set a future date/time (e.g. subscription expiry).
+          Optionally add a reason. The kill also applies to any agent sharing the same wallet address.
+        - **Reinstate** — re-enable a killed agent so it can reconnect on its next heartbeat.
+        A killed agent shows a red block icon. A scheduled kill shows a clock icon with the effective time.
+        The Queue column shows commands waiting to be picked up on the next heartbeat (every 5 seconds).
+        Commands for offline or killed agents are rejected.
+
         ### Connection Status
         Shows health of connections to Hyperliquid and backend services. Green = connected,
         Yellow = reconnecting, Red = disconnected. System auto-reconnects on interruptions.

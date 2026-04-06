@@ -13,6 +13,15 @@ public sealed class AgentInfo
     public string? WalletAddress { get; set; }
     public ActiveStrategyInfo? ActiveStrategy { get; set; }
     public string? LastError { get; set; }
+
+    /// <summary>
+    /// When set, the agent is killed and must not reconnect.
+    /// If set to a future time, the kill takes effect at that time.
+    /// </summary>
+    public DateTimeOffset? KilledAtUtc { get; set; }
+
+    /// <summary>Who or what triggered the kill switch (admin note).</summary>
+    public string? KilledReason { get; set; }
 }
 
 public sealed class ActiveStrategyInfo

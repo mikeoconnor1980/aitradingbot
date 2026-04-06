@@ -7,5 +7,6 @@ public enum AgentState
     Running,
     Stopping,
     Error,
-    Disconnected
+    Disconnected,
+    Killed,
 }

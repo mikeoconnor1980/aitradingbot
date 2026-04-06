@@ -67,6 +67,18 @@ public sealed class SimulatedExecutionEngine : IExecutionEngine
         return Task.CompletedTask;
     }
 
+    public Task<string> PlaceTriggerOrderAsync(string asset, string side, decimal size, decimal triggerPrice, string tpslType, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult($"SIM-TRIG-{++_orderCounter:D6}");
+    }
+
+    public Task ModifyTriggerOrderAsync(string orderId, string asset, string side, decimal triggerPrice, decimal size, string tpslType, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.CompletedTask;
+    }
+
     public IReadOnlyList<SimulatedFill> ProcessCandle(Candle candle)
     {
         ArgumentNullException.ThrowIfNull(candle);

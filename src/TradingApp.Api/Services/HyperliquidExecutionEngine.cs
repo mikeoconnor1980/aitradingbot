@@ -108,6 +108,38 @@ public sealed class HyperliquidExecutionEngine : IExecutionEngine
         }
     }
 
+    public async Task<string> PlaceTriggerOrderAsync(string asset, string side, decimal size, decimal triggerPrice, string tpslType, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(asset);
+
+        var request = new PlaceTriggerOrderRequest
+        {
+            Asset = asset,
+            Side = side,
+            Size = size,
+            TriggerPrice = triggerPrice,
+            TpslType = tpslType,
+        };
+
+        _logger.LogInformation(
+            "Placing trigger order: Asset={Asset}, Side={Side}, TriggerPrice={TriggerPrice}, Size={Size}, TpslType={TpslType}",
+            asset, side, triggerPrice, size, tpslType);
+
+        var response = await _orderService.PlaceTriggerOrderAsync(request, cancellationToken);
+        return response.OrderId ?? string.Empty;
+    }
+
+    public async Task ModifyTriggerOrderAsync(string orderId, string asset, string side, decimal triggerPrice, decimal size, string tpslType, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
+
+        _logger.LogInformation(
+            "Modifying trigger order: OrderId={OrderId}, Asset={Asset}, TriggerPrice={TriggerPrice}",
+            orderId, asset, triggerPrice);
+
+        await _orderService.ModifyTriggerOrderAsync(orderId, asset, side, triggerPrice, size, tpslType, cancellationToken);
+    }
+
     private static string MapSide(OrderSide side) => side switch
     {
         OrderSide.Buy => "buy",

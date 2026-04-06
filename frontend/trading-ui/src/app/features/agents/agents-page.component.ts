@@ -7,9 +7,10 @@ import { MatDialogModule, MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { interval } from "rxjs";
-import { AgentInfo, AgentService, AgentState } from "../../core/services/agent.service";
+import { interval, forkJoin } from "rxjs";
+import { AgentInfo, AgentService, AgentState, PendingCommand } from "../../core/services/agent.service";
 import { StartTradingDialogComponent, StartTradingDialogResult } from "./start-trading-dialog.component";
+import { KillSwitchDialogComponent, KillSwitchDialogResult } from "./kill-switch-dialog.component";
 
 @Component({
   selector: "app-agents-page",
@@ -32,14 +33,18 @@ export class AgentsPageComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
 
   public readonly agents = signal<AgentInfo[]>([]);
-  public readonly displayedColumns = ["status", "agentId", "machineName", "wallet", "strategy", "lastHeartbeat", "actions"];
+  public readonly pendingCommands = signal<Record<string, PendingCommand[]>>({});
+  public readonly displayedColumns = ["status", "agentId", "machineName", "wallet", "strategy", "lastHeartbeat", "queue", "actions"];
 
   public ngOnInit(): void {
     this._agentService.refreshAgents();
 
     this._agentService.agents$
       .pipe(takeUntilDestroyed(this._destroyRef))
-      .subscribe((agents) => this.agents.set(agents));
+      .subscribe((agents) => {
+        this.agents.set(agents);
+        this.refreshPendingCommands(agents);
+      });
 
     // Auto-refresh every 5 seconds
     interval(5000)
@@ -47,26 +52,44 @@ export class AgentsPageComponent implements OnInit {
       .subscribe(() => this._agentService.refreshAgents());
   }
 
+  private refreshPendingCommands(agents: AgentInfo[]): void {
+    if (agents.length === 0) {
+      this.pendingCommands.set({});
+      return;
+    }
+
+    const requests: Record<string, ReturnType<AgentService["getPendingCommands"]>> = {};
+    for (const agent of agents) {
+      requests[agent.agentId] = this._agentService.getPendingCommands(agent.agentId);
+    }
+
+    forkJoin(requests).subscribe((result) => {
+      this.pendingCommands.set(result);
+    });
+  }
+
   public getStateIcon(state: AgentState): string {
     switch (state) {
-      case "Running": return "play_circle";
-      case "Idle": return "pause_circle";
-      case "Starting": return "hourglass_top";
-      case "Stopping": return "hourglass_bottom";
-      case "Error": return "error";
-      case "Disconnected": return "cloud_off";
+      case "running": return "play_circle";
+      case "idle": return "pause_circle";
+      case "starting": return "hourglass_top";
+      case "stopping": return "hourglass_bottom";
+      case "error": return "error";
+      case "disconnected": return "cloud_off";
+      case "killed": return "block";
       default: return "help";
     }
   }
 
   public getStateColor(state: AgentState): string {
     switch (state) {
-      case "Running": return "primary";
-      case "Idle": return "";
-      case "Starting":
-      case "Stopping": return "accent";
-      case "Error":
-      case "Disconnected": return "warn";
+      case "running": return "primary";
+      case "idle": return "";
+      case "starting":
+      case "stopping": return "accent";
+      case "error":
+      case "disconnected": return "warn";
+      case "killed": return "warn";
       default: return "";
     }
   }
@@ -112,10 +135,52 @@ export class AgentsPageComponent implements OnInit {
   }
 
   public canStart(agent: AgentInfo): boolean {
-    return agent.state === "Idle" || agent.state === "Error";
+    return agent.state === "idle" || agent.state === "error";
   }
 
   public canStop(agent: AgentInfo): boolean {
-    return agent.state === "Running" || agent.state === "Starting";
+    return agent.state === "running" || agent.state === "starting";
+  }
+
+  public canKill(agent: AgentInfo): boolean {
+    return agent.state !== "killed";
+  }
+
+  public isKilled(agent: AgentInfo): boolean {
+    return agent.state === "killed";
+  }
+
+  public isScheduledKill(agent: AgentInfo): boolean {
+    if (!agent.killedAtUtc) return false;
+    return new Date(agent.killedAtUtc).getTime() > Date.now();
+  }
+
+  public onKillAgent(agent: AgentInfo): void {
+    const dialogRef = this._dialog.open(KillSwitchDialogComponent, {
+      width: "450px",
+      data: { agentId: agent.agentId }
+    });
+
+    dialogRef.afterClosed().subscribe((result: KillSwitchDialogResult | undefined) => {
+      if (result) {
+        this._agentService.killAgent(agent.agentId, result.reason, result.effectiveAtUtc).subscribe({
+          error: (err) => console.error("Failed to kill agent:", err)
+        });
+      }
+    });
+  }
+
+  public onReinstateAgent(agent: AgentInfo): void {
+    this._agentService.reinstateAgent(agent.agentId).subscribe({
+      error: (err) => console.error("Failed to reinstate agent:", err)
+    });
+  }
+
+  public getQueuedCommands(agentId: string): PendingCommand[] {
+    return this.pendingCommands()[agentId] ?? [];
+  }
+
+  public formatCommandType(type: string): string {
+    return type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
 }
