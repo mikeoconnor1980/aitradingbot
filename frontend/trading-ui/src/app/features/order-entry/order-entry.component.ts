@@ -21,6 +21,7 @@ import { HyperliquidApiService } from "../../core/services/hyperliquid-api.servi
 import { MarketDataService } from "../../core/services/market-data.service";
 import { NotificationService } from "../../core/services/notification.service";
 import { OrderService } from "../../core/services/order.service";
+import { AgentInfo, AgentService } from "../../core/services/agent.service";
 import { SignalRService } from "../../core/services/signalr.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
@@ -60,6 +61,7 @@ export class OrderEntryComponent implements OnInit {
   private readonly _fb = inject(FormBuilder);
   private readonly _apiService = inject(HyperliquidApiService);
   private readonly _orderService = inject(OrderService);
+  private readonly _agentService = inject(AgentService);
   private readonly _marketDataService = inject(MarketDataService);
   private readonly _signalRService = inject(SignalRService);
   private readonly _dialog = inject(MatDialog);
@@ -82,6 +84,8 @@ export class OrderEntryComponent implements OnInit {
   public assets: TradableAsset[] = [{ symbol: "BTC-PERP", name: "Bitcoin", maxLeverage: 40, szDecimals: 5 }];
   public isLoadingAssets = true;
   public selectedAsset = "BTC-PERP";
+  public connectedAgents: AgentInfo[] = [];
+  public selectedAgentId: string | null = null;
 
   public get selectedCoin(): string {
     return this.selectedAsset.replace("-PERP", "");
@@ -141,6 +145,25 @@ export class OrderEntryComponent implements OnInit {
         this.isLoadingAssets = false;
       }
     });
+
+    // Subscribe to connected agents for order routing
+    this._agentService.agents$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((agents) => {
+        this.connectedAgents = agents.filter(a => a.state !== "disconnected");
+      });
+
+    this._agentService.selectedAgentId$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((id) => {
+        this.selectedAgentId = id;
+      });
+
+    this._agentService.refreshAgents();
+  }
+
+  public onAgentChange(agentId: string | null): void {
+    this._agentService.selectAgent(agentId);
   }
 
   public onAssetChange(asset: string): void {
@@ -350,16 +373,27 @@ export class OrderEntryComponent implements OnInit {
       takeProfitPrice: this.orderForm.controls.takeProfitPrice.value
     };
 
-    this._orderService.placeOrder(request)
+    const agentId = this._agentService.selectedAgentId;
+
+    // Route through agent if one is selected, otherwise fall back to direct API call
+    const order$ = agentId
+      ? this._agentService.placeOrderViaAgent(agentId, request)
+      : this._orderService.placeOrder(request);
+
+    order$
       .subscribe({
         next: (response: PlaceOrderResponse) => {
           this.isSubmitting = false;
 
           if (response.success) {
-            this._notifications.success(`Order placed (ID: ${response.orderId}, Status: ${response.status})`);
+            this._notifications.success(
+              agentId
+                ? `Order queued for agent (Status: ${response.status})`
+                : `Order placed (ID: ${response.orderId}, Status: ${response.status})`
+            );
 
             if (response.detail?.trim()) {
-              this._notifications.warning(`Order placed, but SL/TP needs attention: ${response.detail}`, 7000);
+              this._notifications.warning(`${response.detail}`, 7000);
             }
 
             return;
@@ -369,7 +403,6 @@ export class OrderEntryComponent implements OnInit {
         },
         error: () => {
           this.isSubmitting = false;
-          // HTTP error handled by the global interceptor
         }
       });
   }

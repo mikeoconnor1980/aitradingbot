@@ -1,0 +1,165 @@
+<div class="agents-page">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon class="agents-page__title-icon">devices</mat-icon>
+        Connected Agents
+      </mat-card-title>
+      <mat-card-subtitle>
+        {{ agents().length }} agent(s) registered
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (agents().length === 0) {
+        <div class="agents-page__empty">
+          <mat-icon class="agents-page__empty-icon">cloud_off</mat-icon>
+          <p>No agents connected.</p>
+          <p class="agents-page__empty-hint">
+            Start the Worker service to register an agent.
+          </p>
+        </div>
+      } @else {
+        <table mat-table [dataSource]="agents()" class="agents-page__table">
+
+          <!-- Status Column -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let agent">
+              <mat-icon
+                [matTooltip]="agent.state"
+                [color]="getStateColor(agent.state)">
+                {{ getStateIcon(agent.state) }}
+              </mat-icon>
+            </td>
+          </ng-container>
+
+          <!-- Agent ID Column -->
+          <ng-container matColumnDef="agentId">
+            <th mat-header-cell *matHeaderCellDef>Agent ID</th>
+            <td mat-cell *matCellDef="let agent">
+              <span class="agents-page__mono">{{ agent.agentId }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Machine Name Column -->
+          <ng-container matColumnDef="machineName">
+            <th mat-header-cell *matHeaderCellDef>Machine</th>
+            <td mat-cell *matCellDef="let agent">{{ agent.machineName }}</td>
+          </ng-container>
+
+          <!-- Wallet Column -->
+          <ng-container matColumnDef="wallet">
+            <th mat-header-cell *matHeaderCellDef>Wallet</th>
+            <td mat-cell *matCellDef="let agent">
+              @if (agent.walletAddress) {
+                <span class="agents-page__mono">{{ agent.walletAddress }}</span>
+              } @else {
+                <span class="agents-page__not-configured">Not configured</span>
+              }
+            </td>
+          </ng-container>
+
+          <!-- Strategy Column -->
+          <ng-container matColumnDef="strategy">
+            <th mat-header-cell *matHeaderCellDef>Active Strategy</th>
+            <td mat-cell *matCellDef="let agent">
+              @if (agent.activeStrategy) {
+                <div class="agents-page__strategy">
+                  <strong>{{ agent.activeStrategy.strategyName }}</strong>
+                  <span class="agents-page__strategy-detail">
+                    {{ agent.activeStrategy.market }} · {{ agent.activeStrategy.timeframe }}
+                  </span>
+                  <span class="agents-page__strategy-duration">
+                    Running for {{ formatDuration(agent.activeStrategy.startedAtUtc) }}
+                  </span>
+                </div>
+              } @else {
+                <span class="agents-page__idle">—</span>
+              }
+            </td>
+          </ng-container>
+
+          <!-- Last Heartbeat Column -->
+          <ng-container matColumnDef="lastHeartbeat">
+            <th mat-header-cell *matHeaderCellDef>Last Ping</th>
+            <td mat-cell *matCellDef="let agent">
+              <span [matTooltip]="agent.lastHeartbeat">
+                {{ getTimeSince(agent.lastHeartbeat) }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Queue Column -->
+          <ng-container matColumnDef="queue">
+            <th mat-header-cell *matHeaderCellDef>Queue</th>
+            <td mat-cell *matCellDef="let agent">
+              @if (getQueuedCommands(agent.agentId).length > 0) {
+                <div class="agents-page__queue">
+                  @for (cmd of getQueuedCommands(agent.agentId); track cmd.commandId) {
+                    <span class="agents-page__queue-item" [matTooltip]="getTimeSince(cmd.createdAtUtc)">
+                      {{ formatCommandType(cmd.type) }}
+                    </span>
+                  }
+                </div>
+              } @else {
+                <span class="agents-page__idle">&mdash;</span>
+              }
+            </td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let agent">
+              @if (canStart(agent)) {
+                <button
+                  mat-icon-button
+                  color="primary"
+                  matTooltip="Start Trading"
+                  (click)="onStartTrading(agent)">
+                  <mat-icon>play_arrow</mat-icon>
+                </button>
+              }
+              @if (canStop(agent)) {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Stop Trading"
+                  (click)="onStopTrading(agent)">
+                  <mat-icon>stop</mat-icon>
+                </button>
+              }
+              @if (canKill(agent)) {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Kill Switch — revoke access"
+                  (click)="onKillAgent(agent)">
+                  <mat-icon>block</mat-icon>
+                </button>
+              }
+              @if (isKilled(agent)) {
+                <button
+                  mat-icon-button
+                  color="primary"
+                  matTooltip="Reinstate — allow reconnection"
+                  (click)="onReinstateAgent(agent)">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              }
+              @if (isScheduledKill(agent) && !isKilled(agent)) {
+                <span class="agents-page__scheduled-kill" matTooltip="Scheduled kill at {{ agent.killedAtUtc }}">
+                  <mat-icon class="agents-page__scheduled-kill-icon">schedule</mat-icon>
+                </span>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

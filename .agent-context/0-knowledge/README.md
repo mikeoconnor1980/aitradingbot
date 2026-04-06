@@ -70,6 +70,7 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 | # | Document | Description |
 |---|---|---|
 | 26 | [Architecture Review](26-architecture-review.md) | Design strengths, known risks, and prioritised mitigations for POC → production |
+| 29 | [Control Plane → Agent Architecture](29-control-plane-agent-architecture.md) | How the API control plane queues commands and the Worker agent executes them |
 
 ---
 

@@ -41,17 +41,73 @@
         <mat-card-title>Wallet</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        @if (wallet$ | async; as wallet) {
-          <dl class="profile-page__details">
-            <div class="profile-page__detail">
-              <dt>Connected Wallet</dt>
-              <dd class="profile-page__mono">{{ wallet.address || 'Not connected' }}</dd>
+        @if (walletStatus$ | async; as status) {
+          @if (status.isConfigured) {
+            <dl class="profile-page__details">
+              <div class="profile-page__detail">
+                <dt>Connected Wallet</dt>
+                <dd class="profile-page__mono">{{ status.walletAddress }}</dd>
+              </div>
+              @if (wallet$ | async; as wallet) {
+                <div class="profile-page__detail">
+                  <dt>Network</dt>
+                  <dd>{{ wallet.network || 'Unknown' }}</dd>
+                </div>
+              }
+            </dl>
+            <div class="profile-page__wallet-actions">
+              <button mat-stroked-button color="warn" (click)="onDisconnectWallet()">
+                <mat-icon>link_off</mat-icon>
+                Disconnect Wallet
+              </button>
+              <button mat-stroked-button (click)="onConfigureWallet()">
+                <mat-icon>swap_horiz</mat-icon>
+                Change Wallet
+              </button>
             </div>
-            <div class="profile-page__detail">
-              <dt>Network</dt>
-              <dd>{{ wallet.network || 'Unknown' }}</dd>
+          } @else {
+            <p class="profile-page__placeholder">No wallet configured. Connect your Hyperliquid wallet to start trading.</p>
+            <div class="profile-page__wallet-actions">
+              <button mat-flat-button color="primary" (click)="onConfigureWallet()">
+                <mat-icon>account_balance_wallet</mat-icon>
+                Connect Wallet
+              </button>
             </div>
-          </dl>
+          }
+          @if (showKeyInput()) {
+            <div class="profile-page__key-form">
+              <mat-form-field appearance="outline" class="profile-page__key-field">
+                <mat-label>Private Key</mat-label>
+                <input
+                  matInput
+                  type="password"
+                  [formControl]="privateKeyControl"
+                  placeholder="0x..."
+                  autocomplete="off"
+                  spellcheck="false" />
+                @if (privateKeyControl.hasError('required')) {
+                  <mat-error>Private key is required</mat-error>
+                }
+                @if (privateKeyControl.hasError('pattern')) {
+                  <mat-error>Must be 0x followed by 64 hex characters</mat-error>
+                }
+                <mat-hint>Your private key never leaves this machine</mat-hint>
+              </mat-form-field>
+              @if (configError(); as error) {
+                <p class="profile-page__error">{{ error }}</p>
+              }
+              <div class="profile-page__key-actions">
+                <button
+                  mat-flat-button
+                  color="primary"
+                  [disabled]="privateKeyControl.invalid || configuring()"
+                  (click)="onSubmitKey()">
+                  {{ configuring() ? 'Configuring...' : 'Save Key' }}
+                </button>
+                <button mat-stroked-button (click)="onCancelConfigure()">Cancel</button>
+              </div>
+            </div>
+          }
         } @else {
           <p class="profile-page__placeholder">Loading wallet info...</p>
         }

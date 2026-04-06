@@ -28,6 +28,7 @@ export class SidebarNavComponent {
     { route: "/candle-data", icon: "candlestick_chart", label: "Candle Data" },
     { route: "/optimizer", icon: "auto_graph", label: "Optimizer" },
     { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar" },
+    { route: "/agents", icon: "devices", label: "Agents" },
     { route: "/order-entry", icon: "swap_vert", label: "Order Entry" }
   ];
 

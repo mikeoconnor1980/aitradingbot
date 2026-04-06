@@ -12,6 +12,7 @@ using TradingApp.Api.Infrastructure.Filters;
 using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Agent.Services;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.MacroCalendar.Configuration;
@@ -19,6 +20,7 @@ using TradingApp.Application.MacroCalendar.Services;
 using TradingApp.Application.MarketData.Queries;
 using TradingApp.Application.Optimization;
 using TradingApp.Application.Optimization.Services;
+using TradingApp.Application.Scheduling;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
@@ -62,14 +64,21 @@ builder.Services.AddOptions<MacroCalendarOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-// Read private key directly — consumed once at startup, not stored in DI
-var privateKey = builder.Configuration
-    .GetSection(HyperliquidOptions.SectionName)["PrivateKey"]
-    ?? throw new InvalidOperationException(
-        "Hyperliquid:PrivateKey is missing. Set 'Hyperliquid__PrivateKey' environment variable or add it to appsettings.Development.json.");
+// Read private key if available — can also be configured at runtime via /api/wallet/configure
+var signerProvider = new MutableSignerProvider(
+    LoggerFactory.Create(b => b.AddConsole()).CreateLogger<MutableSignerProvider>());
 
-var signer = HyperliquidSigner.Create(privateKey);
-builder.Services.AddSingleton<IHyperliquidSigner>(signer);
+var privateKey = builder.Configuration
+    .GetSection(HyperliquidOptions.SectionName)["PrivateKey"];
+
+if (!string.IsNullOrWhiteSpace(privateKey))
+{
+    signerProvider.Configure(privateKey);
+}
+
+builder.Services.AddSingleton(signerProvider);
+builder.Services.AddSingleton<ISignerProvider>(sp => sp.GetRequiredService<MutableSignerProvider>());
+builder.Services.AddSingleton<IHyperliquidSigner>(sp => sp.GetRequiredService<MutableSignerProvider>());
 
 // Read non-secret config for BaseUrl, Network — use IOptions at resolution time
 builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((sp, client) =>
@@ -104,6 +113,7 @@ builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
+builder.Services.AddSingleton<AgentCommandStore>();
 builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
 builder.Services.AddSingleton<BacktestJobQueue>();
 builder.Services.AddSingleton<BacktestCancellationManager>();
@@ -163,6 +173,14 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
 builder.Services.AddScoped<IBinanceCandleIngestionService, BinanceCandleIngestionService>();
 builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
+
+// Live execution engine — wraps order service, implements IExecutionEngine for live trading
+builder.Services.AddScoped<IExecutionEngine, HyperliquidExecutionEngine>();
+
+// Candle builder pipeline — assembles confirmed candles from WebSocket trade stream
+builder.Services.AddSingleton<MarketStateStore>();
+builder.Services.AddSingleton<CandleClock>();
+builder.Services.AddSingleton<CandleBuilder>();
 
 // Macro calendar services
 builder.Services.AddScoped<IMacroCalendarProvider, StubMacroCalendarProvider>();
@@ -279,9 +297,18 @@ var app = builder.Build();
 
 await app.Services.MigrateDatabaseAsync();
 
-app.Logger.LogInformation(
-    "Hyperliquid wallet configured: {WalletAddress}",
-    signer.WalletAddress);
+var configuredProvider = app.Services.GetRequiredService<ISignerProvider>();
+if (configuredProvider.IsConfigured)
+{
+    app.Logger.LogInformation(
+        "Hyperliquid wallet configured: {WalletAddress}",
+        configuredProvider.WalletAddress);
+}
+else
+{
+    app.Logger.LogWarning(
+        "No Hyperliquid wallet configured. Use the Profile page or set Hyperliquid__PrivateKey environment variable.");
+}
 
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseForwardedHeaders();
