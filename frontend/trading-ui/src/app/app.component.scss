@@ -1,15 +1,23 @@
+$sidebar-collapsed: 60px;
+$sidebar-expanded: 220px;
+
 .app-shell {
   min-height: 100vh;
+  margin-left: $sidebar-expanded;
   padding: 1rem;
+  transition: margin-left 0.2s ease;
+
+  &--sidebar-collapsed {
+    margin-left: $sidebar-collapsed;
+  }
 
   &__header {
-    max-width: 1200px;
-    margin: 0 auto 1rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 1rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
     border: 1px solid var(--colour-border-light);
     border-radius: 0.75rem;
     background-color: rgba(8, 20, 22, 0.72);
@@ -19,20 +27,21 @@
   &__title {
     margin: 0;
     color: #f8fafc;
-    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-size: 1.25rem;
+    white-space: nowrap;
   }
 
-  &__nav {
+  &__header-end {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
-    flex-wrap: wrap;
+    margin-left: auto;
   }
 
   &__status {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    margin-left: auto;
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
     border: 1px solid var(--colour-border-subtle);
@@ -61,26 +70,8 @@
     color: var(--colour-muted);
   }
 
-  &__link {
-    color: var(--colour-label);
-    text-decoration: none;
-    padding: 0.5rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid rgba(121, 207, 195, 0.18);
-    transition: background-color 0.2s ease, color 0.2s ease;
-
-    &:hover {
-      color: #f8fafc;
-      background-color: var(--colour-accent-soft);
-      border-color: rgba(166, 227, 218, 0.26);
-    }
-
-    &--active {
-      color: var(--colour-accent-strong);
-      border-color: rgba(166, 227, 218, 0.32);
-      background-color: rgba(121, 207, 195, 0.12);
-      box-shadow: inset 0 0 0 1px rgba(166, 227, 218, 0.08);
-    }
+  &__content {
+    max-width: 1200px;
   }
 
   &__help-btn {
@@ -89,6 +80,20 @@
 
     &:hover {
       color: var(--colour-accent);
+    }
+  }
+
+  &__profile-btn {
+    color: var(--colour-muted);
+    transition: color 0.2s ease;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--colour-accent);
+    }
+
+    &--active {
+      color: var(--colour-accent-strong);
     }
   }
 }
@@ -137,13 +142,7 @@
 
 @media (max-width: 768px) {
   .app-shell {
-    &__header {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-
-    &__status {
-      margin-left: 0;
-    }
+    margin-left: 0;
+    padding-top: 3.5rem;
   }
 }

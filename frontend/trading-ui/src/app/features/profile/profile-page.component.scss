@@ -1,0 +1,105 @@
+.profile-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.5rem;
+  padding: 1rem;
+
+  &__hero {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem 1.25rem;
+    border: 1px solid var(--colour-border-light);
+    border-radius: 1rem;
+    background: linear-gradient(145deg, rgba(8, 20, 22, 0.96), rgba(14, 30, 33, 0.86));
+  }
+
+  &__avatar {
+    display: grid;
+    place-items: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    background: rgba(121, 207, 195, 0.12);
+    border: 2px solid rgba(121, 207, 195, 0.25);
+    flex-shrink: 0;
+  }
+
+  &__avatar-icon {
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    color: var(--colour-accent, #79cfc3);
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #f8fafc;
+  }
+
+  &__email {
+    margin: 0.25rem 0 0;
+    color: var(--colour-muted);
+    font-size: 0.9rem;
+  }
+
+  &__grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  &__card {
+    border: 1px solid var(--colour-border-light);
+    border-radius: 1rem;
+    background: linear-gradient(145deg, var(--colour-surface-dark), var(--colour-surface-alt));
+  }
+
+  &__details {
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+  }
+
+  &__detail {
+    dt {
+      color: var(--colour-muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    dd {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+  }
+
+  &__mono {
+    font-family: Consolas, Monaco, monospace;
+  }
+
+  &__placeholder {
+    color: var(--colour-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+    margin: 0;
+  }
+
+  &__footer {
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+
+  &__version {
+    color: var(--colour-muted);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+  }
+}

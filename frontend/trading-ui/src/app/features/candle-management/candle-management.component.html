@@ -21,7 +21,34 @@
   </header>
 
   @if (isLoading && !coverage) {
-    <mat-progress-bar mode="indeterminate" />
+    <div class="skeleton-grid">
+      @for (i of skeletonCards; track i) {
+        <mat-card class="symbol-card symbol-card--skeleton">
+          <mat-card-header>
+            <mat-card-title class="symbol-title">
+              <span class="skeleton-bar skeleton-bar--title"></span>
+            </mat-card-title>
+            <div class="symbol-actions">
+              <span class="skeleton-bar skeleton-bar--button"></span>
+            </div>
+          </mat-card-header>
+          <mat-progress-bar mode="indeterminate" />
+          <mat-card-content>
+            <div class="skeleton-table">
+              @for (row of skeletonRows; track row) {
+                <div class="skeleton-table__row">
+                  <span class="skeleton-bar skeleton-bar--cell"></span>
+                  <span class="skeleton-bar skeleton-bar--cell-wide"></span>
+                  <span class="skeleton-bar skeleton-bar--cell-wide"></span>
+                  <span class="skeleton-bar skeleton-bar--cell"></span>
+                  <span class="skeleton-bar skeleton-bar--chip"></span>
+                </div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
   }
 
   @if (loadError) {

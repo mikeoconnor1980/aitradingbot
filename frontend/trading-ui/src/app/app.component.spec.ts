@@ -49,13 +49,13 @@ describe("AppComponent", () => {
   });
 
   it("should have the expected title", () => {
-    expect(app.title).toEqual("Trading Dashboard");
+    expect(app.title).toEqual("TradePilot");
   });
 
   it("should render title", () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector("h1")?.textContent).toContain("Trading Dashboard");
+    expect(compiled.querySelector("h1")?.textContent).toContain("TradePilot");
   });
 
   it("should not have a Connection nav link", () => {

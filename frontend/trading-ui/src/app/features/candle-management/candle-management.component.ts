@@ -55,6 +55,8 @@ export class CandleManagementComponent implements OnInit {
   public ingestionStates = new Map<string, IngestionState>();
   public intervalIngestionStates = new Map<string, IngestionState>();
   public intervalColumns = ["interval", "from", "to", "candleCount", "status", "actions"];
+  public readonly skeletonCards = [0, 1, 2];
+  public readonly skeletonRows = [0, 1, 2, 3, 4];
 
   public ngOnInit(): void {
     this._loadCoverage();

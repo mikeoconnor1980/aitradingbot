@@ -52,6 +52,11 @@ export const routes: Routes = [
     loadComponent: () => import("./features/optimizer/optimizer-page.component").then((m) => m.OptimizerPageComponent),
     title: "Strategy Optimizer"
   },
+  {
+    path: "profile",
+    loadComponent: () => import("./features/profile/profile-page.component").then((m) => m.ProfilePageComponent),
+    title: "Profile"
+  },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },
   { path: "**", redirectTo: "dashboard" }
 ];

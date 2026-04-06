@@ -1,38 +1,46 @@
-<main class="app-shell">
+<app-sidebar-nav #sidebar />
+
+<main class="app-shell" [class.app-shell--sidebar-collapsed]="!sidebar.expanded">
   <header class="app-shell__header">
     <h1 class="app-shell__title">{{ title }}</h1>
-    <nav class="app-shell__nav" aria-label="Primary navigation">
-      <a routerLink="/dashboard" routerLinkActive="app-shell__link--active" [routerLinkActiveOptions]="{ exact: true }" class="app-shell__link">Dashboard</a>
-      <a routerLink="/market-data" routerLinkActive="app-shell__link--active" class="app-shell__link">Market Data</a>
-      <a routerLink="/order-entry" routerLinkActive="app-shell__link--active" class="app-shell__link">Order Entry</a>
-      <a routerLink="/backtesting" routerLinkActive="app-shell__link--active" class="app-shell__link">Backtesting</a>
-      <a routerLink="/candle-data" routerLinkActive="app-shell__link--active" class="app-shell__link">Candle Data</a>
-      <a routerLink="/optimizer" routerLinkActive="app-shell__link--active" class="app-shell__link">Optimizer</a>
-      <a routerLink="/strategies" routerLinkActive="app-shell__link--active" class="app-shell__link">Strategies</a>
-    </nav>
 
-    <a
-      class="app-shell__status"
-      [ngClass]="statusClass"
-      routerLink="/connection"
-      [attr.aria-label]="'Connection status: ' + statusLabel + '. Click to view details.'"
-    >
-      <span class="app-shell__status-dot"></span>
-      <span class="app-shell__status-label">{{ statusLabel }}</span>
-    </a>
+    <div class="app-shell__header-end">
+      <a
+        class="app-shell__status"
+        [ngClass]="statusClass"
+        routerLink="/connection"
+        [attr.aria-label]="'Connection status: ' + statusLabel + '. Click to view details.'"
+      >
+        <span class="app-shell__status-dot"></span>
+        <span class="app-shell__status-label">{{ statusLabel }}</span>
+      </a>
 
-    <button
-      mat-icon-button
-      class="app-shell__help-btn"
-      (click)="onToggleHelp()"
-      matTooltip="Help &amp; Guide"
-      aria-label="Open help panel"
-    >
-      <mat-icon>help_outline</mat-icon>
-    </button>
+      <a
+        mat-icon-button
+        class="app-shell__profile-btn"
+        routerLink="/profile"
+        routerLinkActive="app-shell__profile-btn--active"
+        matTooltip="Profile"
+        aria-label="Go to profile"
+      >
+        <mat-icon>account_circle</mat-icon>
+      </a>
+
+      <button
+        mat-icon-button
+        class="app-shell__help-btn"
+        (click)="onToggleHelp()"
+        matTooltip="Help &amp; Guide"
+        aria-label="Open help panel"
+      >
+        <mat-icon>help_outline</mat-icon>
+      </button>
+    </div>
   </header>
 
-  <router-outlet />
+  <div class="app-shell__content">
+    <router-outlet />
+  </div>
 </main>
 
 <app-help-panel />

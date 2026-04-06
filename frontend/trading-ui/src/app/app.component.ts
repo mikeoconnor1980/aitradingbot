@@ -6,6 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { HelpPanelComponent } from "./core/components/help-panel.component";
+import { SidebarNavComponent } from "./core/components/sidebar-nav/sidebar-nav.component";
 import { ConnectionStatus } from "./core/models/connection-status.model";
 import { HealthResponse } from "./core/models/health-response.model";
 import { HealthService } from "./core/services/health.service";
@@ -15,7 +16,7 @@ import { SignalRService } from "./core/services/signalr.service";
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, HelpPanelComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, HelpPanelComponent, SidebarNavComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })
@@ -25,7 +26,7 @@ export class AppComponent implements OnInit {
   private readonly _helpService = inject(HelpService);
   private readonly _destroyRef = inject(DestroyRef);
 
-  public title = "Trading Dashboard";
+  public title = "TradePilot";
 
   public connectionStatus: ConnectionStatus = {
     source: "SignalR",
