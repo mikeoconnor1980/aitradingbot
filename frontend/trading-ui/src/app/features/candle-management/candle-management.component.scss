@@ -131,3 +131,71 @@ $color-negative: var(--colour-loss);
 .error-card {
   border-left: 3px solid $color-negative;
 }
+
+// Skeleton loading
+
+@keyframes skeleton-pulse {
+  0% { opacity: 0.12; }
+  50% { opacity: 0.22; }
+  100% { opacity: 0.12; }
+}
+
+.skeleton-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.skeleton-bar {
+  display: block;
+  border-radius: 4px;
+  background: currentColor;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+  color: var(--colour-text-primary, #94a3b8);
+
+  &--title {
+    width: 7rem;
+    height: 1.1rem;
+  }
+
+  &--button {
+    width: 5rem;
+    height: 2.25rem;
+    border-radius: 999px;
+  }
+
+  &--cell {
+    width: 2.5rem;
+    height: 0.85rem;
+  }
+
+  &--cell-wide {
+    width: 5.5rem;
+    height: 0.85rem;
+  }
+
+  &--chip {
+    width: 4.5rem;
+    height: 1.4rem;
+    border-radius: 4px;
+  }
+}
+
+.skeleton-table {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+}
+
+.symbol-card--skeleton {
+  .mat-mdc-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+}

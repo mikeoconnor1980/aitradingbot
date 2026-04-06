@@ -1,0 +1,55 @@
+<aside
+  class="sidebar"
+  [class.sidebar--expanded]="expanded"
+  aria-label="Main navigation">
+
+  <div class="sidebar__header">
+    @if (expanded) {
+      <mat-icon class="sidebar__logo-icon">candlestick_chart</mat-icon>
+      <span class="sidebar__brand">TradePilot</span>
+      <button
+        type="button"
+        class="sidebar__collapse-btn"
+        (click)="onToggle()"
+        aria-label="Collapse navigation">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="sidebar__expand-btn"
+        (click)="onToggle()"
+        aria-label="Expand navigation"
+        matTooltip="Expand menu"
+        matTooltipPosition="right">
+        <mat-icon>menu</mat-icon>
+      </button>
+    }
+  </div>
+
+  <nav class="sidebar__nav">
+    @for (item of navItems; track item.route) {
+      <a
+        class="sidebar__link"
+        [routerLink]="item.route"
+        routerLinkActive="sidebar__link--active"
+        [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+        [matTooltip]="expanded ? '' : item.label"
+        matTooltipPosition="right">
+        <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
+        <span class="sidebar__label">{{ item.label }}</span>
+      </a>
+    }
+  </nav>
+
+  <div class="sidebar__footer">
+    <button
+      type="button"
+      class="sidebar__link sidebar__link--logout"
+      [matTooltip]="expanded ? '' : 'Log out'"
+      matTooltipPosition="right">
+      <mat-icon class="sidebar__icon">logout</mat-icon>
+      <span class="sidebar__label">Log out</span>
+    </button>
+  </div>
+</aside>

@@ -5,6 +5,7 @@
       <h2 class="status-card__title">Connection Health</h2>
       <p class="status-card__subtitle">Monitor backend wallet verification and live transport health from one compact view.</p>
     </div>
+    <span class="status-card__version">v{{ appVersion }}</span>
   </header>
 
   <div class="status-card__grid">
@@ -98,4 +99,15 @@
       </section>
     }
   </div>
+
+  <section class="status-card__panel status-card__panel--link" aria-label="Order entry shortcut">
+    <a class="status-card__nav-link" routerLink="/order-entry">
+      <div>
+        <p class="status-card__panel-label">Trading</p>
+        <h3 class="status-card__panel-title">Order Entry</h3>
+        <p class="status-card__footer-note">Place and manage orders on the connected exchange.</p>
+      </div>
+      <span class="status-card__nav-arrow" aria-hidden="true">&rarr;</span>
+    </a>
+  </section>
 </section>

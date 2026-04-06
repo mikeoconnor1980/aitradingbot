@@ -1,14 +1,16 @@
 import { AsyncPipe } from "@angular/common";
 import { Component, inject } from "@angular/core";
+import { RouterLink } from "@angular/router";
 import { ConnectionState, ConnectionStatus } from "../../core/models/connection-status.model";
 import { HealthResponse } from "../../core/models/health-response.model";
 import { HealthService } from "../../core/services/health.service";
 import { SignalRService } from "../../core/services/signalr.service";
+import { environment } from "../../../environments/environment";
 
 @Component({
   selector: "app-status-card",
   standalone: true,
-  imports: [AsyncPipe],
+  imports: [AsyncPipe, RouterLink],
   templateUrl: "./status-card.component.html",
   styleUrl: "./status-card.component.scss"
 })
@@ -16,6 +18,7 @@ export class StatusCardComponent {
   private readonly _healthService = inject(HealthService);
   private readonly _signalRService = inject(SignalRService);
 
+  public readonly appVersion = environment.appVersion;
   public readonly health$ = this._healthService.health$;
   public readonly signalRTransportStatus$ = this._signalRService.transportConnectionStatus$;
 
