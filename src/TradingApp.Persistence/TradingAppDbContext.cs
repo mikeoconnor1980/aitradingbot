@@ -19,6 +19,8 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<Strategy> Strategies => Set<Strategy>();
     public DbSet<StrategyRevision> StrategyRevisions => Set<StrategyRevision>();
     public DbSet<StrategyReview> StrategyReviews => Set<StrategyReview>();
+    public DbSet<MacroEvent> MacroEvents => Set<MacroEvent>();
+    public DbSet<MacroSyncRun> MacroSyncRuns => Set<MacroSyncRun>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -385,6 +387,85 @@ public sealed class TradingAppDbContext : DbContext
             entity.HasIndex(review => new { review.StrategyId, review.RevisionNumber })
                 .IsUnique()
                 .HasDatabaseName("IX_StrategyReviews_StrategyId_RevisionNumber");
+        });
+
+        modelBuilder.Entity<MacroEvent>(entity =>
+        {
+            entity.ToTable("MacroEvents");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.Provider)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.ProviderEventId)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(e => e.Title)
+                .HasMaxLength(300)
+                .IsRequired();
+
+            entity.Property(e => e.Country)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.Currency)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Category)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.Importance)
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .IsRequired();
+
+            entity.Property(e => e.RawPayloadJson)
+                .HasMaxLength(4000);
+
+            entity.HasIndex(e => new { e.Provider, e.ProviderEventId })
+                .IsUnique()
+                .HasDatabaseName("IX_MacroEvents_Provider_ProviderEventId");
+
+            entity.HasIndex(e => e.ScheduledAtUtc)
+                .HasDatabaseName("IX_MacroEvents_ScheduledAtUtc");
+
+            entity.HasIndex(e => e.BlockStartUtc)
+                .HasDatabaseName("IX_MacroEvents_BlockStartUtc");
+
+            entity.HasIndex(e => e.BlockEndUtc)
+                .HasDatabaseName("IX_MacroEvents_BlockEndUtc");
+
+            entity.HasIndex(e => e.Importance)
+                .HasDatabaseName("IX_MacroEvents_Importance");
+        });
+
+        modelBuilder.Entity<MacroSyncRun>(entity =>
+        {
+            entity.ToTable("MacroSyncRuns");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.Provider)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Error)
+                .HasMaxLength(2000);
+
+            entity.HasIndex(e => e.StartedAtUtc)
+                .HasDatabaseName("IX_MacroSyncRuns_StartedAtUtc");
         });
     }
 }

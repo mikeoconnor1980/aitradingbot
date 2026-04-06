@@ -57,6 +57,11 @@ export const routes: Routes = [
     loadComponent: () => import("./features/profile/profile-page.component").then((m) => m.ProfilePageComponent),
     title: "Profile"
   },
+  {
+    path: "macro-calendar",
+    loadComponent: () => import("./features/macro-calendar/macro-calendar-page.component").then((m) => m.MacroCalendarPageComponent),
+    title: "Macro Calendar"
+  },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },
   { path: "**", redirectTo: "dashboard" }
 ];
