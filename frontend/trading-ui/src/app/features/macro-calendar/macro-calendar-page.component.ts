@@ -8,6 +8,7 @@ import { MatChipsModule } from "@angular/material/chips";
 import { MatTableModule } from "@angular/material/table";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatInputModule } from "@angular/material/input";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { FormsModule } from "@angular/forms";
 import { MacroCalendarService } from "./macro-calendar.service";
@@ -25,6 +26,7 @@ import { MacroEventListItem, IMPORTANCE_LABELS, STATUS_LABELS } from "./models/m
     MatTableModule,
     MatSelectModule,
     MatFormFieldModule,
+    MatInputModule,
     MatTooltipModule,
     FormsModule
   ],
@@ -36,11 +38,14 @@ export class MacroCalendarPageComponent implements OnInit {
   private readonly _macroService = inject(MacroCalendarService);
 
   public events: MacroEventListItem[] = [];
+  public filteredEvents: MacroEventListItem[] = [];
   public activeBlocks: MacroEventListItem[] = [];
   public isLoading = false;
   public isSyncing = false;
   public lastSyncMessage = "";
   public selectedCurrency = "";
+  public searchTerm = "";
+  public lastRefreshedAt: Date | null = null;
 
   public readonly importanceLabels = IMPORTANCE_LABELS;
   public readonly statusLabels = STATUS_LABELS;
@@ -68,6 +73,8 @@ export class MacroCalendarPageComponent implements OnInit {
       .subscribe({
         next: (result) => {
           this.events = result;
+          this.applySearch();
+          this.lastRefreshedAt = new Date();
           this.isLoading = false;
         },
         error: () => {
@@ -103,6 +110,30 @@ export class MacroCalendarPageComponent implements OnInit {
 
   public onCurrencyChange(): void {
     this.load();
+  }
+
+  public onSearchChange(): void {
+    this.applySearch();
+  }
+
+  public clearSearch(): void {
+    this.searchTerm = "";
+    this.applySearch();
+  }
+
+  private applySearch(): void {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredEvents = this.events;
+      return;
+    }
+    this.filteredEvents = this.events.filter(e =>
+      e.title.toLowerCase().includes(term) ||
+      e.country.toLowerCase().includes(term) ||
+      e.currency.toLowerCase().includes(term) ||
+      e.category.toLowerCase().includes(term) ||
+      (this.importanceLabels[e.importance] ?? "").toLowerCase().includes(term)
+    );
   }
 
   public getImportanceClass(importance: number): string {

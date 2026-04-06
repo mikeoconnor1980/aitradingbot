@@ -2,6 +2,18 @@
   <div class="page-header">
     <h2>Macro Calendar</h2>
     <div class="header-actions">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search events</mat-label>
+        <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()" placeholder="e.g. CPI, FOMC, payroll...">
+        @if (searchTerm) {
+          <button matSuffix mat-icon-button (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        } @else {
+          <mat-icon matSuffix>search</mat-icon>
+        }
+      </mat-form-field>
+
       <mat-form-field appearance="outline" class="currency-filter">
         <mat-label>Currency</mat-label>
         <mat-select [(ngModel)]="selectedCurrency" (selectionChange)="onCurrencyChange()">
@@ -15,6 +27,10 @@
         <mat-icon>refresh</mat-icon>
         Refresh
       </button>
+
+      @if (lastRefreshedAt) {
+        <span class="last-refreshed">Updated {{ lastRefreshedAt | date:'HH:mm:ss' }}</span>
+      }
 
       <button mat-flat-button color="primary" (click)="onSync()" [disabled]="isSyncing">
         <mat-icon>sync</mat-icon>
@@ -48,13 +64,17 @@
     <div class="loading-container">
       <mat-spinner diameter="40"></mat-spinner>
     </div>
-  } @else if (events.length === 0) {
+  } @else if (filteredEvents.length === 0) {
     <div class="empty-state">
       <mat-icon>event_busy</mat-icon>
-      <p>No upcoming macro events found. Try syncing or adjusting your filters.</p>
+      @if (searchTerm) {
+        <p>No events match "{{ searchTerm }}". Try a different search term.</p>
+      } @else {
+        <p>No upcoming macro events found. Try syncing or adjusting your filters.</p>
+      }
     </div>
   } @else {
-    <table mat-table [dataSource]="events" class="events-table">
+    <table mat-table [dataSource]="filteredEvents" class="events-table">
 
       <ng-container matColumnDef="importance">
         <th mat-header-cell *matHeaderCellDef>Impact</th>
