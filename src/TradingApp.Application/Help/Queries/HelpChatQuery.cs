@@ -69,6 +69,15 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         Shows health of connections to Hyperliquid and backend services. Green = connected,
         Yellow = reconnecting, Red = disconnected. System auto-reconnects on interruptions.
 
+        ### Macro Calendar
+        Displays upcoming macroeconomic events (FOMC, CPI, Non-Farm Payrolls, etc.) with scheduled times,
+        importance ratings, and block windows. High-impact events automatically block new trade entries for
+        a configurable window before and after the release — exits, stop-losses, and reduce-only actions
+        remain allowed. The page includes a client-side text search to filter by event name, country,
+        currency, category, or importance. Use the currency dropdown to narrow by specific currency.
+        Events sync automatically in the background. Click "Sync Now" for an immediate refresh.
+        An orange banner appears at the top when a block window is currently active.
+
         ## Glossary of Metrics
 
         ### Fitness Score

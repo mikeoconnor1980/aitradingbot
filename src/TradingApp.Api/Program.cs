@@ -14,14 +14,19 @@ using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Services;
+using TradingApp.Application.MacroCalendar.Configuration;
+using TradingApp.Application.MacroCalendar.Services;
 using TradingApp.Application.MarketData.Queries;
 using TradingApp.Application.Optimization;
 using TradingApp.Application.Optimization.Services;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
+using TradingApp.Api.Services;
+using TradingApp.Infrastructure.Providers.MacroCalendar;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
+using TradingApp.Persistence.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +53,12 @@ builder.Services.AddOptions<CandleIngestionOptions>()
 
 builder.Services.AddOptions<BinanceIngestionOptions>()
     .Bind(builder.Configuration.GetSection(BinanceIngestionOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Bind MacroCalendar configuration
+builder.Services.AddOptions<MacroCalendarOptions>()
+    .Bind(builder.Configuration.GetSection(MacroCalendarOptions.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -152,6 +163,15 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
 builder.Services.AddScoped<IBinanceCandleIngestionService, BinanceCandleIngestionService>();
 builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
+
+// Macro calendar services
+builder.Services.AddScoped<IMacroCalendarProvider, StubMacroCalendarProvider>();
+builder.Services.AddScoped<IMacroBlockWindowCalculator, MacroBlockWindowCalculator>();
+builder.Services.AddScoped<IMacroCalendarIngestionService, TradingApp.Persistence.Services.MacroCalendarIngestionService>();
+builder.Services.AddScoped<IMacroCalendarQueryService, MacroCalendarQueryService>();
+builder.Services.AddScoped<IMacroEventRiskCheck, MacroEventRiskCheck>();
+builder.Services.AddHostedService<MacroCalendarSyncWorker>();
+
 builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
 
