@@ -92,6 +92,35 @@
     margin: 0;
   }
 
+  &__wallet-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__key-form {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--colour-border-light);
+  }
+
+  &__key-field {
+    width: 100%;
+  }
+
+  &__key-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  &__error {
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin: 0.5rem 0 0;
+  }
+
   &__footer {
     text-align: center;
     padding: 0.5rem 0;

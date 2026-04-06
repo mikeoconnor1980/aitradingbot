@@ -1,0 +1,21 @@
+using TradingApp.Application.StrategyAuthoring.Models;
+
+namespace TradingApp.Application.Agent.Models;
+
+/// <summary>
+/// A command queued by the dashboard for a specific agent to pick up.
+/// </summary>
+public sealed class AgentCommand
+{
+    public required string CommandId { get; init; }
+    public required string AgentId { get; init; }
+    public required AgentCommandType Type { get; init; }
+    public StrategyConfig? StrategyConfig { get; init; }
+    public DateTimeOffset CreatedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+}
+
+public enum AgentCommandType
+{
+    Start,
+    Stop
+}

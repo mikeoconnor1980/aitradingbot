@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="TradingApp.Application.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TradingApp.Domain\TradingApp.Domain.csproj" />
     <ProjectReference Include="..\TradingApp.Indicators\TradingApp.Indicators.csproj" />
   </ItemGroup>

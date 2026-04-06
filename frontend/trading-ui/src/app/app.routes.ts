@@ -53,6 +53,11 @@ export const routes: Routes = [
     title: "Strategy Optimizer"
   },
   {
+    path: "agents",
+    loadComponent: () => import("./features/agents/agents-page.component").then((m) => m.AgentsPageComponent),
+    title: "Agents"
+  },
+  {
     path: "profile",
     loadComponent: () => import("./features/profile/profile-page.component").then((m) => m.ProfilePageComponent),
     title: "Profile"
