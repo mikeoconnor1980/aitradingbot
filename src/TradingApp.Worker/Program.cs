@@ -105,6 +105,7 @@ builder.Services.AddSingleton<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddSingleton<IStrategyEngine, CompositeStrategyEngine>();
 builder.Services.AddSingleton<IGridController, GridController>();
 builder.Services.AddSingleton<ISignalController, SignalController>();
+builder.Services.AddSingleton<ITriggerOrderManager, TriggerOrderManager>();
 
 // ---------- Risk engine (live limits: daily loss, order size, circuit breaker) ----------
 builder.Services.AddOptions<RiskLimitsConfig>()

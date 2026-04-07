@@ -28,4 +28,10 @@ public sealed class GridState
     /// Reset to 0 when position is closed.
     /// </summary>
     public int CandlesSinceEntry { get; set; }
+
+    /// <summary>
+    /// Tracks exchange-native TP/SL trigger orders protecting the current position.
+    /// In-memory only — rebuilt from exchange on worker restart.
+    /// </summary>
+    public ProtectionOrderState ProtectionOrders { get; } = new();
 }

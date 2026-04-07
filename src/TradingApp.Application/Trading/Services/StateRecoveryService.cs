@@ -69,6 +69,11 @@ public sealed class StateRecoveryService : IStateRecoveryService
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var openOrderIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string? recoveredSlOrderId = null;
+        decimal? recoveredSlTriggerPrice = null;
+        string? recoveredTpOrderId = null;
+        decimal? recoveredTpTriggerPrice = null;
+
         if (openOrdersJson.ValueKind == JsonValueKind.Array)
         {
             foreach (var orderElement in openOrdersJson.EnumerateArray())
@@ -76,6 +81,25 @@ public sealed class StateRecoveryService : IStateRecoveryService
                 if (orderElement.TryGetProperty("oid", out var oidProp))
                 {
                     openOrderIds.Add(oidProp.ToString());
+                }
+
+                // Detect exchange-native protection trigger orders for this symbol
+                if (IsTriggerOrderForSymbol(orderElement, symbol))
+                {
+                    var tpslType = GetTpslType(orderElement);
+                    var triggerPx = GetTriggerPrice(orderElement);
+                    var oid = oidProp.ToString();
+
+                    if (string.Equals(tpslType, "sl", StringComparison.OrdinalIgnoreCase))
+                    {
+                        recoveredSlOrderId = oid;
+                        recoveredSlTriggerPrice = triggerPx;
+                    }
+                    else if (string.Equals(tpslType, "tp", StringComparison.OrdinalIgnoreCase))
+                    {
+                        recoveredTpOrderId = oid;
+                        recoveredTpTriggerPrice = triggerPx;
+                    }
                 }
             }
         }
@@ -143,6 +167,20 @@ public sealed class StateRecoveryService : IStateRecoveryService
             gridState.Lifecycle = GridLifecycle.PartiallyFilled;
         }
 
+        // Recover protection order state from exchange open orders
+        if (recoveredSlOrderId is not null || recoveredTpOrderId is not null)
+        {
+            gridState.ProtectionOrders.StopLossOrderId = recoveredSlOrderId;
+            gridState.ProtectionOrders.StopLossTriggerPrice = recoveredSlTriggerPrice;
+            gridState.ProtectionOrders.TakeProfitOrderId = recoveredTpOrderId;
+            gridState.ProtectionOrders.TakeProfitTriggerPrice = recoveredTpTriggerPrice;
+
+            _logger.LogInformation(
+                "Protection orders recovered: SL={SlOrderId} @ {SlPrice}, TP={TpOrderId} @ {TpPrice}",
+                recoveredSlOrderId ?? "(none)", recoveredSlTriggerPrice,
+                recoveredTpOrderId ?? "(none)", recoveredTpTriggerPrice);
+        }
+
         _logger.LogInformation(
             "Grid state recovered: GridCycleId={GridCycleId}, Lifecycle={Lifecycle}, " +
             "FilledLevels={Filled}/{Total}, TrackedOrders={OrderCount}",
@@ -150,5 +188,61 @@ public sealed class StateRecoveryService : IStateRecoveryService
             gridState.FilledLevels, gridState.TotalLevels, dbOrders.Count);
 
         return gridState;
+    }
+
+    private static bool IsTriggerOrderForSymbol(JsonElement order, string symbol)
+    {
+        if (!order.TryGetProperty("coin", out var coinProp))
+        {
+            return false;
+        }
+
+        if (!string.Equals(coinProp.GetString(), symbol, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Check if reduceOnly (all protection triggers are reduce-only)
+        if (order.TryGetProperty("reduceOnly", out var reduceOnly) && reduceOnly.ValueKind == JsonValueKind.True)
+        {
+            return GetTpslType(order) is not null;
+        }
+
+        return false;
+    }
+
+    private static string? GetTpslType(JsonElement order)
+    {
+        if (order.TryGetProperty("orderType", out var orderType)
+            && orderType.ValueKind == JsonValueKind.Object
+            && orderType.TryGetProperty("trigger", out var trigger)
+            && trigger.TryGetProperty("tpsl", out var tpsl))
+        {
+            return tpsl.GetString();
+        }
+
+        return null;
+    }
+
+    private static decimal? GetTriggerPrice(JsonElement order)
+    {
+        if (order.TryGetProperty("orderType", out var orderType)
+            && orderType.ValueKind == JsonValueKind.Object
+            && orderType.TryGetProperty("trigger", out var trigger)
+            && trigger.TryGetProperty("triggerPx", out var triggerPx))
+        {
+            if (triggerPx.ValueKind == JsonValueKind.String
+                && decimal.TryParse(triggerPx.GetString(), out var parsed))
+            {
+                return parsed;
+            }
+
+            if (triggerPx.ValueKind == JsonValueKind.Number)
+            {
+                return triggerPx.GetDecimal();
+            }
+        }
+
+        return null;
     }
 }

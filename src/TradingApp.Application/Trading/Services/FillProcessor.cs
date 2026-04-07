@@ -16,6 +16,7 @@ public sealed class FillProcessor : IFillProcessor
     private readonly ILiveOrderRepository? _orderRepository;
     private readonly ILiveFillRepository? _fillRepository;
     private readonly IGridCycleRepository? _gridCycleRepository;
+    private readonly IExecutionEngine? _executionEngine;
     private readonly string _userId;
     private readonly ILogger<FillProcessor> _logger;
 
@@ -33,7 +34,8 @@ public sealed class FillProcessor : IFillProcessor
         ILiveOrderRepository? orderRepository = null,
         ILiveFillRepository? fillRepository = null,
         IGridCycleRepository? gridCycleRepository = null,
-        string? userId = null)
+        string? userId = null,
+        IExecutionEngine? executionEngine = null)
     {
         _orderTracker = orderTracker ?? throw new ArgumentNullException(nameof(orderTracker));
         _gridState = gridState ?? throw new ArgumentNullException(nameof(gridState));
@@ -42,12 +44,28 @@ public sealed class FillProcessor : IFillProcessor
         _orderRepository = orderRepository;
         _fillRepository = fillRepository;
         _gridCycleRepository = gridCycleRepository;
+        _executionEngine = executionEngine;
         _userId = userId ?? string.Empty;
     }
 
     public async Task ProcessFillAsync(FillEventDto fill, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(fill);
+
+        // Check if this fill is from an exchange-native protection trigger order
+        if (_gridState.ProtectionOrders.IsProtectionOrderId(fill.OrderId))
+        {
+            ProcessProtectionTriggerFill(fill);
+            await PersistProtectionFillAsync(fill, cancellationToken);
+            _riskEngine?.RecordOrdersClosed(1);
+            if (fill.ClosedPnl < 0m)
+            {
+                _riskEngine?.RecordLoss(Math.Abs(fill.ClosedPnl));
+            }
+
+            OnFillProcessed?.Invoke(fill);
+            return;
+        }
 
         var tracked = _orderTracker.GetOrder(fill.OrderId);
 
@@ -162,11 +180,89 @@ public sealed class FillProcessor : IFillProcessor
             _gridState.TotalLevels = 0;
             _gridState.TrailingStopHighWatermark = null;
             _gridState.CandlesSinceEntry = 0;
+            _gridState.ProtectionOrders.Clear();
         }
 
         _logger.LogInformation(
             "Take profit fill processed: GridCycleId={GridCycleId} → Closed, ClosedPnl={ClosedPnl}",
             tracked.GridCycleId, fill.ClosedPnl);
+    }
+
+    private void ProcessProtectionTriggerFill(FillEventDto fill)
+    {
+        var isStopLoss = string.Equals(fill.OrderId, _gridState.ProtectionOrders.StopLossOrderId, StringComparison.Ordinal);
+        var label = isStopLoss ? "SL" : "TP";
+
+        // Identify the counterpart order to cancel (SL fired → cancel TP, and vice versa)
+        var counterpartOrderId = isStopLoss
+            ? _gridState.ProtectionOrders.TakeProfitOrderId
+            : _gridState.ProtectionOrders.StopLossOrderId;
+
+        _logger.LogInformation(
+            "Exchange-native {Label} trigger filled: OrderId={OrderId}, Price={Price}, Size={Size}, ClosedPnl={ClosedPnl}",
+            label, fill.OrderId, fill.Price, fill.Size, fill.ClosedPnl);
+
+        lock (_gridState.SyncRoot)
+        {
+            _gridState.Lifecycle = GridLifecycle.Closed;
+            _gridState.FilledLevels = 0;
+            _gridState.TotalLevels = 0;
+            _gridState.TrailingStopHighWatermark = null;
+            _gridState.CandlesSinceEntry = 0;
+            _gridState.ProtectionOrders.Clear();
+        }
+
+        // Cancel the counterpart protection order on the exchange (best-effort, fire-and-forget)
+        if (!string.IsNullOrEmpty(counterpartOrderId) && _executionEngine is not null)
+        {
+            _ = CancelCounterpartOrderAsync(counterpartOrderId);
+        }
+    }
+
+    private async Task CancelCounterpartOrderAsync(string orderId)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "Cancelling counterpart protection trigger: OrderId={OrderId}", orderId);
+            await _executionEngine!.CancelOrderAsync(orderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to cancel counterpart protection trigger: OrderId={OrderId}. May have already fired.",
+                orderId);
+        }
+    }
+
+    private async Task PersistProtectionFillAsync(FillEventDto fill, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_fillRepository is not null)
+            {
+                await _fillRepository.AddAsync(new LiveFill
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = fill.OrderId,
+                    Symbol = fill.Asset,
+                    Side = Enum.TryParse<OrderSide>(fill.Side, ignoreCase: true, out var side) ? side : OrderSide.Sell,
+                    Direction = fill.Direction,
+                    Price = fill.Price,
+                    Size = fill.Size,
+                    Fee = fill.Fee,
+                    ClosedPnl = fill.ClosedPnl,
+                    FilledAtUtc = fill.Timestamp,
+                    UserId = _userId,
+                }, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to persist protection trigger fill: OrderId={OrderId}. Trading continues.",
+                fill.OrderId);
+        }
     }
 
     private void ProcessSignalEntryFill(TrackedOrder tracked)

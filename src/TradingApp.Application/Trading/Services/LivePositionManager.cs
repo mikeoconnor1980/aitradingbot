@@ -19,22 +19,26 @@ public sealed class LivePositionManager : IPositionManager
     private readonly IExecutionEngine _executionEngine;
     private readonly IOrderTracker _orderTracker;
     private readonly IRiskEngine _riskEngine;
+    private readonly ITriggerOrderManager? _triggerOrderManager;
     private readonly ILogger<LivePositionManager> _logger;
 
     private IGridCycleRepository? _gridCycleRepository;
     private ILiveOrderRepository? _orderRepository;
     private string _userId = string.Empty;
+    private ProtectionOrderState? _protectionOrderState;
 
     public LivePositionManager(
         IExecutionEngine executionEngine,
         IOrderTracker orderTracker,
         IRiskEngine riskEngine,
-        ILogger<LivePositionManager> logger)
+        ILogger<LivePositionManager> logger,
+        ITriggerOrderManager? triggerOrderManager = null)
     {
         _executionEngine = executionEngine ?? throw new ArgumentNullException(nameof(executionEngine));
         _orderTracker = orderTracker ?? throw new ArgumentNullException(nameof(orderTracker));
         _riskEngine = riskEngine ?? throw new ArgumentNullException(nameof(riskEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _triggerOrderManager = triggerOrderManager;
     }
 
     /// <summary>
@@ -49,6 +53,15 @@ public sealed class LivePositionManager : IPositionManager
         _gridCycleRepository = gridCycleRepository;
         _orderRepository = orderRepository;
         _userId = userId ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Configures the protection order state so the position manager can cancel
+    /// exchange-native TP/SL triggers before placing app-side exit orders.
+    /// </summary>
+    public void ConfigureProtectionState(ProtectionOrderState protectionOrderState)
+    {
+        _protectionOrderState = protectionOrderState;
     }
 
     public async Task ExecuteSignalsAsync(
@@ -78,6 +91,14 @@ public sealed class LivePositionManager : IPositionManager
                     break;
 
                 case "CancelGrid":
+                    // Cancel exchange-native protection triggers along with grid orders
+                    if (_triggerOrderManager is not null && _protectionOrderState is not null
+                        && _protectionOrderState.HasAny)
+                    {
+                        await _triggerOrderManager.CancelProtectionOrdersAsync(
+                            _protectionOrderState, cancellationToken);
+                    }
+
                     await _executionEngine.CancelAllOrdersAsync(signal.Symbol, cancellationToken);
                     break;
 
@@ -206,6 +227,18 @@ public sealed class LivePositionManager : IPositionManager
 
     private async Task PlaceTakeProfitAsync(TradingSignal signal, CancellationToken cancellationToken)
     {
+        // Cancel exchange-native protection orders before placing app-side exit
+        // to prevent double-execution
+        if (_triggerOrderManager is not null && _protectionOrderState is not null
+            && _protectionOrderState.HasAny)
+        {
+            _logger.LogInformation(
+                "Cancelling exchange-native protection orders before app-side exit: Symbol={Symbol}",
+                signal.Symbol);
+            await _triggerOrderManager.CancelProtectionOrdersAsync(
+                _protectionOrderState, cancellationToken);
+        }
+
         var orderType = Enum.Parse<OrderType>(GetString(signal.Parameters, "orderType"), ignoreCase: true);
         var gridCycleId = GetGridCycleId(signal.Parameters);
 
