@@ -13,6 +13,7 @@ using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Agent.Services;
+using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.MacroCalendar.Configuration;
@@ -114,6 +115,8 @@ builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
 builder.Services.AddSingleton<AgentCommandStore>();
+builder.Services.AddOptions<AgentUpdateOptions>()
+    .Bind(builder.Configuration.GetSection(AgentUpdateOptions.SectionName));
 builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
 builder.Services.AddSingleton<BacktestJobQueue>();
 builder.Services.AddSingleton<BacktestCancellationManager>();

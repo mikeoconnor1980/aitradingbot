@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Agent.Services;
 
@@ -14,10 +15,12 @@ namespace TradingApp.Api.Controllers;
 public sealed class AgentController : ControllerBase
 {
     private readonly AgentCommandStore _store;
+    private readonly AgentUpdateOptions _updateOptions;
 
-    public AgentController(AgentCommandStore store)
+    public AgentController(AgentCommandStore store, IOptions<AgentUpdateOptions> updateOptions)
     {
         _store = store;
+        _updateOptions = updateOptions.Value;
     }
 
     /// <summary>
@@ -53,7 +56,18 @@ public sealed class AgentController : ControllerBase
 
         var pendingCommands = _store.DrainCommands(heartbeat.AgentId);
 
-        return Ok(new HeartbeatResponse { PendingCommands = pendingCommands });
+        var updateAvailable = !string.IsNullOrEmpty(_updateOptions.LatestVersion) &&
+            !string.IsNullOrEmpty(heartbeat.AgentVersion) &&
+            IsNewerVersion(_updateOptions.LatestVersion, heartbeat.AgentVersion);
+
+        return Ok(new HeartbeatResponse
+        {
+            PendingCommands = pendingCommands,
+            UpdateAvailable = updateAvailable,
+            LatestVersion = updateAvailable ? _updateOptions.LatestVersion : null,
+            UpdateDownloadUrl = updateAvailable ? _updateOptions.DownloadUrl : null,
+            UpdateSha256Hash = updateAvailable ? _updateOptions.Sha256Hash : null,
+        });
     }
 
     /// <summary>
@@ -149,6 +163,38 @@ public sealed class AgentController : ControllerBase
 
         return Ok(new { message = $"Agent '{agentId}' reinstated. It may reconnect." });
     }
+
+    /// <summary>
+    /// Get the latest agent version metadata. Used by agents as a fallback
+    /// update check and by operators for manual verification.
+    /// </summary>
+    [HttpGet("update/latest")]
+    [ProducesResponseType(typeof(AgentUpdateInfo), StatusCodes.Status200OK)]
+    public IActionResult GetLatestUpdate()
+    {
+        return Ok(new AgentUpdateInfo
+        {
+            Version = _updateOptions.LatestVersion,
+            DownloadUrl = _updateOptions.DownloadUrl,
+            Sha256Hash = _updateOptions.Sha256Hash,
+            ReleaseNotes = _updateOptions.ReleaseNotes,
+        });
+    }
+
+    /// <summary>
+    /// Compare two semver strings. Returns true if <paramref name="latest"/>
+    /// is strictly newer than <paramref name="current"/>.
+    /// </summary>
+    private static bool IsNewerVersion(string latest, string current)
+    {
+        if (Version.TryParse(latest, out var latestVersion) &&
+            Version.TryParse(current, out var currentVersion))
+        {
+            return latestVersion > currentVersion;
+        }
+
+        return false;
+    }
 }
 
 public sealed class PendingCommandDto
@@ -168,4 +214,12 @@ public sealed class KillAgentRequest
     /// to schedule (e.g. subscription expiry).
     /// </summary>
     public DateTimeOffset? EffectiveAtUtc { get; init; }
+}
+
+public sealed class AgentUpdateInfo
+{
+    public string Version { get; init; } = string.Empty;
+    public string DownloadUrl { get; init; } = string.Empty;
+    public string Sha256Hash { get; init; } = string.Empty;
+    public string? ReleaseNotes { get; init; }
 }

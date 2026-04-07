@@ -15,6 +15,15 @@ public sealed class AgentHeartbeat
     public string? LastError { get; init; }
     public DateTimeOffset TimestampUtc { get; init; } = DateTimeOffset.UtcNow;
 
+    /// <summary>Semantic version of the agent executable (e.g. "0.1.0").</summary>
+    public string? AgentVersion { get; init; }
+
+    /// <summary>Current auto-update state reported by the agent.</summary>
+    public UpdateState UpdateState { get; init; } = UpdateState.None;
+
+    /// <summary>Reason the update was deferred (e.g. active trading session).</summary>
+    public string? UpdateDeferredReason { get; init; }
+
     /// <summary>
     /// Results from order commands completed since the last heartbeat.
     /// </summary>
@@ -35,4 +44,25 @@ public sealed class HeartbeatResponse
 
     /// <summary>Reason shown to the agent operator.</summary>
     public string? ShutdownReason { get; init; }
+
+    /// <summary>True when a newer agent version is available.</summary>
+    public bool UpdateAvailable { get; init; }
+
+    /// <summary>The latest available agent version (semver).</summary>
+    public string? LatestVersion { get; init; }
+
+    /// <summary>URL to download the installer for the latest version.</summary>
+    public string? UpdateDownloadUrl { get; init; }
+
+    /// <summary>SHA256 hash of the installer binary for verification.</summary>
+    public string? UpdateSha256Hash { get; init; }
+}
+
+public enum UpdateState
+{
+    None,
+    Downloading,
+    Applying,
+    Failed,
+    Deferred,
 }

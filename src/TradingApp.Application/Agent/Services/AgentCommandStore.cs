@@ -89,6 +89,8 @@ public sealed class AgentCommandStore
                 WalletAddress = heartbeat.WalletAddress,
                 ActiveStrategy = heartbeat.ActiveStrategy,
                 LastError = heartbeat.LastError,
+                AgentVersion = heartbeat.AgentVersion,
+                UpdateState = heartbeat.UpdateState,
             },
             (_, existing) =>
             {
@@ -105,6 +107,8 @@ public sealed class AgentCommandStore
                 existing.WalletAddress = heartbeat.WalletAddress;
                 existing.ActiveStrategy = heartbeat.ActiveStrategy;
                 existing.LastError = heartbeat.LastError;
+                existing.AgentVersion = heartbeat.AgentVersion;
+                existing.UpdateState = heartbeat.UpdateState;
                 return existing;
             });
     }

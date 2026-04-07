@@ -14,6 +14,12 @@ public sealed class AgentInfo
     public ActiveStrategyInfo? ActiveStrategy { get; set; }
     public string? LastError { get; set; }
 
+    /// <summary>Agent executable version reported via heartbeat.</summary>
+    public string? AgentVersion { get; set; }
+
+    /// <summary>Current auto-update state reported by the agent.</summary>
+    public UpdateState UpdateState { get; set; } = UpdateState.None;
+
     /// <summary>
     /// When set, the agent is killed and must not reconnect.
     /// If set to a future time, the kill takes effect at that time.
