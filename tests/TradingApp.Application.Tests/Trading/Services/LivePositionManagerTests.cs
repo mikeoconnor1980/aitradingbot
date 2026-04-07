@@ -24,6 +24,7 @@ public sealed class LivePositionManagerTests
 
         _sut = new LivePositionManager(
             _executionEngine.Object,
+            new InMemoryOrderTracker(),
             Mock.Of<ILogger<LivePositionManager>>());
     }
 

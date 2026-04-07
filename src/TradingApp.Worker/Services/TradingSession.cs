@@ -5,6 +5,7 @@ using TradingApp.Application.Scheduling;
 using TradingApp.Application.Scheduling.Models;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 using TradingApp.Infrastructure.Hyperliquid;
 
@@ -23,6 +24,7 @@ public sealed class TradingSession : IAsyncDisposable
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IHyperliquidWebSocketClient _wsClient;
+    private readonly IHyperliquidUserEventClient _userEventClient;
     private readonly CandleBuilder _candleBuilder;
     private readonly CandleClock _candleClock;
     private readonly IMarketContextBuilder _contextBuilder;
@@ -32,6 +34,10 @@ public sealed class TradingSession : IAsyncDisposable
     private readonly IPositionManager _positionManager;
     private readonly ISignalController _signalController;
     private readonly IExecutionEngine _executionEngine;
+    private readonly IFillProcessor _fillProcessor;
+    private readonly ISignerProvider _signerProvider;
+    private readonly IStateRecoveryService? _stateRecoveryService;
+    private readonly IOrderTracker _orderTracker;
     private readonly ITradingHealthProvider _healthProvider;
     private readonly ILogger _logger;
 
@@ -40,12 +46,14 @@ public sealed class TradingSession : IAsyncDisposable
     private int _retryCount;
 
     public StrategyConfig StrategyConfig { get; }
+    public GridState GridState { get; }
     public DateTimeOffset StartedAtUtc { get; } = DateTimeOffset.UtcNow;
     public bool IsRunning => _runTask is not null && !_runTask.IsCompleted;
 
     public TradingSession(
         StrategyConfig strategyConfig,
         IHyperliquidWebSocketClient wsClient,
+        IHyperliquidUserEventClient userEventClient,
         CandleBuilder candleBuilder,
         CandleClock candleClock,
         IMarketContextBuilder contextBuilder,
@@ -55,11 +63,17 @@ public sealed class TradingSession : IAsyncDisposable
         IPositionManager positionManager,
         ISignalController signalController,
         IExecutionEngine executionEngine,
+        IFillProcessor fillProcessor,
+        ISignerProvider signerProvider,
         ITradingHealthProvider healthProvider,
-        ILogger logger)
+        ILogger logger,
+        GridState? gridState = null,
+        IStateRecoveryService? stateRecoveryService = null,
+        IOrderTracker? orderTracker = null)
     {
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
+        _userEventClient = userEventClient;
         _candleBuilder = candleBuilder;
         _candleClock = candleClock;
         _contextBuilder = contextBuilder;
@@ -69,8 +83,13 @@ public sealed class TradingSession : IAsyncDisposable
         _positionManager = positionManager;
         _signalController = signalController;
         _executionEngine = executionEngine;
+        _fillProcessor = fillProcessor;
+        _signerProvider = signerProvider;
+        _stateRecoveryService = stateRecoveryService;
+        _orderTracker = orderTracker!;
         _healthProvider = healthProvider;
         _logger = logger;
+        GridState = gridState ?? new GridState();
     }
 
     public void Start()
@@ -122,6 +141,17 @@ public sealed class TradingSession : IAsyncDisposable
             _logger.LogError(ex, "Error disconnecting WebSocket during session stop.");
         }
 
+        // Disconnect user event WebSocket
+        try
+        {
+            await _userEventClient.DisconnectAsync(timeoutCts.Token);
+            _logger.LogInformation("User event WebSocket disconnected.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error disconnecting user event WebSocket during session stop.");
+        }
+
         _logger.LogInformation("TradingSession stopped.");
     }
 
@@ -134,6 +164,38 @@ public sealed class TradingSession : IAsyncDisposable
             "TradingSession starting: Strategy={Strategy}, Market={Market}, Coin={Coin}, Timeframe={Timeframe}",
             StrategyConfig.StrategyName, StrategyConfig.Market, coin, triggerTimeframe);
 
+        // Attempt state recovery from DB + Hyperliquid
+        if (_stateRecoveryService is not null && _signerProvider.IsConfigured && _orderTracker is not null)
+        {
+            try
+            {
+                var recoveredState = await _stateRecoveryService.RecoverAsync(
+                    StrategyConfig.StrategyName,
+                    StrategyConfig.Market,
+                    _signerProvider.WalletAddress,
+                    _orderTracker,
+                    stoppingToken);
+
+                // Copy recovered values into our shared GridState
+                GridState.Lifecycle = recoveredState.Lifecycle;
+                GridState.GridCycleId = recoveredState.GridCycleId;
+                GridState.FilledLevels = recoveredState.FilledLevels;
+                GridState.TotalLevels = recoveredState.TotalLevels;
+                GridState.TrailingStopHighWatermark = recoveredState.TrailingStopHighWatermark;
+                GridState.CandlesSinceEntry = recoveredState.CandlesSinceEntry;
+
+                _logger.LogInformation(
+                    "State recovery complete: Lifecycle={Lifecycle}, FilledLevels={Filled}/{Total}",
+                    GridState.Lifecycle, GridState.FilledLevels, GridState.TotalLevels);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "State recovery failed. Starting with fresh state. Strategy={Strategy}",
+                    StrategyConfig.StrategyName);
+            }
+        }
+
         Candle? latestOneHourCandle = null;
         Candle? latestFourHourCandle = null;
 
@@ -145,7 +207,8 @@ public sealed class TradingSession : IAsyncDisposable
             _positionManager,
             StrategyConfig,
             triggerTimeframe,
-            signalController: _signalController);
+            signalController: _signalController,
+            gridState: GridState);
 
         _candleClock.CandleClosed += async evt =>
         {
@@ -194,6 +257,30 @@ public sealed class TradingSession : IAsyncDisposable
             return Task.CompletedTask;
         });
 
+        _userEventClient.OnFillReceived(async fill =>
+        {
+            try
+            {
+                await _fillProcessor.ProcessFillAsync(fill, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing fill: OrderId={OrderId}", fill.OrderId);
+            }
+        });
+
+        _userEventClient.OnOrderUpdateReceived(async update =>
+        {
+            try
+            {
+                await _fillProcessor.ProcessOrderUpdateAsync(update, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing order update: OrderId={OrderId}", update.OrderId);
+            }
+        });
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -203,8 +290,34 @@ public sealed class TradingSession : IAsyncDisposable
 
                 _logger.LogInformation("WebSocket connected. Subscribed to {Coin} trade stream.", coin);
 
+                // Connect user event WebSocket for fill detection
+                Task? userEventTask = null;
+                if (_signerProvider.IsConfigured)
+                {
+                    await _userEventClient.ConnectAsync(stoppingToken);
+                    await _userEventClient.SubscribeToUserEventsAsync(
+                        _signerProvider.WalletAddress, stoppingToken);
+
+                    _logger.LogInformation(
+                        "User event WebSocket connected. Subscribed to fills for {Wallet}.",
+                        _signerProvider.WalletAddress);
+
+                    userEventTask = _userEventClient.ReceiveLoopAsync(stoppingToken);
+                }
+
                 _retryCount = 0;
-                await _wsClient.ReceiveLoopAsync(stoppingToken);
+
+                var marketDataTask = _wsClient.ReceiveLoopAsync(stoppingToken);
+
+                // Run both receive loops concurrently; when either exits, we reconnect both
+                if (userEventTask is not null)
+                {
+                    await Task.WhenAny(marketDataTask, userEventTask);
+                }
+                else
+                {
+                    await marketDataTask;
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
