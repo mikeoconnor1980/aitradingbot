@@ -109,20 +109,55 @@ if ($csprojContent -match '<Version>([^<]+)</Version>') {
 if (-not $NoInnoSetup) {
     $issScript = Join-Path $scriptDir "installer.iss"
     $iscc = $null
+    $toolsDir = Join-Path $repoRoot ".tools\InnoSetup"
 
-    # Search for ISCC.exe in common locations
+    # Search for ISCC.exe: system install -> local .tools -> PATH
     $isccPaths = @(
         "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
         "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
-        "${env:ProgramFiles(x86)}\Inno Setup 5\ISCC.exe"
+        (Join-Path $toolsDir "ISCC.exe")
     )
     foreach ($p in $isccPaths) {
         if (Test-Path $p) { $iscc = $p; break }
     }
 
-    # Also check PATH
     if (-not $iscc) {
         $iscc = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+    }
+
+    # Auto-download Inno Setup if not found anywhere
+    if (-not $iscc) {
+        Write-Host ""
+        Write-Host "Inno Setup not found. Downloading portable copy..." -ForegroundColor Yellow
+
+        $innoInstallerUrl = "https://jrsoftware.org/download.php/is.exe"
+        $innoInstallerPath = Join-Path $env:TEMP "innosetup-installer.exe"
+
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $innoInstallerUrl -OutFile $innoInstallerPath -UseBasicParsing
+
+            Write-Host "Installing Inno Setup to .tools/InnoSetup/ ..." -ForegroundColor Yellow
+            New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+
+            # Silent install to local .tools directory (no Start Menu, no desktop icon)
+            # /CURRENTUSER avoids requiring admin elevation
+            $innoLog = Join-Path $env:TEMP "innosetup-install.log"
+            Start-Process -FilePath $innoInstallerPath -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /CURRENTUSER /NORESTART /DIR=`"$toolsDir`" /NOICONS /LOG=`"$innoLog`"" -Wait -NoNewWindow
+
+            if ((Test-Path (Join-Path $toolsDir "ISCC.exe"))) {
+                $iscc = Join-Path $toolsDir "ISCC.exe"
+                Write-Host "Inno Setup installed to: $toolsDir" -ForegroundColor Green
+            } else {
+                Write-Warning "Inno Setup install completed but ISCC.exe not found. Check $innoLog"
+            }
+        } catch {
+            Write-Warning "Failed to download Inno Setup: $_"
+        } finally {
+            if (Test-Path $innoInstallerPath) {
+                Remove-Item $innoInstallerPath -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
 
     if ($iscc -and (Test-Path $issScript)) {
@@ -152,9 +187,7 @@ if (-not $NoInnoSetup) {
     } else {
         if (-not $iscc) {
             Write-Host ""
-            Write-Host "Inno Setup not found. Skipping installer EXE creation." -ForegroundColor Yellow
-            Write-Host "  Install Inno Setup 6 from: https://jrsoftware.org/isdl.php" -ForegroundColor Gray
-            Write-Host "  Or install via: winget install JRSoftware.InnoSetup" -ForegroundColor Gray
+            Write-Host "Inno Setup could not be downloaded. Skipping installer EXE creation." -ForegroundColor Yellow
         }
         if (-not (Test-Path $issScript)) {
             Write-Warning "installer.iss not found at $issScript"

@@ -120,8 +120,7 @@ begin
 
   // Create service with delayed-auto start
   RunCmd(ExpandConstant('{sys}\sc.exe'),
-    Format('create %s binPath= "\"%s\"" start= delayed-auto DisplayName= "%s"',
-      ['{#ServiceName}', ExePath, '{#AppName}']),
+    Format('create %s binPath= "\"%s\"" start= delayed-auto DisplayName= "%s"', ['{#ServiceName}', ExePath, '{#AppName}']),
     ResultCode);
 
   if ResultCode <> 0 then
@@ -132,20 +131,17 @@ begin
 
   // Set description
   RunCmd(ExpandConstant('{sys}\sc.exe'),
-    Format('description %s "Executes trading strategies on Hyperliquid. Private key never leaves this machine."',
-      ['{#ServiceName}']),
+    Format('description %s "Executes trading strategies on Hyperliquid. Private key never leaves this machine."', ['{#ServiceName}']),
     ResultCode);
 
   // Set recovery policy: restart on failure (30s, 60s, 120s)
   RunCmd(ExpandConstant('{sys}\sc.exe'),
-    Format('failure %s reset= 86400 actions= restart/30000/restart/60000/restart/120000',
-      ['{#ServiceName}']),
+    Format('failure %s reset= 86400 actions= restart/30000/restart/60000/restart/120000', ['{#ServiceName}']),
     ResultCode);
 
   // Start the service
   RunCmd(ExpandConstant('{sys}\sc.exe'),
-    Format('start %s', ['{#ServiceName}']),
-    ResultCode);
+    Format('start %s', ['{#ServiceName}']), ResultCode);
 
   if ResultCode <> 0 then
     Log('Service registered but failed to start. Check Event Viewer for details.');

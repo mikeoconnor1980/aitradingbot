@@ -74,6 +74,9 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# Local tools (auto-downloaded by build scripts)
+.tools/
+
 # Local SQLite runtime data
 data/*.db
 data/*.db-shm
