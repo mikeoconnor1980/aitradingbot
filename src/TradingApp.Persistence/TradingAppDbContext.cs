@@ -550,6 +550,7 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.Property(e => e.Side)
                 .HasMaxLength(10)
+                .HasConversion<string>()
                 .IsRequired();
 
             entity.Property(e => e.Direction)

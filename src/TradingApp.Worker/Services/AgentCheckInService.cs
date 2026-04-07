@@ -601,17 +601,31 @@ public sealed class AgentCheckInService : BackgroundService
     {
         var gridState = new GridState();
         var orderTracker = _serviceProvider.GetRequiredService<IOrderTracker>();
+        var riskEngine = _serviceProvider.GetRequiredService<IRiskEngine>();
 
-        // Create a scope for scoped repository services
+        // Create a scope for scoped repository services — owned by TradingSession
         var scope = _serviceProvider.CreateScope();
+        var userId = _signerProvider.IsConfigured ? _signerProvider.WalletAddress : null;
+
         var fillProcessor = new FillProcessor(
             orderTracker,
             gridState,
             _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<FillProcessor>(),
+            riskEngine,
             scope.ServiceProvider.GetService<ILiveOrderRepository>(),
             scope.ServiceProvider.GetService<ILiveFillRepository>(),
             scope.ServiceProvider.GetService<IGridCycleRepository>(),
-            _signerProvider.IsConfigured ? _signerProvider.WalletAddress : null);
+            userId);
+
+        // Wire scoped repositories into the singleton LivePositionManager
+        var positionManager = _serviceProvider.GetRequiredService<IPositionManager>();
+        if (positionManager is LivePositionManager livePositionManager)
+        {
+            livePositionManager.ConfigureRepositories(
+                scope.ServiceProvider.GetService<IGridCycleRepository>(),
+                scope.ServiceProvider.GetService<ILiveOrderRepository>(),
+                userId);
+        }
 
         return new TradingSession(
             strategyConfig,
@@ -622,8 +636,8 @@ public sealed class AgentCheckInService : BackgroundService
             _serviceProvider.GetRequiredService<IMarketContextBuilder>(),
             _serviceProvider.GetRequiredService<IStrategyEngine>(),
             _serviceProvider.GetRequiredService<IGridController>(),
-            _serviceProvider.GetRequiredService<IRiskEngine>(),
-            _serviceProvider.GetRequiredService<IPositionManager>(),
+            riskEngine,
+            positionManager,
             _serviceProvider.GetRequiredService<ISignalController>(),
             _serviceProvider.GetRequiredService<IExecutionEngine>(),
             fillProcessor,
@@ -632,7 +646,8 @@ public sealed class AgentCheckInService : BackgroundService
             _logger,
             gridState,
             scope.ServiceProvider.GetService<IStateRecoveryService>(),
-            orderTracker);
+            orderTracker,
+            scope);
     }
 
     private static string GetAgentVersion()

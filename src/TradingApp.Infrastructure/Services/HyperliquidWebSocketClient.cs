@@ -15,6 +15,8 @@ namespace TradingApp.Infrastructure.Services;
 public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
 {
     private const int ReceiveBufferSize = 4096;
+    private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(30);
+    private static readonly byte[] PingPayload = Encoding.UTF8.GetBytes("{\"method\":\"ping\"}");
 
     private readonly ILogger<HyperliquidWebSocketClient> _logger;
     private readonly HyperliquidOptions _options;
@@ -111,6 +113,8 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
     {
         var buffer = new byte[ReceiveBufferSize];
         using var messageBuffer = new MemoryStream();
+
+        _ = RunPingLoopAsync(cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -218,6 +222,38 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
         {
             await _stateHandler(state);
         }
+    }
+
+    private async Task RunPingLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(PingInterval, cancellationToken);
+
+                var ws = _webSocket;
+                if (ws?.State != WebSocketState.Open)
+                {
+                    break;
+                }
+
+                try
+                {
+                    await ws.SendAsync(
+                        new ArraySegment<byte>(PingPayload),
+                        WebSocketMessageType.Text,
+                        true,
+                        cancellationToken);
+                }
+                catch (WebSocketException ex)
+                {
+                    _logger.LogWarning(ex, "WebSocket ping failed — connection may be dead");
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
     }
 
     public async ValueTask DisposeAsync()

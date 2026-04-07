@@ -16,7 +16,7 @@ namespace TradingApp.Infrastructure.Services;
 /// to Hyperliquid using the locally-held private key. Does not depend on the Api layer.
 /// Designed for the Worker service (execution agent running on client machine).
 /// </summary>
-public sealed class LiveExecutionEngine : IExecutionEngine
+public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 {
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidSigner _signer;
@@ -401,5 +401,61 @@ public sealed class LiveExecutionEngine : IExecutionEngine
         return formatted.Contains('.')
             ? formatted.TrimEnd('0').TrimEnd('.')
             : formatted;
+    }
+
+    public async Task<PositionState> QueryPositionAsync(string symbol, CancellationToken cancellationToken = default)
+    {
+        var response = await _restClient.PostInfoAsync<JsonElement>(
+            new { type = "clearinghouseState", user = _signer.WalletAddress }, cancellationToken);
+
+        var coin = HyperliquidAssetMapper.ToCoin(symbol);
+
+        if (response.TryGetProperty("assetPositions", out var positions))
+        {
+            foreach (var pos in positions.EnumerateArray())
+            {
+                if (!pos.TryGetProperty("position", out var position))
+                {
+                    continue;
+                }
+
+                var positionCoin = position.TryGetProperty("coin", out var coinProp)
+                    ? coinProp.GetString() : null;
+
+                if (!string.Equals(positionCoin, coin, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var szi = position.TryGetProperty("szi", out var sziProp) && decimal.TryParse(sziProp.GetString(), out var s) ? s : 0m;
+                var entryPx = position.TryGetProperty("entryPx", out var entryProp) && decimal.TryParse(entryProp.GetString(), out var e) ? e : 0m;
+                var unrealizedPnl = position.TryGetProperty("unrealizedPnl", out var pnlProp) && decimal.TryParse(pnlProp.GetString(), out var p) ? p : 0m;
+
+                return new PositionState
+                {
+                    Symbol = symbol,
+                    Size = szi,
+                    AverageEntryPrice = entryPx,
+                    UnrealisedPnL = unrealizedPnl,
+                };
+            }
+        }
+
+        return new PositionState { Symbol = symbol };
+    }
+
+    public async Task<decimal> QueryAccountEquityAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _restClient.PostInfoAsync<JsonElement>(
+            new { type = "clearinghouseState", user = _signer.WalletAddress }, cancellationToken);
+
+        if (response.TryGetProperty("marginSummary", out var margin)
+            && margin.TryGetProperty("accountValue", out var accountValue)
+            && decimal.TryParse(accountValue.GetString(), out var equity))
+        {
+            return equity;
+        }
+
+        return 0m;
     }
 }

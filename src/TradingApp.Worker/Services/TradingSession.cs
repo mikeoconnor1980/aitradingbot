@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
@@ -38,12 +39,14 @@ public sealed class TradingSession : IAsyncDisposable
     private readonly ISignerProvider _signerProvider;
     private readonly IStateRecoveryService? _stateRecoveryService;
     private readonly IOrderTracker _orderTracker;
+    private readonly IServiceScope? _serviceScope;
     private readonly ITradingHealthProvider _healthProvider;
     private readonly ILogger _logger;
 
     private CancellationTokenSource? _cts;
     private Task? _runTask;
     private int _retryCount;
+    private Func<CandleClosedEvent, Task>? _candleClosedHandler;
 
     public StrategyConfig StrategyConfig { get; }
     public GridState GridState { get; }
@@ -69,7 +72,8 @@ public sealed class TradingSession : IAsyncDisposable
         ILogger logger,
         GridState? gridState = null,
         IStateRecoveryService? stateRecoveryService = null,
-        IOrderTracker? orderTracker = null)
+        IOrderTracker? orderTracker = null,
+        IServiceScope? serviceScope = null)
     {
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
@@ -87,6 +91,7 @@ public sealed class TradingSession : IAsyncDisposable
         _signerProvider = signerProvider;
         _stateRecoveryService = stateRecoveryService;
         _orderTracker = orderTracker!;
+        _serviceScope = serviceScope;
         _healthProvider = healthProvider;
         _logger = logger;
         GridState = gridState ?? new GridState();
@@ -105,6 +110,16 @@ public sealed class TradingSession : IAsyncDisposable
         if (_cts is null || _runTask is null) return;
 
         _logger.LogInformation("TradingSession stop requested. Cancelling open orders...");
+
+        // Unsubscribe from CandleClock to prevent stale handler accumulation
+        if (_candleClosedHandler is not null)
+        {
+            _candleClock.CandleClosed -= _candleClosedHandler;
+            _candleClosedHandler = null;
+        }
+
+        // Clear stale tracked orders from the singleton tracker
+        _orderTracker?.Clear();
 
         await _cts.CancelAsync();
 
@@ -199,6 +214,9 @@ public sealed class TradingSession : IAsyncDisposable
         Candle? latestOneHourCandle = null;
         Candle? latestFourHourCandle = null;
 
+        // Query initial account equity from Hyperliquid REST
+        var initialCapital = await ResolveInitialEquityAsync(stoppingToken);
+
         var scheduler = new StrategyScheduler(
             _contextBuilder,
             _strategyEngine,
@@ -208,9 +226,30 @@ public sealed class TradingSession : IAsyncDisposable
             StrategyConfig,
             triggerTimeframe,
             signalController: _signalController,
+            initialCapital: initialCapital,
             gridState: GridState);
 
-        _candleClock.CandleClosed += async evt =>
+        // Wire fill callback to update PositionState on the scheduler
+        if (_fillProcessor is FillProcessor concreteProcessor)
+        {
+            concreteProcessor.OnFillProcessed = async fill =>
+            {
+                try
+                {
+                    var positionState = await QueryPositionStateAsync(
+                        StrategyConfig.Market, stoppingToken);
+                    scheduler.UpdateState(GridState, positionState);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to update PositionState after fill: OrderId={OrderId}",
+                        fill.OrderId);
+                }
+            };
+        }
+
+        _candleClosedHandler = async evt =>
         {
             try
             {
@@ -236,6 +275,8 @@ public sealed class TradingSession : IAsyncDisposable
                     evt.Symbol, evt.Timeframe);
             }
         };
+
+        _candleClock.CandleClosed += _candleClosedHandler;
 
         _wsClient.OnTradeReceived(async trade =>
         {
@@ -339,9 +380,9 @@ public sealed class TradingSession : IAsyncDisposable
                 break;
             }
 
-            var backoffMs = Math.Min(
-                InitialBackoffMs * (int)Math.Pow(2, _retryCount - 1),
-                MaxBackoffMs);
+            var backoffMs = (int)Math.Min(
+                MaxBackoffMs,
+                InitialBackoffMs * Math.Pow(2, Math.Min(_retryCount - 1, 20)));
 
             _logger.LogWarning(
                 "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
@@ -357,5 +398,43 @@ public sealed class TradingSession : IAsyncDisposable
     {
         if (IsRunning) await StopAsync();
         _cts?.Dispose();
+        _serviceScope?.Dispose();
+    }
+
+    private async Task<decimal> ResolveInitialEquityAsync(CancellationToken cancellationToken)
+    {
+        if (!_signerProvider.IsConfigured)
+        {
+            return 0m;
+        }
+
+        try
+        {
+            if (_executionEngine is IPositionQueryable queryable)
+            {
+                var equity = await queryable.QueryAccountEquityAsync(cancellationToken);
+                _logger.LogInformation("Initial account equity resolved: {Equity}", equity);
+                return equity;
+            }
+
+            return 0m;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to query initial account equity. Using 0 as fallback.");
+            return 0m;
+        }
+    }
+
+    private async Task<PositionState> QueryPositionStateAsync(
+        string symbol, CancellationToken cancellationToken)
+    {
+        // Query Hyperliquid REST for current position — exchange is source of truth
+        if (_signerProvider.IsConfigured && _executionEngine is IPositionQueryable queryable)
+        {
+            return await queryable.QueryPositionAsync(symbol, cancellationToken);
+        }
+
+        return new PositionState { Symbol = symbol };
     }
 }
