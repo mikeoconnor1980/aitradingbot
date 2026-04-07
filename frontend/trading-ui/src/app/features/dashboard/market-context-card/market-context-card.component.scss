@@ -1,0 +1,102 @@
+.market-context {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__icon {
+    vertical-align: middle;
+    margin-inline-end: 8px;
+  }
+
+  &__chip-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    margin-inline-end: 4px;
+  }
+
+  &__loading,
+  &__idle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mat-sys-on-surface-variant, rgba(255, 255, 255, 0.6));
+    margin: 0;
+  }
+
+  &__card {
+    transition: opacity 0.3s ease;
+
+    &--stale {
+      opacity: 0.6;
+    }
+  }
+
+  &__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-block: 12px;
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 100px;
+
+    &-label {
+      font-size: 0.75rem;
+      color: var(--mat-sys-on-surface-variant, rgba(255, 255, 255, 0.6));
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    &-value {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 1.125rem;
+      font-weight: 500;
+    }
+  }
+
+  &__inline-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &__risk {
+    &--high {
+      color: var(--colour-loss, #ef5350);
+    }
+
+    &--medium {
+      color: var(--colour-warning, #ffa726);
+    }
+
+    &--low {
+      color: var(--colour-profit, #66bb6a);
+    }
+  }
+
+  &__confidence-bar {
+    margin-block: 8px;
+  }
+
+  &__summary {
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface-variant, rgba(255, 255, 255, 0.7));
+    margin-block: 8px 4px;
+    line-height: 1.5;
+  }
+
+  &__updated {
+    font-size: 0.75rem;
+    color: var(--mat-sys-on-surface-variant, rgba(255, 255, 255, 0.5));
+
+    &--stale {
+      color: var(--colour-warning, #ffa726);
+    }
+  }
+}

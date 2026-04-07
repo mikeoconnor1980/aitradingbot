@@ -1,0 +1,76 @@
+<div class="market-context">
+  @if (isLoading) {
+    <mat-card>
+      <mat-card-content>
+        <p class="market-context__loading">Loading market context...</p>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (!isLoading && context) {
+    <mat-card class="market-context__card" [class.market-context__card--stale]="isStale">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon class="market-context__icon">psychology</mat-icon>
+          Market Context — {{ context.symbol }}
+        </mat-card-title>
+        <mat-chip [color]="regimeColor" selected>
+          <mat-icon class="market-context__chip-icon">{{ regimeIcon }}</mat-icon>
+          {{ context.derivedRegime }}
+        </mat-chip>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="market-context__stats">
+          <div class="market-context__stat">
+            <span class="market-context__stat-label">Sentiment</span>
+            <span class="market-context__stat-value">
+              <mat-icon class="market-context__inline-icon">{{ sentimentIcon }}</mat-icon>
+              {{ context.marketSentiment }}
+            </span>
+          </div>
+          <div class="market-context__stat">
+            <span class="market-context__stat-label">Macro Regime</span>
+            <span class="market-context__stat-value">{{ context.macroRegime }}</span>
+          </div>
+          <div class="market-context__stat">
+            <span class="market-context__stat-label">Event Risk</span>
+            <span class="market-context__stat-value" [ngClass]="eventRiskClass">
+              {{ context.eventRisk }}
+            </span>
+          </div>
+          <div class="market-context__stat">
+            <span class="market-context__stat-label">Confidence</span>
+            <span class="market-context__stat-value">{{ confidencePercent }}%</span>
+          </div>
+        </div>
+
+        <mat-progress-bar
+          mode="determinate"
+          [value]="confidencePercent"
+          class="market-context__confidence-bar"
+          [matTooltip]="'LLM confidence: ' + confidencePercent + '%'">
+        </mat-progress-bar>
+
+        @if (context.summary) {
+          <p class="market-context__summary">{{ context.summary }}</p>
+        }
+
+        <span class="market-context__updated" [class.market-context__updated--stale]="isStale">
+          Updated {{ lastUpdatedText }}
+        </span>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (!isLoading && !context) {
+    <mat-card>
+      <mat-card-content>
+        <p class="market-context__idle">
+          <mat-icon>info</mat-icon>
+          No market context data available
+        </p>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

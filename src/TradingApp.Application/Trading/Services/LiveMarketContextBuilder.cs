@@ -1,7 +1,14 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.MacroCalendar.Models;
+using TradingApp.Application.MacroCalendar.Services;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
+using TradingApp.Domain.Entities;
+using TradingApp.Domain.Enums;
 using TradingApp.Indicators;
 using TradingApp.Indicators.Incremental;
 
@@ -39,8 +46,25 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
     private readonly Dictionary<string, SupportResistanceResult?> _prevSr = new(StringComparer.Ordinal);
 
     private readonly SyntheticRegimeProvider _syntheticRegimeProvider = new();
+    private readonly ILlmContextProvider? _llmContextProvider;
+    private readonly IServiceScopeFactory? _serviceScopeFactory;
+    private readonly ILogger<LiveMarketContextBuilder>? _logger;
 
     private bool _dynamicInitialized;
+
+    public LiveMarketContextBuilder()
+    {
+    }
+
+    public LiveMarketContextBuilder(
+        ILlmContextProvider? llmContextProvider,
+        IServiceScopeFactory? serviceScopeFactory,
+        ILogger<LiveMarketContextBuilder>? logger = null)
+    {
+        _llmContextProvider = llmContextProvider;
+        _serviceScopeFactory = serviceScopeFactory;
+        _logger = logger;
+    }
 
     public void UpdateIndicators(Candle candle)
     {
@@ -100,6 +124,138 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             IndicatorContext = indicatorContext,
             LlmContext = llmContext
         };
+    }
+
+    public async Task<MarketContext> BuildAsync(
+        Candle triggerCandle,
+        Candle? latestOneHourCandle,
+        Candle? latestFourHourCandle,
+        IReadOnlyList<IndicatorRequirement>? requiredIndicators,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(triggerCandle);
+
+        var indicatorContext = BuildIndicatorContext(requiredIndicators);
+
+        var indicators = new IndicatorSnapshot
+        {
+            EmaFast = _emaFast.Current ?? 0m,
+            EmaSlow = _emaSlow.Current ?? 0m,
+            EmaTrend = latestFourHourCandle?.Close ?? _emaTrend.Current ?? 0m,
+            Rsi = _rsi14.Current ?? 50m,
+            Atr = _atr14.Current ?? 0m
+        };
+
+        LlmContext? llmContext = null;
+
+        if (_llmContextProvider is not null)
+        {
+            try
+            {
+                var upcomingEvents = await FetchUpcomingEventsAsync(cancellationToken);
+
+                llmContext = await _llmContextProvider.GetContextAsync(
+                    triggerCandle.Symbol,
+                    indicators,
+                    upcomingEvents,
+                    cancellationToken);
+
+                if (llmContext is not null)
+                {
+                    await PersistSnapshotAsync(triggerCandle.Symbol, llmContext, cancellationToken);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger?.LogWarning(ex, "LLM context provider failed; falling back to synthetic regime.");
+            }
+        }
+
+        llmContext ??= _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp);
+
+        return new MarketContext
+        {
+            Symbol = triggerCandle.Symbol,
+            TimestampUtc = triggerCandle.Timestamp,
+            CurrentCandle = triggerCandle,
+            PreviousCandle = GetPreviousCandle(triggerCandle),
+            LatestOneHourCandle = latestOneHourCandle,
+            LatestFourHourCandle = latestFourHourCandle,
+            Indicators = indicators,
+            IndicatorContext = indicatorContext,
+            LlmContext = llmContext
+        };
+    }
+
+    private async Task<IReadOnlyCollection<MacroEventListItemDto>?> FetchUpcomingEventsAsync(
+        CancellationToken cancellationToken)
+    {
+        if (_serviceScopeFactory is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var queryService = scope.ServiceProvider.GetService<IMacroCalendarQueryService>();
+            if (queryService is null)
+            {
+                return null;
+            }
+
+            var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var in24hMs = nowMs + (24L * 60 * 60 * 1000);
+
+            return await queryService.GetUpcomingEventsAsync(
+                nowMs,
+                in24hMs,
+                currency: null,
+                minimumImportance: MacroEventImportance.Medium,
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger?.LogWarning(ex, "Failed to fetch upcoming macro events for LLM context.");
+            return null;
+        }
+    }
+
+    private async Task PersistSnapshotAsync(
+        string symbol,
+        LlmContext llmContext,
+        CancellationToken cancellationToken)
+    {
+        if (_serviceScopeFactory is null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var repository = scope.ServiceProvider.GetService<ILlmContextSnapshotRepository>();
+            if (repository is null)
+            {
+                return;
+            }
+
+            var snapshot = LlmContextSnapshot.Create(
+                symbol,
+                llmContext.MarketSentiment,
+                llmContext.MacroRegime,
+                llmContext.EventRisk,
+                llmContext.Confidence,
+                llmContext.DerivedRegime.ToString(),
+                llmContext.Summary,
+                llmContext.GeneratedAtUtc);
+
+            await repository.SaveAsync(snapshot, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger?.LogWarning(ex, "Failed to persist LLM context snapshot.");
+        }
     }
 
     private IndicatorContext? BuildIndicatorContext(IReadOnlyList<IndicatorRequirement>? requirements)

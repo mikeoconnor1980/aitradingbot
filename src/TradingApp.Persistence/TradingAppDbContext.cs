@@ -24,6 +24,7 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<LiveOrder> LiveOrders => Set<LiveOrder>();
     public DbSet<LiveFill> LiveFills => Set<LiveFill>();
     public DbSet<GridCycle> GridCycles => Set<GridCycle>();
+    public DbSet<LlmContextSnapshot> LlmContextSnapshots => Set<LlmContextSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -630,6 +631,48 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(e => e.UserId)
                 .HasDatabaseName("IX_GridCycles_UserId");
+        });
+
+        modelBuilder.Entity<LlmContextSnapshot>(entity =>
+        {
+            entity.ToTable("LlmContextSnapshots");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.MarketSentiment)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.MacroRegime)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.EventRisk)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Confidence)
+                .HasConversion<double>();
+
+            entity.Property(e => e.DerivedRegime)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Summary)
+                .HasMaxLength(1000);
+
+            entity.HasIndex(e => new { e.Symbol, e.GeneratedAtUtc })
+                .HasDatabaseName("IX_LlmContextSnapshots_Symbol_GeneratedAtUtc");
+
+            entity.HasIndex(e => e.GeneratedAtUtc)
+                .HasDatabaseName("IX_LlmContextSnapshots_GeneratedAtUtc");
         });
     }
 }

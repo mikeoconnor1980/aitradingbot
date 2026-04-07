@@ -105,12 +105,13 @@ public sealed class StrategySchedulerTests
             signalController: _signalControllerMock.Object);
 
         _contextBuilderMock
-            .Setup(builder => builder.Build(
+            .Setup(builder => builder.BuildAsync(
                 It.IsAny<Candle>(),
                 It.IsAny<Candle?>(),
                 It.IsAny<Candle?>(),
-                It.IsAny<IReadOnlyList<IndicatorRequirement>?>()))
-            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _) => new MarketContext
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _, CancellationToken _ct) => new MarketContext
             {
                 Symbol = trigger.Symbol,
                 TimestampUtc = trigger.Timestamp,
@@ -156,11 +157,12 @@ public sealed class StrategySchedulerTests
 
         await _sut.HandleCandleClosedAsync(evt, null, null);
 
-        _contextBuilderMock.Verify(builder => builder.Build(
+        _contextBuilderMock.Verify(builder => builder.BuildAsync(
             It.IsAny<Candle>(),
             It.IsAny<Candle?>(),
             It.IsAny<Candle?>(),
-            It.IsAny<IReadOnlyList<IndicatorRequirement>?>()), Times.Never);
+            It.IsAny<IReadOnlyList<IndicatorRequirement>?>(),
+            It.IsAny<CancellationToken>()), Times.Never);
         _strategyEngineMock.Verify(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()), Times.Never);
         _gridControllerMock.Verify(controller => controller.ProcessAsync(
             It.IsAny<StrategyEvaluation>(),
@@ -197,13 +199,14 @@ public sealed class StrategySchedulerTests
         ];
 
         _contextBuilderMock
-            .Setup(builder => builder.Build(
+            .Setup(builder => builder.BuildAsync(
                 It.IsAny<Candle>(),
                 It.IsAny<Candle?>(),
                 It.IsAny<Candle?>(),
-                It.IsAny<IReadOnlyList<IndicatorRequirement>?>()))
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>(),
+                It.IsAny<CancellationToken>()))
             .Callback(() => callOrder.Add("context"))
-            .Returns(marketContext);
+            .ReturnsAsync(marketContext);
 
         _strategyEngineMock
             .Setup(engine => engine.EvaluateAsync(marketContext, TestConfig, cancellationToken))
@@ -311,7 +314,7 @@ public sealed class StrategySchedulerTests
         await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
 
         _contextBuilderMock.Verify(
-            builder => builder.Build(
+            builder => builder.BuildAsync(
                 It.IsAny<Candle>(),
                 It.IsAny<Candle?>(),
                 It.IsAny<Candle?>(),
@@ -319,7 +322,8 @@ public sealed class StrategySchedulerTests
                     requirements != null &&
                     requirements.Count == 1 &&
                     requirements[0].Type == "RSI" &&
-                    requirements[0].Period == 14)),
+                    requirements[0].Period == 14),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -329,11 +333,12 @@ public sealed class StrategySchedulerTests
         await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
 
         _contextBuilderMock.Verify(
-            builder => builder.Build(
+            builder => builder.BuildAsync(
                 It.IsAny<Candle>(),
                 It.IsAny<Candle?>(),
                 It.IsAny<Candle?>(),
-                It.Is<IReadOnlyList<IndicatorRequirement>?>(requirements => requirements == null)),
+                It.Is<IReadOnlyList<IndicatorRequirement>?>(requirements => requirements == null),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -352,7 +357,7 @@ public sealed class StrategySchedulerTests
             SignalTestConfig);
 
         _contextBuilderMock
-            .Setup(builder => builder.Build(
+            .Setup(builder => builder.BuildAsync(
                 It.IsAny<Candle>(),
                 It.IsAny<Candle?>(),
                 It.IsAny<Candle?>(),
@@ -360,8 +365,9 @@ public sealed class StrategySchedulerTests
                     requirements != null &&
                     requirements.Count == 1 &&
                     requirements[0].Type == "RSI" &&
-                    requirements[0].Period == 14)))
-            .Returns((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _) => new MarketContext
+                    requirements[0].Period == 14),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _, CancellationToken _ct) => new MarketContext
             {
                 Symbol = trigger.Symbol,
                 TimestampUtc = trigger.Timestamp,

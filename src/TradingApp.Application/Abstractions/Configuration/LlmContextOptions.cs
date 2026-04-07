@@ -25,6 +25,6 @@ public sealed class LlmContextOptions
     /// <summary>
     /// How long a cached LLM context result remains valid before a fresh call is made.
     /// </summary>
-    [Range(1, 3600)]
-    public int CacheDurationSeconds { get; set; } = 900; // 15 minutes
+    [Range(1, 7200)]
+    public int CacheDurationSeconds { get; set; } = 3600; // 60 minutes
 }

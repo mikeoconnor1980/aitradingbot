@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using TradingApp.AI.Prompts;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.MacroCalendar.Models;
 using TradingApp.Application.Trading.Models;
 
 namespace TradingApp.AI.Services;
@@ -45,7 +46,8 @@ public sealed class LlmContextProvider : ILlmContextProvider
     public async Task<LlmContext?> GetContextAsync(
         string symbol,
         IndicatorSnapshot indicators,
-        CancellationToken cancellationToken)
+        IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
         ArgumentNullException.ThrowIfNull(indicators);
@@ -63,7 +65,7 @@ public sealed class LlmContextProvider : ILlmContextProvider
 
         try
         {
-            var userMessage = BuildUserMessage(symbol, indicators);
+            var userMessage = BuildUserMessage(symbol, indicators, upcomingEvents);
 
             var rawResponse = await _llmClient.CompleteAsync(
                 MarketContextPrompt.SystemPrompt,
@@ -99,7 +101,10 @@ public sealed class LlmContextProvider : ILlmContextProvider
         }
     }
 
-    public static string BuildUserMessage(string symbol, IndicatorSnapshot indicators)
+    public static string BuildUserMessage(
+        string symbol,
+        IndicatorSnapshot indicators,
+        IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"Analyse the current market context for {symbol}.");
@@ -121,8 +126,73 @@ public sealed class LlmContextProvider : ILlmContextProvider
 
         builder.AppendLine($"EMA alignment: {emaAlignment}");
         builder.AppendLine($"RSI zone: {(indicators.Rsi > 70 ? "Overbought" : indicators.Rsi < 30 ? "Oversold" : "Neutral")}");
+        builder.AppendLine();
+
+        AppendMacroEvents(builder, upcomingEvents);
 
         return builder.ToString();
+    }
+
+    private static void AppendMacroEvents(
+        StringBuilder builder,
+        IReadOnlyCollection<MacroEventListItemDto>? events)
+    {
+        if (events is null || events.Count == 0)
+        {
+            builder.AppendLine("Macro calendar: No upcoming macro events.");
+            return;
+        }
+
+        var blocking = new List<MacroEventListItemDto>();
+        var upcoming = new List<MacroEventListItemDto>();
+
+        foreach (var evt in events)
+        {
+            if (evt.IsBlockingNow)
+            {
+                blocking.Add(evt);
+            }
+            else
+            {
+                upcoming.Add(evt);
+            }
+        }
+
+        if (blocking.Count > 0)
+        {
+            builder.AppendLine("Active macro event block windows (trading should be restricted):");
+            foreach (var evt in blocking)
+            {
+                builder.AppendLine($"- [{evt.Importance}] {evt.Title} ({evt.Country}/{evt.Currency}) — Category: {evt.Category}");
+                AppendForecastAndPrevious(builder, evt);
+            }
+
+            builder.AppendLine();
+        }
+
+        if (upcoming.Count > 0)
+        {
+            builder.AppendLine("Upcoming macro events (next 24h):");
+            foreach (var evt in upcoming)
+            {
+                var scheduledAt = DateTimeOffset.FromUnixTimeMilliseconds(evt.ScheduledAtUtc).UtcDateTime;
+                builder.AppendLine($"- [{evt.Importance}] {evt.Title} ({evt.Country}/{evt.Currency}) — {scheduledAt:yyyy-MM-dd HH:mm} UTC — Category: {evt.Category}");
+                AppendForecastAndPrevious(builder, evt);
+            }
+
+            builder.AppendLine();
+        }
+    }
+
+    private static void AppendForecastAndPrevious(StringBuilder builder, MacroEventListItemDto evt)
+    {
+        if (evt.Forecast is not null || evt.Previous is not null)
+        {
+            var parts = new List<string>(2);
+            if (evt.Forecast is not null) parts.Add($"Forecast: {evt.Forecast}");
+            if (evt.Previous is not null) parts.Add($"Previous: {evt.Previous}");
+            builder.AppendLine($"  {string.Join(", ", parts)}");
+        }
     }
 
     public static LlmContext ParseResponse(string rawJson, string symbol)

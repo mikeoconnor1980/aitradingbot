@@ -84,11 +84,12 @@ public sealed class StrategyScheduler
             requiredIndicators = IndicatorExtractor.Extract(typedConfig);
         }
 
-        var context = _contextBuilder.Build(
+        var context = await _contextBuilder.BuildAsync(
             evt.Candle,
             latestOneHourCandle,
             latestFourHourCandle,
-            requiredIndicators);
+            requiredIndicators,
+            cancellationToken);
         context.AccountEquity = ResolveAccountEquity();
         _lastContext = context;
 

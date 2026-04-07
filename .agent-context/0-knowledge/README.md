@@ -38,6 +38,7 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 | 18 | [Backtesting Architecture](18-backtesting-architecture.md) | Replay engine, simulated execution |
 | 19 | [Scheduling Architecture](19-scheduling-architecture.md) | CandleClock, StrategyScheduler, per-user fan-out |
 | 24 | [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md) | NL→StrategyConfig via LLM; F9 implementation |
+| 31 | [ATR Calculation](31-atr-calculation.md) | ATR(14) Wilder smoothing, trailing stop logic, exchange-native trigger placement |
 
 ## Architecture & Planning
 
