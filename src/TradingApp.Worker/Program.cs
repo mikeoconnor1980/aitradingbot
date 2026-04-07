@@ -1,15 +1,19 @@
+using System.Net.Http.Headers;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Polly;
+using TradingApp.AI.Services;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.MacroCalendar.Services;
 using TradingApp.Application.Scheduling;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
+using TradingApp.Persistence.Services;
 using TradingApp.Worker.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -33,6 +37,7 @@ builder.Services.AddWindowsService(options =>
 
 // ---------- Persistence ----------
 builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddScoped<IMacroCalendarQueryService, MacroCalendarQueryService>();
 
 // ---------- Hyperliquid configuration ----------
 builder.Services.AddOptions<HyperliquidOptions>()
@@ -89,13 +94,42 @@ builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventC
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<IExecutionEngine, LiveExecutionEngine>();
 
+// ---------- LLM context provider (optional — runs with synthetic fallback if unconfigured) ----------
+var llmContextSection = builder.Configuration.GetSection(LlmContextOptions.SectionName);
+if (llmContextSection.Exists() && !string.IsNullOrWhiteSpace(llmContextSection["ApiKey"]))
+{
+    builder.Services.AddOptions<LlmContextOptions>()
+        .Bind(llmContextSection)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+
+    builder.Services.AddHttpClient<ILlmContextClient, LlmContextClient>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<LlmContextOptions>>().Value;
+        client.BaseAddress = new Uri(options.BaseUrl);
+        client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+
+        if (!string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", options.ApiKey);
+        }
+    });
+
+    builder.Services.AddSingleton<ILlmContextProvider, LlmContextProvider>();
+}
+
 // ---------- Candle pipeline ----------
 builder.Services.AddSingleton<MarketStateStore>();
 builder.Services.AddSingleton<CandleClock>();
 builder.Services.AddSingleton<CandleBuilder>();
 
 // ---------- Strategy / trading pipeline ----------
-builder.Services.AddSingleton<IMarketContextBuilder, LiveMarketContextBuilder>();
+builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
+    new LiveMarketContextBuilder(
+        sp.GetService<ILlmContextProvider>(),
+        sp.GetRequiredService<IServiceScopeFactory>(),
+        sp.GetRequiredService<ILoggerFactory>().CreateLogger<LiveMarketContextBuilder>()));
 builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
 builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();
 builder.Services.AddSingleton<IPositionManager, LivePositionManager>();
@@ -105,6 +139,7 @@ builder.Services.AddSingleton<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddSingleton<IStrategyEngine, CompositeStrategyEngine>();
 builder.Services.AddSingleton<IGridController, GridController>();
 builder.Services.AddSingleton<ISignalController, SignalController>();
+builder.Services.AddSingleton<ITriggerOrderManager, TriggerOrderManager>();
 
 // ---------- Risk engine (live limits: daily loss, order size, circuit breaker) ----------
 builder.Services.AddOptions<RiskLimitsConfig>()

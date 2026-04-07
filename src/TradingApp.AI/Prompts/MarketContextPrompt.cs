@@ -9,8 +9,8 @@ internal static class MarketContextPrompt
         - You are NOT placing trades or making trading decisions.
         - You are providing qualitative context signals that influence strategy behaviour.
         - Be objective, concise, and data-driven.
-        - Base your analysis ONLY on the price action data provided.
-        - Do NOT invent external news or events — you only have price/indicator data.
+        - Base your analysis ONLY on the data provided (indicator state and macro calendar).
+        - Do NOT invent external news or events beyond what is listed.
         - If data is insufficient for a confident assessment, lower your confidence score.
 
         ---
@@ -27,16 +27,17 @@ internal static class MarketContextPrompt
         - "Bearish" — sustained downtrend on higher timeframes, EMA stack aligned downward
         - "Neutral" — ranging or transitioning between regimes
 
-        EventRisk (one of):
-        - "High" — extreme volatility (ATR significantly elevated), large sudden moves, potential liquidation cascades
-        - "Medium" — elevated volatility above normal but not extreme
-        - "Low" — normal or subdued volatility
+        EventRisk (one of) — use macro calendar data as the PRIMARY input:
+        - "High" — a High/Critical importance macro event is within its block window (imminent or just released), OR multiple Medium+ events are clustered within the next few hours
+        - "Medium" — a Medium+ importance event is upcoming within 24h, or a High event is scheduled but >24h away
+        - "Low" — no notable macro events upcoming within 24h
+        If no macro event data is provided, fall back to using ATR and price volatility to estimate event risk.
 
         DerivedRegime (one of):
-        - "Aggressive" — bullish trend with low/normal volatility → full position sizing, tighter grid
+        - "Aggressive" — bullish trend with low/normal volatility and low event risk → full position sizing, tighter grid
         - "Normal" — neutral conditions or bullish with elevated volatility → standard parameters
-        - "Defensive" — bearish trend with low/normal volatility → wider grid spacing, reduced size
-        - "RiskOff" — bearish trend with high volatility → block new grid deployments entirely
+        - "Defensive" — bearish trend with low/normal volatility, or any trend with medium event risk → wider grid spacing, reduced size
+        - "RiskOff" — bearish trend with high volatility, OR high event risk regardless of trend → block new grid deployments entirely
 
         ---
 

@@ -31,6 +31,7 @@ public sealed class StrategyScheduler
 
     private readonly GridState _gridState;
     private PositionState _positionState = new();
+    private MarketContext? _lastContext;
 
     public StrategyScheduler(
         IMarketContextBuilder contextBuilder,
@@ -83,12 +84,14 @@ public sealed class StrategyScheduler
             requiredIndicators = IndicatorExtractor.Extract(typedConfig);
         }
 
-        var context = _contextBuilder.Build(
+        var context = await _contextBuilder.BuildAsync(
             evt.Candle,
             latestOneHourCandle,
             latestFourHourCandle,
-            requiredIndicators);
+            requiredIndicators,
+            cancellationToken);
         context.AccountEquity = ResolveAccountEquity();
+        _lastContext = context;
 
         var evaluation = await _strategyEngine.EvaluateAsync(
             context,
@@ -154,6 +157,12 @@ public sealed class StrategyScheduler
     }
 
     public GridState GetGridState() => _gridState;
+
+    /// <summary>
+    /// Returns the most recent <see cref="MarketContext"/> built during candle evaluation.
+    /// May be null before the first candle is processed.
+    /// </summary>
+    public MarketContext? LastContext => _lastContext;
 
     private decimal ResolveAccountEquity()
     {

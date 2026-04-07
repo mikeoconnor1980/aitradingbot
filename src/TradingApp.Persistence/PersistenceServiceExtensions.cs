@@ -30,6 +30,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<ILiveOrderRepository, LiveOrderRepository>();
         services.AddScoped<ILiveFillRepository, LiveFillRepository>();
         services.AddScoped<IGridCycleRepository, GridCycleRepository>();
+        services.AddScoped<ILlmContextSnapshotRepository, LlmContextSnapshotRepository>();
 
         return services;
     }

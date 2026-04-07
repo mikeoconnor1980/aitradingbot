@@ -28,6 +28,7 @@ import { ModifyOrderDialogData, ModifyOrderModalComponent } from "./orders-table
 import { SetSlTpDialogData, SetSlTpModalComponent, SetSlTpResult } from "./positions-table/set-sltp-modal/set-sltp.modal.component";
 import { PositionsTableComponent } from "./positions-table/positions-table.component";
 import { ActivityFeedComponent } from "./activity-feed/activity-feed.component";
+import { MarketContextCardComponent } from "./market-context-card/market-context-card.component";
 
 @Component({
   selector: "app-dashboard",
@@ -40,7 +41,8 @@ import { ActivityFeedComponent } from "./activity-feed/activity-feed.component";
     AccountSummaryComponent,
     PositionsTableComponent,
     OrdersTableComponent,
-    ActivityFeedComponent
+    ActivityFeedComponent,
+    MarketContextCardComponent
   ],
   templateUrl: "./dashboard.component.html",
   styleUrl: "./dashboard.component.scss"

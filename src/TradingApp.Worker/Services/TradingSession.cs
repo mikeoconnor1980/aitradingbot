@@ -41,6 +41,7 @@ public sealed class TradingSession : IAsyncDisposable
     private readonly IOrderTracker _orderTracker;
     private readonly IServiceScope? _serviceScope;
     private readonly ITradingHealthProvider _healthProvider;
+    private readonly ITriggerOrderManager? _triggerOrderManager;
     private readonly ILogger _logger;
 
     private CancellationTokenSource? _cts;
@@ -73,7 +74,8 @@ public sealed class TradingSession : IAsyncDisposable
         GridState? gridState = null,
         IStateRecoveryService? stateRecoveryService = null,
         IOrderTracker? orderTracker = null,
-        IServiceScope? serviceScope = null)
+        IServiceScope? serviceScope = null,
+        ITriggerOrderManager? triggerOrderManager = null)
     {
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
@@ -93,6 +95,7 @@ public sealed class TradingSession : IAsyncDisposable
         _orderTracker = orderTracker!;
         _serviceScope = serviceScope;
         _healthProvider = healthProvider;
+        _triggerOrderManager = triggerOrderManager;
         _logger = logger;
         GridState = gridState ?? new GridState();
     }
@@ -137,6 +140,14 @@ public sealed class TradingSession : IAsyncDisposable
         using var timeoutCts = new CancellationTokenSource(ShutdownTimeout);
         try
         {
+            // Cancel exchange-native protection triggers first
+            if (_triggerOrderManager is not null && GridState.ProtectionOrders.HasAny)
+            {
+                await _triggerOrderManager.CancelProtectionOrdersAsync(
+                    GridState.ProtectionOrders, timeoutCts.Token);
+                _logger.LogInformation("Protection trigger orders cancelled for {Symbol}.", StrategyConfig.Market);
+            }
+
             await _executionEngine.CancelAllOrdersAsync(StrategyConfig.Market, timeoutCts.Token);
             _logger.LogInformation("All open orders cancelled for {Symbol}.", StrategyConfig.Market);
         }
@@ -199,6 +210,15 @@ public sealed class TradingSession : IAsyncDisposable
                 GridState.TrailingStopHighWatermark = recoveredState.TrailingStopHighWatermark;
                 GridState.CandlesSinceEntry = recoveredState.CandlesSinceEntry;
 
+                // Recover protection order state (exchange-native TP/SL triggers)
+                if (recoveredState.ProtectionOrders.HasAny)
+                {
+                    GridState.ProtectionOrders.StopLossOrderId = recoveredState.ProtectionOrders.StopLossOrderId;
+                    GridState.ProtectionOrders.StopLossTriggerPrice = recoveredState.ProtectionOrders.StopLossTriggerPrice;
+                    GridState.ProtectionOrders.TakeProfitOrderId = recoveredState.ProtectionOrders.TakeProfitOrderId;
+                    GridState.ProtectionOrders.TakeProfitTriggerPrice = recoveredState.ProtectionOrders.TakeProfitTriggerPrice;
+                }
+
                 _logger.LogInformation(
                     "State recovery complete: Lifecycle={Lifecycle}, FilledLevels={Filled}/{Total}",
                     GridState.Lifecycle, GridState.FilledLevels, GridState.TotalLevels);
@@ -239,6 +259,29 @@ public sealed class TradingSession : IAsyncDisposable
                     var positionState = await QueryPositionStateAsync(
                         StrategyConfig.Market, stoppingToken);
                     scheduler.UpdateState(GridState, positionState);
+
+                    // Place or update exchange-native protection orders after position state refresh
+                    if (_triggerOrderManager is not null && positionState.IsOpen
+                        && GridState.Lifecycle is not GridLifecycle.Closing)
+                    {
+                        var protectionState = GridState.ProtectionOrders;
+                        var lastContext = scheduler.LastContext;
+                        if (lastContext is not null)
+                        {
+                            if (!protectionState.HasAny)
+                            {
+                                await _triggerOrderManager.PlaceProtectionOrdersAsync(
+                                    positionState, StrategyConfig.Exit, lastContext,
+                                    protectionState, stoppingToken);
+                            }
+                            else
+                            {
+                                await _triggerOrderManager.UpdateProtectionOrdersAsync(
+                                    positionState, StrategyConfig.Exit, lastContext,
+                                    protectionState, stoppingToken);
+                            }
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -266,6 +309,26 @@ public sealed class TradingSession : IAsyncDisposable
                     _contextBuilder.UpdateIndicators(evt.Candle);
                     await scheduler.HandleCandleClosedAsync(
                         evt, latestOneHourCandle, latestFourHourCandle, stoppingToken);
+
+                    // Update exchange-native protection orders on every candle close
+                    // so trailing stops ratchet up with price movement
+                    if (_triggerOrderManager is not null
+                        && GridState.ProtectionOrders.HasAny
+                        && GridState.Lifecycle is not (GridLifecycle.Closing or GridLifecycle.Closed))
+                    {
+                        var lastContext = scheduler.LastContext;
+                        if (lastContext is not null)
+                        {
+                            var positionState = await QueryPositionStateAsync(
+                                StrategyConfig.Market, stoppingToken);
+                            if (positionState.IsOpen)
+                            {
+                                await _triggerOrderManager.UpdateProtectionOrdersAsync(
+                                    positionState, StrategyConfig.Exit, lastContext,
+                                    GridState.ProtectionOrders, stoppingToken);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)

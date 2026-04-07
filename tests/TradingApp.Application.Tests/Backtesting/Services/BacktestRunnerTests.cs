@@ -80,6 +80,23 @@ public sealed class BacktestRunnerTests
                 Indicators = new IndicatorSnapshot()
             });
 
+        _contextBuilderMock
+            .Setup(builder => builder.BuildAsync(
+                It.IsAny<Candle>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<Candle?>(),
+                It.IsAny<IReadOnlyList<IndicatorRequirement>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Candle trigger, Candle? oneHour, Candle? fourHour, IReadOnlyList<IndicatorRequirement>? _, CancellationToken _ct) => new MarketContext
+            {
+                Symbol = trigger.Symbol,
+                TimestampUtc = trigger.Timestamp,
+                CurrentCandle = trigger,
+                LatestOneHourCandle = oneHour,
+                LatestFourHourCandle = fourHour,
+                Indicators = new IndicatorSnapshot()
+            });
+
         _strategyEngineMock
             .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new StrategyEvaluation { SetupDetected = false });

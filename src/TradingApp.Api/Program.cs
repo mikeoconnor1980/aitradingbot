@@ -25,6 +25,10 @@ using TradingApp.Application.Scheduling;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
+using TradingApp.Application.Abstractions.Repositories;
+using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Entities;
 using TradingApp.Api.Services;
 using TradingApp.Infrastructure.Providers.MacroCalendar;
 using TradingApp.Infrastructure.Services;
@@ -299,6 +303,51 @@ builder.Services.AddControllers(options =>
 var app = builder.Build();
 
 await app.Services.MigrateDatabaseAsync();
+
+// Refresh LLM context snapshot on every startup (development only)
+if (app.Environment.IsDevelopment())
+{
+    using var seedScope = app.Services.CreateScope();
+    var snapshotRepo = seedScope.ServiceProvider.GetRequiredService<ILlmContextSnapshotRepository>();
+    var llmProvider = seedScope.ServiceProvider.GetService<ILlmContextProvider>();
+    if (llmProvider is not null)
+    {
+        try
+        {
+            app.Logger.LogInformation("Calling LLM context provider for BTC startup seed...");
+            var indicators = new IndicatorSnapshot { Rsi = 50m, Atr = 0m };
+            var llmResult = await llmProvider.GetContextAsync("BTC", indicators);
+            if (llmResult is not null)
+            {
+                var snapshot = LlmContextSnapshot.Create(
+                    symbol: "BTC",
+                    marketSentiment: llmResult.MarketSentiment,
+                    macroRegime: llmResult.MacroRegime,
+                    eventRisk: llmResult.EventRisk,
+                    confidence: llmResult.Confidence,
+                    derivedRegime: llmResult.DerivedRegime.ToString(),
+                    summary: llmResult.Summary,
+                    generatedAtUtc: llmResult.GeneratedAtUtc);
+                await snapshotRepo.SaveAsync(snapshot);
+                app.Logger.LogInformation(
+                    "Seeded LLM context for BTC: {Regime}, {Sentiment}, confidence={Confidence:F2}",
+                    llmResult.DerivedRegime, llmResult.MarketSentiment, llmResult.Confidence);
+            }
+            else
+            {
+                app.Logger.LogWarning("LLM context provider returned null for BTC; no snapshot seeded.");
+            }
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogError(ex, "Failed to seed LLM context snapshot on startup.");
+        }
+    }
+    else
+    {
+        app.Logger.LogInformation("No LLM context provider configured; skipping context seed.");
+    }
+}
 
 var configuredProvider = app.Services.GetRequiredService<ISignerProvider>();
 if (configuredProvider.IsConfigured)

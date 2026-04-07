@@ -1,3 +1,4 @@
+using TradingApp.Application.MacroCalendar.Models;
 using TradingApp.Application.Trading.Models;
 
 namespace TradingApp.Application.Abstractions.Services;
@@ -11,5 +12,6 @@ public interface ILlmContextProvider
     Task<LlmContext?> GetContextAsync(
         string symbol,
         IndicatorSnapshot indicators,
-        CancellationToken cancellationToken);
+        IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null,
+        CancellationToken cancellationToken = default);
 }

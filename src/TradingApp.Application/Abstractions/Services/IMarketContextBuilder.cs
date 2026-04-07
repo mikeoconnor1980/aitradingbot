@@ -19,4 +19,18 @@ public interface IMarketContextBuilder
         Candle? latestOneHourCandle,
         Candle? latestFourHourCandle,
         IReadOnlyList<IndicatorRequirement>? requiredIndicators);
+
+    /// <summary>
+    /// Async overload that supports LLM context enrichment.
+    /// Default implementation delegates to the synchronous <see cref="Build"/> method.
+    /// </summary>
+    Task<MarketContext> BuildAsync(
+        Candle triggerCandle,
+        Candle? latestOneHourCandle,
+        Candle? latestFourHourCandle,
+        IReadOnlyList<IndicatorRequirement>? requiredIndicators,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Build(triggerCandle, latestOneHourCandle, latestFourHourCandle, requiredIndicators));
+    }
 }

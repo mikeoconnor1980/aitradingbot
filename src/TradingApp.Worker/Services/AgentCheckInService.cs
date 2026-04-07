@@ -615,7 +615,8 @@ public sealed class AgentCheckInService : BackgroundService
             scope.ServiceProvider.GetService<ILiveOrderRepository>(),
             scope.ServiceProvider.GetService<ILiveFillRepository>(),
             scope.ServiceProvider.GetService<IGridCycleRepository>(),
-            userId);
+            userId,
+            _serviceProvider.GetRequiredService<IExecutionEngine>());
 
         // Wire scoped repositories into the singleton LivePositionManager
         var positionManager = _serviceProvider.GetRequiredService<IPositionManager>();
@@ -625,7 +626,10 @@ public sealed class AgentCheckInService : BackgroundService
                 scope.ServiceProvider.GetService<IGridCycleRepository>(),
                 scope.ServiceProvider.GetService<ILiveOrderRepository>(),
                 userId);
+            livePositionManager.ConfigureProtectionState(gridState.ProtectionOrders);
         }
+
+        var triggerOrderManager = _serviceProvider.GetService<ITriggerOrderManager>();
 
         return new TradingSession(
             strategyConfig,
@@ -647,7 +651,8 @@ public sealed class AgentCheckInService : BackgroundService
             gridState,
             scope.ServiceProvider.GetService<IStateRecoveryService>(),
             orderTracker,
-            scope);
+            scope,
+            triggerOrderManager);
     }
 
     private static string GetAgentVersion()
