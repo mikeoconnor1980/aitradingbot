@@ -29,7 +29,7 @@ public sealed class StrategyScheduler
     private readonly decimal _initialCapital;
     private readonly BacktestExecutionContextAccessor? _executionContextAccessor;
 
-    private GridState _gridState = new();
+    private readonly GridState _gridState;
     private PositionState _positionState = new();
 
     public StrategyScheduler(
@@ -43,7 +43,8 @@ public sealed class StrategyScheduler
         IBacktestAuditCollector? auditCollector = null,
         ISignalController? signalController = null,
         decimal initialCapital = 0m,
-        BacktestExecutionContextAccessor? executionContextAccessor = null)
+        BacktestExecutionContextAccessor? executionContextAccessor = null,
+        GridState? gridState = null)
     {
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
         _strategyEngine = strategyEngine ?? throw new ArgumentNullException(nameof(strategyEngine));
@@ -59,6 +60,7 @@ public sealed class StrategyScheduler
         _triggerTimeframe = triggerTimeframe;
         _initialCapital = initialCapital;
         _executionContextAccessor = executionContextAccessor;
+        _gridState = gridState ?? new GridState();
     }
 
     public async Task HandleCandleClosedAsync(
@@ -137,7 +139,17 @@ public sealed class StrategyScheduler
 
     public void UpdateState(GridState gridState, PositionState positionState)
     {
-        _gridState = gridState ?? throw new ArgumentNullException(nameof(gridState));
+        // GridState is shared by reference; only copy values if a different instance is passed
+        if (gridState is not null && !ReferenceEquals(gridState, _gridState))
+        {
+            _gridState.Lifecycle = gridState.Lifecycle;
+            _gridState.GridCycleId = gridState.GridCycleId;
+            _gridState.FilledLevels = gridState.FilledLevels;
+            _gridState.TotalLevels = gridState.TotalLevels;
+            _gridState.TrailingStopHighWatermark = gridState.TrailingStopHighWatermark;
+            _gridState.CandlesSinceEntry = gridState.CandlesSinceEntry;
+        }
+
         _positionState = positionState ?? throw new ArgumentNullException(nameof(positionState));
     }
 

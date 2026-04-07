@@ -15,13 +15,16 @@ namespace TradingApp.Application.Trading.Services;
 public sealed class LivePositionManager : IPositionManager
 {
     private readonly IExecutionEngine _executionEngine;
+    private readonly IOrderTracker _orderTracker;
     private readonly ILogger<LivePositionManager> _logger;
 
     public LivePositionManager(
         IExecutionEngine executionEngine,
+        IOrderTracker orderTracker,
         ILogger<LivePositionManager> logger)
     {
         _executionEngine = executionEngine ?? throw new ArgumentNullException(nameof(executionEngine));
+        _orderTracker = orderTracker ?? throw new ArgumentNullException(nameof(orderTracker));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -84,7 +87,7 @@ public sealed class LivePositionManager : IPositionManager
             var marketSize = decimal.Round(notionalPerLevel / anchorPrice, 8, MidpointRounding.AwayFromZero);
             if (marketSize > 0m)
             {
-                await _executionEngine.PlaceOrderAsync(
+                var orderId = await _executionEngine.PlaceOrderAsync(
                     new OrderRequest
                     {
                         Symbol = signal.Symbol,
@@ -97,6 +100,9 @@ public sealed class LivePositionManager : IPositionManager
                         GridCycleId = gridCycleId
                     },
                     cancellationToken);
+
+                _orderTracker.TrackOrder(orderId, gridCycleId, 1, signal.Symbol,
+                    OrderSide.Buy, anchorPrice, marketSize, TradeType.GridFill);
             }
 
             firstLimitLevel = 2;
@@ -119,7 +125,7 @@ public sealed class LivePositionManager : IPositionManager
                 continue;
             }
 
-            await _executionEngine.PlaceOrderAsync(
+            var orderId = await _executionEngine.PlaceOrderAsync(
                 new OrderRequest
                 {
                     Symbol = signal.Symbol,
@@ -132,6 +138,9 @@ public sealed class LivePositionManager : IPositionManager
                     GridCycleId = gridCycleId
                 },
                 cancellationToken);
+
+            _orderTracker.TrackOrder(orderId, gridCycleId, level, signal.Symbol,
+                OrderSide.Buy, price, size, TradeType.GridFill);
         }
     }
 
@@ -145,7 +154,7 @@ public sealed class LivePositionManager : IPositionManager
             return;
         }
 
-        await _executionEngine.PlaceOrderAsync(
+        var orderId = await _executionEngine.PlaceOrderAsync(
             new OrderRequest
             {
                 Symbol = signal.Symbol,
@@ -157,6 +166,9 @@ public sealed class LivePositionManager : IPositionManager
                 GridCycleId = "signal"
             },
             cancellationToken);
+
+        _orderTracker.TrackOrder(orderId, "signal", 0, signal.Symbol,
+            OrderSide.Buy, entryPrice, size, TradeType.SignalEntry);
     }
 
     private async Task PlaceTakeProfitAsync(TradingSignal signal, CancellationToken cancellationToken)
@@ -176,7 +188,7 @@ public sealed class LivePositionManager : IPositionManager
             ? 0m
             : GetDecimal(signal.Parameters, "targetPrice");
 
-        await _executionEngine.PlaceOrderAsync(
+        var orderId = await _executionEngine.PlaceOrderAsync(
             new OrderRequest
             {
                 Symbol = signal.Symbol,
@@ -188,6 +200,9 @@ public sealed class LivePositionManager : IPositionManager
                 GridCycleId = gridCycleId
             },
             cancellationToken);
+
+        _orderTracker.TrackOrder(orderId, gridCycleId, 0, signal.Symbol,
+            OrderSide.Sell, targetPrice, size, TradeType.TakeProfit);
     }
 
     private static decimal GetDecimal(IReadOnlyDictionary<string, object>? parameters, string key)

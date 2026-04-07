@@ -1,0 +1,124 @@
+<div class="grid-state">
+  @if (isLoading) {
+    <mat-card>
+      <mat-card-content>
+        <p class="grid-state__loading">Loading grid state...</p>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (!isLoading && activeCycle) {
+    <mat-card class="grid-state__active">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon class="grid-state__icon">grid_on</mat-icon>
+          Active Grid — {{ activeCycle.symbol }}
+        </mat-card-title>
+        <mat-chip [color]="lifecycleColor(activeCycle.lifecycle)" selected>
+          {{ activeCycle.lifecycle }}
+        </mat-chip>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="grid-state__stats">
+          <div class="grid-state__stat">
+            <span class="grid-state__stat-label">Anchor</span>
+            <span class="grid-state__stat-value">{{ activeCycle.anchorPrice | number: '1.2-2' }}</span>
+          </div>
+          <div class="grid-state__stat">
+            <span class="grid-state__stat-label">Filled</span>
+            <span class="grid-state__stat-value">{{ activeCycle.filledLevels }} / {{ activeCycle.totalLevels }}</span>
+          </div>
+          <div class="grid-state__stat">
+            <span class="grid-state__stat-label">Started</span>
+            <span class="grid-state__stat-value">{{ activeCycle.startedAtUtc | date: 'short' }}</span>
+          </div>
+        </div>
+
+        <mat-progress-bar
+          mode="determinate"
+          [value]="fillProgress"
+          class="grid-state__progress">
+        </mat-progress-bar>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (!isLoading && !activeCycle) {
+    <mat-card>
+      <mat-card-content>
+        <p class="grid-state__idle">
+          <mat-icon>pause_circle</mat-icon>
+          No active grid cycle
+        </p>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (recentCycles.length > 0) {
+    <mat-card class="grid-state__history">
+      <mat-card-header>
+        <mat-card-title>Recent Grid Cycles</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <mat-accordion>
+          @for (cycle of recentCycles; track cycle.gridCycleId) {
+            <mat-expansion-panel
+              [expanded]="isCycleExpanded(cycle.gridCycleId)"
+              (opened)="toggleCycleOrders(cycle.gridCycleId)"
+              (closed)="toggleCycleOrders(cycle.gridCycleId)">
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  {{ cycle.startedAtUtc | date: 'short' }} — {{ cycle.symbol }}
+                </mat-panel-title>
+                <mat-panel-description>
+                  {{ cycle.filledLevels }}/{{ cycle.totalLevels }} levels
+                  <span
+                    class="grid-state__pnl"
+                    [class.grid-state__pnl--positive]="(cycle.realisedPnl ?? 0) > 0"
+                    [class.grid-state__pnl--negative]="(cycle.realisedPnl ?? 0) < 0">
+                    {{ formatPnl(cycle.realisedPnl) }}
+                  </span>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              @if (isCycleExpanded(cycle.gridCycleId) && cycleOrders.length > 0) {
+                <table mat-table [dataSource]="cycleOrders" class="grid-state__orders-table">
+                  <ng-container matColumnDef="level">
+                    <th mat-header-cell *matHeaderCellDef>Level</th>
+                    <td mat-cell *matCellDef="let order">{{ order.level }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="side">
+                    <th mat-header-cell *matHeaderCellDef>Side</th>
+                    <td mat-cell *matCellDef="let order" [class.grid-state__buy]="order.side === 'Buy'" [class.grid-state__sell]="order.side === 'Sell'">
+                      {{ order.side }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="price">
+                    <th mat-header-cell *matHeaderCellDef>Price</th>
+                    <td mat-cell *matCellDef="let order">{{ order.price | number: '1.2-2' }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="size">
+                    <th mat-header-cell *matHeaderCellDef>Size</th>
+                    <td mat-cell *matCellDef="let order">{{ order.size }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Status</th>
+                    <td mat-cell *matCellDef="let order">{{ order.status }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="placedAt">
+                    <th mat-header-cell *matHeaderCellDef>Placed</th>
+                    <td mat-cell *matCellDef="let order">{{ order.placedAtUtc | date: 'short' }}</td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="orderColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: orderColumns;"></tr>
+                </table>
+              }
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

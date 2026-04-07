@@ -21,6 +21,9 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<StrategyReview> StrategyReviews => Set<StrategyReview>();
     public DbSet<MacroEvent> MacroEvents => Set<MacroEvent>();
     public DbSet<MacroSyncRun> MacroSyncRuns => Set<MacroSyncRun>();
+    public DbSet<LiveOrder> LiveOrders => Set<LiveOrder>();
+    public DbSet<LiveFill> LiveFills => Set<LiveFill>();
+    public DbSet<GridCycle> GridCycles => Set<GridCycle>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -466,6 +469,166 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(e => e.StartedAtUtc)
                 .HasDatabaseName("IX_MacroSyncRuns_StartedAtUtc");
+        });
+
+        modelBuilder.Entity<LiveOrder>(entity =>
+        {
+            entity.ToTable("LiveOrders");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.OrderId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.GridCycleId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Side)
+                .HasConversion<string>()
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.Property(e => e.OrderType)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Price)
+                .HasConversion<double>();
+
+            entity.Property(e => e.Size)
+                .HasConversion<double>();
+
+            entity.Property(e => e.TradeType)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.UserId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.HasIndex(e => e.OrderId)
+                .IsUnique()
+                .HasDatabaseName("IX_LiveOrders_OrderId");
+
+            entity.HasIndex(e => e.GridCycleId)
+                .HasDatabaseName("IX_LiveOrders_GridCycleId");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_LiveOrders_UserId");
+        });
+
+        modelBuilder.Entity<LiveFill>(entity =>
+        {
+            entity.ToTable("LiveFills");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.OrderId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Side)
+                .HasMaxLength(10)
+                .IsRequired();
+
+            entity.Property(e => e.Direction)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Price)
+                .HasConversion<double>();
+
+            entity.Property(e => e.Size)
+                .HasConversion<double>();
+
+            entity.Property(e => e.Fee)
+                .HasConversion<double>();
+
+            entity.Property(e => e.ClosedPnl)
+                .HasConversion<double>();
+
+            entity.Property(e => e.UserId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.HasIndex(e => e.OrderId)
+                .HasDatabaseName("IX_LiveFills_OrderId");
+
+            entity.HasIndex(e => new { e.Symbol, e.FilledAtUtc })
+                .HasDatabaseName("IX_LiveFills_Symbol_FilledAtUtc");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_LiveFills_UserId");
+        });
+
+        modelBuilder.Entity<GridCycle>(entity =>
+        {
+            entity.ToTable("GridCycles");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.GridCycleId)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.StrategyName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.Symbol)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.AnchorPrice)
+                .HasConversion<double>();
+
+            entity.Property(e => e.Lifecycle)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.CloseReason)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.RealisedPnl)
+                .HasConversion<double?>();
+
+            entity.Property(e => e.UserId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.HasIndex(e => e.GridCycleId)
+                .IsUnique()
+                .HasDatabaseName("IX_GridCycles_GridCycleId");
+
+            entity.HasIndex(e => new { e.StrategyName, e.Symbol, e.Lifecycle })
+                .HasDatabaseName("IX_GridCycles_Strategy_Symbol_Lifecycle");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_GridCycles_UserId");
         });
     }
 }

@@ -27,6 +27,9 @@ public static class PersistenceServiceExtensions
         services.AddScoped<IStrategyRepository, StrategyRepository>();
         services.AddScoped<IStrategyRevisionRepository, StrategyRevisionRepository>();
         services.AddScoped<IStrategyReviewRepository, StrategyReviewRepository>();
+        services.AddScoped<ILiveOrderRepository, LiveOrderRepository>();
+        services.AddScoped<ILiveFillRepository, LiveFillRepository>();
+        services.AddScoped<IGridCycleRepository, GridCycleRepository>();
 
         return services;
     }

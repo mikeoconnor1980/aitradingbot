@@ -8,6 +8,7 @@ using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Scheduling;
 using TradingApp.Application.StrategyAuthoring.Models;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Enums;
@@ -598,9 +599,24 @@ public sealed class AgentCheckInService : BackgroundService
 
     private TradingSession CreateSession(StrategyConfig strategyConfig)
     {
+        var gridState = new GridState();
+        var orderTracker = _serviceProvider.GetRequiredService<IOrderTracker>();
+
+        // Create a scope for scoped repository services
+        var scope = _serviceProvider.CreateScope();
+        var fillProcessor = new FillProcessor(
+            orderTracker,
+            gridState,
+            _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<FillProcessor>(),
+            scope.ServiceProvider.GetService<ILiveOrderRepository>(),
+            scope.ServiceProvider.GetService<ILiveFillRepository>(),
+            scope.ServiceProvider.GetService<IGridCycleRepository>(),
+            _signerProvider.IsConfigured ? _signerProvider.WalletAddress : null);
+
         return new TradingSession(
             strategyConfig,
             _serviceProvider.GetRequiredService<IHyperliquidWebSocketClient>(),
+            _serviceProvider.GetRequiredService<IHyperliquidUserEventClient>(),
             _serviceProvider.GetRequiredService<CandleBuilder>(),
             _serviceProvider.GetRequiredService<CandleClock>(),
             _serviceProvider.GetRequiredService<IMarketContextBuilder>(),
@@ -610,8 +626,13 @@ public sealed class AgentCheckInService : BackgroundService
             _serviceProvider.GetRequiredService<IPositionManager>(),
             _serviceProvider.GetRequiredService<ISignalController>(),
             _serviceProvider.GetRequiredService<IExecutionEngine>(),
+            fillProcessor,
+            _signerProvider,
             _healthProvider,
-            _logger);
+            _logger,
+            gridState,
+            scope.ServiceProvider.GetService<IStateRecoveryService>(),
+            orderTracker);
     }
 
     private static string GetAgentVersion()

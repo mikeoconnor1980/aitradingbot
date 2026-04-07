@@ -1,0 +1,72 @@
+.grid-state {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__icon {
+    vertical-align: middle;
+    margin-inline-end: 8px;
+  }
+
+  &__loading,
+  &__idle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--mat-sys-on-surface-variant, rgba(255, 255, 255, 0.6));
+    margin: 0;
+  }
+
+  &__stats {
+    display: flex;
+    gap: 24px;
+    margin-block: 12px;
+  }
+
+  &__stat {
+    display: flex;
+    flex-direction: column;
+
+    &-label {
+      font-size: 0.75rem;
+      color: var(--mat-sys-on-surface-variant, rgba(255, 255, 255, 0.6));
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    &-value {
+      font-size: 1.125rem;
+      font-weight: 500;
+    }
+  }
+
+  &__progress {
+    margin-block-start: 8px;
+  }
+
+  &__pnl {
+    margin-inline-start: auto;
+    font-weight: 500;
+
+    &--positive {
+      color: #4caf50;
+    }
+
+    &--negative {
+      color: #f44336;
+    }
+  }
+
+  &__buy {
+    color: #4caf50;
+  }
+
+  &__sell {
+    color: #f44336;
+  }
+
+  &__orders-table {
+    width: 100%;
+    margin-block-start: 8px;
+  }
+}

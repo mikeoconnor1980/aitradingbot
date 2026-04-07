@@ -71,6 +71,7 @@ for architecture, domain model, trading strategy, infrastructure, and business d
 |---|---|---|
 | 26 | [Architecture Review](26-architecture-review.md) | Design strengths, known risks, and prioritised mitigations for POC → production |
 | 29 | [Control Plane → Agent Architecture](29-control-plane-agent-architecture.md) | How the API control plane queues commands and the Worker agent executes them |
+| 30 | [Worker Execution Pipeline](30-worker-execution-pipeline.md) | End-to-end data flow from WebSocket tick to filled order — candle assembly, strategy evaluation, order signing, fill detection, state recovery |
 
 ---
 

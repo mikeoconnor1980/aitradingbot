@@ -84,6 +84,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketClient>();
+builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
 
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<IExecutionEngine, LiveExecutionEngine>();
@@ -95,6 +96,8 @@ builder.Services.AddSingleton<CandleBuilder>();
 
 // ---------- Strategy / trading pipeline ----------
 builder.Services.AddSingleton<IMarketContextBuilder, LiveMarketContextBuilder>();
+builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
+builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();
 builder.Services.AddSingleton<IPositionManager, LivePositionManager>();
 builder.Services.AddSingleton<GridStrategyEngine>();
 builder.Services.AddSingleton<IConditionEvaluator, ConditionEvaluator>();
