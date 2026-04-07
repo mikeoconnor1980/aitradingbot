@@ -3,9 +3,13 @@ namespace TradingApp.Application.Trading.Models;
 /// <summary>
 /// Represents the current state of a grid deployment.
 /// Minimal definition and will be expanded by GridController work.
+/// Thread-safe: all mutations should be wrapped in lock(SyncRoot).
 /// </summary>
 public sealed class GridState
 {
+    /// <summary>Lock object for synchronising mutations across threads.</summary>
+    public object SyncRoot { get; } = new();
+
     public GridLifecycle Lifecycle { get; set; } = GridLifecycle.Inactive;
     public string? GridCycleId { get; set; }
     public int FilledLevels { get; set; }

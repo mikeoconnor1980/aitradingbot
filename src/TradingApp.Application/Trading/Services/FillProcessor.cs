@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using TradingApp.Application.Abstractions.Repositories;
+using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
@@ -11,16 +12,24 @@ public sealed class FillProcessor : IFillProcessor
 {
     private readonly IOrderTracker _orderTracker;
     private readonly GridState _gridState;
+    private readonly IRiskEngine _riskEngine;
     private readonly ILiveOrderRepository? _orderRepository;
     private readonly ILiveFillRepository? _fillRepository;
     private readonly IGridCycleRepository? _gridCycleRepository;
     private readonly string _userId;
     private readonly ILogger<FillProcessor> _logger;
 
+    /// <summary>
+    /// Optional callback invoked after a fill is processed.
+    /// Used by TradingSession to update PositionState on the StrategyScheduler.
+    /// </summary>
+    public Action<FillEventDto>? OnFillProcessed { get; set; }
+
     public FillProcessor(
         IOrderTracker orderTracker,
         GridState gridState,
         ILogger<FillProcessor> logger,
+        IRiskEngine? riskEngine = null,
         ILiveOrderRepository? orderRepository = null,
         ILiveFillRepository? fillRepository = null,
         IGridCycleRepository? gridCycleRepository = null,
@@ -29,6 +38,7 @@ public sealed class FillProcessor : IFillProcessor
         _orderTracker = orderTracker ?? throw new ArgumentNullException(nameof(orderTracker));
         _gridState = gridState ?? throw new ArgumentNullException(nameof(gridState));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _riskEngine = riskEngine!;
         _orderRepository = orderRepository;
         _fillRepository = fillRepository;
         _gridCycleRepository = gridCycleRepository;
@@ -72,6 +82,16 @@ public sealed class FillProcessor : IFillProcessor
 
         await PersistFillAsync(fill, tracked, cancellationToken);
 
+        // Notify RiskEngine of fill
+        _riskEngine?.RecordOrdersClosed(1);
+        if (fill.ClosedPnl < 0m)
+        {
+            _riskEngine?.RecordLoss(Math.Abs(fill.ClosedPnl));
+        }
+
+        // Notify TradingSession to update PositionState
+        OnFillProcessed?.Invoke(fill);
+
         return;
     }
 
@@ -97,6 +117,8 @@ public sealed class FillProcessor : IFillProcessor
             _logger.LogInformation(
                 "Order cancelled: OrderId={OrderId}, GridCycleId={GridCycleId}, Level={Level}",
                 update.OrderId, tracked.GridCycleId, tracked.Level);
+
+            _riskEngine?.RecordOrdersClosed(1);
         }
 
         return Task.CompletedTask;
@@ -104,24 +126,27 @@ public sealed class FillProcessor : IFillProcessor
 
     private void ProcessGridFill(TrackedOrder tracked)
     {
-        if (_gridState.Lifecycle is not (GridLifecycle.Deploying or GridLifecycle.Active or GridLifecycle.PartiallyFilled))
+        lock (_gridState.SyncRoot)
         {
-            _logger.LogWarning(
-                "Grid fill received in unexpected lifecycle state: {Lifecycle}, OrderId={OrderId}",
-                _gridState.Lifecycle, tracked.OrderId);
-            return;
+            if (_gridState.Lifecycle is not (GridLifecycle.Deploying or GridLifecycle.Active or GridLifecycle.PartiallyFilled))
+            {
+                _logger.LogWarning(
+                    "Grid fill received in unexpected lifecycle state: {Lifecycle}, OrderId={OrderId}",
+                    _gridState.Lifecycle, tracked.OrderId);
+                return;
+            }
+
+            _gridState.FilledLevels = Math.Min(_gridState.TotalLevels, _gridState.FilledLevels + 1);
+
+            if (_gridState.Lifecycle == GridLifecycle.Deploying)
+            {
+                _gridState.Lifecycle = GridLifecycle.Active;
+            }
+
+            _gridState.Lifecycle = _gridState.FilledLevels >= _gridState.TotalLevels
+                ? GridLifecycle.FullyFilled
+                : GridLifecycle.PartiallyFilled;
         }
-
-        _gridState.FilledLevels = Math.Min(_gridState.TotalLevels, _gridState.FilledLevels + 1);
-
-        if (_gridState.Lifecycle == GridLifecycle.Deploying)
-        {
-            _gridState.Lifecycle = GridLifecycle.Active;
-        }
-
-        _gridState.Lifecycle = _gridState.FilledLevels >= _gridState.TotalLevels
-            ? GridLifecycle.FullyFilled
-            : GridLifecycle.PartiallyFilled;
 
         _logger.LogInformation(
             "Grid fill processed: FilledLevels={Filled}/{Total}, Lifecycle={Lifecycle}, GridCycleId={GridCycleId}",
@@ -130,11 +155,14 @@ public sealed class FillProcessor : IFillProcessor
 
     private void ProcessTakeProfitFill(TrackedOrder tracked, FillEventDto fill)
     {
-        _gridState.Lifecycle = GridLifecycle.Closed;
-        _gridState.FilledLevels = 0;
-        _gridState.TotalLevels = 0;
-        _gridState.TrailingStopHighWatermark = null;
-        _gridState.CandlesSinceEntry = 0;
+        lock (_gridState.SyncRoot)
+        {
+            _gridState.Lifecycle = GridLifecycle.Closed;
+            _gridState.FilledLevels = 0;
+            _gridState.TotalLevels = 0;
+            _gridState.TrailingStopHighWatermark = null;
+            _gridState.CandlesSinceEntry = 0;
+        }
 
         _logger.LogInformation(
             "Take profit fill processed: GridCycleId={GridCycleId} → Closed, ClosedPnl={ClosedPnl}",
@@ -159,7 +187,7 @@ public sealed class FillProcessor : IFillProcessor
                     Id = Guid.NewGuid(),
                     OrderId = fill.OrderId,
                     Symbol = fill.Asset,
-                    Side = fill.Side,
+                    Side = Enum.TryParse<OrderSide>(fill.Side, ignoreCase: true, out var side) ? side : OrderSide.Buy,
                     Direction = fill.Direction,
                     Price = fill.Price,
                     Size = fill.Size,
@@ -192,8 +220,9 @@ public sealed class FillProcessor : IFillProcessor
                     if (_gridState.Lifecycle is GridLifecycle.Closed or GridLifecycle.FullyFilled)
                     {
                         cycle.ClosedAtUtc = DateTime.UtcNow;
-                        cycle.RealisedPnl = fill.ClosedPnl;
                     }
+
+                    cycle.RealisedPnl = (cycle.RealisedPnl ?? 0m) + fill.ClosedPnl;
 
                     await _gridCycleRepository.UpdateAsync(cycle, cancellationToken);
                 }

@@ -7,14 +7,13 @@ import { MatDialogModule, MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { interval, forkJoin } from "rxjs";
+import { interval, forkJoin, of, switchMap } from "rxjs";
 import { AgentInfo, AgentService, AgentState, PendingCommand } from "../../core/services/agent.service";
 import { StartTradingDialogComponent, StartTradingDialogResult } from "./start-trading-dialog.component";
 import { KillSwitchDialogComponent, KillSwitchDialogResult } from "./kill-switch-dialog.component";
 
 @Component({
   selector: "app-agents-page",
-  standalone: true,
   imports: [
     MatCardModule,
     MatTableModule,
@@ -40,32 +39,28 @@ export class AgentsPageComponent implements OnInit {
     this._agentService.refreshAgents();
 
     this._agentService.agents$
-      .pipe(takeUntilDestroyed(this._destroyRef))
-      .subscribe((agents) => {
-        this.agents.set(agents);
-        this.refreshPendingCommands(agents);
+      .pipe(
+        switchMap((agents) => {
+          this.agents.set(agents);
+          if (agents.length === 0) {
+            return of({} as Record<string, PendingCommand[]>);
+          }
+          const requests: Record<string, ReturnType<AgentService["getPendingCommands"]>> = {};
+          for (const agent of agents) {
+            requests[agent.agentId] = this._agentService.getPendingCommands(agent.agentId);
+          }
+          return forkJoin(requests);
+        }),
+        takeUntilDestroyed(this._destroyRef)
+      )
+      .subscribe((result) => {
+        this.pendingCommands.set(result);
       });
 
     // Auto-refresh every 5 seconds
     interval(5000)
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe(() => this._agentService.refreshAgents());
-  }
-
-  private refreshPendingCommands(agents: AgentInfo[]): void {
-    if (agents.length === 0) {
-      this.pendingCommands.set({});
-      return;
-    }
-
-    const requests: Record<string, ReturnType<AgentService["getPendingCommands"]>> = {};
-    for (const agent of agents) {
-      requests[agent.agentId] = this._agentService.getPendingCommands(agent.agentId);
-    }
-
-    forkJoin(requests).subscribe((result) => {
-      this.pendingCommands.set(result);
-    });
   }
 
   public getStateIcon(state: AgentState): string {

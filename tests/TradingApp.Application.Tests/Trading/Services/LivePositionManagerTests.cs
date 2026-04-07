@@ -11,6 +11,7 @@ namespace TradingApp.Application.Tests.Trading.Services;
 public sealed class LivePositionManagerTests
 {
     private Mock<IExecutionEngine> _executionEngine = null!;
+    private Mock<IRiskEngine> _riskEngine = null!;
     private LivePositionManager _sut = null!;
 
     [TestInitialize]
@@ -22,9 +23,12 @@ public sealed class LivePositionManagerTests
         _executionEngine.Setup(e => e.CancelAllOrdersAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        _riskEngine = new Mock<IRiskEngine>();
+
         _sut = new LivePositionManager(
             _executionEngine.Object,
             new InMemoryOrderTracker(),
+            _riskEngine.Object,
             Mock.Of<ILogger<LivePositionManager>>());
     }
 

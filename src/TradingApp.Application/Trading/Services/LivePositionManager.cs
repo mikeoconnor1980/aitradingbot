@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Domain.Entities;
 using TradingApp.Domain.Enums;
 using TradingApp.Domain.Trading;
 
@@ -16,16 +18,37 @@ public sealed class LivePositionManager : IPositionManager
 {
     private readonly IExecutionEngine _executionEngine;
     private readonly IOrderTracker _orderTracker;
+    private readonly IRiskEngine _riskEngine;
     private readonly ILogger<LivePositionManager> _logger;
+
+    private IGridCycleRepository? _gridCycleRepository;
+    private ILiveOrderRepository? _orderRepository;
+    private string _userId = string.Empty;
 
     public LivePositionManager(
         IExecutionEngine executionEngine,
         IOrderTracker orderTracker,
+        IRiskEngine riskEngine,
         ILogger<LivePositionManager> logger)
     {
         _executionEngine = executionEngine ?? throw new ArgumentNullException(nameof(executionEngine));
         _orderTracker = orderTracker ?? throw new ArgumentNullException(nameof(orderTracker));
+        _riskEngine = riskEngine ?? throw new ArgumentNullException(nameof(riskEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Configures optional scoped repositories for DB persistence.
+    /// Called from session setup where scoped services are available.
+    /// </summary>
+    public void ConfigureRepositories(
+        IGridCycleRepository? gridCycleRepository,
+        ILiveOrderRepository? orderRepository,
+        string? userId)
+    {
+        _gridCycleRepository = gridCycleRepository;
+        _orderRepository = orderRepository;
+        _userId = userId ?? string.Empty;
     }
 
     public async Task ExecuteSignalsAsync(
@@ -80,6 +103,7 @@ public sealed class LivePositionManager : IPositionManager
             "Deploying grid: Symbol={Symbol}, AnchorPrice={AnchorPrice}, Levels={Levels}, Spacing={Spacing}%, Notional={Notional}, EntryMode={EntryMode}",
             signal.Symbol, anchorPrice, gridLevels, gridSpacingPercent, notionalPerLevel, entryMode);
 
+        var placedOrders = new List<(string OrderId, int Level, decimal Price, decimal Size)>();
         var firstLimitLevel = 1;
 
         if (string.Equals(entryMode, EntryModes.InitialMarketThenGrid, StringComparison.Ordinal))
@@ -103,6 +127,8 @@ public sealed class LivePositionManager : IPositionManager
 
                 _orderTracker.TrackOrder(orderId, gridCycleId, 1, signal.Symbol,
                     OrderSide.Buy, anchorPrice, marketSize, TradeType.GridFill);
+
+                placedOrders.Add((orderId, 1, anchorPrice, marketSize));
             }
 
             firstLimitLevel = 2;
@@ -141,7 +167,14 @@ public sealed class LivePositionManager : IPositionManager
 
             _orderTracker.TrackOrder(orderId, gridCycleId, level, signal.Symbol,
                 OrderSide.Buy, price, size, TradeType.GridFill);
+
+            placedOrders.Add((orderId, level, price, size));
         }
+
+        _riskEngine.RecordOrdersPlaced(placedOrders.Count);
+
+        await PersistGridDeploymentAsync(
+            gridCycleId, signal.Symbol, anchorPrice, gridLevels, placedOrders, cancellationToken);
     }
 
     private async Task OpenSignalPositionAsync(TradingSignal signal, CancellationToken cancellationToken)
@@ -203,6 +236,68 @@ public sealed class LivePositionManager : IPositionManager
 
         _orderTracker.TrackOrder(orderId, gridCycleId, 0, signal.Symbol,
             OrderSide.Sell, targetPrice, size, TradeType.TakeProfit);
+    }
+
+    private async Task PersistGridDeploymentAsync(
+        string gridCycleId,
+        string symbol,
+        decimal anchorPrice,
+        int totalLevels,
+        List<(string OrderId, int Level, decimal Price, decimal Size)> placedOrders,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_gridCycleRepository is not null && gridCycleId is not "signal" and not "default")
+            {
+                await _gridCycleRepository.AddAsync(new GridCycle
+                {
+                    Id = Guid.NewGuid(),
+                    GridCycleId = gridCycleId,
+                    StrategyName = string.Empty,
+                    Symbol = symbol,
+                    AnchorPrice = anchorPrice,
+                    TotalLevels = totalLevels,
+                    FilledLevels = 0,
+                    Lifecycle = GridLifecycle.Active.ToString(),
+                    StartedAtUtc = DateTime.UtcNow,
+                    UserId = _userId,
+                }, cancellationToken);
+            }
+
+            if (_orderRepository is not null)
+            {
+                foreach (var (orderId, level, price, size) in placedOrders)
+                {
+                    await _orderRepository.AddAsync(new LiveOrder
+                    {
+                        Id = Guid.NewGuid(),
+                        OrderId = orderId,
+                        GridCycleId = gridCycleId,
+                        Level = level,
+                        Symbol = symbol,
+                        Side = OrderSide.Buy,
+                        OrderType = level == 1 ? "Market" : "Limit",
+                        Price = price,
+                        Size = size,
+                        TradeType = TradeType.GridFill.ToString(),
+                        Status = OrderStatus.Pending,
+                        PlacedAtUtc = DateTime.UtcNow,
+                        UserId = _userId,
+                    }, cancellationToken);
+                }
+            }
+
+            _logger.LogInformation(
+                "Grid deployment persisted: GridCycleId={GridCycleId}, Orders={OrderCount}",
+                gridCycleId, placedOrders.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to persist grid deployment: GridCycleId={GridCycleId}. Trading continues.",
+                gridCycleId);
+        }
     }
 
     private static decimal GetDecimal(IReadOnlyDictionary<string, object>? parameters, string key)
