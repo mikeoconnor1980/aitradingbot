@@ -40,6 +40,7 @@ public sealed class AgentCheckInService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly ISignerProvider _signerProvider;
     private readonly ITradingHealthProvider _healthProvider;
+    private readonly IUpdateNotifier _updateNotifier;
     private readonly AgentOptions _agentOptions;
     private readonly ILogger<AgentCheckInService> _logger;
 
@@ -51,11 +52,15 @@ public sealed class AgentCheckInService : BackgroundService
     /// </summary>
     private readonly ConcurrentQueue<OrderCommandResult> _pendingResults = new();
 
+    /// <summary>Agent executable version, read once at startup.</summary>
+    private static readonly string AgentVersion = GetAgentVersion();
+
     public AgentCheckInService(
         IHttpClientFactory httpClientFactory,
         IServiceProvider serviceProvider,
         ISignerProvider signerProvider,
         ITradingHealthProvider healthProvider,
+        IUpdateNotifier updateNotifier,
         IOptions<AgentOptions> agentOptions,
         ILogger<AgentCheckInService> logger)
     {
@@ -63,6 +68,7 @@ public sealed class AgentCheckInService : BackgroundService
         _serviceProvider = serviceProvider;
         _signerProvider = signerProvider;
         _healthProvider = healthProvider;
+        _updateNotifier = updateNotifier;
         _agentOptions = agentOptions.Value;
         _logger = logger;
     }
@@ -159,6 +165,16 @@ public sealed class AgentCheckInService : BackgroundService
                 await HandleCommandAsync(command, cancellationToken);
             }
         }
+
+        // Forward update notification to UpdateCheckerService
+        if (result.UpdateAvailable &&
+            !string.IsNullOrEmpty(result.LatestVersion) &&
+            !string.IsNullOrEmpty(result.UpdateDownloadUrl) &&
+            !string.IsNullOrEmpty(result.UpdateSha256Hash))
+        {
+            _updateNotifier.NotifyUpdateAvailable(
+                result.LatestVersion, result.UpdateDownloadUrl, result.UpdateSha256Hash);
+        }
     }
 
     private AgentHeartbeat BuildHeartbeat()
@@ -192,6 +208,9 @@ public sealed class AgentCheckInService : BackgroundService
             orderResults.Add(r);
         }
 
+        // Get update state from UpdateCheckerService
+        var updateChecker = _updateNotifier as UpdateCheckerService;
+
         return new AgentHeartbeat
         {
             AgentId = _agentOptions.AgentId,
@@ -201,6 +220,9 @@ public sealed class AgentCheckInService : BackgroundService
             ActiveStrategy = activeStrategy,
             TimestampUtc = DateTimeOffset.UtcNow,
             OrderResults = orderResults,
+            AgentVersion = AgentVersion,
+            UpdateState = updateChecker?.CurrentState ?? UpdateState.None,
+            UpdateDeferredReason = updateChecker?.DeferredReason,
         };
     }
 
@@ -590,6 +612,13 @@ public sealed class AgentCheckInService : BackgroundService
             _serviceProvider.GetRequiredService<IExecutionEngine>(),
             _healthProvider,
             _logger);
+    }
+
+    private static string GetAgentVersion()
+    {
+        var assembly = System.Reflection.Assembly.GetEntryAssembly();
+        var version = assembly?.GetName().Version;
+        return version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
     }
 }
 

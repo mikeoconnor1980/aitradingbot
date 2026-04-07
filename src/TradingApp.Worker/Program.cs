@@ -121,6 +121,12 @@ builder.Services.AddHttpClient(AgentCheckInService.HttpClientName, client =>
     client.BaseAddress = new Uri(agentConfig.ControlPlaneUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
 });
+
+// ---------- Auto-update service ----------
+builder.Services.AddSingleton<UpdateCheckerService>();
+builder.Services.AddSingleton<IUpdateNotifier>(sp => sp.GetRequiredService<UpdateCheckerService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<UpdateCheckerService>());
+
 builder.Services.AddHostedService<AgentCheckInService>();
 
 var app = builder.Build();

@@ -20,7 +20,8 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = "Release",
-    [switch]$NoZip
+    [switch]$NoZip,
+    [switch]$NoInnoSetup
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,15 +98,72 @@ $totalSize = (Get-ChildItem -Path $packageDir -Recurse | Measure-Object -Propert
 Write-Host ""
 Write-Host ("  Total: {0:N1} MB" -f ($totalSize / 1MB)) -ForegroundColor Cyan
 
-# --- 5. Create ZIP ---
-if (-not $NoZip) {
-    $version = "0.1.0"
-    # Try to read version from csproj
-    $csprojContent = Get-Content $workerProject -Raw
-    if ($csprojContent -match '<Version>([^<]+)</Version>') {
-        $version = $Matches[1]
+# --- 5. Read version from csproj ---
+$version = "0.1.0"
+$csprojContent = Get-Content $workerProject -Raw
+if ($csprojContent -match '<Version>([^<]+)</Version>') {
+    $version = $Matches[1]
+}
+
+# --- 6. Create Inno Setup installer ---
+if (-not $NoInnoSetup) {
+    $issScript = Join-Path $scriptDir "installer.iss"
+    $iscc = $null
+
+    # Search for ISCC.exe in common locations
+    $isccPaths = @(
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles(x86)}\Inno Setup 5\ISCC.exe"
+    )
+    foreach ($p in $isccPaths) {
+        if (Test-Path $p) { $iscc = $p; break }
     }
 
+    # Also check PATH
+    if (-not $iscc) {
+        $iscc = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+    }
+
+    if ($iscc -and (Test-Path $issScript)) {
+        Write-Host ""
+        Write-Host "Building Inno Setup installer..." -ForegroundColor Green
+
+        & $iscc "/DAppVersion=$version" $issScript
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "Inno Setup compilation failed (exit code $LASTEXITCODE). Skipping installer EXE."
+        } else {
+            $installerName = "TradingApp-ExecutionAgent-v$version-Setup.exe"
+            $installerDir = Join-Path $repoRoot "artifacts\installer"
+            $installerPath = Join-Path $installerDir $installerName
+
+            if (Test-Path $installerPath) {
+                # Generate SHA256 hash file
+                $hash = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+                $hashFile = "$installerPath.sha256"
+                "$hash  $installerName" | Set-Content -Path $hashFile -NoNewline
+
+                $installerSize = (Get-Item $installerPath).Length
+                Write-Host ("Installer created: {0} ({1:N1} MB)" -f $installerName, ($installerSize / 1MB)) -ForegroundColor Green
+                Write-Host "SHA256: $hash" -ForegroundColor White
+            }
+        }
+    } else {
+        if (-not $iscc) {
+            Write-Host ""
+            Write-Host "Inno Setup not found. Skipping installer EXE creation." -ForegroundColor Yellow
+            Write-Host "  Install Inno Setup 6 from: https://jrsoftware.org/isdl.php" -ForegroundColor Gray
+            Write-Host "  Or install via: winget install JRSoftware.InnoSetup" -ForegroundColor Gray
+        }
+        if (-not (Test-Path $issScript)) {
+            Write-Warning "installer.iss not found at $issScript"
+        }
+    }
+}
+
+# --- 7. Create ZIP ---
+if (-not $NoZip) {
     $zipName = "TradingApp-ExecutionAgent-v$version-win-x64.zip"
     $zipPath = Join-Path (Split-Path $packageDir -Parent) $zipName
 
@@ -122,13 +180,16 @@ if (-not $NoZip) {
     Write-Host "Path: $zipPath" -ForegroundColor White
 }
 
-# --- 6. Summary ---
+# --- 8. Summary ---
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Build Complete" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  To install on a client machine:" -ForegroundColor White
+Write-Host "  Option A: Inno Setup installer (recommended for clients)" -ForegroundColor White
+Write-Host "    Double-click the Setup EXE from artifacts/installer/" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  Option B: Manual PowerShell install" -ForegroundColor White
 Write-Host "    1. Copy the package folder (or extract ZIP) to the client" -ForegroundColor Gray
 Write-Host "    2. Open PowerShell as Administrator" -ForegroundColor Gray
 Write-Host "    3. Run: .\install.ps1" -ForegroundColor Gray
