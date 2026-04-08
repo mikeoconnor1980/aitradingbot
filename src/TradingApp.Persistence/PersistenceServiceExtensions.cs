@@ -31,6 +31,8 @@ public static class PersistenceServiceExtensions
         services.AddScoped<ILiveFillRepository, LiveFillRepository>();
         services.AddScoped<IGridCycleRepository, GridCycleRepository>();
         services.AddScoped<ILlmContextSnapshotRepository, LlmContextSnapshotRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserWalletAddressRepository, UserWalletAddressRepository>();
 
         return services;
     }

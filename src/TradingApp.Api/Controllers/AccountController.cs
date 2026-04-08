@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Models;
@@ -9,6 +10,7 @@ namespace TradingApp.Api.Controllers;
 [ApiController]
 [Route("api/account")]
 [Produces("application/json")]
+[Authorize]
 public sealed class AccountController : ControllerBase
 {
     private readonly IHyperliquidAccountService _accountService;

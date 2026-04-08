@@ -7,6 +7,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { map } from "rxjs";
+import { AuthService } from "../../core/services/auth.service";
 import { HealthService } from "../../core/services/health.service";
 import { WalletService } from "../../core/services/wallet.service";
 import { environment } from "../../../environments/environment";
@@ -19,15 +20,19 @@ import { environment } from "../../../environments/environment";
   styleUrl: "./profile-page.component.scss"
 })
 export class ProfilePageComponent implements OnInit {
+  private readonly _authService = inject(AuthService);
   private readonly _healthService = inject(HealthService);
   private readonly _walletService = inject(WalletService);
 
-  public readonly user = {
-    displayName: "Trader",
-    email: "trader@example.com",
-    membership: "Pro",
-    joinedDate: "January 2026"
-  };
+  public get user() {
+    const current = this._authService.currentUser;
+    return {
+      displayName: current?.displayName ?? "Trader",
+      email: current?.email ?? "",
+      membership: "Pro",
+      joinedDate: "—"
+    };
+  }
 
   public readonly wallet$ = this._healthService.health$.pipe(
     map((h) => h ? { address: h.walletAddress, network: h.network } : null)

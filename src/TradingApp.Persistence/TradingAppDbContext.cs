@@ -25,6 +25,8 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<LiveFill> LiveFills => Set<LiveFill>();
     public DbSet<GridCycle> GridCycles => Set<GridCycle>();
     public DbSet<LlmContextSnapshot> LlmContextSnapshots => Set<LlmContextSnapshot>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -673,6 +675,72 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(e => e.GeneratedAtUtc)
                 .HasDatabaseName("IX_LlmContextSnapshots_GeneratedAtUtc");
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(256)
+                .IsRequired();
+
+            entity.Property(e => e.DisplayName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.PasswordHash)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .IsRequired();
+
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Email");
+        });
+
+        modelBuilder.Entity<UserWalletAddress>(entity =>
+        {
+            entity.ToTable("UserWalletAddresses");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.Exchange)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.WalletAddress)
+                .HasMaxLength(42)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .IsRequired();
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UserId, e.IsActive })
+                .HasDatabaseName("IX_UserWalletAddresses_UserId_IsActive");
         });
     }
 }

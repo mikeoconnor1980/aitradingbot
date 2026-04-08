@@ -1,15 +1,19 @@
 using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Polly;
 using TradingApp.AI;
 using TradingApp.Api.Hubs;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Infrastructure.Filters;
 using TradingApp.Api.Services;
+using TradingApp.Application.Abstractions.Auth;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Agent.Services;
@@ -43,8 +47,46 @@ builder.Services.AddMediatR(cfg =>
 
 
 
-// Identity stub (replace with real auth service in production)
-builder.Services.AddSingleton<IdentityService>();
+// Identity — resolved from JWT claims via HttpContext
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IdentityService>();
+
+// JWT Authentication
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+    ?? new JwtOptions();
+
+// Generate a dev key if none is configured
+if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey))
+{
+    jwtOptions.SecretKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+}
+
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.SecretKey));
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = key,
+            ValidateIssuer = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtOptions.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 // Bind Hyperliquid configuration
 builder.Services.AddOptions<HyperliquidOptions>()
@@ -240,6 +282,21 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+    options.AddPolicy("auth", httpContext =>
+    {
+        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0,
+            });
+    });
+
     options.AddPolicy("interpret-strategy", httpContext =>
     {
         var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString();
@@ -365,6 +422,8 @@ else
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseForwardedHeaders();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");

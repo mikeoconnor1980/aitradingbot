@@ -1,0 +1,86 @@
+<section class="auth-page">
+  <mat-card class="auth-page__card">
+    <mat-card-header>
+      <mat-card-title>Create Account</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-page__form">
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput formControlName="email" type="email" autocomplete="email" />
+          @if (form.controls['email'].hasError('required')) {
+            <mat-error>Email is required</mat-error>
+          }
+          @if (form.controls['email'].hasError('email')) {
+            <mat-error>Enter a valid email</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Display Name</mat-label>
+          <input matInput formControlName="displayName" autocomplete="name" />
+          @if (form.controls['displayName'].hasError('required')) {
+            <mat-error>Display name is required</mat-error>
+          }
+          @if (form.controls['displayName'].hasError('minlength')) {
+            <mat-error>At least 2 characters</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            formControlName="password"
+            [type]="hidePassword() ? 'password' : 'text'"
+            autocomplete="new-password" />
+          <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())">
+            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (form.controls['password'].hasError('required')) {
+            <mat-error>Password is required</mat-error>
+          } @else if (form.controls['password'].hasError('minlength')) {
+            <mat-error>At least 8 characters</mat-error>
+          } @else if (form.controls['password'].hasError('missingUpper')) {
+            <mat-error>Needs at least one uppercase letter</mat-error>
+          } @else if (form.controls['password'].hasError('missingDigit')) {
+            <mat-error>Needs at least one number</mat-error>
+          } @else if (form.controls['password'].hasError('missingSpecial')) {
+            <mat-error>Needs at least one special character</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Confirm Password</mat-label>
+          <input
+            matInput
+            formControlName="confirmPassword"
+            [type]="hidePassword() ? 'password' : 'text'"
+            autocomplete="new-password" />
+          @if (form.controls['confirmPassword'].hasError('required')) {
+            <mat-error>Confirm your password</mat-error>
+          }
+          @if (form.hasError('passwordMismatch')) {
+            <mat-error>Passwords do not match</mat-error>
+          }
+        </mat-form-field>
+
+        @if (errorMessage(); as error) {
+          <p class="auth-page__error">{{ error }}</p>
+        }
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="form.invalid || submitting()"
+          class="auth-page__submit">
+          {{ submitting() ? 'Creating account...' : 'Create Account' }}
+        </button>
+      </form>
+    </mat-card-content>
+    <mat-card-actions align="end">
+      <span>Already have an account? <a routerLink="/login">Sign in</a></span>
+    </mat-card-actions>
+  </mat-card>
+</section>

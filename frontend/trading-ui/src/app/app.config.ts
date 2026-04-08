@@ -3,6 +3,7 @@ import { ApplicationConfig, provideZoneChangeDetection } from "@angular/core";
 import { DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE, NativeDateAdapter } from "@angular/material/core";
 import { provideAnimationsAsync } from "@angular/platform-browser/animations/async";
 import { provideRouter } from "@angular/router";
+import { authInterceptor } from "./core/interceptors/auth.interceptor";
 import { errorInterceptor } from "./core/interceptors/error.interceptor";
 import { routes } from "./app.routes";
 
@@ -21,7 +22,7 @@ const APP_DATE_FORMATS = {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideHttpClient(withInterceptors([errorInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
     provideAnimationsAsync(),
     { provide: MAT_DATE_LOCALE, useValue: "en-GB" },
     { provide: DateAdapter, useClass: NativeDateAdapter },

@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Application.Health.Models;
@@ -7,6 +8,7 @@ using TradingApp.Application.Health.Queries;
 namespace TradingApp.Api.Controllers;
 
 [Route("api/health")]
+[AllowAnonymous]
 public sealed class HealthController : ApiController
 {
     public HealthController(IMediator mediator, IdentityService identityService)

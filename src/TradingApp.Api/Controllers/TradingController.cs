@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Agent.Services;
@@ -11,6 +12,7 @@ namespace TradingApp.Api.Controllers;
 [ApiController]
 [Route("api/trading")]
 [Produces("application/json")]
+[Authorize]
 public sealed class TradingController : ControllerBase
 {
     private readonly AgentCommandStore _store;

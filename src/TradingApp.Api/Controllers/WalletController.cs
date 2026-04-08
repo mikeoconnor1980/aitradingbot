@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Application.Abstractions.Services;
 
@@ -6,6 +7,7 @@ namespace TradingApp.Api.Controllers;
 [ApiController]
 [Route("api/wallet")]
 [Produces("application/json")]
+[Authorize]
 public sealed class WalletController : ControllerBase
 {
     private readonly ISignerProvider _signerProvider;

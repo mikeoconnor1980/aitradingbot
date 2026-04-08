@@ -46,6 +46,7 @@
     <button
       type="button"
       class="sidebar__link sidebar__link--logout"
+      (click)="onLogout()"
       [matTooltip]="expanded ? '' : 'Log out'"
       matTooltipPosition="right">
       <mat-icon class="sidebar__icon">logout</mat-icon>
