@@ -1,4 +1,5 @@
-<app-sidebar-nav #sidebar />
+@if (isAuthenticated) {
+<app-sidebar-nav #sidebar (logoutClicked)="onLogout()" />
 
 <main class="app-shell" [class.app-shell--sidebar-collapsed]="!sidebar.expanded">
   <header class="app-shell__header">
@@ -14,6 +15,10 @@
         <span class="app-shell__status-dot"></span>
         <span class="app-shell__status-label">{{ statusLabel }}</span>
       </a>
+
+      @if (currentUser) {
+        <span class="app-shell__user-name">{{ currentUser.displayName }}</span>
+      }
 
       <a
         mat-icon-button
@@ -44,3 +49,6 @@
 </main>
 
 <app-help-panel />
+} @else {
+  <router-outlet />
+}

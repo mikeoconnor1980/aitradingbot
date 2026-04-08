@@ -9,6 +9,8 @@ import { HelpPanelComponent } from "./core/components/help-panel.component";
 import { SidebarNavComponent } from "./core/components/sidebar-nav/sidebar-nav.component";
 import { ConnectionStatus } from "./core/models/connection-status.model";
 import { HealthResponse } from "./core/models/health-response.model";
+import { AuthUser } from "./core/models/auth.model";
+import { AuthService } from "./core/services/auth.service";
 import { HealthService } from "./core/services/health.service";
 import { HelpService } from "./core/services/help.service";
 import { SignalRService } from "./core/services/signalr.service";
@@ -24,9 +26,12 @@ export class AppComponent implements OnInit {
   private readonly _signalRService = inject(SignalRService);
   private readonly _healthService = inject(HealthService);
   private readonly _helpService = inject(HelpService);
+  private readonly _authService = inject(AuthService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public title = "TradePilot";
+  public currentUser: AuthUser | null = null;
+  public isAuthenticated = false;
 
   public connectionStatus: ConnectionStatus = {
     source: "SignalR",
@@ -47,6 +52,18 @@ export class AppComponent implements OnInit {
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((health: HealthResponse | null) => {
         this.health = health;
+      });
+
+    this._authService.user$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((user) => {
+        this.currentUser = user;
+      });
+
+    this._authService.isAuthenticated$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((auth) => {
+        this.isAuthenticated = auth;
       });
   }
 
@@ -82,5 +99,9 @@ export class AppComponent implements OnInit {
 
   public onToggleHelp(): void {
     this._helpService.toggle();
+  }
+
+  public onLogout(): void {
+    this._authService.logout();
   }
 }

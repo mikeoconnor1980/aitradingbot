@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using TradingApp.Application.Abstractions.Exceptions;
@@ -12,6 +13,7 @@ namespace TradingApp.Api.Controllers;
 [ApiController]
 [Route("api/orders")]
 [Produces("application/json")]
+[Authorize]
 public sealed class OrdersController : ControllerBase
 {
     private readonly IHyperliquidOrderService _orderService;

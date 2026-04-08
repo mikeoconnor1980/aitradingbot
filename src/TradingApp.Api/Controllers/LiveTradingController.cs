@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Application.Abstractions.Repositories;
 
@@ -6,6 +7,7 @@ namespace TradingApp.Api.Controllers;
 [ApiController]
 [Route("api/live-trading")]
 [Produces("application/json")]
+[Authorize]
 public sealed class LiveTradingController : ControllerBase
 {
     private readonly ILiveFillRepository _fillRepository;

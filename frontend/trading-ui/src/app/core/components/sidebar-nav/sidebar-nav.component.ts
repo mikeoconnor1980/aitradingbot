@@ -1,4 +1,4 @@
-import { Component } from "@angular/core";
+import { Component, output } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive } from "@angular/router";
@@ -32,7 +32,13 @@ export class SidebarNavComponent {
     { route: "/order-entry", icon: "swap_vert", label: "Order Entry" }
   ];
 
+  public readonly logoutClicked = output();
+
   public onToggle(): void {
     this.expanded = !this.expanded;
+  }
+
+  public onLogout(): void {
+    this.logoutClicked.emit();
   }
 }
