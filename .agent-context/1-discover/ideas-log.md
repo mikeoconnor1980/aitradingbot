@@ -7,6 +7,7 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
+| [ ] | Trade journalling - want to track trades made, whether won or lost, with key metrics, like profit/loss, strategy employed, entry, exit, reason for entry and exit etc - to be defined | 9 Apr 2026 | — |
 | [ ] | Scenario scanner - looking for specific situations across multiple assets and apllying given strategy, for example find RSI bullish divergence when price above EMA, or pullback to EMA in uptrend etc, find examples and hit trades | 9 Apr 2026 | — |
 | [ ] | Tokenised stock trading - can trade large cap US stocks, long/short and with leverage - strategies could equally apply to these and broadens appeal outside of crypto | 9 Apr 2026 | — |
 | [ ] | Tokenised stock trading - Dividend harvesting - scan stocks for ex-div dates, enter long trades if metrics support, harvest divs and possibly sell when able | 9 Apr 2026 | — |
