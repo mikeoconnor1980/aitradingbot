@@ -7,6 +7,10 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
+| [ ] | Scenario scanner - looking for specific situations across multiple assets and apllying given strategy, for example find RSI bullish divergence when price above EMA, or pullback to EMA in uptrend etc, find examples and hit trades | 9 Apr 2026 | — |
+| [ ] | Tokenised stock trading - can trade large cap US stocks, long/short and with leverage - strategies could equally apply to these and broadens appeal outside of crypto | 9 Apr 2026 | — |
+| [ ] | Tokenised stock trading - Dividend harvesting - scan stocks for ex-div dates, enter long trades if metrics support, harvest divs and possibly sell when able | 9 Apr 2026 | — |
+| [ ] | Strategy trainer — explain what is required in natural language, upload screenshots of charts alongside, have Ai analyse what metrics are needed, determine what calcs are needed, if a new set not known then create and allow config, set out the trading logic | 9 Apr 2026 | — |
 | [ ] | Strategy selection — multiple types available for backtesting (Recovery Grid, DCA, Trend, etc.) | 30 Mar 2026 | — |
 | [ ] | Save and name strategies per user account | 30 Mar 2026 | — |
 | [ ] | Execute a saved strategy (live trading) | 30 Mar 2026 | — |
@@ -20,6 +24,7 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
+| [ ] | Develop risk management functionality | 9 Apr 2026 | — |
 | [ ] | Allow increase grid size vertically in market data tab | 3 Apr 2026 | — |
 | [ ] | Timeframe box on market data tab should be at top of price chart - i.e. raise higher up page | 3 Apr 2026 | — |
 | [ ] | Good to have a checkbox to show/hide trade entry/exit labels on chart (can clutter) | 3 Apr 2026 | — |
