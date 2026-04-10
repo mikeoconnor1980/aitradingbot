@@ -53,4 +53,3 @@ resource database 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
 }
 
 output serverFqdn string = sqlServer.properties.fullyQualifiedDomainName
-output connectionString string = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Database=${databaseName};User ID=${adminLogin};Password=${adminPassword};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'

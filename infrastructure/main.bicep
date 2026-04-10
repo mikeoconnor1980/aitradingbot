@@ -75,7 +75,7 @@ module containerApp 'modules/container-app.bicep' = {
     location: location
     environmentId: containerAppEnv.outputs.environmentId
     containerImage: containerImage
-    sqlConnectionString: sql.outputs.connectionString
+    sqlConnectionString: 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${appName}-db;User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
     signalRConnectionString: signalr.outputs.connectionString
     jwtSecretKey: jwtSecretKey
     llmApiKey: llmApiKey
@@ -87,7 +87,7 @@ module staticWebApp 'modules/static-web-app.bicep' = {
   name: 'static-web-app'
   params: {
     name: '${appName}-${environmentName}-ui'
-    location: location
+    location: 'westeurope' // SWA not available in uksouth
   }
 }
 
