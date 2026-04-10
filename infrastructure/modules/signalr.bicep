@@ -31,4 +31,6 @@ resource signalr 'Microsoft.SignalRService/signalR@2024-03-01' = {
 }
 
 output hostName string = signalr.properties.hostName
-output connectionString string = listKeys(signalr.id, '2024-03-01').primaryConnectionString
+
+#disable-next-line outputs-should-not-contain-secrets
+output connectionString string = signalr.listKeys().primaryConnectionString
