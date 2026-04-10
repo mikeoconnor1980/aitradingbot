@@ -51,7 +51,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
+      image-tag: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -141,7 +141,7 @@ jobs:
             az containerapp update \
               --name tradepilot-dev-api \
               --resource-group rg-tradepilot-dev \
-              --image ${{ env.API_IMAGE }}:${{ github.sha }}
+              --image ${{ env.API_IMAGE }}:${{ needs.build-api-image.outputs.image-tag }}
 
   deploy-frontend:
     needs: build-frontend
