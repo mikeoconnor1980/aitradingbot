@@ -1,4 +1,4 @@
-namespace TradingApp.Api.Models;
+namespace TradingApp.Application.MarketData.Models;
 
 public sealed class OpenOrderDto
 {

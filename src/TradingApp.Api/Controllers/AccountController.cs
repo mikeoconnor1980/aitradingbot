@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradingApp.Api.Infrastructure;
-using TradingApp.Api.Models;
-using TradingApp.Api.Services;
+using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Api.Controllers;

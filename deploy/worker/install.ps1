@@ -121,6 +121,56 @@ else {
     Write-Host "Existing private key found in environment. Keeping current value." -ForegroundColor Green
 }
 
+# --- 4b. Configure Control Plane URL ---
+$cpUrlVarName = "ControlPlane__BaseUrl"
+$existingCpUrl = [Environment]::GetEnvironmentVariable($cpUrlVarName, 'Machine')
+
+if ([string]::IsNullOrWhiteSpace($existingCpUrl)) {
+    Write-Host ""
+    Write-Host "--- Control Plane Configuration ---" -ForegroundColor Cyan
+    Write-Host "The Control Plane URL is the address of the deployed API." -ForegroundColor White
+    Write-Host "Example: https://tradingapp-prod-api.niceocean-abc123.uksouth.azurecontainerapps.io" -ForegroundColor Gray
+    Write-Host ""
+
+    $cpUrl = Read-Host "Enter the Control Plane URL (or press Enter to skip)"
+
+    if (-not [string]::IsNullOrWhiteSpace($cpUrl)) {
+        [Environment]::SetEnvironmentVariable($cpUrlVarName, $cpUrl, 'Machine')
+        Write-Host "Control Plane URL stored." -ForegroundColor Green
+    }
+    else {
+        Write-Warning "No Control Plane URL provided. Set $cpUrlVarName before the agent can sync with the cloud."
+    }
+}
+else {
+    Write-Host "Existing Control Plane URL found. Keeping: $existingCpUrl" -ForegroundColor Green
+}
+
+# --- 4c. Configure Azure SignalR connection string ---
+$signalRVarName = "Azure__SignalR__ConnectionString"
+$existingSignalR = [Environment]::GetEnvironmentVariable($signalRVarName, 'Machine')
+
+if ([string]::IsNullOrWhiteSpace($existingSignalR)) {
+    Write-Host ""
+    Write-Host "--- Azure SignalR Configuration ---" -ForegroundColor Cyan
+    Write-Host "The Azure SignalR connection string enables real-time streaming to the UI." -ForegroundColor White
+    Write-Host "Get it from Azure Portal > SignalR Service > Keys." -ForegroundColor Gray
+    Write-Host ""
+
+    $signalRConn = Read-Host "Enter the Azure SignalR connection string (or press Enter to skip)"
+
+    if (-not [string]::IsNullOrWhiteSpace($signalRConn)) {
+        [Environment]::SetEnvironmentVariable($signalRVarName, $signalRConn, 'Machine')
+        Write-Host "Azure SignalR connection string stored." -ForegroundColor Green
+    }
+    else {
+        Write-Warning "No SignalR connection string provided. Streaming to UI will not work until $signalRVarName is set."
+    }
+}
+else {
+    Write-Host "Existing Azure SignalR connection string found. Keeping current value." -ForegroundColor Green
+}
+
 # --- 5. Register Windows Service ---
 $exePath = Join-Path $InstallDir $exeName
 
@@ -173,6 +223,11 @@ Write-Host "  Install Dir : $InstallDir" -ForegroundColor White
 Write-Host "  Service Name: $ServiceName" -ForegroundColor White
 Write-Host "  Data Dir    : $dataDir" -ForegroundColor White
 Write-Host "  Logs Dir    : $logsDir" -ForegroundColor White
+Write-Host ""
+Write-Host "  Environment variables (Machine scope):" -ForegroundColor White
+Write-Host "    Hyperliquid__PrivateKey          : $(if ([Environment]::GetEnvironmentVariable('Hyperliquid__PrivateKey', 'Machine')) { '(set)' } else { '(not set)' })" -ForegroundColor Gray
+Write-Host "    ControlPlane__BaseUrl             : $(if ([Environment]::GetEnvironmentVariable('ControlPlane__BaseUrl', 'Machine')) { '(set)' } else { '(not set)' })" -ForegroundColor Gray
+Write-Host "    Azure__SignalR__ConnectionString   : $(if ([Environment]::GetEnvironmentVariable('Azure__SignalR__ConnectionString', 'Machine')) { '(set)' } else { '(not set)' })" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Config file : $InstallDir\appsettings.json" -ForegroundColor White
 Write-Host "  Edit strategy settings in appsettings.json, then restart:" -ForegroundColor Gray

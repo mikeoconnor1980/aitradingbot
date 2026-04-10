@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
-using TradingApp.Api.Models;
+using Microsoft.Extensions.Logging;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 using TradingApp.Infrastructure.Hyperliquid;
 
-namespace TradingApp.Api.Services;
+namespace TradingApp.Infrastructure.Services;
 
 public sealed class HyperliquidAccountService : IHyperliquidAccountService
 {

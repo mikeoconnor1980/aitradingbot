@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="MessagePack" Version="3.1.4" />
+    <PackageReference Include="Microsoft.Azure.SignalR.Management" Version="1.25.0" />
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="8.0.12" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.14.0" />
     <PackageReference Include="Nethereum.ABI" Version="6.0.4" />
