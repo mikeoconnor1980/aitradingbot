@@ -51,7 +51,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         { name: 'sql-connection-string', value: sqlConnectionString }
         { name: 'signalr-connection-string', value: signalRConnectionString }
         { name: 'jwt-secret-key', value: jwtSecretKey }
-        { name: 'llm-api-key', value: llmApiKey }
+        { name: 'llm-api-key', value: empty(llmApiKey) ? 'placeholder' : llmApiKey }
       ]
     }
     template: {
@@ -71,26 +71,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'LlmContext__ApiKey', secretRef: 'llm-api-key' }
             { name: 'LlmReview__ApiKey', secretRef: 'llm-api-key' }
             { name: 'Cors__AllowedOrigins__0', value: corsAllowedOrigin }
-          ]
-          probes: [
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/healthz'
-                port: 8080
-              }
-              initialDelaySeconds: 15
-              periodSeconds: 30
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/healthz'
-                port: 8080
-              }
-              initialDelaySeconds: 5
-              periodSeconds: 10
-            }
           ]
         }
       ]
