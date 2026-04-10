@@ -6,6 +6,7 @@ using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.MarketData.Models;
 using TradingApp.Infrastructure.Hyperliquid.Models;
 
 namespace TradingApp.Api.Tests.Services;

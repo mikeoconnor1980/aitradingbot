@@ -17,8 +17,15 @@ public static class PersistenceServiceExtensions
             ?? throw new InvalidOperationException(
                 "Connection string 'DefaultConnection' is not configured. Add it to appsettings.json.");
 
+        var useSqlServer = IsSqlServerConnectionString(connectionString);
+
         services.AddDbContext<TradingAppDbContext>(options =>
-            options.UseSqlite(connectionString));
+        {
+            if (useSqlServer)
+                options.UseSqlServer(connectionString);
+            else
+                options.UseSqlite(connectionString);
+        });
 
         services.AddScoped<IBacktestRunRepository, BacktestRunRepository>();
         services.AddScoped<IOptimizationRunRepository, OptimizationRunRepository>();
@@ -43,7 +50,8 @@ public static class PersistenceServiceExtensions
         var db = scope.ServiceProvider.GetRequiredService<TradingAppDbContext>();
         var connectionString = db.Database.GetConnectionString();
 
-        if (connectionString is not null)
+        // SQLite: ensure the data directory exists before migrating
+        if (connectionString is not null && !IsSqlServerConnectionString(connectionString))
         {
             var csb = new SqliteConnectionStringBuilder(connectionString);
             var directory = Path.GetDirectoryName(Path.GetFullPath(csb.DataSource));
@@ -55,5 +63,11 @@ public static class PersistenceServiceExtensions
         }
 
         await db.Database.MigrateAsync();
+    }
+
+    private static bool IsSqlServerConnectionString(string connectionString)
+    {
+        return connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
+            || connectionString.Contains("Data Source=tcp:", StringComparison.OrdinalIgnoreCase);
     }
 }

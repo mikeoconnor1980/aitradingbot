@@ -1,0 +1,68 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment (dev/prod)'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_RESOURCE_GROUP: rg-tradepilot-${{ github.event.inputs.environment }}
+
+jobs:
+  deploy-infra:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create Resource Group
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az group create --name ${{ env.AZURE_RESOURCE_GROUP }} --location uksouth
+
+      - name: Deploy Bicep
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
+          template: infrastructure/main.bicep
+          parameters: >
+            environmentName=${{ github.event.inputs.environment }}
+            location=uksouth
+            appName=tradepilot
+            containerImage=mcr.microsoft.com/azuredocs/containerapps-helloworld:latest
+            sqlAdminLogin=${{ secrets.SQL_ADMIN_LOGIN }}
+            sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+            jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
+            llmApiKey=${{ secrets.LLM_API_KEY }}
+            corsAllowedOrigin=${{ secrets.SWA_URL }}
+          failOnStdErr: false
+
+      - name: Show Outputs
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "Deployment outputs:"
+            az deployment group show \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --name main \
+              --query properties.outputs \
+              --output table

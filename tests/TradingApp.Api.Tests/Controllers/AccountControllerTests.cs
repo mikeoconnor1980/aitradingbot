@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TradingApp.Api.Models;
-using TradingApp.Api.Services;
+using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Api.Tests.Controllers;
