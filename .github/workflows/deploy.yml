@@ -113,7 +113,7 @@ jobs:
   deploy-api:
     needs: build-api-image
     runs-on: ubuntu-latest
-    environment: production
+    environment: dev
     permissions:
       id-token: write
       contents: read
@@ -130,14 +130,14 @@ jobs:
         with:
           inlineScript: |
             az containerapp update \
-              --name tradepilot-prod-api \
-              --resource-group rg-tradepilot-prod \
+              --name tradepilot-dev-api \
+              --resource-group rg-tradepilot-dev \
               --image ${{ env.API_IMAGE }}:${{ github.sha }}
 
   deploy-frontend:
     needs: build-frontend
     runs-on: ubuntu-latest
-    environment: production
+    environment: dev
     permissions:
       id-token: write
       contents: read
