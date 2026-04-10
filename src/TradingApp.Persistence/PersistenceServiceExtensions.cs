@@ -50,9 +50,10 @@ public static class PersistenceServiceExtensions
         var db = scope.ServiceProvider.GetRequiredService<TradingAppDbContext>();
         var connectionString = db.Database.GetConnectionString();
 
-        // SQLite: ensure the data directory exists before migrating
         if (connectionString is not null && !IsSqlServerConnectionString(connectionString))
         {
+            // SQLite (local dev): ensure the data directory exists, then use EnsureCreated
+            // because migrations are generated for SQL Server
             var csb = new SqliteConnectionStringBuilder(connectionString);
             var directory = Path.GetDirectoryName(Path.GetFullPath(csb.DataSource));
 
@@ -60,9 +61,14 @@ public static class PersistenceServiceExtensions
             {
                 Directory.CreateDirectory(directory);
             }
-        }
 
-        await db.Database.MigrateAsync();
+            await db.Database.EnsureCreatedAsync();
+        }
+        else
+        {
+            // SQL Server (production): apply migrations
+            await db.Database.MigrateAsync();
+        }
     }
 
     private static bool IsSqlServerConnectionString(string connectionString)

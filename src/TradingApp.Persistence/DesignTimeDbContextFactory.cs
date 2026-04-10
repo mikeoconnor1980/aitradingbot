@@ -8,7 +8,7 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<Tra
     public TradingAppDbContext CreateDbContext(string[] args)
     {
         var options = new DbContextOptionsBuilder<TradingAppDbContext>()
-            .UseSqlite("Data Source=Data/tradingapp.db")
+            .UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=TradingApp_Design;Trusted_Connection=True;")
             .Options;
 
         return new TradingAppDbContext(options);
