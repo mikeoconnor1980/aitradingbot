@@ -10,8 +10,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using TradingApp.Api.Models;
 using TradingApp.Api.Tests.Infrastructure;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
+using TradingApp.Domain.Entities;
 
 namespace TradingApp.Api.Tests.Controllers;
 
@@ -20,8 +22,11 @@ public sealed class AccountControllerTests
 {
     // Well-known Ethereum documentation example key — not a real credential
     private const string TestPrivateKey = "0x4c0883a69102937d6231471b5dbb6204fe512961708279f2a4c5890a0c1f9b2e";
+    private static readonly Guid TestUserId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    private const string TestWalletAddress = "0xb63a3948477254cc17E0fb444050B9E161FCcFA3";
 
     private Mock<IHyperliquidAccountService> _accountServiceMock = null!;
+    private Mock<IUserWalletAddressRepository> _walletRepoMock = null!;
     private WebApplicationFactory<Program> _factory = null!;
     private HttpClient _client = null!;
 
@@ -29,6 +34,12 @@ public sealed class AccountControllerTests
     public void Setup()
     {
         _accountServiceMock = new Mock<IHyperliquidAccountService>();
+        _walletRepoMock = new Mock<IUserWalletAddressRepository>();
+
+        // Return a wallet address for the test user
+        _walletRepoMock
+            .Setup(r => r.GetActiveByUserIdAsync(TestUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserWalletAddress.Create(TestUserId, TestWalletAddress));
 
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -49,12 +60,14 @@ public sealed class AccountControllerTests
                 {
                     services.RemoveAll<IHyperliquidAccountService>();
                     services.AddSingleton(_accountServiceMock.Object);
+                    services.RemoveAll<IUserWalletAddressRepository>();
+                    services.AddSingleton(_walletRepoMock.Object);
                 });
             });
 
         _client = _factory.CreateClient();
         _client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", BaseControllerTests.GenerateTestToken());
+            new AuthenticationHeaderValue("Bearer", GenerateTestTokenWithGuid());
     }
 
     [TestCleanup]
@@ -336,5 +349,25 @@ public sealed class AccountControllerTests
             ClosedPnl = closedPnl,
             OrderId = orderId,
         };
+    }
+
+    private static string GenerateTestTokenWithGuid()
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(BaseControllerTests.TestJwtSecretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: "TradingApp",
+            audience: "TradingApp",
+            claims: new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, TestUserId.ToString()),
+                new Claim(ClaimTypes.Email, "test@tradepilot.dev"),
+                new Claim(ClaimTypes.Name, "Test User"),
+                new Claim("token_type", "access"),
+            },
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
