@@ -239,6 +239,8 @@ builder.Services.AddHostedService<MacroCalendarSyncWorker>();
 
 builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<TradingAppDbContext>();
 
 // SignalR — uses Azure SignalR Service when connection string is configured
 var signalRConnectionString = builder.Configuration["Azure:SignalR:ConnectionString"];
@@ -433,6 +435,7 @@ app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");
+app.MapHealthChecks("/healthz");
 
 app.Run();
 
