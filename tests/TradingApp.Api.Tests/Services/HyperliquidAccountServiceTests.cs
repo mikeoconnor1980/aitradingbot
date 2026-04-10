@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using TradingApp.Api.Services;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Infrastructure.Services;
 
 namespace TradingApp.Api.Tests.Services;
 

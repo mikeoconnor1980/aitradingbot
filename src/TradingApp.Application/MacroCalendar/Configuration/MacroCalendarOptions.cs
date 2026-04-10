@@ -21,10 +21,10 @@ public sealed class MacroCalendarOptions
     public int NearEventWindowMinutes { get; set; } = 10;
 
     [Range(30, 1440)]
-    public int FullSyncIntervalMinutes { get; set; } = 360;
+    public int FullSyncIntervalMinutes { get; set; } = 720;
 
-    [Range(1, 60)]
-    public int IncrementalSyncIntervalMinutes { get; set; } = 5;
+    [Range(1, 1440)]
+    public int IncrementalSyncIntervalMinutes { get; set; } = 720;
 
     [Range(10, 300)]
     public int NearEventSyncIntervalSeconds { get; set; } = 60;

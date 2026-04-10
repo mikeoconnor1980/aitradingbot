@@ -1,7 +1,6 @@
-using TradingApp.Api.Models;
 using TradingApp.Application.MarketData.Models;
 
-namespace TradingApp.Api.Services;
+namespace TradingApp.Application.Abstractions.Services;
 
 public interface IHyperliquidAccountService
 {

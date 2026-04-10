@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Microsoft.Azure.SignalR.Management;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
@@ -166,6 +167,25 @@ builder.Services.AddSingleton<IUpdateNotifier>(sp => sp.GetRequiredService<Updat
 builder.Services.AddHostedService(sp => sp.GetRequiredService<UpdateCheckerService>());
 
 builder.Services.AddHostedService<AgentCheckInService>();
+
+// ---------- Azure SignalR publisher (pushes real-time data to browser via Azure SignalR Service) ----------
+var signalRConnectionString = builder.Configuration["Azure:SignalR:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(signalRConnectionString))
+{
+    var serviceManager = new ServiceManagerBuilder()
+        .WithOptions(option =>
+        {
+            option.ConnectionString = signalRConnectionString;
+            option.ServiceTransportType = ServiceTransportType.Persistent;
+        })
+        .BuildServiceManager();
+
+    builder.Services.AddSingleton(serviceManager);
+    builder.Services.AddSingleton<ISignalRPublisher, AzureSignalRPublisher>();
+    builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
+    builder.Services.AddHostedService<MarketDataStreamService>();
+    builder.Services.AddHostedService<UserEventStreamService>();
+}
 
 var app = builder.Build();
 

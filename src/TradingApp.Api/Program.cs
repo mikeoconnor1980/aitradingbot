@@ -30,10 +30,8 @@ using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Entities;
-using TradingApp.Api.Services;
 using TradingApp.Infrastructure.Providers.MacroCalendar;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
@@ -156,7 +154,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5)); // Per-attempt timeout
 });
 
-builder.Services.AddScoped<IHyperliquidAccountService, HyperliquidAccountService>();
+builder.Services.AddScoped<IHyperliquidAccountService, TradingApp.Infrastructure.Services.HyperliquidAccountService>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
@@ -242,18 +240,26 @@ builder.Services.AddHostedService<MacroCalendarSyncWorker>();
 builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
 
-// SignalR
-builder.Services.AddSignalR();
+// SignalR — uses Azure SignalR Service when connection string is configured
+var signalRConnectionString = builder.Configuration["Azure:SignalR:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(signalRConnectionString))
+{
+    builder.Services.AddSignalR().AddAzureSignalR(signalRConnectionString);
+}
+else
+{
+    builder.Services.AddSignalR();
+}
+builder.Services.AddSingleton<ISignalRPublisher, HubContextSignalRPublisher>();
 
-// WebSocket client (singleton shared market data connection)
-builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketClient>();
-
-// Background service for market data streaming
-builder.Services.AddHostedService<MarketDataStreamService>();
-
-// User event WebSocket — separate connection for per-wallet subscriptions
-builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
-builder.Services.AddHostedService<UserEventStreamService>();
+// WebSocket client (singleton shared market data connection) — only needed when streaming locally (no Azure SignalR)
+if (string.IsNullOrWhiteSpace(signalRConnectionString))
+{
+    builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketClient>();
+    builder.Services.AddHostedService<MarketDataStreamService>();
+    builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
+    builder.Services.AddHostedService<UserEventStreamService>();
+}
 
 // CORS
 var allowedOrigins = builder.Configuration
