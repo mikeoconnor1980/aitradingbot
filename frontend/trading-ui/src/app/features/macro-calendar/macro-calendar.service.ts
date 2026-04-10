@@ -1,12 +1,13 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
+import { environment } from "../../../environments/environment";
 import { MacroEventListItem, MacroSyncResult } from "./models/macro-event.model";
 
 @Injectable({ providedIn: "root" })
 export class MacroCalendarService {
   private readonly _http = inject(HttpClient);
-  private readonly _basePath = "/api/macro-calendar";
+  private readonly _basePath = `${environment.apiBaseUrl}/macro-calendar`;
 
   public getUpcomingEvents(fromUtcMs: number, toUtcMs: number, currency?: string): Observable<MacroEventListItem[]> {
     let params = new HttpParams()

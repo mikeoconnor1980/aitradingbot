@@ -1,6 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { BehaviorSubject, Observable, catchError, map, of, tap } from "rxjs";
+import { environment } from "../../../environments/environment";
 import { PlaceOrderRequest, PlaceOrderResponse } from "../models/place-order.model";
 import { PlaceTriggerOrderRequest, PlaceTriggerOrderResponse } from "../models/trigger-order.model";
 
@@ -39,6 +40,7 @@ export interface PendingCommand {
 @Injectable({ providedIn: "root" })
 export class AgentService {
   private readonly _http = inject(HttpClient);
+  private readonly _baseUrl = environment.apiBaseUrl;
 
   private readonly _agents$ = new BehaviorSubject<AgentInfo[]>([]);
   public readonly agents$: Observable<AgentInfo[]> = this._agents$.asObservable();
@@ -57,7 +59,7 @@ export class AgentService {
 
   public refreshAgents(): void {
     this._http
-      .get<AgentInfo[]>("/api/agent/list")
+      .get<AgentInfo[]>(`${this._baseUrl}/agent/list`)
       .pipe(
         catchError(() => of<AgentInfo[]>([]))
       )
@@ -75,12 +77,12 @@ export class AgentService {
   }
 
   public getAgent(agentId: string): Observable<AgentInfo> {
-    return this._http.get<AgentInfo>(`/api/agent/${agentId}`);
+    return this._http.get<AgentInfo>(`${this._baseUrl}/agent/${agentId}`);
   }
 
   public startTrading(agentId: string, strategyConfig: unknown): Observable<CommandAcceptedResponse> {
     return this._http
-      .post<CommandAcceptedResponse>(`/api/trading/${agentId}/start`, { strategyConfig })
+      .post<CommandAcceptedResponse>(`${this._baseUrl}/trading/${agentId}/start`, { strategyConfig })
       .pipe(
         tap(() => {
           setTimeout(() => this.refreshAgents(), 1000);
@@ -90,7 +92,7 @@ export class AgentService {
 
   public stopTrading(agentId: string): Observable<CommandAcceptedResponse> {
     return this._http
-      .post<CommandAcceptedResponse>(`/api/trading/${agentId}/stop`, {})
+      .post<CommandAcceptedResponse>(`${this._baseUrl}/trading/${agentId}/stop`, {})
       .pipe(
         tap(() => {
           setTimeout(() => this.refreshAgents(), 1000);
@@ -104,7 +106,7 @@ export class AgentService {
    */
   public placeOrderViaAgent(agentId: string, request: PlaceOrderRequest): Observable<PlaceOrderResponse> {
     return this._http
-      .post<CommandAcceptedResponse>(`/api/trading/${agentId}/order`, request)
+      .post<CommandAcceptedResponse>(`${this._baseUrl}/trading/${agentId}/order`, request)
       .pipe(
         map((resp) => ({
           success: true,
@@ -123,21 +125,21 @@ export class AgentService {
 
   public cancelOrderViaAgent(agentId: string, orderId: string, asset: string): Observable<CommandAcceptedResponse> {
     return this._http.post<CommandAcceptedResponse>(
-      `/api/trading/${agentId}/cancel-order`,
+      `${this._baseUrl}/trading/${agentId}/cancel-order`,
       { orderId, asset }
     );
   }
 
   public cancelAllOrdersViaAgent(agentId: string, asset: string): Observable<CommandAcceptedResponse> {
     return this._http.post<CommandAcceptedResponse>(
-      `/api/trading/${agentId}/cancel-all-orders`,
+      `${this._baseUrl}/trading/${agentId}/cancel-all-orders`,
       { asset }
     );
   }
 
   public placeTriggerOrderViaAgent(agentId: string, request: PlaceTriggerOrderRequest): Observable<PlaceTriggerOrderResponse> {
     return this._http
-      .post<CommandAcceptedResponse>(`/api/trading/${agentId}/trigger-order`, request)
+      .post<CommandAcceptedResponse>(`${this._baseUrl}/trading/${agentId}/trigger-order`, request)
       .pipe(
         map((resp) => ({
           success: true,
@@ -164,33 +166,33 @@ export class AgentService {
     tpslType: string
   ): Observable<CommandAcceptedResponse> {
     return this._http.post<CommandAcceptedResponse>(
-      `/api/trading/${agentId}/modify-trigger-order`,
+      `${this._baseUrl}/trading/${agentId}/modify-trigger-order`,
       { orderId, asset, side, triggerPrice, size, tpslType }
     );
   }
 
   public cancelTriggerOrderViaAgent(agentId: string, orderId: string, asset: string): Observable<CommandAcceptedResponse> {
     return this._http.post<CommandAcceptedResponse>(
-      `/api/trading/${agentId}/cancel-trigger-order`,
+      `${this._baseUrl}/trading/${agentId}/cancel-trigger-order`,
       { orderId, asset }
     );
   }
 
   public getPendingCommands(agentId: string): Observable<PendingCommand[]> {
-    return this._http.get<PendingCommand[]>(`/api/agent/${agentId}/pending-commands`).pipe(
+    return this._http.get<PendingCommand[]>(`${this._baseUrl}/agent/${agentId}/pending-commands`).pipe(
       catchError(() => of<PendingCommand[]>([]))
     );
   }
 
   public killAgent(agentId: string, reason?: string, effectiveAtUtc?: string): Observable<unknown> {
     return this._http
-      .post(`/api/agent/${agentId}/kill`, { reason, effectiveAtUtc })
+      .post(`${this._baseUrl}/agent/${agentId}/kill`, { reason, effectiveAtUtc })
       .pipe(tap(() => setTimeout(() => this.refreshAgents(), 500)));
   }
 
   public reinstateAgent(agentId: string): Observable<unknown> {
     return this._http
-      .post(`/api/agent/${agentId}/reinstate`, {})
+      .post(`${this._baseUrl}/agent/${agentId}/reinstate`, {})
       .pipe(tap(() => setTimeout(() => this.refreshAgents(), 500)));
   }
 }
