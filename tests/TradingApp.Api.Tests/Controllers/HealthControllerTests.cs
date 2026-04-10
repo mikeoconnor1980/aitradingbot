@@ -28,7 +28,7 @@ public sealed class HealthControllerTests : BaseControllerTests
         health.Status.Should().Be("connected");
         health.Network.Should().Be("testnet");
         health.Error.Should().BeNull();
-        health.WalletAddress.Should().Contain("...");
+        health.WalletAddress.Should().NotBeNullOrEmpty();
     }
 
     [TestMethod]

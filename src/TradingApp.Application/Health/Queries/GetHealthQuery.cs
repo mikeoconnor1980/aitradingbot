@@ -27,18 +27,7 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
     public override async Task<HealthDto> Handle(GetHealthQuery request, CancellationToken cancellationToken)
     {
         var walletAddress = GetWalletAddressSafe();
-
-        if (walletAddress is null)
-        {
-            return new HealthDto
-            {
-                Status = "disconnected",
-                WalletAddress = "Not configured",
-                Network = _options.Network,
-                Timestamp = DateTimeOffset.UtcNow,
-                Error = "No wallet configured. Add your private key on the Profile page."
-            };
-        }
+        var displayAddress = walletAddress is not null ? TruncateAddress(walletAddress) : "Not configured";
 
         try
         {
@@ -47,7 +36,7 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
             return new HealthDto
             {
                 Status = isConnected ? "connected" : "disconnected",
-                WalletAddress = TruncateAddress(walletAddress),
+                WalletAddress = displayAddress,
                 Network = _options.Network,
                 Timestamp = DateTimeOffset.UtcNow,
                 Error = isConnected ? null : "Hyperliquid testnet API did not respond successfully"
@@ -58,7 +47,7 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
             return new HealthDto
             {
                 Status = "disconnected",
-                WalletAddress = TruncateAddress(walletAddress),
+                WalletAddress = displayAddress,
                 Network = _options.Network,
                 Timestamp = DateTimeOffset.UtcNow,
                 Error = "Hyperliquid testnet API request timed out"
@@ -69,7 +58,7 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
             return new HealthDto
             {
                 Status = "disconnected",
-                WalletAddress = TruncateAddress(walletAddress),
+                WalletAddress = displayAddress,
                 Network = _options.Network,
                 Timestamp = DateTimeOffset.UtcNow,
                 Error = "Failed to reach Hyperliquid testnet API"
