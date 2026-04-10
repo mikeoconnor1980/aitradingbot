@@ -37,20 +37,27 @@ public sealed class OptimizationProcessorService : BackgroundService
     {
         _logger.LogInformation("OptimizationProcessorService started");
 
-        await foreach (var job in _queue.ReadAllAsync(stoppingToken))
+        try
         {
-            try
+            await foreach (var job in _queue.ReadAllAsync(stoppingToken))
             {
-                await ProcessJobAsync(job, stoppingToken);
+                try
+                {
+                    await ProcessJobAsync(job, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Optimization job {OptimizationRunId} failed with unhandled exception", job.OptimizationRunId);
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Optimization job {OptimizationRunId} failed with unhandled exception", job.OptimizationRunId);
-            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal shutdown
         }
 
         _logger.LogInformation("OptimizationProcessorService stopped");

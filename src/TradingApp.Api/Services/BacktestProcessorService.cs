@@ -42,20 +42,27 @@ public sealed class BacktestProcessorService : BackgroundService
     {
         _logger.LogInformation("BacktestProcessorService started");
 
-        await foreach (var job in _queue.ReadAllAsync(stoppingToken))
+        try
         {
-            try
+            await foreach (var job in _queue.ReadAllAsync(stoppingToken))
             {
-                await ProcessJobAsync(job, stoppingToken);
+                try
+                {
+                    await ProcessJobAsync(job, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Backtest job {BacktestRunId} failed with unhandled exception", job.BacktestRunId);
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Backtest job {BacktestRunId} failed with unhandled exception", job.BacktestRunId);
-            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Normal shutdown
         }
 
         _logger.LogInformation("BacktestProcessorService stopped");
