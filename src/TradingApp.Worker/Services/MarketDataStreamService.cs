@@ -161,8 +161,8 @@ public sealed class MarketDataStreamService : BackgroundService
 
             await SeedStatsFromRestAsync(cancellationToken);
 
-            var ordersTask = _accountService.GetOpenOrdersAsync(cancellationToken);
-            var positionsTask = _accountService.GetPositionsAsync(cancellationToken);
+            var ordersTask = _accountService.GetOpenOrdersAsync(null, cancellationToken);
+            var positionsTask = _accountService.GetPositionsAsync(null, cancellationToken);
 
             await Task.WhenAll(ordersTask, positionsTask);
 

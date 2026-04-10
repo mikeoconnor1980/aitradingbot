@@ -163,7 +163,7 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CancelOrderAsync(string orderId, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
         var existingOrder = openOrders.FirstOrDefault(o => o.OrderId == orderId)
             ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
@@ -192,7 +192,7 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ModifyOrderAsync(string orderId, [FromBody] ModifyOrderDto dto, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
         var existingOrder = openOrders.FirstOrDefault(order => order.OrderId == orderId)
             ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
@@ -207,7 +207,7 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ModifyTriggerOrderAsync(string orderId, [FromBody] ModifyTriggerOrderDto dto, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
         var existingOrder = openOrders.FirstOrDefault(order =>
                 order.OrderId == orderId &&
                 string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
@@ -232,7 +232,7 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CancelTriggerOrderAsync(string orderId, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
         var existingOrder = openOrders.FirstOrDefault(order =>
                 order.OrderId == orderId &&
                 string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))

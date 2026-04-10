@@ -78,7 +78,7 @@ public sealed class AccountControllerTests
         };
 
         _accountServiceMock
-            .Setup(s => s.GetAccountSummaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetAccountSummaryAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         // Act
@@ -115,7 +115,7 @@ public sealed class AccountControllerTests
         };
 
         _accountServiceMock
-            .Setup(s => s.GetPositionsAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetPositionsAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(positions);
 
         // Act
@@ -133,7 +133,7 @@ public sealed class AccountControllerTests
     {
         // Arrange
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OpenOrderDto>());
 
         // Act
@@ -179,7 +179,7 @@ public sealed class AccountControllerTests
         };
 
         _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(fills);
 
         // Act
@@ -203,7 +203,7 @@ public sealed class AccountControllerTests
         };
 
         _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync("BTC-PERP", It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetRecentFillsAsync("BTC-PERP", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(filteredFills);
 
         // Act
@@ -228,7 +228,7 @@ public sealed class AccountControllerTests
         };
 
         _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(fills);
 
         // Act
@@ -247,7 +247,7 @@ public sealed class AccountControllerTests
     {
         // Arrange
         _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync("SOL-PERP", It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetRecentFillsAsync("SOL-PERP", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<FillEventDto>());
 
         // Act
@@ -265,7 +265,7 @@ public sealed class AccountControllerTests
     {
         // Arrange
         _accountServiceMock
-            .Setup(s => s.GetAccountSummaryAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetAccountSummaryAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
         // Act
@@ -283,7 +283,7 @@ public sealed class AccountControllerTests
     {
         // Arrange
         _accountServiceMock
-            .Setup(s => s.GetPositionsAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetPositionsAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
         // Act
@@ -301,7 +301,7 @@ public sealed class AccountControllerTests
     {
         // Arrange
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
         // Act

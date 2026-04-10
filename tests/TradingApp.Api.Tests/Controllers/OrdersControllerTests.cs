@@ -133,7 +133,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenOpenOrder_WhenDeleteOrderById_ThenReturnsNoContent()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new OpenOrderDto { OrderId = "12345", Asset = "BTC", Side = "Buy", Price = 60000m, Size = 0.01m },
@@ -179,7 +179,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenValidModifyRequest_WhenPutOrder_ThenReturnsNoContent()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new OpenOrderDto { OrderId = "12345", Asset = "BTC", Side = "Buy", Price = 60000m, Size = 0.01m },
@@ -215,7 +215,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenOrderNotFound_WhenPutOrder_ThenReturnsNotFound()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         var response = await _client.PutAsJsonAsync("api/orders/99999", new { price = 64500m, size = 0.002m });
@@ -227,7 +227,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenServiceUnavailable_WhenDeleteOrderById_ThenReturnsServiceUnavailable()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new OpenOrderDto { OrderId = "12345", Asset = "BTC", Side = "Buy", Price = 60000m, Size = 0.01m },
@@ -284,7 +284,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenValidTriggerModifyRequest_WhenPutTriggerOrder_ThenReturnsNoContent()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new OpenOrderDto
@@ -319,7 +319,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenExistingTriggerOrder_WhenDeleteTriggerOrder_ThenReturnsNoContent()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new OpenOrderDto
@@ -347,7 +347,7 @@ public sealed class OrdersControllerTests : BaseControllerTests
     public async Task GivenMissingTriggerOrder_WhenDeleteTriggerOrder_ThenReturnsNotFound()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         var response = await _client.DeleteAsync("api/orders/trigger/99999");

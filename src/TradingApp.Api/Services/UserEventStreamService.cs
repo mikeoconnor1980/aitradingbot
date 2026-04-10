@@ -36,6 +36,14 @@ public sealed class UserEventStreamService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (_signer is ISignerProvider provider && !provider.IsConfigured)
+        {
+            _logger.LogInformation(
+                "UserEventStreamService skipped — no wallet configured on the control plane. " +
+                "User event streaming runs on the execution agent.");
+            return;
+        }
+
         var walletAddress = _signer.WalletAddress;
         _logger.LogInformation(
             "UserEventStreamService starting for wallet {WalletAddress}",

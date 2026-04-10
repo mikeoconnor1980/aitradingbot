@@ -231,7 +231,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
     public async Task CancelAllOrdersAsync(string asset, CancellationToken cancellationToken = default)
     {
         var normalizedAsset = NormalizeAsset(asset);
-        var openOrders = await _accountService.GetOpenOrdersAsync(cancellationToken);
+        var openOrders = await _accountService.GetOpenOrdersAsync(null, cancellationToken);
         var ordersForAsset = openOrders
             .Where(order => string.Equals(order.Asset, normalizedAsset, StringComparison.OrdinalIgnoreCase))
             .ToList();

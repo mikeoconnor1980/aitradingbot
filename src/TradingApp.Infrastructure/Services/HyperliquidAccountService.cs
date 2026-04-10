@@ -10,7 +10,7 @@ namespace TradingApp.Infrastructure.Services;
 public sealed class HyperliquidAccountService : IHyperliquidAccountService
 {
     private readonly IHyperliquidRestClient _restClient;
-    private readonly IHyperliquidSigner _signer;
+    private readonly IHyperliquidSigner? _signer;
     private readonly ILogger<HyperliquidAccountService> _logger;
 
     public HyperliquidAccountService(
@@ -23,17 +23,27 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         _logger = logger;
     }
 
-    public async Task<AccountSummaryDto> GetAccountSummaryAsync(CancellationToken cancellationToken = default)
+    private string ResolveAddress(string? walletAddress)
     {
-        var response = await GetClearinghouseStateAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(walletAddress))
+            return walletAddress;
+
+        return _signer?.WalletAddress
+            ?? throw new InvalidOperationException("No wallet address provided and no signer configured.");
+    }
+
+    public async Task<AccountSummaryDto> GetAccountSummaryAsync(string? walletAddress = null, CancellationToken cancellationToken = default)
+    {
+        var response = await GetClearinghouseStateAsync(ResolveAddress(walletAddress), cancellationToken);
         return MapToAccountSummary(response);
     }
 
-    public async Task<IReadOnlyList<PositionDto>> GetPositionsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PositionDto>> GetPositionsAsync(string? walletAddress = null, CancellationToken cancellationToken = default)
     {
-        var stateTask = GetClearinghouseStateAsync(cancellationToken);
+        var address = ResolveAddress(walletAddress);
+        var stateTask = GetClearinghouseStateAsync(address, cancellationToken);
         var contextsTask = GetAssetContextsAsync(cancellationToken);
-        var openOrdersTask = GetOpenOrdersAsync(cancellationToken);
+        var openOrdersTask = GetOpenOrdersAsync(walletAddress, cancellationToken);
 
         await Task.WhenAll(stateTask, contextsTask, openOrdersTask);
 
@@ -43,15 +53,16 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         return positions;
     }
 
-    public async Task<IReadOnlyList<OpenOrderDto>> GetOpenOrdersAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OpenOrderDto>> GetOpenOrdersAsync(string? walletAddress = null, CancellationToken cancellationToken = default)
     {
-        var request = new { type = "openOrders", user = _signer.WalletAddress };
+        var request = new { type = "openOrders", user = ResolveAddress(walletAddress) };
         var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
         return MapToOpenOrders(response);
     }
 
     public async Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(
         string? asset = null,
+        string? walletAddress = null,
         CancellationToken cancellationToken = default)
     {
         var normalizedAsset = string.IsNullOrWhiteSpace(asset) ? null : asset;
@@ -59,7 +70,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             ? DateTimeOffset.UtcNow.AddHours(-24).ToUnixTimeMilliseconds()
             : null;
 
-        var fills = await _restClient.GetUserFillsAsync(_signer.WalletAddress, startTime, cancellationToken);
+        var fills = await _restClient.GetUserFillsAsync(ResolveAddress(walletAddress), startTime, cancellationToken);
 
         if (normalizedAsset is null)
         {
@@ -73,9 +84,9 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             .ToList();
     }
 
-    private async Task<JsonElement> GetClearinghouseStateAsync(CancellationToken cancellationToken)
+    private async Task<JsonElement> GetClearinghouseStateAsync(string address, CancellationToken cancellationToken)
     {
-        var request = new { type = "clearinghouseState", user = _signer.WalletAddress };
+        var request = new { type = "clearinghouseState", user = address };
         var response = await _restClient.PostInfoAsync<JsonElement>(request, cancellationToken);
 
         if (response.ValueKind != JsonValueKind.Object)

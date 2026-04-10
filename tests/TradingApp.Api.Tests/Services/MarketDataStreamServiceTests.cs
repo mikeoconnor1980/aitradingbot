@@ -39,10 +39,10 @@ public sealed class MarketDataStreamServiceTests
             .Returns(_accountServiceMock.Object);
 
         _accountServiceMock
-            .Setup(a => a.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(a => a.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<OpenOrderDto>)new List<OpenOrderDto>());
         _accountServiceMock
-            .Setup(a => a.GetPositionsAsync(It.IsAny<CancellationToken>()))
+            .Setup(a => a.GetPositionsAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((IReadOnlyList<PositionDto>)new List<PositionDto>());
     }
 
@@ -268,10 +268,10 @@ public sealed class MarketDataStreamServiceTests
         }
 
         _accountServiceMock.Verify(
-            a => a.GetOpenOrdersAsync(It.IsAny<CancellationToken>()),
+            a => a.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce);
         _accountServiceMock.Verify(
-            a => a.GetPositionsAsync(It.IsAny<CancellationToken>()),
+            a => a.GetPositionsAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce);
     }
 

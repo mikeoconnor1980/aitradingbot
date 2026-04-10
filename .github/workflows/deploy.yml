@@ -46,6 +46,27 @@ jobs:
           name: test-results
           path: '**/TestResults/*.trx'
 
+      - name: Setup Node.js (for Snyk)
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Snyk security scan (.NET)
+        uses: snyk/actions/dotnet@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Snyk security scan (npm)
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=frontend/trading-ui/package-lock.json
+
   build-api-image:
     needs: build-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

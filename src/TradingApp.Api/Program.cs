@@ -109,17 +109,10 @@ builder.Services.AddOptions<MacroCalendarOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-// Read private key if available — can also be configured at runtime via /api/wallet/configure
+// The control plane does not hold private keys.
+// Wallet addresses are stored in the database; private keys live only on the execution agent (Worker).
 var signerProvider = new MutableSignerProvider(
     LoggerFactory.Create(b => b.AddConsole()).CreateLogger<MutableSignerProvider>());
-
-var privateKey = builder.Configuration
-    .GetSection(HyperliquidOptions.SectionName)["PrivateKey"];
-
-if (!string.IsNullOrWhiteSpace(privateKey))
-{
-    signerProvider.Configure(privateKey);
-}
 
 builder.Services.AddSingleton(signerProvider);
 builder.Services.AddSingleton<ISignerProvider>(sp => sp.GetRequiredService<MutableSignerProvider>());

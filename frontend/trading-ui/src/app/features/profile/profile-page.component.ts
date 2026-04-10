@@ -41,9 +41,9 @@ export class ProfilePageComponent implements OnInit {
   public readonly walletStatus$ = this._walletService.status$;
   public readonly appVersion = environment.appVersion;
 
-  public readonly privateKeyControl = new FormControl("", [
+  public readonly walletAddressControl = new FormControl("", [
     Validators.required,
-    Validators.pattern(/^0x[0-9a-fA-F]{64}$/)
+    Validators.pattern(/^0x[0-9a-fA-F]{40}$/)
   ]);
 
   public readonly showKeyInput = signal(false);
@@ -61,28 +61,28 @@ export class ProfilePageComponent implements OnInit {
 
   public onCancelConfigure(): void {
     this.showKeyInput.set(false);
-    this.privateKeyControl.reset();
+    this.walletAddressControl.reset();
     this.configError.set(null);
   }
 
   public onSubmitKey(): void {
-    if (this.privateKeyControl.invalid) {
+    if (this.walletAddressControl.invalid) {
       return;
     }
 
     this.configuring.set(true);
     this.configError.set(null);
 
-    this._walletService.configure(this.privateKeyControl.value!).subscribe({
+    this._walletService.configure(this.walletAddressControl.value!).subscribe({
       next: () => {
         this.configuring.set(false);
         this.showKeyInput.set(false);
-        this.privateKeyControl.reset();
+        this.walletAddressControl.reset();
         this._healthService.refresh();
       },
       error: (err) => {
         this.configuring.set(false);
-        this.configError.set(err.error?.detail ?? "Failed to configure wallet. Check your private key.");
+        this.configError.set(err.error?.message ?? "Failed to configure wallet. Check your wallet address.");
       }
     });
   }

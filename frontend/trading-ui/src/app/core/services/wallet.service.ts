@@ -7,8 +7,9 @@ export interface WalletStatus {
   walletAddress: string | null;
 }
 
-export interface WalletConfiguredResponse {
+export interface WalletAddressResponse {
   walletAddress: string;
+  exchange: string;
 }
 
 @Injectable({ providedIn: "root" })
@@ -24,18 +25,21 @@ export class WalletService {
 
   public refreshStatus(): void {
     this._http
-      .get<WalletStatus>("/api/wallet/status")
+      .get<WalletAddressResponse>("/api/wallet-address")
       .pipe(
-        catchError(() =>
-          of<WalletStatus>({ isConfigured: false, walletAddress: null })
-        )
+        catchError(() => of(null))
       )
-      .subscribe((status) => this._status$.next(status));
+      .subscribe((response) => {
+        this._status$.next({
+          isConfigured: response !== null,
+          walletAddress: response?.walletAddress ?? null
+        });
+      });
   }
 
-  public configure(privateKey: string): Observable<WalletConfiguredResponse> {
+  public configure(walletAddress: string): Observable<WalletAddressResponse> {
     return this._http
-      .post<WalletConfiguredResponse>("/api/wallet/configure", { privateKey })
+      .post<WalletAddressResponse>("/api/wallet-address", { walletAddress })
       .pipe(
         tap((response) => {
           this._status$.next({
@@ -47,7 +51,7 @@ export class WalletService {
   }
 
   public disconnect(): Observable<void> {
-    return this._http.delete<void>("/api/wallet/configure").pipe(
+    return this._http.delete<void>("/api/wallet-address").pipe(
       tap(() => {
         this._status$.next({ isConfigured: false, walletAddress: null });
       })

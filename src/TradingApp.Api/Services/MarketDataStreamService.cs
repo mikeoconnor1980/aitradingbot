@@ -172,8 +172,8 @@ public sealed class MarketDataStreamService : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             var accountService = scope.ServiceProvider.GetRequiredService<IHyperliquidAccountService>();
 
-            var ordersTask = accountService.GetOpenOrdersAsync(cancellationToken);
-            var positionsTask = accountService.GetPositionsAsync(cancellationToken);
+            var ordersTask = accountService.GetOpenOrdersAsync(null, cancellationToken);
+            var positionsTask = accountService.GetPositionsAsync(null, cancellationToken);
 
             await Task.WhenAll(ordersTask, positionsTask);
 

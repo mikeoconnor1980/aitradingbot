@@ -279,7 +279,7 @@ public sealed class HyperliquidOrderServiceTests
     public async Task GivenOpenOrders_WhenCancelAllOrdersAsync_ThenCancelsMatchingAssetOrders()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new OpenOrderDto { OrderId = "111", Asset = "BTC", Side = "Buy", Price = 60000m, Size = 0.01m },
@@ -307,7 +307,7 @@ public sealed class HyperliquidOrderServiceTests
     public async Task GivenNoOpenOrders_WhenCancelAllOrdersAsync_ThenDoesNotSubmitRequest()
     {
         _accountServiceMock
-            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<CancellationToken>()))
+            .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         await _sut.CancelAllOrdersAsync("BTC", CancellationToken.None);

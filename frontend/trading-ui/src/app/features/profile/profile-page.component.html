@@ -77,21 +77,21 @@
           @if (showKeyInput()) {
             <div class="profile-page__key-form">
               <mat-form-field appearance="outline" class="profile-page__key-field">
-                <mat-label>Private Key</mat-label>
+                <mat-label>Wallet Address</mat-label>
                 <input
                   matInput
-                  type="password"
-                  [formControl]="privateKeyControl"
+                  type="text"
+                  [formControl]="walletAddressControl"
                   placeholder="0x..."
                   autocomplete="off"
                   spellcheck="false" />
-                @if (privateKeyControl.hasError('required')) {
-                  <mat-error>Private key is required</mat-error>
+                @if (walletAddressControl.hasError('required')) {
+                  <mat-error>Wallet address is required</mat-error>
                 }
-                @if (privateKeyControl.hasError('pattern')) {
-                  <mat-error>Must be 0x followed by 64 hex characters</mat-error>
+                @if (walletAddressControl.hasError('pattern')) {
+                  <mat-error>Must be 0x followed by 40 hex characters</mat-error>
                 }
-                <mat-hint>Your private key never leaves this machine</mat-hint>
+                <mat-hint>Your public wallet address — private key stays on the execution agent</mat-hint>
               </mat-form-field>
               @if (configError(); as error) {
                 <p class="profile-page__error">{{ error }}</p>
@@ -100,9 +100,9 @@
                 <button
                   mat-flat-button
                   color="primary"
-                  [disabled]="privateKeyControl.invalid || configuring()"
+                  [disabled]="walletAddressControl.invalid || configuring()"
                   (click)="onSubmitKey()">
-                  {{ configuring() ? 'Configuring...' : 'Save Key' }}
+                  {{ configuring() ? 'Saving...' : 'Save Address' }}
                 </button>
                 <button mat-stroked-button (click)="onCancelConfigure()">Cancel</button>
               </div>
