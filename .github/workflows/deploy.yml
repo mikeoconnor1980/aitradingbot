@@ -137,7 +137,7 @@ jobs:
               --resource-group rg-tradepilot-dev \
               --server ghcr.io \
               --username ${{ github.actor }} \
-              --password ${{ secrets.GITHUB_TOKEN }}
+              --password ${{ secrets.GHCR_PAT }}
             az containerapp update \
               --name tradepilot-dev-api \
               --resource-group rg-tradepilot-dev \
