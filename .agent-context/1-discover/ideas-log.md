@@ -25,6 +25,7 @@
 
 | Done | Idea | Date | PBI |
 |------|------|------|-----|
+| [ ] | Strategy agnostic way to see what's happened on any given trade, backtest or live, chart like the grid cycles example | 10 Apr 2026 | — |
 | [ ] | Develop risk management functionality | 9 Apr 2026 | — |
 | [ ] | Allow increase grid size vertically in market data tab | 3 Apr 2026 | — |
 | [ ] | Timeframe box on market data tab should be at top of price chart - i.e. raise higher up page | 3 Apr 2026 | — |
