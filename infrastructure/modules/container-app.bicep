@@ -72,6 +72,26 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'LlmReview__ApiKey', secretRef: 'llm-api-key' }
             { name: 'Cors__AllowedOrigins__0', value: corsAllowedOrigin }
           ]
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: {
+                path: '/healthz'
+                port: 8080
+              }
+              initialDelaySeconds: 30
+              periodSeconds: 60
+            }
+            {
+              type: 'Readiness'
+              httpGet: {
+                path: '/healthz'
+                port: 8080
+              }
+              initialDelaySeconds: 10
+              periodSeconds: 15
+            }
+          ]
         }
       ]
       scale: {
