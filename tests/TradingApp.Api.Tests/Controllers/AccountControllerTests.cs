@@ -1,9 +1,15 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.IdentityModel.Tokens;
 using TradingApp.Api.Models;
+using TradingApp.Api.Tests.Infrastructure;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 
@@ -27,6 +33,9 @@ public sealed class AccountControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseSetting("Jwt:SecretKey", BaseControllerTests.TestJwtSecretKey);
+                builder.UseSetting("Jwt:Issuer", "TradingApp");
+                builder.UseSetting("Jwt:Audience", "TradingApp");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:Network", "testnet");
@@ -44,6 +53,8 @@ public sealed class AccountControllerTests
             });
 
         _client = _factory.CreateClient();
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", BaseControllerTests.GenerateTestToken());
     }
 
     [TestCleanup]

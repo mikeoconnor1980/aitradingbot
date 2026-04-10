@@ -1,15 +1,22 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 namespace TradingApp.Api.Tests.Infrastructure;
 
 public abstract class BaseControllerTests
 {
+    // Test-only key — not a real credential
+    internal const string TestJwtSecretKey = "test-secret-key-at-least-thirty-two-characters-long";
+
     private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
 
     private WebApplicationFactory<Program>? _factory;
@@ -21,12 +28,15 @@ public abstract class BaseControllerTests
         _factory = null;
     }
 
-    protected HttpClient GetTestClient()
+    protected HttpClient GetTestClient(bool authenticate = true)
     {
         _factory?.Dispose();
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseSetting("Jwt:SecretKey", TestJwtSecretKey);
+                builder.UseSetting("Jwt:Issuer", "TradingApp");
+                builder.UseSetting("Jwt:Audience", "TradingApp");
                 builder.UseSetting("LlmReview:Provider", "Gemini");
                 builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
@@ -39,7 +49,35 @@ public abstract class BaseControllerTests
                 });
             });
 
-        return _factory.CreateClient();
+        var client = _factory.CreateClient();
+
+        if (authenticate)
+        {
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", GenerateTestToken());
+        }
+
+        return client;
+    }
+
+    internal static string GenerateTestToken()
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwtSecretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: "TradingApp",
+            audience: "TradingApp",
+            claims: new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, "dev-user"),
+                new Claim(ClaimTypes.Email, "test@tradepilot.dev"),
+                new Claim(ClaimTypes.Name, "Test User"),
+                new Claim("token_type", "access"),
+            },
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: creds);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     protected virtual void ConfigureWebHost(IWebHostBuilder builder)
