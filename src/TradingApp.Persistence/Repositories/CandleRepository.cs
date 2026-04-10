@@ -7,7 +7,8 @@ namespace TradingApp.Persistence.Repositories;
 
 public sealed class CandleRepository : ICandleRepository
 {
-    private const int BatchSize = 500;
+    private const int SqliteBatchSize = 500;
+    private const int SqlServerBatchSize = 200; // 10 params/row × 200 = 2000 (SQL Server limit: 2100)
     private readonly TradingAppDbContext _context;
 
     public CandleRepository(TradingAppDbContext context)
@@ -47,8 +48,9 @@ public sealed class CandleRepository : ICandleRepository
         CancellationToken cancellationToken = default)
     {
         var isSqlServer = _context.Database.ProviderName?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true;
+        var batchSize = isSqlServer ? SqlServerBatchSize : SqliteBatchSize;
 
-        foreach (var batch in candles.Chunk(BatchSize))
+        foreach (var batch in candles.Chunk(batchSize))
         {
             await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 

@@ -7,7 +7,8 @@ namespace TradingApp.Persistence.Repositories;
 
 public sealed class FundingRateRepository : IFundingRateRepository
 {
-    private const int BatchSize = 500;
+    private const int SqliteBatchSize = 500;
+    private const int SqlServerBatchSize = 200; // 4 params/row × 200 = 800 (SQL Server limit: 2100)
     private readonly TradingAppDbContext _context;
 
     public FundingRateRepository(TradingAppDbContext context)
@@ -18,8 +19,9 @@ public sealed class FundingRateRepository : IFundingRateRepository
     public async Task BulkInsertAsync(IEnumerable<FundingRate> fundingRates, CancellationToken cancellationToken = default)
     {
         var isSqlServer = _context.Database.ProviderName?.Contains("SqlServer", StringComparison.OrdinalIgnoreCase) == true;
+        var batchSize = isSqlServer ? SqlServerBatchSize : SqliteBatchSize;
 
-        foreach (var batch in fundingRates.Chunk(BatchSize))
+        foreach (var batch in fundingRates.Chunk(batchSize))
         {
             await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
