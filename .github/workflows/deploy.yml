@@ -132,6 +132,12 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
+            az containerapp registry set \
+              --name tradepilot-dev-api \
+              --resource-group rg-tradepilot-dev \
+              --server ghcr.io \
+              --username ${{ github.actor }} \
+              --password ${{ secrets.GITHUB_TOKEN }}
             az containerapp update \
               --name tradepilot-dev-api \
               --resource-group rg-tradepilot-dev \

@@ -30,6 +30,13 @@ param llmApiKey string = ''
 @description('Allowed CORS origin (Azure Static Web App URL)')
 param corsAllowedOrigin string = ''
 
+@description('GitHub Container Registry username')
+param registryUsername string
+
+@secure()
+@description('GitHub Container Registry password (PAT)')
+param registryPassword string
+
 // ---------- Modules ----------
 
 module logAnalytics 'modules/log-analytics.bicep' = {
@@ -80,6 +87,8 @@ module containerApp 'modules/container-app.bicep' = {
     jwtSecretKey: jwtSecretKey
     llmApiKey: llmApiKey
     corsAllowedOrigin: corsAllowedOrigin
+    registryUsername: registryUsername
+    registryPassword: registryPassword
   }
 }
 

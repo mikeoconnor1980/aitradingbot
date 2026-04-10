@@ -29,6 +29,13 @@ param llmApiKey string = ''
 @description('Allowed CORS origin')
 param corsAllowedOrigin string = ''
 
+@description('GitHub Container Registry username (GitHub actor)')
+param registryUsername string
+
+@secure()
+@description('GitHub Container Registry password (PAT or GITHUB_TOKEN)')
+param registryPassword string
+
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -36,6 +43,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: environmentId
     configuration: {
       activeRevisionsMode: 'Single'
+      registries: [
+        {
+          server: 'ghcr.io'
+          username: registryUsername
+          passwordSecretRef: 'ghcr-password'
+        }
+      ]
       ingress: {
         external: true
         targetPort: 8080
@@ -52,6 +66,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         { name: 'signalr-connection-string', value: signalRConnectionString }
         { name: 'jwt-secret-key', value: jwtSecretKey }
         { name: 'llm-api-key', value: empty(llmApiKey) ? 'placeholder' : llmApiKey }
+        { name: 'ghcr-password', value: registryPassword }
       ]
     }
     template: {
