@@ -1,10 +1,14 @@
 <section class="auth-page">
-  <mat-card class="auth-page__card">
-    <mat-card-header>
-      <mat-card-title>Create Account</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-page__form">
+  <div class="auth-page__glow"></div>
+
+  <div class="auth-page__card">
+    <div class="auth-page__brand">
+      <mat-icon class="auth-page__logo">candlestick_chart</mat-icon>
+      <span class="auth-page__brand-name">TradePilot</span>
+    </div>
+    <p class="auth-page__tagline">Create your trading account.</p>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="auth-page__form">
         <mat-form-field appearance="outline">
           <mat-label>Email</mat-label>
           <input matInput formControlName="email" type="email" autocomplete="email" />
@@ -78,9 +82,9 @@
           {{ submitting() ? 'Creating account...' : 'Create Account' }}
         </button>
       </form>
-    </mat-card-content>
-    <mat-card-actions align="end">
-      <span>Already have an account? <a routerLink="/login">Sign in</a></span>
-    </mat-card-actions>
-  </mat-card>
+
+    <p class="auth-page__footer">
+      Already have an account? <a routerLink="/login" class="auth-page__link">Sign in</a>
+    </p>
+  </div>
 </section>

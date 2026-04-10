@@ -4,27 +4,111 @@
   align-items: center;
   min-height: 100vh;
   padding: 24px;
-  background: #1a1a2e;
+  background: radial-gradient(circle at top left, #0d1b1d 0%, #071114 58%, #04090b 100%);
+  position: relative;
+  overflow: hidden;
+
+  &__glow {
+    position: absolute;
+    width: 480px;
+    height: 480px;
+    top: -120px;
+    right: -80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(121, 207, 195, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
 
   &__card {
+    position: relative;
     width: 100%;
-    max-width: 420px;
+    max-width: 400px;
+    padding: 2.5rem 2rem 2rem;
+    border: 1px solid rgba(121, 207, 195, 0.12);
+    border-radius: 1rem;
+    background: rgba(8, 20, 22, 0.85);
+    backdrop-filter: blur(16px);
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-bottom: 0.25rem;
+  }
+
+  &__logo {
+    font-size: 2rem;
+    width: 2rem;
+    height: 2rem;
+    color: var(--colour-accent, #79cfc3);
+  }
+
+  &__brand-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: 0.02em;
+  }
+
+  &__tagline {
+    text-align: center;
+    color: var(--colour-muted, #7f9d99);
+    font-size: 0.85rem;
+    margin: 0 0 2rem;
   }
 
   &__form {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 16px;
+    gap: 4px;
   }
 
   &__submit {
     margin-top: 8px;
+    height: 44px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    border-radius: 8px;
+    background: var(--colour-accent, #79cfc3) !important;
+    color: var(--colour-accent-text, #061314) !important;
+    transition: opacity 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover:not(:disabled) {
+      opacity: 0.9;
+      box-shadow: 0 0 20px rgba(121, 207, 195, 0.25);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+    }
   }
 
   &__error {
-    color: #f44336;
-    font-size: 14px;
+    color: var(--colour-error-text, #f4c8d1);
+    background: var(--colour-error-bg, rgba(97, 32, 47, 0.38));
+    font-size: 0.82rem;
     margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+  }
+
+  &__footer {
+    text-align: center;
+    margin: 1.5rem 0 0;
+    font-size: 0.82rem;
+    color: var(--colour-muted, #7f9d99);
+  }
+
+  &__link {
+    color: var(--colour-accent, #79cfc3);
+    text-decoration: none;
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
