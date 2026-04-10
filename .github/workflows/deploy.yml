@@ -28,7 +28,10 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore
-        run: dotnet restore
+        run: |
+          dotnet sln TradingApp.sln remove src/TradingApp.Worker/TradingApp.Worker.csproj || true
+          dotnet sln TradingApp.sln remove tests/TradingApp.Worker.Tests/TradingApp.Worker.Tests.csproj || true
+          dotnet restore
 
       - name: Build
         run: dotnet build --no-restore -c Release
