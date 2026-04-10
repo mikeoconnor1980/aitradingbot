@@ -18,6 +18,7 @@ COPY tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj                   test
 COPY tests/TradingApp.Infrastructure.Tests/TradingApp.Infrastructure.Tests.csproj tests/TradingApp.Infrastructure.Tests/
 COPY tests/TradingApp.Persistence.Tests/TradingApp.Persistence.Tests.csproj tests/TradingApp.Persistence.Tests/
 COPY tests/TradingApp.Api.Tests/TradingApp.Api.Tests.csproj                 tests/TradingApp.Api.Tests/
+COPY tests/TradingApp.Indicators.Tests/TradingApp.Indicators.Tests.csproj   tests/TradingApp.Indicators.Tests/
 COPY tests/TradingApp.Worker.Tests/TradingApp.Worker.Tests.csproj           tests/TradingApp.Worker.Tests/
 
 RUN dotnet restore TradingApp.sln
