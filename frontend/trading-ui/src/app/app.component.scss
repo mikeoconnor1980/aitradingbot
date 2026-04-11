@@ -172,6 +172,7 @@ $sidebar-expanded: 220px;
   .app-shell {
     margin-left: 0;
     padding: 0.25rem;
+    padding-top: calc(0.25rem + env(safe-area-inset-top, 0px));
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     height: 100dvh;
     min-height: 0;
