@@ -298,13 +298,19 @@
   .positions-table__toolbar {
     gap: 6px;
     margin-bottom: 6px;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
   }
 
   .positions-table__close-all-btn {
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    left: 16px;
+    z-index: 20;
     min-width: 0;
-    padding: 0 10px;
+    padding: 0 12px;
     font-size: 0.7rem;
-    height: 32px;
+    height: 36px;
   }
 
   .positions-table__filter {
