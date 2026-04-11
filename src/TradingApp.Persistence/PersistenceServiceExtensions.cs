@@ -52,8 +52,9 @@ public static class PersistenceServiceExtensions
 
         if (connectionString is not null && !IsSqlServerConnectionString(connectionString))
         {
-            // SQLite (local dev): ensure the data directory exists, then use EnsureCreated
-            // because migrations are generated for SQL Server
+            // SQLite (local dev): ensure the data directory exists, then use EnsureCreated.
+            // EnsureCreated is a no-op if the DB file already exists, so we also check for
+            // missing tables and create them from the current model when the schema drifts.
             var csb = new SqliteConnectionStringBuilder(connectionString);
             var directory = Path.GetDirectoryName(Path.GetFullPath(csb.DataSource));
 
@@ -62,12 +63,71 @@ public static class PersistenceServiceExtensions
                 Directory.CreateDirectory(directory);
             }
 
-            await db.Database.EnsureCreatedAsync();
+            var created = await db.Database.EnsureCreatedAsync();
+
+            if (!created)
+            {
+                // DB already existed — check for missing tables and create them.
+                await CreateMissingTablesAsync(db);
+            }
         }
         else
         {
             // SQL Server (production): apply migrations
             await db.Database.MigrateAsync();
+        }
+    }
+
+    /// <summary>
+    /// Compares tables declared in the EF model with tables that actually exist in the
+    /// SQLite database, and creates any that are missing using EF's own DDL generation.
+    /// </summary>
+    private static async Task CreateMissingTablesAsync(TradingAppDbContext db)
+    {
+        var existingTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        await using var conn = new SqliteConnection(db.Database.GetConnectionString());
+        await conn.OpenAsync();
+
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table'";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                existingTables.Add(reader.GetString(0));
+            }
+        }
+
+        // Check if any model tables are missing
+        var modelTables = db.Model.GetEntityTypes()
+            .Select(e => e.GetTableName())
+            .Where(t => t is not null)
+            .Cast<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missingTables = modelTables.Except(existingTables, StringComparer.OrdinalIgnoreCase).ToList();
+        if (missingTables.Count == 0)
+            return;
+
+        // Use EF's own script generator to get correct SQLite DDL
+        var fullScript = db.Database.GenerateCreateScript();
+
+        // Split into individual statements and execute only those for missing tables
+        var statements = fullScript.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var statement in statements)
+        {
+            // Match CREATE TABLE "TableName" or CREATE INDEX ... ON "TableName"
+            var isRelevant = missingTables.Any(t =>
+                statement.Contains($"\"{t}\"", StringComparison.OrdinalIgnoreCase));
+
+            if (!isRelevant)
+                continue;
+
+            await using var execCmd = conn.CreateCommand();
+            execCmd.CommandText = statement;
+            await execCmd.ExecuteNonQueryAsync();
         }
     }
 
