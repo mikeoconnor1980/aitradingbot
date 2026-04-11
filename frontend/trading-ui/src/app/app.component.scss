@@ -177,7 +177,7 @@ $sidebar-expanded: 220px;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
 
     &__header {
       padding: 0.35rem 0.5rem;
@@ -196,13 +196,12 @@ $sidebar-expanded: 220px;
       min-height: 0;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
 
       > router-outlet + * {
         flex: 1;
         min-height: 0;
-        display: flex;
-        flex-direction: column;
       }
     }
 

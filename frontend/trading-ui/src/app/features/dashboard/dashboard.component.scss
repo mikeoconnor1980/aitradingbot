@@ -64,6 +64,12 @@
 }
 
 @media (max-width: 640px) {
+  :host {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
   .dashboard {
     padding: 0.25rem;
     overflow-x: hidden;
