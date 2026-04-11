@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard TA Enrichment — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    :root {
+      --tp-text: #d7ebe7;
+      --tp-accent: #79cfc3;
+      --tp-accent-soft: rgba(121, 207, 195, 0.10);
+      --tp-profit: #3bc9a8;
+      --tp-loss: #e07a8f;
+      --tp-warning: #caa86a;
+      --tp-muted: #7f9d99;
+      --tp-border-light: rgba(121, 207, 195, 0.16);
+      --tp-border-subtle: rgba(121, 207, 195, 0.10);
+      --tp-surface-dark: rgba(8, 20, 22, 0.92);
+      --tp-surface-alt: rgba(15, 31, 34, 0.88);
+      --tp-info: #8fc7d8;
+      --tp-info-soft: rgba(143, 199, 216, 0.12);
+      --tp-profit-soft: rgba(59, 201, 168, 0.12);
+      --tp-loss-soft: rgba(224, 122, 143, 0.12);
+      --tp-warning-soft: rgba(202, 168, 106, 0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+      font-size: 14px; line-height: 1.5;
+      background: #071114; color: var(--tp-text);
+      display: flex; min-height: 100vh;
+    }
+
+    .wf-meta {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      background: rgba(8, 20, 22, 0.95); padding: 6px 16px;
+      font-size: 11px; color: var(--tp-muted);
+      border-bottom: 1px solid var(--tp-border-light);
+      display: flex; justify-content: space-between;
+    }
+
+    .sidebar {
+      width: 220px; min-width: 220px;
+      background: rgba(8, 20, 22, 0.96); backdrop-filter: blur(12px);
+      border-right: 1px solid var(--tp-border-light);
+      padding: 0.5rem 0; display: flex; flex-direction: column; margin-top: 30px;
+    }
+    .sidebar__header {
+      display: flex; align-items: center; gap: 0.6rem;
+      height: 3rem; padding: 0 0.65rem; margin: 0 0.5rem 0.5rem;
+      border-bottom: 1px solid var(--tp-border-light);
+    }
+    .sidebar__logo { font-size: 1.25rem; color: var(--tp-accent); }
+    .sidebar__brand { font-size: 0.9rem; font-weight: 700; color: #f8fafc; }
+    .sidebar__nav { display: flex; flex-direction: column; gap: 2px; padding: 0.5rem; flex: 1; }
+    .sidebar__link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border-radius: 0.35rem;
+      color: var(--tp-muted); text-decoration: none; font-size: 0.85rem;
+    }
+    .sidebar__link:hover { color: var(--tp-accent); background: rgba(121, 207, 195, 0.08); }
+    .sidebar__link--active { color: var(--tp-accent); background: rgba(121, 207, 195, 0.12); font-weight: 500; }
+    .sidebar__icon { font-size: 20px; width: 20px; height: 20px; }
+
+    .main { flex: 1; margin-top: 30px; display: flex; flex-direction: column; }
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .header__title { font-size: 1.1rem; font-weight: 500; }
+    .content { padding: 1.5rem; flex: 1; overflow-y: auto; }
+
+    /* === Cards === */
+    .card {
+      background: var(--tp-surface-dark); border: 1px solid var(--tp-border-light);
+      border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
+    }
+    .card__title {
+      font-size: 0.9rem; font-weight: 500; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      padding-bottom: 0.75rem; border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .card__title .material-icons { font-size: 18px; color: var(--tp-accent); }
+
+    /* === Grid Layout === */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+    /* === Indicator Row === */
+    .indicator-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.5rem 0; border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .indicator-row:last-child { border-bottom: none; }
+    .indicator-label { font-size: 0.8rem; color: var(--tp-muted); }
+    .indicator-value { font-size: 0.85rem; font-weight: 500; }
+
+    /* === TA Badge === */
+    .ta-badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.15rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500;
+    }
+    .ta-badge--strong-buy { background: var(--tp-profit-soft); color: var(--tp-profit); }
+    .ta-badge--buy { background: rgba(59, 201, 168, 0.08); color: #6ddec9; }
+    .ta-badge--neutral { background: rgba(255,255,255,0.04); color: var(--tp-muted); }
+    .ta-badge--sell { background: rgba(224, 122, 143, 0.08); color: #d4899a; }
+    .ta-badge--strong-sell { background: var(--tp-loss-soft); color: var(--tp-loss); }
+
+    /* === TA Timeframe Grid === */
+    .ta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+    .ta-cell { text-align: center; }
+    .ta-cell__tf { font-size: 0.7rem; color: var(--tp-muted); margin-bottom: 0.35rem; text-transform: uppercase; }
+    .ta-cell__osc { font-size: 0.7rem; color: var(--tp-muted); margin-top: 0.25rem; }
+
+    /* === Sentiment Section === */
+    .sentiment-bar {
+      display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 0.5rem 0;
+    }
+    .sentiment-bar__bull { background: var(--tp-profit); }
+    .sentiment-bar__bear { background: var(--tp-loss); }
+    .sentiment-labels { display: flex; justify-content: space-between; font-size: 0.75rem; }
+
+    /* === News List === */
+    .news-item {
+      padding: 0.5rem 0; border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-item__title { font-size: 0.8rem; }
+    .news-item__meta { font-size: 0.7rem; color: var(--tp-muted); margin-top: 0.15rem; }
+
+    /* === Source Tag === */
+    .source-tag {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      font-size: 0.7rem; color: var(--tp-muted); padding: 0.15rem 0.5rem;
+      background: var(--tp-accent-soft); border-radius: 4px;
+    }
+
+    /* === Status Dot === */
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .status-dot--ok { background: var(--tp-profit); }
+    .status-dot--warn { background: var(--tp-warning); }
+    .status-dot--err { background: var(--tp-loss); }
+    .status-dot--off { background: var(--tp-muted); }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>PRD-05 — Dashboard TA Enrichment (Phase 2)</span>
+    <span>TradePilot Wireframe</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <span class="material-icons sidebar__logo">candlestick_chart</span>
+      <span class="sidebar__brand">TradePilot</span>
+    </div>
+    <nav class="sidebar__nav">
+      <a class="sidebar__link sidebar__link--active" href="#">
+        <span class="material-icons sidebar__icon">dashboard</span> Dashboard
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">show_chart</span> Market Data
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">radar</span> Market Scanner
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">tune</span> Strategies
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">history</span> Backtesting
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <h1 class="header__title">Dashboard — BTC-PERP</h1>
+    </header>
+
+    <div class="content">
+      <div class="grid-2">
+        <!-- Left Column: Platform Indicators -->
+        <div>
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">insights</span>
+              Platform Indicators
+              <span class="source-tag">Candle-derived</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">EMA(20)</span>
+              <span class="indicator-value">$67,180</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">EMA(50)</span>
+              <span class="indicator-value">$66,420</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">EMA(200)</span>
+              <span class="indicator-value">$63,800</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">RSI (14)</span>
+              <span class="indicator-value">52.3</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">ATR (14)</span>
+              <span class="indicator-value">$1,240</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Trend (4H)</span>
+              <span class="indicator-value" style="color: var(--tp-profit);">Bullish</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Bias (1H)</span>
+              <span class="indicator-value" style="color: var(--tp-profit);">Long</span>
+            </div>
+          </div>
+
+          <!-- LLM Context -->
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">psychology</span>
+              LLM Context
+              <span class="source-tag">AI-generated</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Market Sentiment</span>
+              <span class="indicator-value" style="color: var(--tp-profit);">Bullish</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Macro Regime</span>
+              <span class="indicator-value">Risk On</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Event Risk</span>
+              <span class="indicator-value" style="color: var(--tp-warning);">Medium</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Confidence</span>
+              <span class="indicator-value">0.78</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: TradingView Context (NEW) -->
+        <div>
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">monitoring</span>
+              TradingView TA Summary
+              <span class="source-tag">
+                <span class="status-dot status-dot--ok"></span> TV MCP
+              </span>
+            </div>
+            <div class="ta-grid">
+              <div class="ta-cell">
+                <div class="ta-cell__tf">1H</div>
+                <span class="ta-badge ta-badge--buy">Buy</span>
+                <div class="ta-cell__osc">Osc: 0.32 · MA: 0.48</div>
+              </div>
+              <div class="ta-cell">
+                <div class="ta-cell__tf">4H</div>
+                <span class="ta-badge ta-badge--strong-buy">Strong Buy</span>
+                <div class="ta-cell__osc">Osc: 0.61 · MA: 0.72</div>
+              </div>
+              <div class="ta-cell">
+                <div class="ta-cell__tf">1D</div>
+                <span class="ta-badge ta-badge--buy">Buy</span>
+                <div class="ta-cell__osc">Osc: 0.28 · MA: 0.55</div>
+              </div>
+              <div class="ta-cell">
+                <div class="ta-cell__tf">1W</div>
+                <span class="ta-badge ta-badge--neutral">Neutral</span>
+                <div class="ta-cell__osc">Osc: 0.04 · MA: 0.12</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TV Sentiment -->
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">forum</span>
+              TradingView Sentiment
+              <span class="source-tag">
+                <span class="status-dot status-dot--ok"></span> Reddit
+              </span>
+            </div>
+            <div class="sentiment-labels">
+              <span style="color: var(--tp-profit);">Bullish (0.41)</span>
+              <span style="color: var(--tp-loss);">Bearish (0.18)</span>
+            </div>
+            <div class="sentiment-bar">
+              <div class="sentiment-bar__bull" style="width: 69%;"></div>
+              <div class="sentiment-bar__bear" style="width: 31%;"></div>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Posts analysed</span>
+              <span class="indicator-value">23</span>
+            </div>
+            <div class="indicator-row">
+              <span class="indicator-label">Scraped</span>
+              <span class="indicator-value text-muted" style="color: var(--tp-muted);">4m ago</span>
+            </div>
+          </div>
+
+          <!-- TV News -->
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">newspaper</span>
+              Financial News
+              <span class="source-tag">
+                <span class="status-dot status-dot--ok"></span> RSS
+              </span>
+            </div>
+            <div class="news-item">
+              <div class="news-item__title">Bitcoin surges past $67k as institutional demand grows</div>
+              <div class="news-item__meta">Reuters · 12 min ago</div>
+            </div>
+            <div class="news-item">
+              <div class="news-item__title">Fed signals potential rate pause in June meeting</div>
+              <div class="news-item__meta">CoinDesk · 38 min ago</div>
+            </div>
+            <div class="news-item">
+              <div class="news-item__title">Ethereum Layer 2 TVL reaches new all-time high</div>
+              <div class="news-item__meta">CoinTelegraph · 1h ago</div>
+            </div>
+            <div class="news-item">
+              <div class="news-item__title">Hyperliquid daily volume exceeds $4B for third consecutive day</div>
+              <div class="news-item__meta">CoinDesk · 2h ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

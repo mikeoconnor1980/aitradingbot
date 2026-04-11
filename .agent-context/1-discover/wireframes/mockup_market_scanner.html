@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Market Scanner — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    /* === TradePilot Dark Theme === */
+    :root {
+      --tp-bg: radial-gradient(circle at top left, #0d1b1d 0%, #071114 58%, #04090b 100%);
+      --tp-text: #d7ebe7;
+      --tp-accent: #79cfc3;
+      --tp-accent-strong: #a6e3da;
+      --tp-accent-soft: rgba(121, 207, 195, 0.10);
+      --tp-profit: #3bc9a8;
+      --tp-loss: #e07a8f;
+      --tp-warning: #caa86a;
+      --tp-muted: #7f9d99;
+      --tp-border-light: rgba(121, 207, 195, 0.16);
+      --tp-border-subtle: rgba(121, 207, 195, 0.10);
+      --tp-surface-dark: rgba(8, 20, 22, 0.92);
+      --tp-surface-alt: rgba(15, 31, 34, 0.88);
+      --tp-surface-soft: rgba(255, 255, 255, 0.02);
+      --tp-info: #8fc7d8;
+      --tp-info-soft: rgba(143, 199, 216, 0.12);
+      --tp-profit-soft: rgba(59, 201, 168, 0.12);
+      --tp-loss-soft: rgba(224, 122, 143, 0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      background: #071114;
+      color: var(--tp-text);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* === Wireframe Meta === */
+    .wf-meta {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      background: rgba(8, 20, 22, 0.95);
+      padding: 6px 16px;
+      font-size: 11px;
+      color: var(--tp-muted);
+      border-bottom: 1px solid var(--tp-border-light);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* === Sidebar === */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: rgba(8, 20, 22, 0.96);
+      backdrop-filter: blur(12px);
+      border-right: 1px solid var(--tp-border-light);
+      padding: 0.5rem 0;
+      display: flex;
+      flex-direction: column;
+      margin-top: 30px;
+    }
+    .sidebar__header {
+      display: flex; align-items: center; gap: 0.6rem;
+      height: 3rem; padding: 0 0.65rem; margin: 0 0.5rem 0.5rem;
+      border-bottom: 1px solid var(--tp-border-light);
+    }
+    .sidebar__logo { font-size: 1.25rem; color: var(--tp-accent); }
+    .sidebar__brand { font-size: 0.9rem; font-weight: 700; color: #f8fafc; }
+    .sidebar__nav { display: flex; flex-direction: column; gap: 2px; padding: 0.5rem; flex: 1; }
+    .sidebar__link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border-radius: 0.35rem;
+      color: var(--tp-muted); text-decoration: none; font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .sidebar__link:hover { color: var(--tp-accent); background: rgba(121, 207, 195, 0.08); }
+    .sidebar__link--active {
+      color: var(--tp-accent); background: rgba(121, 207, 195, 0.12);
+      font-weight: 500;
+    }
+    .sidebar__icon { font-size: 20px; width: 20px; height: 20px; }
+
+    /* === Main Content === */
+    .main { flex: 1; margin-top: 30px; display: flex; flex-direction: column; }
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .header__title { font-size: 1.1rem; font-weight: 500; }
+    .header__right { display: flex; align-items: center; gap: 1rem; }
+    .network-badge {
+      font-size: 0.75rem; padding: 2px 10px; border-radius: 12px;
+      background: var(--tp-accent-soft); color: var(--tp-accent); border: 1px solid var(--tp-accent);
+    }
+
+    .content { padding: 1.5rem; flex: 1; overflow-y: auto; }
+
+    /* === Page === */
+    .page-header { margin-bottom: 1.5rem; }
+    .page-title { font-size: 1.4rem; font-weight: 500; margin-bottom: 0.25rem; }
+    .page-subtitle { color: var(--tp-muted); font-size: 0.85rem; }
+
+    /* === Filter Panel === */
+    .filter-panel {
+      background: var(--tp-surface-dark);
+      border: 1px solid var(--tp-border-light);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .filter-panel__title {
+      font-size: 0.9rem; font-weight: 500; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .filter-row {
+      display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 0.25rem; }
+    .filter-group label { font-size: 0.75rem; color: var(--tp-muted); }
+    .filter-input, .filter-select {
+      background: rgba(255,255,255,0.04); border: 1px solid var(--tp-border-light);
+      border-radius: 4px; padding: 0.5rem 0.75rem; color: var(--tp-text);
+      font-size: 0.85rem; font-family: inherit; min-width: 140px; height: 36px;
+    }
+    .filter-select { appearance: auto; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1.25rem; border: none; border-radius: 4px;
+      font-size: 0.85rem; font-family: inherit; cursor: pointer; height: 36px;
+    }
+    .btn-primary { background: var(--tp-accent); color: #061314; font-weight: 500; }
+    .btn-secondary { background: rgba(255,255,255,0.06); color: var(--tp-text); border: 1px solid var(--tp-border-light); }
+
+    .filter-chips { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.25rem 0.75rem; border-radius: 16px; font-size: 0.75rem;
+      background: var(--tp-accent-soft); color: var(--tp-accent); border: 1px solid var(--tp-border-light);
+    }
+    .chip__remove { cursor: pointer; font-size: 14px; }
+
+    /* === Results Table === */
+    .results-card {
+      background: var(--tp-surface-dark);
+      border: 1px solid var(--tp-border-light);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .results-header__title { font-size: 0.9rem; font-weight: 500; }
+    .results-header__count { font-size: 0.8rem; color: var(--tp-muted); }
+    table {
+      width: 100%; border-collapse: collapse;
+    }
+    th {
+      text-align: left; padding: 0.6rem 1rem;
+      font-size: 0.75rem; font-weight: 500; color: var(--tp-muted);
+      border-bottom: 1px solid var(--tp-border-subtle);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    td {
+      padding: 0.75rem 1rem; font-size: 0.85rem;
+      border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    tr:hover td { background: rgba(121, 207, 195, 0.04); }
+    .text-profit { color: var(--tp-profit); }
+    .text-loss { color: var(--tp-loss); }
+    .text-muted { color: var(--tp-muted); }
+
+    /* === TA Badge === */
+    .ta-badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.15rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500;
+    }
+    .ta-badge--strong-buy { background: var(--tp-profit-soft); color: var(--tp-profit); }
+    .ta-badge--buy { background: rgba(59, 201, 168, 0.08); color: #6ddec9; }
+    .ta-badge--neutral { background: rgba(255,255,255,0.04); color: var(--tp-muted); }
+    .ta-badge--sell { background: rgba(224, 122, 143, 0.08); color: #d4899a; }
+    .ta-badge--strong-sell { background: var(--tp-loss-soft); color: var(--tp-loss); }
+
+    /* === Action Link === */
+    .action-link {
+      color: var(--tp-accent); text-decoration: none; font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .action-link:hover { text-decoration: underline; }
+
+    /* === Snapshot Cards === */
+    .snapshot-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .snapshot-card {
+      background: var(--tp-surface-dark);
+      border: 1px solid var(--tp-border-light);
+      border-radius: 8px; padding: 1rem;
+    }
+    .snapshot-card__label { font-size: 0.75rem; color: var(--tp-muted); margin-bottom: 0.25rem; }
+    .snapshot-card__value { font-size: 1.3rem; font-weight: 500; }
+    .snapshot-card__change { font-size: 0.8rem; margin-top: 0.15rem; }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>PRD-05 — Market Scanner (Phase 1)</span>
+    <span>TradePilot Wireframe</span>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <span class="material-icons sidebar__logo">candlestick_chart</span>
+      <span class="sidebar__brand">TradePilot</span>
+    </div>
+    <nav class="sidebar__nav">
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">dashboard</span> Dashboard
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">show_chart</span> Market Data
+      </a>
+      <a class="sidebar__link sidebar__link--active" href="#">
+        <span class="material-icons sidebar__icon">radar</span> Market Scanner
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">tune</span> Strategies
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">history</span> Backtesting
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">candlestick_chart</span> Candle Data
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">auto_graph</span> Optimizer
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">event_note</span> Macro Calendar
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main">
+    <header class="header">
+      <h1 class="header__title">Market Scanner</h1>
+      <div class="header__right">
+        <span class="network-badge">Testnet</span>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Market Snapshot -->
+      <div class="snapshot-row">
+        <div class="snapshot-card">
+          <div class="snapshot-card__label">BTC-PERP</div>
+          <div class="snapshot-card__value">$67,432</div>
+          <div class="snapshot-card__change text-profit">+2.4%</div>
+        </div>
+        <div class="snapshot-card">
+          <div class="snapshot-card__label">ETH-PERP</div>
+          <div class="snapshot-card__value">$3,218</div>
+          <div class="snapshot-card__change text-loss">-1.1%</div>
+        </div>
+        <div class="snapshot-card">
+          <div class="snapshot-card__label">Reddit Sentiment</div>
+          <div class="snapshot-card__value text-profit">Bullish</div>
+          <div class="snapshot-card__change text-muted">Score: 0.41 · 23 posts</div>
+        </div>
+        <div class="snapshot-card">
+          <div class="snapshot-card__label">MCP Server</div>
+          <div class="snapshot-card__value text-profit">Connected</div>
+          <div class="snapshot-card__change text-muted">Cache: 4m 12s ago</div>
+        </div>
+      </div>
+
+      <!-- Filter Panel -->
+      <div class="filter-panel">
+        <div class="filter-panel__title">
+          <span class="material-icons" style="font-size: 18px;">filter_list</span>
+          Screening Filters
+        </div>
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Field</label>
+            <select class="filter-select">
+              <option>RSI</option>
+              <option>SMA50</option>
+              <option>Volume</option>
+              <option>ATR</option>
+              <option>Change %</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Operator</label>
+            <select class="filter-select">
+              <option>less than</option>
+              <option>greater than</option>
+              <option>in range</option>
+              <option>crosses above</option>
+              <option>crosses below</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Value</label>
+            <input class="filter-input" type="text" value="30" />
+          </div>
+          <button class="btn btn-secondary">+ Add Filter</button>
+          <button class="btn btn-primary">
+            <span class="material-icons" style="font-size: 16px;">search</span>
+            Screen
+          </button>
+        </div>
+        <div class="filter-chips">
+          <span class="chip">RSI &lt; 30 <span class="material-icons chip__remove">close</span></span>
+          <span class="chip">SMA50 crosses_above SMA200 <span class="material-icons chip__remove">close</span></span>
+          <span class="chip">Volume &gt; avg <span class="material-icons chip__remove">close</span></span>
+        </div>
+      </div>
+
+      <!-- Results Table -->
+      <div class="results-card">
+        <div class="results-header">
+          <span class="results-header__title">Screening Results</span>
+          <span class="results-header__count">5 assets matched · fetched 12s ago</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Price</th>
+              <th>24h Change</th>
+              <th>Volume</th>
+              <th>RSI</th>
+              <th>TA Signal (1H)</th>
+              <th>TA Signal (4H)</th>
+              <th>TA Signal (1D)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight: 500;">ETH-PERP</td>
+              <td>$3,218.40</td>
+              <td class="text-loss">-1.1%</td>
+              <td class="text-muted">$2.1B</td>
+              <td>27.3</td>
+              <td><span class="ta-badge ta-badge--strong-buy">Strong Buy</span></td>
+              <td><span class="ta-badge ta-badge--buy">Buy</span></td>
+              <td><span class="ta-badge ta-badge--neutral">Neutral</span></td>
+              <td><a class="action-link">Build Strategy →</a></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">SOL-PERP</td>
+              <td>$142.80</td>
+              <td class="text-loss">-3.2%</td>
+              <td class="text-muted">$890M</td>
+              <td>24.1</td>
+              <td><span class="ta-badge ta-badge--strong-buy">Strong Buy</span></td>
+              <td><span class="ta-badge ta-badge--buy">Buy</span></td>
+              <td><span class="ta-badge ta-badge--buy">Buy</span></td>
+              <td><a class="action-link">Build Strategy →</a></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">AVAX-PERP</td>
+              <td>$34.50</td>
+              <td class="text-loss">-2.7%</td>
+              <td class="text-muted">$310M</td>
+              <td>28.9</td>
+              <td><span class="ta-badge ta-badge--buy">Buy</span></td>
+              <td><span class="ta-badge ta-badge--neutral">Neutral</span></td>
+              <td><span class="ta-badge ta-badge--sell">Sell</span></td>
+              <td><a class="action-link">Build Strategy →</a></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">DOGE-PERP</td>
+              <td>$0.1523</td>
+              <td class="text-loss">-4.1%</td>
+              <td class="text-muted">$420M</td>
+              <td>22.6</td>
+              <td><span class="ta-badge ta-badge--strong-buy">Strong Buy</span></td>
+              <td><span class="ta-badge ta-badge--strong-buy">Strong Buy</span></td>
+              <td><span class="ta-badge ta-badge--buy">Buy</span></td>
+              <td><a class="action-link">Build Strategy →</a></td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500;">LINK-PERP</td>
+              <td>$13.42</td>
+              <td class="text-profit">+0.6%</td>
+              <td class="text-muted">$180M</td>
+              <td>29.8</td>
+              <td><span class="ta-badge ta-badge--buy">Buy</span></td>
+              <td><span class="ta-badge ta-badge--neutral">Neutral</span></td>
+              <td><span class="ta-badge ta-badge--neutral">Neutral</span></td>
+              <td><a class="action-link">Build Strategy →</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
