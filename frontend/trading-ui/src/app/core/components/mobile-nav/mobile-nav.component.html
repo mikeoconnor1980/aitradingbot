@@ -1,0 +1,20 @@
+<nav class="mobile-nav" aria-label="Mobile navigation">
+  <a
+    class="mobile-nav__tab"
+    routerLink="/dashboard"
+    routerLinkActive="mobile-nav__tab--active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    aria-label="Dashboard">
+    <mat-icon class="mobile-nav__icon">dashboard</mat-icon>
+    <span class="mobile-nav__label">Dashboard</span>
+  </a>
+
+  <a
+    class="mobile-nav__tab"
+    routerLink="/order-entry"
+    routerLinkActive="mobile-nav__tab--active"
+    aria-label="Order Entry">
+    <mat-icon class="mobile-nav__icon">swap_vert</mat-icon>
+    <span class="mobile-nav__label">Order Entry</span>
+  </a>
+</nav>

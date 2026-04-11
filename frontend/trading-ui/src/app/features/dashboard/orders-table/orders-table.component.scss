@@ -75,3 +75,38 @@
 .side--sell {
   color: var(--colour-loss);
 }
+
+@media (max-width: 640px) {
+  .orders-table__col-type,
+  .orders-table__col-status {
+    display: none;
+  }
+
+  .orders-table {
+    th,
+    td {
+      padding: 0.35rem 0.35rem;
+      font-size: 0.75rem;
+    }
+
+    th {
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+    }
+
+    &__wrapper {
+      padding: 0.25rem 0;
+    }
+
+    &__header {
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    &__cancel-all {
+      font-size: 0.65rem;
+      padding: 0 8px;
+      height: 28px;
+    }
+  }
+}

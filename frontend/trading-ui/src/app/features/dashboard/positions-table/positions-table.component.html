@@ -56,26 +56,27 @@
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
-            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('entryPrice')">
+            <th class="positions-table__header positions-table__header--sortable positions-table__col-entry" (click)="onSort('entryPrice')">
               Entry Price
               @if (sortColumn === "entryPrice" && sortDirection) {
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
-            <th class="positions-table__header positions-table__header--sortable" (click)="onSort('markPrice')">
+            <th class="positions-table__header positions-table__header--sortable positions-table__col-mark" (click)="onSort('markPrice')">
               Mark Price
               @if (sortColumn === "markPrice" && sortDirection) {
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
             <th class="positions-table__header positions-table__header--sortable" (click)="onSort('unrealisedPnl')">
-              Unrealised PnL
+              <span class="positions-table__header-full">Unrealised PnL</span>
+              <span class="positions-table__header-short">PnL</span>
               @if (sortColumn === "unrealisedPnl" && sortDirection) {
                 <mat-icon class="positions-table__sort-icon">{{ sortDirection === "asc" ? "arrow_upward" : "arrow_downward" }}</mat-icon>
               }
             </th>
-            <th class="positions-table__header">SL</th>
-            <th class="positions-table__header">TP</th>
+            <th class="positions-table__header positions-table__col-sl">SL</th>
+            <th class="positions-table__header positions-table__col-tp">TP</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -99,8 +100,8 @@
                   {{ position.size | number: "1.4-4" }} ({{ position.side }})
                 </span>
               </td>
-              <td>{{ position.entryPrice | number: "1.2-2" }}</td>
-              <td>
+              <td class="positions-table__col-entry">{{ position.entryPrice | number: "1.2-2" }}</td>
+              <td class="positions-table__col-mark">
                 @if (!hasMarkPrice(position)) {
                   <span class="positions-table__na">—</span>
                 } @else {
@@ -116,7 +117,7 @@
                 {{ position.unrealisedPnl | number: "1.2-2" }}
                 ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
               </td>
-              <td class="positions-table__cell positions-table__cell--sl">
+              <td class="positions-table__cell positions-table__cell--sl positions-table__col-sl">
                 @if (isInlineEditing(position, "sl")) {
                   <input
                     class="positions-table__inline-input"
@@ -147,7 +148,7 @@
                   <span class="positions-table__no-value">—</span>
                 }
               </td>
-              <td class="positions-table__cell positions-table__cell--tp">
+              <td class="positions-table__cell positions-table__cell--tp positions-table__col-tp">
                 @if (isInlineEditing(position, "tp")) {
                   <input
                     class="positions-table__inline-input"

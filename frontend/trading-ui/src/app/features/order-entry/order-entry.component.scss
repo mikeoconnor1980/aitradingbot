@@ -195,3 +195,21 @@
     }
   }
 }
+
+@media (max-width: 640px) {
+  .order-entry {
+    padding: 12px;
+
+    &__card {
+      max-width: 100%;
+    }
+  }
+
+  .order-entry__actions button {
+    min-height: 48px;
+  }
+
+  .order-entry__form {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}

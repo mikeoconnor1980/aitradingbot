@@ -24,8 +24,8 @@
           <th>Side</th>
           <th>Price</th>
           <th>Size</th>
-          <th>Order Type</th>
-          <th>Status</th>
+          <th class="orders-table__col-type">Order Type</th>
+          <th class="orders-table__col-status">Status</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -36,8 +36,8 @@
             <td [ngClass]="getSideClass(order.side)">{{ order.side }}</td>
             <td>{{ order.price | number: "1.2-2" }}</td>
             <td>{{ order.size | number: "1.4-4" }}</td>
-            <td>{{ order.orderType }}</td>
-            <td>{{ order.status }}</td>
+            <td class="orders-table__col-type">{{ order.orderType }}</td>
+            <td class="orders-table__col-status">{{ order.status }}</td>
             <td class="orders-table__actions">
               @if (isLoading(order.orderId)) {
                 <mat-spinner diameter="20" aria-label="Order action in progress"></mat-spinner>

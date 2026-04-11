@@ -12,6 +12,7 @@ import { AuthService } from "../../core/services/auth.service";
 import { HealthService } from "../../core/services/health.service";
 import { ProfileService } from "../../core/services/profile.service";
 import { WalletService } from "../../core/services/wallet.service";
+import { Router } from "@angular/router";
 import { environment } from "../../../environments/environment";
 
 @Component({
@@ -26,6 +27,7 @@ export class ProfilePageComponent implements OnInit {
   private readonly _healthService = inject(HealthService);
   private readonly _profileService = inject(ProfileService);
   private readonly _walletService = inject(WalletService);
+  private readonly _router = inject(Router);
 
   public get user() {
     const current = this._authService.currentUser;
@@ -112,5 +114,10 @@ export class ProfilePageComponent implements OnInit {
       next: () => this.networkSaving.set(false),
       error: () => this.networkSaving.set(false)
     });
+  }
+
+  public onLogout(): void {
+    this._authService.logout();
+    this._router.navigate(["/login"]);
   }
 }

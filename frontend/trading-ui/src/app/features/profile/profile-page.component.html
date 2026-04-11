@@ -141,5 +141,13 @@
 
   <footer class="profile-page__footer">
     <span class="profile-page__version">App v{{ appVersion }}</span>
+    <button
+      mat-stroked-button
+      color="warn"
+      class="profile-page__logout-btn"
+      (click)="onLogout()">
+      <mat-icon>logout</mat-icon>
+      Log out
+    </button>
   </footer>
 </section>

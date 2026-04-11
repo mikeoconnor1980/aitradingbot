@@ -54,3 +54,34 @@
     margin-top: 1rem;
   }
 }
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 0.25rem;
+
+    &__header {
+      gap: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    &__title {
+      font-size: 1rem;
+    }
+
+    &__timestamp {
+      font-size: 0.7rem;
+    }
+
+    &__controls {
+      gap: 0.25rem;
+    }
+
+    &__tabs {
+      margin-top: 0.5rem;
+    }
+
+    &__context {
+      display: none;
+    }
+  }
+}

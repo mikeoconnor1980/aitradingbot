@@ -55,6 +55,10 @@
     }
   }
 
+  &__header-short {
+    display: none;
+  }
+
   &__sort-icon {
     font-size: 16px;
     width: 16px;
@@ -263,5 +267,93 @@
 
   .positions-table__details-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .positions-table__col-entry,
+  .positions-table__col-mark,
+  .positions-table__col-sl,
+  .positions-table__col-tp {
+    display: none;
+  }
+
+  .positions-table {
+    th,
+    td {
+      padding: 0.35rem 0.35rem;
+      font-size: 0.75rem;
+    }
+
+    th {
+      font-size: 0.6rem;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  .positions-table__toolbar {
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .positions-table__close-all-btn {
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 0.7rem;
+    height: 32px;
+  }
+
+  .positions-table__filter {
+    max-width: 140px;
+    font-size: 0.75rem;
+  }
+
+  .positions-table__wrapper {
+    padding: 0.25rem 0;
+  }
+
+  .positions-table__details-col {
+    padding: 0 0 0 0.15rem;
+  }
+
+  .positions-table__details-toggle {
+    width: 28px;
+    height: 28px;
+
+    .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .positions-table__set-sltp-btn {
+    font-size: 0.65rem;
+    padding: 0 6px;
+    min-height: 28px;
+    line-height: 28px;
+  }
+
+  .positions-table__action-group {
+    gap: 0.25rem;
+
+    button {
+      font-size: 0.65rem;
+      padding: 0 6px;
+      min-height: 28px;
+      line-height: 28px;
+    }
+  }
+
+  .positions-table__actions {
+    min-width: 0;
+  }
+
+  .positions-table__header-full {
+    display: none;
+  }
+
+  .positions-table__header-short {
+    display: inline;
   }
 }

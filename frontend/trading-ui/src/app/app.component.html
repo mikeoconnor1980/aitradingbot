@@ -1,12 +1,16 @@
 @if (isAuthenticated) {
-<app-sidebar-nav #sidebar (logoutClicked)="onLogout()" />
+@if (!isMobile()) {
+  <app-sidebar-nav (logoutClicked)="onLogout()" />
+}
 
-<main class="app-shell" [class.app-shell--sidebar-collapsed]="!sidebar.expanded">
+<main class="app-shell"
+  [class.app-shell--sidebar-collapsed]="!isMobile() && sidebar?.expanded === false"
+  [class.app-shell--mobile]="isMobile()">
   <header class="app-shell__header">
     <h1 class="app-shell__title">{{ title }}</h1>
 
     <div class="app-shell__header-end">
-      @if (networkLabel) {
+      @if (!isMobile() && networkLabel) {
         <span class="app-shell__network-badge" [class.app-shell__network-badge--testnet]="preferredNetwork === 'testnet'">
           <span class="app-shell__network-dot"></span>
           {{ networkLabel }}
@@ -19,10 +23,12 @@
         [attr.aria-label]="'Connection status: ' + statusLabel + '. Click to view details.'"
       >
         <span class="app-shell__status-dot"></span>
-        <span class="app-shell__status-label">{{ statusLabel }}</span>
+        @if (!isMobile()) {
+          <span class="app-shell__status-label">{{ statusLabel }}</span>
+        }
       </a>
 
-      @if (currentUser) {
+      @if (!isMobile() && currentUser) {
         <span class="app-shell__user-name">{{ currentUser.displayName }}</span>
       }
 
@@ -37,15 +43,17 @@
         <mat-icon>account_circle</mat-icon>
       </a>
 
-      <button
-        mat-icon-button
-        class="app-shell__help-btn"
-        (click)="onToggleHelp()"
-        matTooltip="Help &amp; Guide"
-        aria-label="Open help panel"
-      >
-        <mat-icon>help_outline</mat-icon>
-      </button>
+      @if (!isMobile()) {
+        <button
+          mat-icon-button
+          class="app-shell__help-btn"
+          (click)="onToggleHelp()"
+          matTooltip="Help &amp; Guide"
+          aria-label="Open help panel"
+        >
+          <mat-icon>help_outline</mat-icon>
+        </button>
+      }
     </div>
   </header>
 
@@ -54,7 +62,13 @@
   </div>
 </main>
 
-<app-help-panel />
+@if (!isMobile()) {
+  <app-help-panel />
+}
+
+@if (isMobile()) {
+  <app-mobile-nav />
+}
 } @else {
   <router-outlet />
 }

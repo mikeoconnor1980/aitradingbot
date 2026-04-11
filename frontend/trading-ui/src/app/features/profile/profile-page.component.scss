@@ -137,13 +137,22 @@
   }
 
   &__footer {
-    text-align: center;
-    padding: 0.5rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
   }
 
   &__version {
     color: var(--colour-muted);
     font-size: 0.75rem;
     letter-spacing: 0.04em;
+  }
+
+  &__logout-btn {
+    mat-icon {
+      margin-right: 0.25rem;
+    }
   }
 }

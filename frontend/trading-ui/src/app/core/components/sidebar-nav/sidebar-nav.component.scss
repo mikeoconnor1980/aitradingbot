@@ -164,3 +164,9 @@ $sidebar-transition: 0.2s ease;
     background: rgba(239, 68, 68, 0.08);
   }
 }
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}

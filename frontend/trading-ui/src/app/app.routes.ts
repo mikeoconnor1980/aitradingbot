@@ -1,5 +1,6 @@
 import { Routes } from "@angular/router";
 import { authGuard } from "./core/guards/auth.guard";
+import { mobileRedirectGuard } from "./core/guards/mobile-redirect.guard";
 import { unsavedChangesGuard } from "./features/strategy-builder/guards/unsaved-changes.guard";
 
 export const routes: Routes = [
@@ -16,27 +17,27 @@ export const routes: Routes = [
   {
     path: "strategies",
     loadComponent: () => import("./features/strategy-builder/strategy-list-page.component").then((m) => m.StrategyListPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Strategies"
   },
   {
     path: "strategies/new",
     loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     canDeactivate: [unsavedChangesGuard],
     title: "New Strategy"
   },
   {
     path: "strategies/:id/edit",
     loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     canDeactivate: [unsavedChangesGuard],
     title: "Edit Strategy"
   },
   {
     path: "market-data",
     loadComponent: () => import("./features/market-data/market-data.component").then((m) => m.MarketDataComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Market Data"
   },
   {
@@ -47,7 +48,7 @@ export const routes: Routes = [
   {
     path: "connection",
     loadComponent: () => import("./features/connection/status-card.component").then((m) => m.StatusCardComponent),
-    canActivate: [authGuard]
+    canActivate: [authGuard, mobileRedirectGuard]
   },
   {
     path: "order-entry",
@@ -58,25 +59,25 @@ export const routes: Routes = [
   {
     path: "backtesting",
     loadComponent: () => import("./features/backtesting/backtest-page.component").then((m) => m.BacktestPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Backtesting"
   },
   {
     path: "candle-data",
     loadComponent: () => import("./features/candle-management/candle-management.component").then((m) => m.CandleManagementComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Candle Data"
   },
   {
     path: "optimizer",
     loadComponent: () => import("./features/optimizer/optimizer-page.component").then((m) => m.OptimizerPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Strategy Optimizer"
   },
   {
     path: "agents",
     loadComponent: () => import("./features/agents/agents-page.component").then((m) => m.AgentsPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Agents"
   },
   {
@@ -88,7 +89,7 @@ export const routes: Routes = [
   {
     path: "macro-calendar",
     loadComponent: () => import("./features/macro-calendar/macro-calendar-page.component").then((m) => m.MacroCalendarPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, mobileRedirectGuard],
     title: "Macro Calendar"
   },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },
