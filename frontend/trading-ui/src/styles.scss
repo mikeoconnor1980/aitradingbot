@@ -85,3 +85,10 @@ body {
 .optimizer-results-table__signal-tooltip {
 	max-width: 480px !important;
 }
+
+// Mobile-optimised dialogs — full width, anchored to bottom
+.responsive-dialog--mobile {
+	.mat-mdc-dialog-container {
+		border-radius: 16px 16px 0 0;
+	}
+}

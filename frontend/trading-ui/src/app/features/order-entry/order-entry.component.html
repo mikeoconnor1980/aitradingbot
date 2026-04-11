@@ -95,6 +95,12 @@
             <mat-label>Size ({{ selectedCoin }})</mat-label>
             <input matInput type="number" formControlName="size" step="0.001" />
           </mat-form-field>
+          <div class="order-entry__quick-size">
+            <button type="button" class="order-entry__quick-size-btn" (click)="onQuickSize(0.25)" [disabled]="availableMargin == null">25%</button>
+            <button type="button" class="order-entry__quick-size-btn" (click)="onQuickSize(0.50)" [disabled]="availableMargin == null">50%</button>
+            <button type="button" class="order-entry__quick-size-btn" (click)="onQuickSize(0.75)" [disabled]="availableMargin == null">75%</button>
+            <button type="button" class="order-entry__quick-size-btn" (click)="onQuickSize(1.00)" [disabled]="availableMargin == null">100%</button>
+          </div>
         </div>
 
         <div class="order-entry__sltp-toggle">

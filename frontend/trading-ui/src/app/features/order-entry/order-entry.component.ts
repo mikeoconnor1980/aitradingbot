@@ -80,6 +80,7 @@ export class OrderEntryComponent implements OnInit {
   public leverageError = false;
   public readonly showSlTp = signal(false);
   public currentPositionLiquidationPrice: number | null = null;
+  public availableMargin: number | null = null;
 
   public assets: TradableAsset[] = [{ symbol: "BTC-PERP", name: "Bitcoin", maxLeverage: 40, szDecimals: 5 }];
   public isLoadingAssets = true;
@@ -134,6 +135,7 @@ export class OrderEntryComponent implements OnInit {
 
     this._loadMidPrice();
     this._loadPositionContext();
+    this._loadAvailableMargin();
     this._subscribeToPriceUpdates();
 
     this._orderService.getAvailableAssets().subscribe({
@@ -164,6 +166,20 @@ export class OrderEntryComponent implements OnInit {
 
   public onAgentChange(agentId: string | null): void {
     this._agentService.selectAgent(agentId);
+  }
+
+  public onQuickSize(percent: number): void {
+    if (this.availableMargin == null || this.livePrice == null || this.livePrice <= 0) {
+      return;
+    }
+
+    const maxSize = (this.availableMargin * this.leverage) / this.livePrice;
+    const szDecimals = this.selectedAssetInfo?.szDecimals ?? 4;
+    const size = Math.floor(maxSize * percent * Math.pow(10, szDecimals)) / Math.pow(10, szDecimals);
+
+    if (size > 0) {
+      this.orderForm.controls.size.setValue(size);
+    }
   }
 
   public onAssetChange(asset: string): void {
@@ -478,6 +494,14 @@ export class OrderEntryComponent implements OnInit {
 
   private _hasValue(value: number | null | undefined): value is number {
     return value !== null && value !== undefined;
+  }
+
+  private _loadAvailableMargin(): void {
+    this._apiService.getAccountSummary().subscribe({
+      next: (summary) => {
+        this.availableMargin = summary.availableMargin;
+      }
+    });
   }
 
 }

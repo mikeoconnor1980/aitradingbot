@@ -1,0 +1,56 @@
+<div class="order-card" [class.order-card--loading]="loading">
+  <div class="order-card__header">
+    <div class="order-card__asset">
+      <span class="order-card__symbol">{{ order.asset }}</span>
+      <span class="order-card__side-badge" [ngClass]="sideClass">{{ order.side }}</span>
+    </div>
+    <span class="order-card__type">{{ order.orderType }}</span>
+  </div>
+
+  <div class="order-card__body">
+    <div class="order-card__row">
+      <div class="order-card__metric">
+        <span class="order-card__label">Price</span>
+        <span>{{ order.price | number: "1.2-2" }}</span>
+      </div>
+      <div class="order-card__metric">
+        <span class="order-card__label">Size</span>
+        <span>{{ order.size | number: "1.4-4" }}</span>
+      </div>
+      <div class="order-card__metric order-card__metric--status">
+        <span class="order-card__label">Status</span>
+        <span>{{ order.status }}</span>
+      </div>
+    </div>
+    @if (order.triggerPrice != null) {
+      <div class="order-card__row">
+        <div class="order-card__metric">
+          <span class="order-card__label">Trigger</span>
+          <span>{{ order.triggerPrice | number: "1.2-2" }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="order-card__actions">
+    <button
+      mat-stroked-button
+      type="button"
+      class="order-card__action-btn"
+      [disabled]="loading"
+      (click)="onModify()">
+      <mat-icon>edit</mat-icon>
+      Modify
+    </button>
+    <button
+      mat-stroked-button
+      type="button"
+      color="warn"
+      class="order-card__action-btn"
+      [disabled]="loading"
+      (click)="onCancel()">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+  </div>
+</div>

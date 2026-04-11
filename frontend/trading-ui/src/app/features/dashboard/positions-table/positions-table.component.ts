@@ -1,5 +1,5 @@
 import { DecimalPipe } from "@angular/common";
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { Component, EventEmitter, inject, Input, Output } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -7,8 +7,10 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { LayoutService } from "../../../core/services/layout.service";
 import { Position } from "../../../core/models/position.model";
 import { FundingIndicatorComponent } from "./funding-indicator/funding-indicator.component";
+import { PositionCardComponent } from "./position-card/position-card.component";
 
 type SortableColumn = "asset" | "size" | "unrealisedPnl" | "entryPrice" | "markPrice";
 type SortDirection = "asc" | "desc" | null;
@@ -16,11 +18,15 @@ type SortDirection = "asc" | "desc" | null;
 @Component({
   selector: "app-positions-table",
   standalone: true,
-  imports: [DecimalPipe, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule, FundingIndicatorComponent],
+  imports: [DecimalPipe, FormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule, MatProgressSpinnerModule, MatTooltipModule, FundingIndicatorComponent, PositionCardComponent],
   templateUrl: "./positions-table.component.html",
   styleUrl: "./positions-table.component.scss"
 })
 export class PositionsTableComponent {
+  private readonly _layout = inject(LayoutService);
+
+  public readonly isMobile = this._layout.isMobile;
+
   @Input()
   public positions: Position[] = [];
 

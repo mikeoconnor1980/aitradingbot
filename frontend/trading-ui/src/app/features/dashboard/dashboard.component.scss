@@ -53,6 +53,13 @@
   &__tabs {
     margin-top: 1rem;
   }
+
+  &__fab {
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    z-index: 20;
+  }
 }
 
 @media (max-width: 640px) {
@@ -78,6 +85,13 @@
 
     &__tabs {
       margin-top: 0.5rem;
+
+      ::ng-deep .mat-mdc-tab-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--colour-background, #121212);
+      }
     }
 
     &__context {

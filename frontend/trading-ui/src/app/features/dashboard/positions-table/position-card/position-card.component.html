@@ -1,0 +1,113 @@
+<div class="position-card" [class.position-card--loading]="loading">
+  <div class="position-card__header">
+    <div class="position-card__asset">
+      <span class="position-card__symbol">{{ position.asset }}</span>
+      <span class="position-card__side-badge" [class]="sideClass">{{ position.side }}</span>
+      <span class="position-card__leverage">{{ position.leverage }}x</span>
+    </div>
+    <button
+      class="position-card__expand-btn"
+      type="button"
+      [attr.aria-expanded]="expanded"
+      aria-label="Toggle details"
+      (click)="onToggleExpand()">
+      <mat-icon>{{ expanded ? "expand_less" : "expand_more" }}</mat-icon>
+    </button>
+  </div>
+
+  <div class="position-card__body">
+    <div class="position-card__row">
+      <div class="position-card__metric">
+        <span class="position-card__label">Size</span>
+        <span>{{ position.size | number: "1.4-4" }}</span>
+      </div>
+      <div class="position-card__metric">
+        <span class="position-card__label">Entry</span>
+        <span>{{ position.entryPrice | number: "1.2-2" }}</span>
+      </div>
+      <div class="position-card__metric position-card__metric--pnl">
+        <span class="position-card__label">PnL</span>
+        <span [class]="pnlClass">
+          {{ position.unrealisedPnl | number: "1.2-2" }}
+          ({{ position.unrealisedPnlPercent | number: "1.2-2" }}%)
+        </span>
+      </div>
+    </div>
+
+    @if (hasSlTp) {
+      <div class="position-card__row position-card__row--sltp">
+        @if (position.stopLossPrice != null) {
+          <div class="position-card__metric">
+            <span class="position-card__label">SL</span>
+            <span class="position-card__sl-value">
+              {{ position.stopLossPrice | number: "1.2-2" }}
+              <button
+                class="position-card__remove-btn"
+                type="button"
+                title="Remove SL"
+                [disabled]="loading"
+                (click)="onRemoveSl()">×</button>
+            </span>
+          </div>
+        }
+        @if (position.takeProfitPrice != null) {
+          <div class="position-card__metric">
+            <span class="position-card__label">TP</span>
+            <span class="position-card__tp-value">
+              {{ position.takeProfitPrice | number: "1.2-2" }}
+              <button
+                class="position-card__remove-btn"
+                type="button"
+                title="Remove TP"
+                [disabled]="loading"
+                (click)="onRemoveTp()">×</button>
+            </span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (expanded) {
+      <div class="position-card__details">
+        <div class="position-card__detail-row">
+          <span class="position-card__label">Mark Price</span>
+          <span>{{ position.markPrice | number: "1.2-2" }}</span>
+        </div>
+        <div class="position-card__detail-row">
+          <span class="position-card__label">Margin</span>
+          <span>{{ marginLabel }} ({{ marginPercentLabel }})</span>
+        </div>
+        <div class="position-card__detail-row">
+          <span class="position-card__label">Liquidation</span>
+          <span>{{ liquidationLabel }}</span>
+        </div>
+        <div class="position-card__detail-row">
+          <span class="position-card__label">Mode</span>
+          <span class="position-card__mode-badge">{{ position.marginMode }}</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="position-card__actions">
+    @if (position.stopLossPrice == null && position.takeProfitPrice == null) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="position-card__action-btn"
+        [disabled]="loading"
+        (click)="onSetSlTp()">
+        Set SL/TP
+      </button>
+    }
+    <button
+      mat-stroked-button
+      type="button"
+      color="warn"
+      class="position-card__action-btn"
+      [disabled]="loading"
+      (click)="onClose()">
+      Close
+    </button>
+  </div>
+</div>

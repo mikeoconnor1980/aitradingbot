@@ -1,0 +1,107 @@
+.order-card {
+  border: 1px solid var(--colour-border-subtle);
+  border-radius: 8px;
+  background: var(--colour-surface, rgba(255, 255, 255, 0.04));
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+
+  &--loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem 0.25rem;
+  }
+
+  &__asset {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__symbol {
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+
+  &__side-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  &__type {
+    font-size: 0.7rem;
+    color: var(--colour-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  &__body {
+    padding: 0 0.75rem;
+  }
+
+  &__row {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+  }
+
+  &__metric {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
+
+    &--status {
+      text-align: right;
+      align-items: flex-end;
+    }
+  }
+
+  &__label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--colour-muted);
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid var(--colour-border-subtle);
+  }
+
+  &__action-btn {
+    flex: 1;
+    font-size: 0.75rem;
+    min-height: 32px;
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+  }
+}
+
+.side--buy {
+  background: rgba(var(--colour-profit-rgb, 76, 175, 80), 0.15);
+  color: var(--colour-profit);
+}
+
+.side--sell {
+  background: rgba(var(--colour-loss-rgb, 244, 67, 54), 0.15);
+  color: var(--colour-loss);
+}

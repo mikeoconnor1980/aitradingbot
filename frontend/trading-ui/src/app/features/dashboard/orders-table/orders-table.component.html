@@ -16,6 +16,17 @@
 <div class="orders-table__wrapper">
   @if (orders.length === 0) {
     <div class="orders-table__empty">No open orders</div>
+  } @else if (isMobile()) {
+    <div class="orders-table__cards">
+      @for (order of orders; track order.orderId) {
+        <app-order-card
+          [order]="order"
+          [loading]="isLoading(order.orderId)"
+          (cancelOrder)="onCancelClick($event)"
+          (modifyOrder)="onModifyClick($event)">
+        </app-order-card>
+      }
+    </div>
   } @else {
     <table class="orders-table" aria-label="Open orders">
       <thead>

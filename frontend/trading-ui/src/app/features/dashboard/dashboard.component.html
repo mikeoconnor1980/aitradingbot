@@ -54,4 +54,15 @@
       <app-activity-feed></app-activity-feed>
     </mat-tab>
   </mat-tab-group>
+
+  @if (isMobile()) {
+    <button
+      mat-fab
+      color="primary"
+      class="dashboard__fab"
+      aria-label="Place a trade"
+      (click)="onFabClick()">
+      <mat-icon>add</mat-icon>
+    </button>
+  }
 </section>

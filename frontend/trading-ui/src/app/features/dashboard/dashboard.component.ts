@@ -1,10 +1,10 @@
 import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
-import { MatDialog } from "@angular/material/dialog";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTabsModule } from "@angular/material/tabs";
+import { Router } from "@angular/router";
 import { ModifyOrderDto } from "../../core/models/modify-order.model";
 import { CloseAllProgress, PlaceOrderRequest } from "../../core/models/place-order.model";
 import { ModifyTriggerOrderDto, PlaceTriggerOrderRequest } from "../../core/models/trigger-order.model";
@@ -20,6 +20,8 @@ import { NotificationService } from "../../core/services/notification.service";
 import { OrderService } from "../../core/services/order.service";
 import { AccountStateService } from "../../core/services/account-state.service";
 import { AgentService } from "../../core/services/agent.service";
+import { LayoutService } from "../../core/services/layout.service";
+import { ResponsiveDialogService } from "../../core/services/responsive-dialog.service";
 import { ConfirmDialogComponent } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AccountSummaryComponent } from "./account-summary/account-summary.component";
 import { CloseAllDialogComponent, CloseAllResult } from "./positions-table/close-all-dialog/close-all-dialog.component";
@@ -49,7 +51,9 @@ import { MarketContextCardComponent } from "./market-context-card/market-context
 })
 export class DashboardComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
-  private readonly _dialog = inject(MatDialog);
+  private readonly _responsiveDialog = inject(ResponsiveDialogService);
+  private readonly _router = inject(Router);
+  private readonly _layout = inject(LayoutService);
   private readonly _apiService = inject(HyperliquidApiService);
   private readonly _orderService = inject(OrderService);
   private readonly _notifications = inject(NotificationService);
@@ -59,6 +63,8 @@ export class DashboardComponent implements OnInit {
   private readonly _pendingOrderIds = new Set<string>();
   private readonly _pendingPositionKeys = new Set<string>();
   private _consecutiveErrors = 0;
+
+  public readonly isMobile = this._layout.isMobile;
 
   @ViewChild(OrdersTableComponent)
   public ordersTable?: OrdersTableComponent;
@@ -91,12 +97,16 @@ export class DashboardComponent implements OnInit {
     this._refresh$.next();
   }
 
+  public onFabClick(): void {
+    this._router.navigate(["/order-entry"]);
+  }
+
   public onCancelOrder(order: OpenOrder): void {
     if (this.ordersTable?.isLoading(order.orderId)) {
       return;
     }
 
-    this._dialog.open(ConfirmDialogComponent, {
+    this._responsiveDialog.open(ConfirmDialogComponent, {
       data: {
         title: "Cancel Order",
         message: `Cancel order #${order.orderId}?`,
@@ -145,7 +155,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._dialog.open(ConfirmDialogComponent, {
+    this._responsiveDialog.open(ConfirmDialogComponent, {
       data: {
         title: "Cancel All Orders",
         message: `Cancel all ${orderCount} open orders for ${this.orders[0]?.asset ?? "BTC-PERP"}?`,
@@ -183,7 +193,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._dialog.open(ModifyOrderModalComponent, {
+    this._responsiveDialog.open(ModifyOrderModalComponent, {
       data: { order } as ModifyOrderDialogData,
       width: "400px"
     }).afterClosed().subscribe((result: ModifyOrderDto | undefined) => {
@@ -231,7 +241,7 @@ export class DashboardComponent implements OnInit {
 
     const closeSide: "buy" | "sell" = position.side === "Long" ? "sell" : "buy";
 
-    this._dialog.open(ConfirmDialogComponent, {
+    this._responsiveDialog.open(ConfirmDialogComponent, {
       data: {
         title: "Close Position",
         message: `Close ${position.side} ${position.asset}-PERP position?`,
@@ -297,7 +307,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._dialog.open(CloseAllDialogComponent, {
+    this._responsiveDialog.open(CloseAllDialogComponent, {
       data: { positions: currentPositions },
       width: "450px"
     }).afterClosed().subscribe((result: CloseAllResult | undefined) => {
@@ -376,7 +386,7 @@ export class DashboardComponent implements OnInit {
 
     const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
 
-    this._dialog.open(SetSlTpModalComponent, {
+    this._responsiveDialog.open(SetSlTpModalComponent, {
       data: { position } as SetSlTpDialogData,
       width: "400px"
     }).afterClosed().subscribe((result: SetSlTpResult | undefined) => {

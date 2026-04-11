@@ -1,20 +1,26 @@
 import { DecimalPipe, NgClass } from "@angular/common";
-import { Component, EventEmitter, Input, Output, ViewChild } from "@angular/core";
+import { Component, EventEmitter, inject, Input, Output, ViewChild } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule, MatMenuTrigger } from "@angular/material/menu";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { LayoutService } from "../../../core/services/layout.service";
 import { OpenOrder } from "../../../core/models/open-order.model";
+import { OrderCardComponent } from "./order-card/order-card.component";
 
 @Component({
   selector: "app-orders-table",
   standalone: true,
-  imports: [DecimalPipe, NgClass, MatButtonModule, MatIconModule, MatMenuModule, MatProgressSpinnerModule, MatTooltipModule],
+  imports: [DecimalPipe, NgClass, MatButtonModule, MatIconModule, MatMenuModule, MatProgressSpinnerModule, MatTooltipModule, OrderCardComponent],
   templateUrl: "./orders-table.component.html",
   styleUrl: "./orders-table.component.scss"
 })
 export class OrdersTableComponent {
+  private readonly _layout = inject(LayoutService);
+
+  public readonly isMobile = this._layout.isMobile;
+
   @ViewChild(MatMenuTrigger)
   public contextMenuTrigger?: MatMenuTrigger;
 

@@ -13,7 +13,7 @@ namespace TradingApp.Api.Controllers;
 [ApiController]
 [Route("api/agent")]
 [Produces("application/json")]
-[Authorize]
+[AllowAnonymous]
 public sealed class AgentController : ControllerBase
 {
     private readonly AgentCommandStore _store;

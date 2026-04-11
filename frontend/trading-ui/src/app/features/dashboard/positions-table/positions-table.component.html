@@ -38,6 +38,19 @@
 
   @if (isFiltered && filteredCount === 0) {
     <div class="positions-table__empty-filter">No positions matching '{{ filterText }}'</div>
+  } @else if (isMobile()) {
+    <div class="positions-table__cards">
+      @for (position of sortedFilteredPositions; track position.asset + position.side) {
+        <app-position-card
+          [position]="position"
+          [equity]="equity"
+          [loading]="isLoading(position)"
+          (closePosition)="onCloseClick($event)"
+          (setSlTp)="setSlTp.emit($event)"
+          (removeSlTp)="removeSlTp.emit($event)">
+        </app-position-card>
+      }
+    </div>
   } @else {
     <div class="positions-table__wrapper">
       <table class="positions-table" aria-label="Open positions">
