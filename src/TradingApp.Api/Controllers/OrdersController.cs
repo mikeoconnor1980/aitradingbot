@@ -23,29 +23,40 @@ public sealed class OrdersController : ControllerBase
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidAssetMetadataCache _metadataCache;
     private readonly IUserWalletAddressRepository _walletRepo;
+    private readonly ISignerProvider _signerProvider;
 
     public OrdersController(
         IHyperliquidOrderService orderService,
         IHyperliquidAccountService accountService,
         IHyperliquidRestClient restClient,
         IHyperliquidAssetMetadataCache metadataCache,
-        IUserWalletAddressRepository walletRepo)
+        IUserWalletAddressRepository walletRepo,
+        ISignerProvider signerProvider)
     {
         _orderService = orderService;
         _accountService = accountService;
         _restClient = restClient;
         _metadataCache = metadataCache;
         _walletRepo = walletRepo;
+        _signerProvider = signerProvider;
     }
 
     private async Task<string?> GetWalletAddressAsync(CancellationToken ct)
     {
+        // 1. Try user's wallet from JWT claims + DB
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (claim is null || !Guid.TryParse(claim, out var userId))
-            return null;
+        if (claim is not null && Guid.TryParse(claim, out var userId))
+        {
+            var wallet = await _walletRepo.GetActiveByUserIdAsync(userId, ct);
+            if (wallet?.WalletAddress is not null)
+                return wallet.WalletAddress;
+        }
 
-        var wallet = await _walletRepo.GetActiveByUserIdAsync(userId, ct);
-        return wallet?.WalletAddress;
+        // 2. Fall back to configured signer (local dev with private key)
+        if (_signerProvider.IsConfigured)
+            return _signerProvider.WalletAddress;
+
+        return null;
     }
 
     // Well-known token full names for display
