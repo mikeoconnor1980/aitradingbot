@@ -11,7 +11,7 @@
           <th>Date / Time</th>
           <th>Type</th>
           <th>Asset</th>
-          <th>Details</th>
+          <th class="activity-feed__col-details">Details</th>
           <th>Realized P&amp;L</th>
         </tr>
       </thead>
@@ -35,7 +35,7 @@
               </span>
             </td>
             <td class="activity-feed__asset">{{ event.asset }}</td>
-            <td class="activity-feed__details">{{ event.description }}</td>
+            <td class="activity-feed__details activity-feed__col-details">{{ event.description }}</td>
             <td class="activity-feed__pnl"
                 [class.activity-feed__pnl--positive]="event.isPositivePnl"
                 [class.activity-feed__pnl--negative]="event.isNegativePnl">

@@ -65,6 +65,7 @@
 @media (max-width: 640px) {
   .dashboard {
     padding: 0.25rem;
+    overflow-x: hidden;
 
     &__header {
       gap: 0.25rem;
@@ -91,6 +92,10 @@
         top: 0;
         z-index: 10;
         background: var(--colour-background, #121212);
+      }
+
+      ::ng-deep .mat-mdc-tab-body-content {
+        overflow-x: hidden;
       }
     }
 

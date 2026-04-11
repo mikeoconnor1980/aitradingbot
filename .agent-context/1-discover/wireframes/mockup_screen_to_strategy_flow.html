@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screen → Strategy Flow — Wireframe</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <style>
+    :root {
+      --tp-text: #d7ebe7;
+      --tp-accent: #79cfc3;
+      --tp-accent-strong: #a6e3da;
+      --tp-accent-soft: rgba(121, 207, 195, 0.10);
+      --tp-profit: #3bc9a8;
+      --tp-loss: #e07a8f;
+      --tp-warning: #caa86a;
+      --tp-muted: #7f9d99;
+      --tp-border-light: rgba(121, 207, 195, 0.16);
+      --tp-border-subtle: rgba(121, 207, 195, 0.10);
+      --tp-surface-dark: rgba(8, 20, 22, 0.92);
+      --tp-surface-alt: rgba(15, 31, 34, 0.88);
+      --tp-info: #8fc7d8;
+      --tp-info-soft: rgba(143, 199, 216, 0.12);
+      --tp-profit-soft: rgba(59, 201, 168, 0.12);
+      --tp-loss-soft: rgba(224, 122, 143, 0.12);
+      --tp-warning-soft: rgba(202, 168, 106, 0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+      font-size: 14px; line-height: 1.5;
+      background: #071114; color: var(--tp-text);
+      display: flex; min-height: 100vh;
+    }
+
+    .wf-meta {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+      background: rgba(8, 20, 22, 0.95); padding: 6px 16px;
+      font-size: 11px; color: var(--tp-muted);
+      border-bottom: 1px solid var(--tp-border-light);
+      display: flex; justify-content: space-between;
+    }
+
+    .sidebar {
+      width: 220px; min-width: 220px;
+      background: rgba(8, 20, 22, 0.96); backdrop-filter: blur(12px);
+      border-right: 1px solid var(--tp-border-light);
+      padding: 0.5rem 0; display: flex; flex-direction: column; margin-top: 30px;
+    }
+    .sidebar__header {
+      display: flex; align-items: center; gap: 0.6rem;
+      height: 3rem; padding: 0 0.65rem; margin: 0 0.5rem 0.5rem;
+      border-bottom: 1px solid var(--tp-border-light);
+    }
+    .sidebar__logo { font-size: 1.25rem; color: var(--tp-accent); }
+    .sidebar__brand { font-size: 0.9rem; font-weight: 700; color: #f8fafc; }
+    .sidebar__nav { display: flex; flex-direction: column; gap: 2px; padding: 0.5rem; flex: 1; }
+    .sidebar__link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border-radius: 0.35rem;
+      color: var(--tp-muted); text-decoration: none; font-size: 0.85rem;
+    }
+    .sidebar__link:hover { color: var(--tp-accent); background: rgba(121, 207, 195, 0.08); }
+    .sidebar__link--active { color: var(--tp-accent); background: rgba(121, 207, 195, 0.12); font-weight: 500; }
+    .sidebar__icon { font-size: 20px; width: 20px; height: 20px; }
+
+    .main { flex: 1; margin-top: 30px; display: flex; flex-direction: column; }
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .header__title { font-size: 1.1rem; font-weight: 500; }
+    .content { padding: 1.5rem; flex: 1; overflow-y: auto; }
+
+    /* === Stepper === */
+    .stepper { display: flex; align-items: center; gap: 0; margin-bottom: 2rem; }
+    .step {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .step__number {
+      width: 28px; height: 28px; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 500;
+    }
+    .step--complete .step__number { background: var(--tp-profit); color: #071114; }
+    .step--active .step__number { background: var(--tp-accent); color: #071114; }
+    .step--pending .step__number { background: rgba(255,255,255,0.06); color: var(--tp-muted); border: 1px solid var(--tp-border-light); }
+    .step__label { font-size: 0.8rem; }
+    .step--complete .step__label { color: var(--tp-profit); }
+    .step--active .step__label { color: var(--tp-accent); font-weight: 500; }
+    .step--pending .step__label { color: var(--tp-muted); }
+    .step__connector {
+      width: 60px; height: 1px; margin: 0 0.75rem;
+    }
+    .step--complete + .step__connector, .step__connector--done { background: var(--tp-profit); }
+    .step__connector--active { background: var(--tp-accent); }
+    .step__connector--pending { background: var(--tp-border-light); }
+
+    /* === Cards === */
+    .card {
+      background: var(--tp-surface-dark); border: 1px solid var(--tp-border-light);
+      border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem;
+    }
+    .card__title {
+      font-size: 0.9rem; font-weight: 500; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
+      padding-bottom: 0.75rem; border-bottom: 1px solid var(--tp-border-subtle);
+    }
+    .card__title .material-icons { font-size: 18px; color: var(--tp-accent); }
+
+    /* === Layout === */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+
+    /* === Selected Asset Banner === */
+    .selected-asset {
+      display: flex; align-items: center; gap: 1.5rem;
+      background: var(--tp-accent-soft); border: 1px solid var(--tp-border-light);
+      border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+    }
+    .selected-asset__symbol { font-size: 1.2rem; font-weight: 700; }
+    .selected-asset__price { font-size: 1rem; }
+    .selected-asset__meta { font-size: 0.8rem; color: var(--tp-muted); }
+
+    /* === TA Badge === */
+    .ta-badge {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      padding: 0.15rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500;
+    }
+    .ta-badge--strong-buy { background: var(--tp-profit-soft); color: var(--tp-profit); }
+    .ta-badge--buy { background: rgba(59, 201, 168, 0.08); color: #6ddec9; }
+    .ta-badge--neutral { background: rgba(255,255,255,0.04); color: var(--tp-muted); }
+
+    /* === NL Input === */
+    .nl-input {
+      background: rgba(255,255,255,0.04); border: 1px solid var(--tp-border-light);
+      border-radius: 4px; padding: 0.75rem; color: var(--tp-text);
+      font-size: 0.85rem; font-family: inherit; width: 100%;
+      min-height: 80px; resize: vertical;
+    }
+    .nl-input::placeholder { color: var(--tp-muted); }
+    .char-count { font-size: 0.7rem; color: var(--tp-muted); text-align: right; margin-top: 0.25rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1.25rem; border: none; border-radius: 4px;
+      font-size: 0.85rem; font-family: inherit; cursor: pointer; height: 36px;
+    }
+    .btn-primary { background: var(--tp-accent); color: #061314; font-weight: 500; }
+    .btn-secondary { background: rgba(255,255,255,0.06); color: var(--tp-text); border: 1px solid var(--tp-border-light); }
+
+    /* === Grounding Context === */
+    .grounding-context {
+      background: rgba(143, 199, 216, 0.06); border: 1px solid rgba(143, 199, 216, 0.15);
+      border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem;
+    }
+    .grounding-context__title {
+      font-size: 0.75rem; font-weight: 500; color: var(--tp-info);
+      margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem;
+    }
+    .grounding-item {
+      display: flex; justify-content: space-between; padding: 0.2rem 0;
+      font-size: 0.8rem;
+    }
+    .grounding-item__label { color: var(--tp-muted); }
+    .grounding-item__value { font-weight: 500; }
+
+    /* === Assumptions === */
+    .assumption {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.4rem 0; font-size: 0.8rem;
+    }
+    .assumption__icon { color: var(--tp-warning); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .assumption__edit { color: var(--tp-accent); font-size: 0.75rem; cursor: pointer; margin-left: auto; text-decoration: none; }
+
+    /* === Confidence === */
+    .confidence-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.75rem; border-radius: 4px; font-size: 0.85rem; font-weight: 500;
+    }
+    .confidence-badge--high { background: var(--tp-profit-soft); color: var(--tp-profit); }
+    .confidence-badge--medium { background: var(--tp-warning-soft); color: var(--tp-warning); }
+
+    /* === Source Metadata === */
+    .source-meta {
+      background: rgba(255,255,255,0.02); border: 1px solid var(--tp-border-subtle);
+      border-radius: 6px; padding: 0.75rem 1rem; margin-top: 1rem;
+      font-size: 0.75rem; color: var(--tp-muted);
+    }
+    .source-meta dt { font-weight: 500; color: var(--tp-text); display: inline; }
+    .source-meta dd { display: inline; margin-left: 0.25rem; margin-right: 1.5rem; }
+  </style>
+</head>
+<body>
+  <div class="wf-meta">
+    <span>PRD-05 — Screen → Strategy Flow (Phase 3)</span>
+    <span>TradePilot Wireframe</span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar__header">
+      <span class="material-icons sidebar__logo">candlestick_chart</span>
+      <span class="sidebar__brand">TradePilot</span>
+    </div>
+    <nav class="sidebar__nav">
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">dashboard</span> Dashboard
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">radar</span> Market Scanner
+      </a>
+      <a class="sidebar__link sidebar__link--active" href="#">
+        <span class="material-icons sidebar__icon">tune</span> Strategies
+      </a>
+      <a class="sidebar__link" href="#">
+        <span class="material-icons sidebar__icon">history</span> Backtesting
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <h1 class="header__title">New Strategy — from TradingView Screen</h1>
+    </header>
+
+    <div class="content">
+      <!-- Stepper -->
+      <div class="stepper">
+        <div class="step step--complete">
+          <div class="step__number">✓</div>
+          <span class="step__label">Screen</span>
+        </div>
+        <div class="step__connector step__connector--done"></div>
+        <div class="step step--complete">
+          <div class="step__number">✓</div>
+          <span class="step__label">Select Asset</span>
+        </div>
+        <div class="step__connector step__connector--done"></div>
+        <div class="step step--active">
+          <div class="step__number">3</div>
+          <span class="step__label">Describe Strategy</span>
+        </div>
+        <div class="step__connector step__connector--active"></div>
+        <div class="step step--pending">
+          <div class="step__number">4</div>
+          <span class="step__label">Review & Save</span>
+        </div>
+        <div class="step__connector step__connector--pending"></div>
+        <div class="step step--pending">
+          <div class="step__number">5</div>
+          <span class="step__label">Backtest</span>
+        </div>
+      </div>
+
+      <!-- Selected Asset -->
+      <div class="selected-asset">
+        <div>
+          <div class="selected-asset__symbol">ETH-PERP</div>
+          <div class="selected-asset__meta">Selected from screen: RSI &lt; 30 AND SMA50 crosses_above SMA200</div>
+        </div>
+        <div>
+          <span class="selected-asset__price">$3,218.40</span>
+          <span style="color: var(--tp-loss); margin-left: 0.5rem;">-1.1%</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <span class="ta-badge ta-badge--strong-buy">1H: Strong Buy</span>
+          <span class="ta-badge ta-badge--buy">4H: Buy</span>
+          <span class="ta-badge ta-badge--neutral">1D: Neutral</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Left: NL Input + Grounding -->
+        <div>
+          <!-- NL Strategy Input -->
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">auto_awesome</span>
+              Describe Your Strategy
+            </div>
+            <textarea class="nl-input" placeholder="e.g., Set up a grid strategy for ETH with 10 levels, 0.5% spacing, targeting the oversold bounce">Set up a pullback grid for ETH-PERP. Use 10 grid levels with 0.4% spacing. Take profit at 2%. Add a short hedge if price breaks below the grid.</textarea>
+            <div class="char-count">168 / 500</div>
+            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+              <button class="btn btn-primary">
+                <span class="material-icons" style="font-size: 16px;">auto_awesome</span>
+                Generate (TV-Grounded)
+              </button>
+              <button class="btn btn-secondary">Clear</button>
+            </div>
+          </div>
+
+          <!-- Grounding Context (TV data injected into LLM prompt) -->
+          <div class="grounding-context">
+            <div class="grounding-context__title">
+              <span class="material-icons" style="font-size: 14px;">data_object</span>
+              TV Data Injected as LLM Context
+            </div>
+            <div class="grounding-item">
+              <span class="grounding-item__label">Current Price</span>
+              <span class="grounding-item__value">$3,218.40</span>
+            </div>
+            <div class="grounding-item">
+              <span class="grounding-item__label">RSI (14)</span>
+              <span class="grounding-item__value">27.3</span>
+            </div>
+            <div class="grounding-item">
+              <span class="grounding-item__label">TA Signal (1H)</span>
+              <span class="grounding-item__value" style="color: var(--tp-profit);">Strong Buy</span>
+            </div>
+            <div class="grounding-item">
+              <span class="grounding-item__label">TA Signal (4H)</span>
+              <span class="grounding-item__value" style="color: var(--tp-profit);">Buy</span>
+            </div>
+            <div class="grounding-item">
+              <span class="grounding-item__label">ATR (14)</span>
+              <span class="grounding-item__value">$82.50</span>
+            </div>
+            <div class="grounding-item">
+              <span class="grounding-item__label">Reddit Sentiment</span>
+              <span class="grounding-item__value" style="color: var(--tp-profit);">Bullish (0.38)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Generated Result -->
+        <div>
+          <div class="card">
+            <div class="card__title">
+              <span class="material-icons">check_circle</span>
+              Generated Strategy
+              <span class="confidence-badge confidence-badge--high">Confidence: 0.91</span>
+            </div>
+
+            <!-- Assumptions -->
+            <div style="margin-bottom: 1rem;">
+              <div style="font-size: 0.8rem; font-weight: 500; margin-bottom: 0.5rem; color: var(--tp-warning);">
+                <span class="material-icons" style="font-size: 14px; vertical-align: middle;">info</span>
+                Assumptions (3)
+              </div>
+              <div class="assumption">
+                <span class="material-icons assumption__icon">arrow_right</span>
+                <span>Anchor price set to current market price ($3,218.40) based on TV data</span>
+                <a class="assumption__edit">Edit →</a>
+              </div>
+              <div class="assumption">
+                <span class="material-icons assumption__icon">arrow_right</span>
+                <span>Grid spacing of 0.4% (~$12.87 per level) — ATR suggests reasonable volatility</span>
+                <a class="assumption__edit">Edit →</a>
+              </div>
+              <div class="assumption">
+                <span class="material-icons assumption__icon">arrow_right</span>
+                <span>Hedge trigger set at 1.5% below lowest grid level</span>
+                <a class="assumption__edit">Edit →</a>
+              </div>
+            </div>
+
+            <!-- Config Summary -->
+            <div style="font-size: 0.8rem; margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--tp-border-subtle);">
+                <span style="color: var(--tp-muted);">Strategy Type</span>
+                <span>Grid</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--tp-border-subtle);">
+                <span style="color: var(--tp-muted);">Direction</span>
+                <span style="color: var(--tp-profit);">Long</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--tp-border-subtle);">
+                <span style="color: var(--tp-muted);">Grid Levels</span>
+                <span>10</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--tp-border-subtle);">
+                <span style="color: var(--tp-muted);">Spacing</span>
+                <span>0.4% ($12.87)</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--tp-border-subtle);">
+                <span style="color: var(--tp-muted);">Anchor Price</span>
+                <span>$3,218.40</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--tp-border-subtle);">
+                <span style="color: var(--tp-muted);">Take Profit</span>
+                <span>2.0%</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                <span style="color: var(--tp-muted);">Hedge</span>
+                <span>Enabled (1.5% below grid)</span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn btn-primary">
+                <span class="material-icons" style="font-size: 16px;">save</span>
+                Save Strategy
+              </button>
+              <button class="btn btn-secondary">
+                <span class="material-icons" style="font-size: 16px;">history</span>
+                Backtest
+              </button>
+              <button class="btn btn-secondary">Edit in Builder</button>
+            </div>
+
+            <!-- Source Metadata -->
+            <div class="source-meta">
+              <dl>
+                <dt>Entry Point:</dt><dd>TradingView</dd>
+                <dt>Screen:</dt><dd>RSI &lt; 30 AND SMA50 crosses_above SMA200</dd>
+                <dt>TV Snapshot:</dt><dd>1H: Strong Buy · 4H: Buy · RSI: 27.3</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
