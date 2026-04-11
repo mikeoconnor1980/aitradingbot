@@ -198,7 +198,7 @@ $sidebar-expanded: 220px;
       flex-direction: column;
       overflow: hidden;
 
-      > * {
+      > router-outlet + * {
         flex: 1;
         min-height: 0;
         display: flex;
