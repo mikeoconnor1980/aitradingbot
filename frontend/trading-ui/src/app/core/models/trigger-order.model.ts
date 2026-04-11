@@ -11,6 +11,7 @@ export interface PlaceTriggerOrderRequest {
 export interface ModifyTriggerOrderDto {
   triggerPrice: number;
   size: number;
+  tpslType?: "sl" | "tp";
 }
 
 export type PlaceTriggerOrderResponse = PlaceOrderResponse;

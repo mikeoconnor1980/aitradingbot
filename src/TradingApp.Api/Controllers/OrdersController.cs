@@ -248,7 +248,7 @@ public sealed class OrdersController : ControllerBase
             existingOrder.Side,
             dto.TriggerPrice,
             dto.Size,
-            existingOrder.TpslType ?? throw new DomainException($"Trigger order {orderId} is missing TP/SL type."),
+            existingOrder.TpslType ?? dto.TpslType ?? throw new DomainException($"Trigger order {orderId} is missing TP/SL type."),
             ct);
 
         return NoContent();

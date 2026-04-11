@@ -458,7 +458,8 @@ export class DashboardComponent implements OnInit {
     const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
     const request: ModifyTriggerOrderDto = {
       triggerPrice: newPrice,
-      size: Math.abs(position.size)
+      size: Math.abs(position.size),
+      tpslType: field
     };
 
     this.positionsTable?.setLoading(positionKey, true);
