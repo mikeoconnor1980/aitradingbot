@@ -149,6 +149,12 @@ public sealed class MarketDataStreamServiceTests
         try
         {
             await service.StartAsync(cts.Token);
+
+            // Wait for ExecuteAsync to register the trade handler
+            var deadline = DateTime.UtcNow.AddSeconds(2);
+            while (tradeHandler is null && DateTime.UtcNow < deadline)
+                await Task.Delay(50, cts.Token);
+
             tradeHandler.Should().NotBeNull();
 
             await tradeHandler!(new TradeTickDto

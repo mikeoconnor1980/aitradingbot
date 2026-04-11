@@ -1,5 +1,5 @@
 # ---------- restore ----------
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS restore
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS restore
 WORKDIR /src
 
 # Copy solution + project files first (better layer caching)
@@ -33,7 +33,7 @@ RUN dotnet publish src/TradingApp.Api/TradingApp.Api.csproj \
     --no-restore
 
 # ---------- runtime ----------
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 RUN adduser --disabled-password --gecos '' appuser

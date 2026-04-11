@@ -1,9 +1,7 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System.Text.Json;
 using TradingApp.Api.Models;
 using TradingApp.Api.Services;
-using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
@@ -20,7 +18,7 @@ public sealed class HyperliquidOrderServiceTests
     private Mock<IHyperliquidAccountService> _accountServiceMock = default!;
     private Mock<IHyperliquidAssetMetadataCache> _metadataCacheMock = default!;
     private Mock<ILogger<HyperliquidOrderService>> _loggerMock = default!;
-    private IOptions<HyperliquidOptions> _options = default!;
+    private Mock<INetworkProvider> _networkProviderMock = default!;
     private HyperliquidOrderService _sut = default!;
 
     [TestInitialize]
@@ -32,12 +30,14 @@ public sealed class HyperliquidOrderServiceTests
         _accountServiceMock = new Mock<IHyperliquidAccountService>();
         _metadataCacheMock = new Mock<IHyperliquidAssetMetadataCache>();
         _loggerMock = new Mock<ILogger<HyperliquidOrderService>>();
-        _options = Options.Create(new HyperliquidOptions
-        {
-            BaseUrl = "https://api.hyperliquid-testnet.xyz",
-            WsBaseUrl = "wss://api.hyperliquid-testnet.xyz/ws",
-            Network = "testnet",
-        });
+        _networkProviderMock = new Mock<INetworkProvider>();
+
+        _networkProviderMock
+            .Setup(n => n.GetNetworkAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("testnet");
+        _networkProviderMock
+            .Setup(n => n.IsMainnetAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         _signerMock.Setup(s => s.WalletAddress).Returns("0xTestAddress");
         _signerMock
@@ -57,7 +57,7 @@ public sealed class HyperliquidOrderServiceTests
             _nonceProviderMock.Object,
                 _accountServiceMock.Object,
             _metadataCacheMock.Object,
-            _options,
+            _networkProviderMock.Object,
             _loggerMock.Object);
     }
 

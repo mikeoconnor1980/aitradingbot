@@ -38,6 +38,34 @@ $sidebar-expanded: 220px;
     margin-left: auto;
   }
 
+  &__network-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--colour-accent);
+    background: rgba(0, 230, 118, 0.08);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--colour-accent);
+
+    &--testnet {
+      border-color: #ff9800;
+      background: rgba(255, 152, 0, 0.08);
+      color: #ff9800;
+    }
+  }
+
+  &__network-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
   &__status {
     display: flex;
     align-items: center;

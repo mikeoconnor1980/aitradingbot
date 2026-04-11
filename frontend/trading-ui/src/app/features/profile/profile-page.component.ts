@@ -6,22 +6,25 @@ import { MatCardModule } from "@angular/material/card";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
+import { MatSelectModule } from "@angular/material/select";
 import { map } from "rxjs";
 import { AuthService } from "../../core/services/auth.service";
 import { HealthService } from "../../core/services/health.service";
+import { ProfileService } from "../../core/services/profile.service";
 import { WalletService } from "../../core/services/wallet.service";
 import { environment } from "../../../environments/environment";
 
 @Component({
   selector: "app-profile-page",
   standalone: true,
-  imports: [AsyncPipe, ReactiveFormsModule, MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [AsyncPipe, ReactiveFormsModule, MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule],
   templateUrl: "./profile-page.component.html",
   styleUrl: "./profile-page.component.scss"
 })
 export class ProfilePageComponent implements OnInit {
   private readonly _authService = inject(AuthService);
   private readonly _healthService = inject(HealthService);
+  private readonly _profileService = inject(ProfileService);
   private readonly _walletService = inject(WalletService);
 
   public get user() {
@@ -39,7 +42,11 @@ export class ProfilePageComponent implements OnInit {
   );
 
   public readonly walletStatus$ = this._walletService.status$;
+  public readonly profile$ = this._profileService.profile$;
   public readonly appVersion = environment.appVersion;
+
+  public readonly networkControl = new FormControl("mainnet");
+  public readonly networkSaving = signal(false);
 
   public readonly walletAddressControl = new FormControl("", [
     Validators.required,
@@ -52,6 +59,12 @@ export class ProfilePageComponent implements OnInit {
 
   public ngOnInit(): void {
     this._walletService.refreshStatus();
+    this._profileService.load();
+    this.profile$.subscribe((profile) => {
+      if (profile) {
+        this.networkControl.setValue(profile.preferredNetwork, { emitEvent: false });
+      }
+    });
   }
 
   public onConfigureWallet(): void {
@@ -90,6 +103,14 @@ export class ProfilePageComponent implements OnInit {
   public onDisconnectWallet(): void {
     this._walletService.disconnect().subscribe({
       next: () => this._healthService.refresh()
+    });
+  }
+
+  public onNetworkChange(network: string): void {
+    this.networkSaving.set(true);
+    this._profileService.updateNetwork(network).subscribe({
+      next: () => this.networkSaving.set(false),
+      error: () => this.networkSaving.set(false)
     });
   }
 }

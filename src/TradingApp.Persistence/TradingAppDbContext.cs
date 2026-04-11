@@ -703,6 +703,11 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(e => e.IsActive)
                 .IsRequired();
 
+            entity.Property(e => e.PreferredNetwork)
+                .HasMaxLength(10)
+                .IsRequired()
+                .HasDefaultValue("mainnet");
+
             entity.HasIndex(e => e.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_Users_Email");

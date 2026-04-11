@@ -1,10 +1,14 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
+import { provideHttpClientTesting } from "@angular/common/http/testing";
+import { provideHttpClient } from "@angular/common/http";
 import { provideRouter } from "@angular/router";
 import { of } from "rxjs";
 import { AppComponent } from "./app.component";
 import { ConnectionStatus } from "./core/models/connection-status.model";
 import { HealthResponse } from "./core/models/health-response.model";
 import { HealthService } from "./core/services/health.service";
+import { ProfileService, UserProfile } from "./core/services/profile.service";
+import { AuthService } from "./core/services/auth.service";
 import { SignalRService } from "./core/services/signalr.service";
 
 const signalRServiceMock: Pick<SignalRService, "connectionStatus$"> = {
@@ -26,6 +30,22 @@ const healthServiceMock: Pick<HealthService, "health$"> = {
   } as HealthResponse)
 };
 
+const profileServiceMock: Pick<ProfileService, "profile$" | "load"> = {
+  profile$: of({
+    id: "1",
+    email: "test@test.com",
+    displayName: "Test",
+    preferredNetwork: "testnet",
+    llmModels: { strategy: "gemini-2.5-flash-lite", review: "gemini-2.5-flash" }
+  } as UserProfile),
+  load: () => {}
+};
+
+const authServiceMock = {
+  user$: of({ displayName: "Test", email: "test@test.com" }),
+  isAuthenticated$: of(true)
+};
+
 describe("AppComponent", () => {
   let fixture: ComponentFixture<AppComponent>;
   let app: AppComponent;
@@ -34,9 +54,13 @@ describe("AppComponent", () => {
     await TestBed.configureTestingModule({
       imports: [AppComponent],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([]),
         { provide: SignalRService, useValue: signalRServiceMock },
-        { provide: HealthService, useValue: healthServiceMock }
+        { provide: HealthService, useValue: healthServiceMock },
+        { provide: ProfileService, useValue: profileServiceMock },
+        { provide: AuthService, useValue: authServiceMock }
       ]
     }).compileComponents();
 
@@ -90,8 +114,8 @@ describe("AppComponent", () => {
   it("should show the testnet label when the wallet health is connected to testnet", () => {
     fixture.detectChanges();
 
-    const label = fixture.nativeElement.querySelector(".app-shell__status-label") as HTMLElement;
+    const badge = fixture.nativeElement.querySelector(".app-shell__network-badge") as HTMLElement;
 
-    expect(label.textContent?.trim()).toBe("Testnet");
+    expect(badge.textContent?.trim()).toBe("Testnet");
   });
 });

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Options;
-using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Queries;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Health.Models;
@@ -12,22 +10,23 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
 {
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidSigner _signer;
-    private readonly HyperliquidOptions _options;
+    private readonly INetworkProvider _networkProvider;
 
     public GetHealthQueryHandler(
         IHyperliquidRestClient restClient,
         IHyperliquidSigner signer,
-        IOptions<HyperliquidOptions> options)
+        INetworkProvider networkProvider)
     {
         _restClient = restClient;
         _signer = signer;
-        _options = options.Value;
+        _networkProvider = networkProvider;
     }
 
     public override async Task<HealthDto> Handle(GetHealthQuery request, CancellationToken cancellationToken)
     {
         var walletAddress = GetWalletAddressSafe();
         var displayAddress = walletAddress is not null ? TruncateAddress(walletAddress) : "Not configured";
+        var network = await _networkProvider.GetNetworkAsync(cancellationToken);
 
         try
         {
@@ -37,9 +36,9 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
             {
                 Status = isConnected ? "connected" : "disconnected",
                 WalletAddress = displayAddress,
-                Network = _options.Network,
+                Network = network,
                 Timestamp = DateTimeOffset.UtcNow,
-                Error = isConnected ? null : "Hyperliquid testnet API did not respond successfully"
+                Error = isConnected ? null : $"Hyperliquid {network} API did not respond successfully"
             };
         }
         catch (TaskCanceledException)
@@ -48,9 +47,9 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
             {
                 Status = "disconnected",
                 WalletAddress = displayAddress,
-                Network = _options.Network,
+                Network = network,
                 Timestamp = DateTimeOffset.UtcNow,
-                Error = "Hyperliquid testnet API request timed out"
+                Error = $"Hyperliquid {network} API request timed out"
             };
         }
         catch (HttpRequestException)
@@ -59,9 +58,9 @@ public sealed class GetHealthQueryHandler : QueryHandler<GetHealthQuery, HealthD
             {
                 Status = "disconnected",
                 WalletAddress = displayAddress,
-                Network = _options.Network,
+                Network = network,
                 Timestamp = DateTimeOffset.UtcNow,
-                Error = "Failed to reach Hyperliquid testnet API"
+                Error = $"Failed to reach Hyperliquid {network} API"
             };
         }
     }

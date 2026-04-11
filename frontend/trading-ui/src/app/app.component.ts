@@ -13,6 +13,7 @@ import { AuthUser } from "./core/models/auth.model";
 import { AuthService } from "./core/services/auth.service";
 import { HealthService } from "./core/services/health.service";
 import { HelpService } from "./core/services/help.service";
+import { ProfileService } from "./core/services/profile.service";
 import { SignalRService } from "./core/services/signalr.service";
 
 @Component({
@@ -27,6 +28,7 @@ export class AppComponent implements OnInit {
   private readonly _healthService = inject(HealthService);
   private readonly _helpService = inject(HelpService);
   private readonly _authService = inject(AuthService);
+  private readonly _profileService = inject(ProfileService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public title = "TradePilot";
@@ -40,6 +42,7 @@ export class AppComponent implements OnInit {
     retryCount: 0
   };
   public health: HealthResponse | null = null;
+  public preferredNetwork: string | null = null;
 
   public ngOnInit(): void {
     this._signalRService.connectionStatus$
@@ -64,6 +67,15 @@ export class AppComponent implements OnInit {
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((auth) => {
         this.isAuthenticated = auth;
+        if (auth) {
+          this._profileService.load();
+        }
+      });
+
+    this._profileService.profile$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((profile) => {
+        this.preferredNetwork = profile?.preferredNetwork ?? null;
       });
   }
 
@@ -83,14 +95,15 @@ export class AppComponent implements OnInit {
     }
   }
 
+  public get networkLabel(): string | null {
+    const network = this.preferredNetwork?.trim().toLowerCase();
+    if (network === "testnet") return "Testnet";
+    if (network === "mainnet") return "Mainnet";
+    return null;
+  }
+
   public get statusLabel(): string {
     if (this.health !== null) {
-      const network = this.health.network.trim().toLowerCase();
-
-      if (network === "testnet") {
-        return "Testnet";
-      }
-
       return this.health.status === "connected" ? "Connected" : "Disconnected";
     }
 

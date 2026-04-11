@@ -118,6 +118,10 @@ builder.Services.AddSingleton(signerProvider);
 builder.Services.AddSingleton<ISignerProvider>(sp => sp.GetRequiredService<MutableSignerProvider>());
 builder.Services.AddSingleton<IHyperliquidSigner>(sp => sp.GetRequiredService<MutableSignerProvider>());
 
+// Per-request network resolution from user profile
+builder.Services.AddScoped<INetworkProvider, UserNetworkProvider>();
+builder.Services.AddTransient<NetworkRoutingHandler>();
+
 // Read non-secret config for BaseUrl, Network — use IOptions at resolution time
 builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((sp, client) =>
 {
@@ -125,6 +129,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
     client.BaseAddress = new Uri(options.BaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30); // Outer timeout caps total retry duration
 })
+.AddHttpMessageHandler<NetworkRoutingHandler>()
 .AddResilienceHandler("hyperliquid-retry", pipelineBuilder =>
 {
     pipelineBuilder.AddRetry(new HttpRetryStrategyOptions

@@ -109,6 +109,21 @@
     width: 100%;
   }
 
+  &__network-field {
+    width: 100%;
+  }
+
+  &__model-badge {
+    display: inline-block;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.82rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.375rem;
+    background: rgba(121, 207, 195, 0.08);
+    border: 1px solid rgba(121, 207, 195, 0.2);
+    color: var(--colour-accent, #79cfc3);
+  }
+
   &__key-actions {
     display: flex;
     gap: 0.75rem;

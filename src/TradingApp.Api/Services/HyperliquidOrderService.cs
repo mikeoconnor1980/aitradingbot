@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
 using TradingApp.Api.Models;
-using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Infrastructure.Hyperliquid;
@@ -18,7 +16,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
     private readonly INonceProvider _nonceProvider;
     private readonly IHyperliquidAccountService _accountService;
     private readonly IHyperliquidAssetMetadataCache _metadataCache;
-    private readonly HyperliquidOptions _options;
+    private readonly INetworkProvider _networkProvider;
     private readonly ILogger<HyperliquidOrderService> _logger;
 
     public HyperliquidOrderService(
@@ -27,7 +25,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         INonceProvider nonceProvider,
         IHyperliquidAccountService accountService,
         IHyperliquidAssetMetadataCache metadataCache,
-        IOptions<HyperliquidOptions> options,
+        INetworkProvider networkProvider,
         ILogger<HyperliquidOrderService> logger)
     {
         _restClient = restClient;
@@ -35,7 +33,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         _nonceProvider = nonceProvider;
         _accountService = accountService;
         _metadataCache = metadataCache;
-        _options = options.Value;
+        _networkProvider = networkProvider;
         _logger = logger;
     }
 
@@ -47,7 +45,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         var metadata = await _metadataCache.GetAsync(coin, cancellationToken);
 
         var isBuy = request.Side.Equals("buy", StringComparison.OrdinalIgnoreCase);
-        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+        var isMainnet = await _networkProvider.IsMainnetAsync(cancellationToken);
         var isMarket = request.OrderType.Equals("market", StringComparison.OrdinalIgnoreCase);
 
         decimal price;
@@ -173,11 +171,9 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             cancellationToken);
     }
 
-    public Task<TestSignResponse> TestSignAsync(CancellationToken cancellationToken = default)
+    public async Task<TestSignResponse> TestSignAsync(CancellationToken cancellationToken = default)
     {
-        _ = cancellationToken;
-
-        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+        var isMainnet = await _networkProvider.IsMainnetAsync(cancellationToken);
         var action = HyperliquidEip712.BuildOrderAction(
             assetIndex: 3,
             isBuy: true,
@@ -192,7 +188,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         var messageHash = "0x" + Convert.ToHexString(connectionId).ToLowerInvariant();
         var eip712HashHex = "0x" + Convert.ToHexString(eip712Hash).ToLowerInvariant();
 
-        return Task.FromResult(new TestSignResponse
+        return new TestSignResponse
         {
             DomainSeparator = eip712HashHex,
             TypeHash = messageHash,
@@ -203,7 +199,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                 R = r,
                 S = s,
             },
-        });
+        };
     }
 
     public async Task CancelOrderAsync(string orderId, string asset, CancellationToken cancellationToken = default)
@@ -362,7 +358,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
 
     private async Task SubmitExchangeActionAsync(object action, CancellationToken cancellationToken)
     {
-        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+        var isMainnet = await _networkProvider.IsMainnetAsync(cancellationToken);
         var nonce = _nonceProvider.GetNextNonce();
         var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
         var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet);
@@ -409,7 +405,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             size,
             tpslType);
 
-        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+        var isMainnet = await _networkProvider.IsMainnetAsync(cancellationToken);
         var nonce = _nonceProvider.GetNextNonce();
         var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
         var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet);

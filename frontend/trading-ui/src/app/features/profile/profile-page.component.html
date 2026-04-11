@@ -48,12 +48,6 @@
                 <dt>Connected Wallet</dt>
                 <dd class="profile-page__mono">{{ status.walletAddress }}</dd>
               </div>
-              @if (wallet$ | async; as wallet) {
-                <div class="profile-page__detail">
-                  <dt>Network</dt>
-                  <dd>{{ wallet.network || 'Unknown' }}</dd>
-                </div>
-              }
             </dl>
             <div class="profile-page__wallet-actions">
               <button mat-stroked-button color="warn" (click)="onDisconnectWallet()">
@@ -119,7 +113,28 @@
         <mat-card-title>Preferences</mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <p class="profile-page__placeholder">User preferences will appear here in a future release.</p>
+        <div class="profile-page__details">
+          <div class="profile-page__detail">
+            <mat-form-field appearance="outline" class="profile-page__network-field">
+              <mat-label>Network</mat-label>
+              <mat-select [formControl]="networkControl" (selectionChange)="onNetworkChange($event.value)">
+                <mat-option value="mainnet">Mainnet</mat-option>
+                <mat-option value="testnet">Testnet</mat-option>
+              </mat-select>
+              <mat-hint>Select which Hyperliquid network to connect to</mat-hint>
+            </mat-form-field>
+          </div>
+          @if (profile$ | async; as profile) {
+            <div class="profile-page__detail">
+              <dt>Strategy Model</dt>
+              <dd class="profile-page__model-badge">{{ profile.llmModels.strategy }}</dd>
+            </div>
+            <div class="profile-page__detail">
+              <dt>Review Model</dt>
+              <dd class="profile-page__model-badge">{{ profile.llmModels.review }}</dd>
+            </div>
+          }
+        </div>
       </mat-card-content>
     </mat-card>
   </div>

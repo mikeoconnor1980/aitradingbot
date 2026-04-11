@@ -8,6 +8,7 @@ public sealed class User
     public string PasswordHash { get; private set; } = string.Empty;
     public long CreatedAtUtc { get; private set; }
     public bool IsActive { get; private set; }
+    public string PreferredNetwork { get; private set; } = "mainnet";
 
     private User()
     {
@@ -27,6 +28,7 @@ public sealed class User
             PasswordHash = passwordHash,
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             IsActive = true,
+            PreferredNetwork = "mainnet",
         };
     }
 
@@ -34,6 +36,18 @@ public sealed class User
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
         DisplayName = displayName.Trim();
+    }
+
+    public void UpdatePreferredNetwork(string network)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(network);
+
+        if (network is not ("mainnet" or "testnet"))
+        {
+            throw new ArgumentException("Network must be 'mainnet' or 'testnet'.", nameof(network));
+        }
+
+        PreferredNetwork = network;
     }
 
     public void Deactivate()

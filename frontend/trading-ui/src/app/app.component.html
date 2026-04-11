@@ -6,6 +6,12 @@
     <h1 class="app-shell__title">{{ title }}</h1>
 
     <div class="app-shell__header-end">
+      @if (networkLabel) {
+        <span class="app-shell__network-badge" [class.app-shell__network-badge--testnet]="preferredNetwork === 'testnet'">
+          <span class="app-shell__network-dot"></span>
+          {{ networkLabel }}
+        </span>
+      }
       <a
         class="app-shell__status"
         [ngClass]="statusClass"
