@@ -110,6 +110,35 @@ describe("SetSlTpModalComponent", () => {
       expect(component.getLivePriceClass()).toBe("set-sltp-modal__price--loss");
     });
 
+    it("should allow a stop loss above entry price but below live price (breakeven trailing)", () => {
+      component.form.controls.stopLossPrice.setValue(50500);
+
+      expect(component.form.controls.stopLossPrice.valid).toBeTrue();
+    });
+
+    it("should reject a stop loss at or above the live price for long positions", () => {
+      component.form.controls.stopLossPrice.setValue(51000);
+
+      expect(component.form.controls.stopLossPrice.hasError("slInvalidSide")).toBeTrue();
+      expect(component.getStopLossErrorMessage()).toBe("Stop loss must be below current live price for long positions");
+    });
+
+    it("should reject a take profit at or below the live price for long positions", () => {
+      component.form.controls.takeProfitPrice.setValue(50500);
+
+      expect(component.form.controls.takeProfitPrice.hasError("tpInvalidSide")).toBeTrue();
+      expect(component.getTakeProfitErrorMessage()).toBe("Take profit must be above current live price for long positions");
+    });
+
+    it("should revalidate stop loss when live price changes via SignalR", () => {
+      component.form.controls.stopLossPrice.setValue(50500);
+      expect(component.form.controls.stopLossPrice.valid).toBeTrue();
+
+      priceUpdateSubject.next({ asset: "BTC-PERP", lastPrice: 50200, high24h: 0, low24h: 0, volume24h: 0, timestamp: 0 });
+
+      expect(component.form.controls.stopLossPrice.hasError("slInvalidSide")).toBeTrue();
+    });
+
     it("should surface a liquidation validation error for an invalid stop loss", () => {
       component.form.controls.stopLossPrice.setValue(41000);
 
@@ -161,6 +190,19 @@ describe("SetSlTpModalComponent", () => {
       component.form.controls.stopLossPrice.setValue(59000);
 
       expect(component.form.controls.stopLossPrice.hasError("slBeyondLiquidation")).toBeTrue();
+    });
+
+    it("should reject a stop loss at or below the live price for short positions", () => {
+      component.form.controls.stopLossPrice.setValue(49000);
+
+      expect(component.form.controls.stopLossPrice.hasError("slInvalidSide")).toBeTrue();
+      expect(component.getStopLossErrorMessage()).toBe("Stop loss must be above current live price for short positions");
+    });
+
+    it("should allow a stop loss below entry but above live price for short positions", () => {
+      component.form.controls.stopLossPrice.setValue(49500);
+
+      expect(component.form.controls.stopLossPrice.valid).toBeTrue();
     });
   });
 

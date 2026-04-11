@@ -137,13 +137,12 @@ export class SetSlTpModalComponent {
         return null;
       }
 
-      const entryPrice = this.data.position.entryPrice;
-      if (this.isLong && stopLossPrice >= entryPrice) {
-        return { slInvalidSide: "Stop loss must be below entry price for long positions" };
+      if (this.isLong && stopLossPrice >= this.livePrice) {
+        return { slInvalidSide: "Stop loss must be below current live price for long positions" };
       }
 
-      if (!this.isLong && stopLossPrice <= entryPrice) {
-        return { slInvalidSide: "Stop loss must be above entry price for short positions" };
+      if (!this.isLong && stopLossPrice <= this.livePrice) {
+        return { slInvalidSide: "Stop loss must be above current live price for short positions" };
       }
 
       const liquidationPrice = this.data.position.liquidationPrice;
@@ -168,13 +167,12 @@ export class SetSlTpModalComponent {
         return null;
       }
 
-      const entryPrice = this.data.position.entryPrice;
-      if (this.isLong && takeProfitPrice <= entryPrice) {
-        return { tpInvalidSide: "Take profit must be above entry price for long positions" };
+      if (this.isLong && takeProfitPrice <= this.livePrice) {
+        return { tpInvalidSide: "Take profit must be above current live price for long positions" };
       }
 
-      if (!this.isLong && takeProfitPrice >= entryPrice) {
-        return { tpInvalidSide: "Take profit must be below entry price for short positions" };
+      if (!this.isLong && takeProfitPrice >= this.livePrice) {
+        return { tpInvalidSide: "Take profit must be below current live price for short positions" };
       }
 
       return null;
@@ -189,6 +187,8 @@ export class SetSlTpModalComponent {
         const updateAsset = update.asset.replace("-PERP", "").toUpperCase();
         if (positionAsset === updateAsset) {
           this.livePrice = update.lastPrice;
+          this.form.controls.stopLossPrice.updateValueAndValidity();
+          this.form.controls.takeProfitPrice.updateValueAndValidity();
         }
       });
   }
