@@ -65,6 +65,10 @@ export class DashboardComponent implements OnInit {
   private _consecutiveErrors = 0;
 
   public readonly isMobile = this._layout.isMobile;
+  public selectedTabIndex = 0;
+
+  private _touchStartX = 0;
+  private _touchStartY = 0;
 
   @ViewChild(OrdersTableComponent)
   public ordersTable?: OrdersTableComponent;
@@ -99,6 +103,26 @@ export class DashboardComponent implements OnInit {
 
   public onFabClick(): void {
     this._router.navigate(["/order-entry"]);
+  }
+
+  public onTouchStart(event: TouchEvent): void {
+    this._touchStartX = event.changedTouches[0].clientX;
+    this._touchStartY = event.changedTouches[0].clientY;
+  }
+
+  public onTouchEnd(event: TouchEvent): void {
+    const dx = event.changedTouches[0].clientX - this._touchStartX;
+    const dy = event.changedTouches[0].clientY - this._touchStartY;
+
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) {
+      return;
+    }
+
+    if (dx < 0 && this.selectedTabIndex < 2) {
+      this.selectedTabIndex++;
+    } else if (dx > 0 && this.selectedTabIndex > 0) {
+      this.selectedTabIndex--;
+    }
   }
 
   public onCancelOrder(order: OpenOrder): void {

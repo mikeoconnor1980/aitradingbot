@@ -310,6 +310,41 @@
   .positions-table__filter {
     max-width: 140px;
     font-size: 0.75rem;
+
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        padding: 0 8px;
+      }
+
+      .mat-mdc-form-field-infix {
+        min-height: 32px;
+        padding: 4px 0;
+      }
+
+      .mdc-notched-outline__notch {
+        max-width: calc(100% - 16px);
+      }
+
+      .mat-mdc-floating-label {
+        font-size: 0.7rem;
+      }
+
+      input.mat-mdc-input-element {
+        font-size: 0.75rem;
+      }
+
+      .mat-mdc-form-field-icon-suffix .mat-mdc-icon-button {
+        width: 28px;
+        height: 28px;
+        padding: 2px;
+
+        .mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+      }
+    }
   }
 
   .positions-table__wrapper {

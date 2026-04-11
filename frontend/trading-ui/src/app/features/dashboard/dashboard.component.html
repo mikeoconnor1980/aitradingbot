@@ -32,7 +32,12 @@
     <app-market-context-card></app-market-context-card>
   </div>
 
-  <mat-tab-group class="dashboard__tabs">
+  <mat-tab-group
+    class="dashboard__tabs"
+    [selectedIndex]="selectedTabIndex"
+    (selectedIndexChange)="selectedTabIndex = $event"
+    (touchstart)="onTouchStart($event)"
+    (touchend)="onTouchEnd($event)">
     <mat-tab label="Positions">
       <app-positions-table
         [positions]="positions"
