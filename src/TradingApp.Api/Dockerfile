@@ -36,8 +36,7 @@ RUN dotnet publish src/TradingApp.Api/TradingApp.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
-RUN adduser --disabled-password --gecos '' appuser
-USER appuser
+USER $APP_UID
 
 COPY --from=publish /app/publish .
 
