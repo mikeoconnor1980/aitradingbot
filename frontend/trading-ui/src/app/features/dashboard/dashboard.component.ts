@@ -153,7 +153,11 @@ export class DashboardComponent implements OnInit {
       this._pendingOrderIds.add(order.orderId);
       this.orders = this.orders.filter((item) => item.orderId !== order.orderId);
 
-      this._orderService.cancelOrder(order.orderId).subscribe({
+      const cancel$ = order.orderType === 'trigger'
+        ? this._orderService.cancelTriggerOrder(order.orderId)
+        : this._orderService.cancelOrder(order.orderId);
+
+      cancel$.subscribe({
         next: () => {
           this._pendingOrderIds.delete(order.orderId);
           this.ordersTable?.setLoading(order.orderId, false);
@@ -240,7 +244,11 @@ export class DashboardComponent implements OnInit {
       this.ordersTable?.setLoading(order.orderId, true);
       this._pendingOrderIds.add(order.orderId);
 
-      this._orderService.modifyOrder(order.orderId, result).subscribe({
+      const modify$ = order.orderType === 'trigger'
+        ? this._orderService.modifyTriggerOrder(order.orderId, { triggerPrice: result.price, size: result.size })
+        : this._orderService.modifyOrder(order.orderId, result);
+
+      modify$.subscribe({
         next: () => {
           this._pendingOrderIds.delete(order.orderId);
           this.ordersTable?.setLoading(order.orderId, false);
