@@ -103,6 +103,7 @@
       min-height: 0;
       display: flex;
       flex-direction: column;
+      width: 100%;
 
       ::ng-deep .mat-mdc-tab-header {
         position: sticky;
@@ -115,17 +116,18 @@
       ::ng-deep .mat-mdc-tab-body-wrapper {
         flex: 1;
         min-height: 0;
-        width: 100%;
-      }
-
-      ::ng-deep .mat-mdc-tab-body {
-        width: 100%;
       }
 
       ::ng-deep .mat-mdc-tab-body-content {
         overflow-x: hidden;
         overflow-y: auto;
         height: 100%;
+      }
+
+      ::ng-deep app-positions-table,
+      ::ng-deep app-orders-table,
+      ::ng-deep app-activity-feed {
+        display: block;
         width: 100%;
       }
     }
