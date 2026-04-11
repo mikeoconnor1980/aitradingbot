@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -5,6 +6,7 @@ using TradingApp.Application.Abstractions.Exceptions;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Api.Models;
 using TradingApp.Api.Services;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using System.Linq;
 
@@ -20,17 +22,30 @@ public sealed class OrdersController : ControllerBase
     private readonly IHyperliquidAccountService _accountService;
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidAssetMetadataCache _metadataCache;
+    private readonly IUserWalletAddressRepository _walletRepo;
 
     public OrdersController(
         IHyperliquidOrderService orderService,
         IHyperliquidAccountService accountService,
         IHyperliquidRestClient restClient,
-        IHyperliquidAssetMetadataCache metadataCache)
+        IHyperliquidAssetMetadataCache metadataCache,
+        IUserWalletAddressRepository walletRepo)
     {
         _orderService = orderService;
         _accountService = accountService;
         _restClient = restClient;
         _metadataCache = metadataCache;
+        _walletRepo = walletRepo;
+    }
+
+    private async Task<string?> GetWalletAddressAsync(CancellationToken ct)
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (claim is null || !Guid.TryParse(claim, out var userId))
+            return null;
+
+        var wallet = await _walletRepo.GetActiveByUserIdAsync(userId, ct);
+        return wallet?.WalletAddress;
     }
 
     // Well-known token full names for display
@@ -163,7 +178,8 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CancelOrderAsync(string orderId, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
+        var walletAddress = await GetWalletAddressAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
         var existingOrder = openOrders.FirstOrDefault(o => o.OrderId == orderId)
             ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
@@ -192,7 +208,8 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ModifyOrderAsync(string orderId, [FromBody] ModifyOrderDto dto, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
+        var walletAddress = await GetWalletAddressAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
         var existingOrder = openOrders.FirstOrDefault(order => order.OrderId == orderId)
             ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
@@ -207,7 +224,8 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ModifyTriggerOrderAsync(string orderId, [FromBody] ModifyTriggerOrderDto dto, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
+        var walletAddress = await GetWalletAddressAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
         var existingOrder = openOrders.FirstOrDefault(order =>
                 order.OrderId == orderId &&
                 string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
@@ -232,7 +250,8 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CancelTriggerOrderAsync(string orderId, CancellationToken ct)
     {
-        var openOrders = await _accountService.GetOpenOrdersAsync(null, ct);
+        var walletAddress = await GetWalletAddressAsync(ct);
+        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
         var existingOrder = openOrders.FirstOrDefault(order =>
                 order.OrderId == orderId &&
                 string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
