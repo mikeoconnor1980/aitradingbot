@@ -105,17 +105,27 @@
       flex-direction: column;
       width: 100%;
 
+      ::ng-deep mat-tab-group {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+      }
+
       ::ng-deep .mat-mdc-tab-header {
         position: sticky;
         top: 0;
         z-index: 10;
         background: var(--colour-background, #121212);
         flex-shrink: 0;
+        width: 100%;
       }
 
       ::ng-deep .mat-mdc-tab-body-wrapper {
         flex: 1;
         min-height: 0;
+        width: 100%;
       }
 
       ::ng-deep .mat-mdc-tab-body-content {
