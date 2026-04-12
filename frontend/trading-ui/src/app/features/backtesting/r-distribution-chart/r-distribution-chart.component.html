@@ -1,0 +1,25 @@
+<section class="r-distribution-chart">
+  <div class="r-distribution-chart__header">
+    <h4 class="r-distribution-chart__title">R-Multiple Distribution</h4>
+    <span class="r-distribution-chart__subtitle">Closed trades grouped by realised R result</span>
+  </div>
+
+  <div class="r-distribution-chart__chart">
+    @for (bucket of buckets; track bucket.label) {
+      <div class="r-distribution-chart__row">
+        <span class="r-distribution-chart__label">{{ bucket.label }}</span>
+
+        <div class="r-distribution-chart__track">
+          <div
+            class="r-distribution-chart__fill"
+            [class.r-distribution-chart__fill--positive]="bucket.isPositive"
+            [class.r-distribution-chart__fill--negative]="!bucket.isPositive"
+            [style.width.%]="bucket.percent">
+          </div>
+        </div>
+
+        <span class="r-distribution-chart__value">{{ bucket.count }} <small>({{ bucket.percent | number: "1.0-0" }}%)</small></span>
+      </div>
+    }
+  </div>
+</section>

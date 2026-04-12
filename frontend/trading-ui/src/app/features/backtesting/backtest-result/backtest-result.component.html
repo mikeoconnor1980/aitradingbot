@@ -105,6 +105,76 @@
     Trade metrics are counted per trade lot. Each filled grid level becomes its own lot, while cycle outcomes are summarized in the Grid Cycles tab.
   </div>
 
+  @if (hasRMetrics) {
+    <section class="backtest-result__section">
+      <h3 class="backtest-result__section-title">R-Multiple Metrics</h3>
+
+      <div class="backtest-result__cards backtest-result__cards--r-metrics">
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>Expectancy</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span [class]="getPnlClass(result.expectancy ?? 0)">{{ result.expectancy | number: "1.2-2" }}R</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>Profit Factor</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span>{{ result.profitFactor | number: "1.2-2" }}</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>SQN</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span>{{ result.sqn | number: "1.2-2" }}</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>R Win Rate</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span>{{ result.rWinRate | number: "1.1-1" }}%</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>Avg Winner</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span class="backtest-result__value--profit">{{ result.avgWinR | number: "1.2-2" }}R</span>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>Avg Loser</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <span class="backtest-result__value--loss">{{ result.avgLossR | number: "1.2-2" }}R</span>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      @if (hasRDistribution) {
+        <mat-card class="backtest-result__distribution-card">
+          <mat-card-content>
+            <app-r-distribution-chart [rDistribution]="result.rDistribution ?? null"></app-r-distribution-chart>
+          </mat-card-content>
+        </mat-card>
+      }
+    </section>
+  }
+
   <mat-card class="backtest-result__config">
     <mat-card-header>
       <mat-card-title>Configuration Used</mat-card-title>

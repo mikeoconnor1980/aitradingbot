@@ -301,6 +301,74 @@ public sealed class BacktestRunnerTests
             trade.PnL == 5m);
     }
 
+    [TestMethod]
+    public void GivenRiskTrackedGridFill_WhenRecordFill_ThenInitialRIsStoredOnOpenTrade()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { GridCycleId = "cycle-1", TotalLevels = 10, InitialRDollars = 100m };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-1", "cycle-1", OrderSide.Buy, TradeType.GridFill, 100m, 1m, 0.01m, 1_000));
+
+        tradeLog.Should().ContainSingle();
+        tradeLog[0].InitialRDollars.Should().Be(100m);
+        tradeLog[0].RMultipleResult.Should().BeNull();
+        tradeLog[0].MFE.Should().BeNull();
+        tradeLog[0].MAE.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenRiskTrackedTrade_WhenRecordFillClosesTrade_ThenRMultipleIsComputed()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { GridCycleId = "cycle-1", TotalLevels = 10, InitialRDollars = 100m };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-1", "cycle-1", OrderSide.Buy, TradeType.GridFill, 100m, 10m, 0m, 1_000));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("tp-1", "cycle-1", OrderSide.Sell, TradeType.TakeProfit, 125m, 10m, 0m, 2_000));
+
+        tradeLog.Should().ContainSingle();
+        tradeLog[0].PnL.Should().Be(250m);
+        tradeLog[0].InitialRDollars.Should().Be(100m);
+        tradeLog[0].RMultipleResult.Should().Be(2.5m);
+        tradeLog[0].MFE.Should().BeNull();
+        tradeLog[0].MAE.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenRiskTrackedTradeAcrossCandles_WhenTradeCloses_ThenMfeAndMaeAreCapturedInR()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { GridCycleId = "cycle-1", TotalLevels = 10, InitialRDollars = 100m };
+        var excursionTrackers = CreateExcursionTrackers();
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("entry-1", "cycle-1", OrderSide.Buy, TradeType.GridFill, 100m, 10m, 0m, 1_000), excursionTrackers);
+        InvokeUpdateTradeExcursions(
+            tradeLog,
+            excursionTrackers,
+            Candle.Create("Binance", "BTC", "15m", 1_500, 100m, 130m, 95m, 110m, 1_000m, 10));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("tp-1", "cycle-1", OrderSide.Sell, TradeType.TakeProfit, 115m, 10m, 0m, 2_000), excursionTrackers);
+
+        tradeLog.Should().ContainSingle();
+        tradeLog[0].RMultipleResult.Should().Be(1.5m);
+        tradeLog[0].MFE.Should().Be(3m);
+        tradeLog[0].MAE.Should().Be(-0.5m);
+    }
+
+    [TestMethod]
+    public void GivenNonRiskBasedTrade_WhenRecordFillClosesTrade_ThenRFieldsRemainNull()
+    {
+        var tradeLog = new List<BacktestTrade>();
+        var gridState = new GridState { TotalLevels = 10 };
+
+        InvokeRecordFill(tradeLog, gridState, CreateFill("signal-entry", "signal", OrderSide.Buy, TradeType.SignalEntry, 100m, 1m, 0m, 1_000));
+        InvokeRecordFill(tradeLog, gridState, CreateFill("signal-exit", "signal", OrderSide.Sell, TradeType.TakeProfit, 101m, 1m, 0m, 2_000));
+
+        tradeLog.Should().ContainSingle();
+        tradeLog[0].InitialRDollars.Should().BeNull();
+        tradeLog[0].RMultipleResult.Should().BeNull();
+        tradeLog[0].MFE.Should().BeNull();
+        tradeLog[0].MAE.Should().BeNull();
+    }
+
     private void SetupCandles(BacktestConfig config)
     {
         var first15mTimestamp = config.StartDateUtc - (config.WarmupPeriod * FifteenMinutesMs);
@@ -400,12 +468,33 @@ public sealed class BacktestRunnerTests
             .ToList();
     }
 
-    private static void InvokeRecordFill(List<BacktestTrade> tradeLog, GridState gridState, SimulatedFill fill)
+    private static void InvokeRecordFill(
+        List<BacktestTrade> tradeLog,
+        GridState gridState,
+        SimulatedFill fill,
+        object? excursionTrackers = null)
     {
         var method = typeof(BacktestRunner).GetMethod("RecordFill", BindingFlags.NonPublic | BindingFlags.Static);
         method.Should().NotBeNull();
 
-        method!.Invoke(null, [tradeLog, gridState, fill]);
+        method!.Invoke(null, [tradeLog, gridState, fill, excursionTrackers ?? CreateExcursionTrackers()]);
+    }
+
+    private static void InvokeUpdateTradeExcursions(List<BacktestTrade> tradeLog, object excursionTrackers, Candle candle)
+    {
+        var method = typeof(BacktestRunner).GetMethod("UpdateTradeExcursions", BindingFlags.NonPublic | BindingFlags.Static);
+        method.Should().NotBeNull();
+
+        method!.Invoke(null, [tradeLog, excursionTrackers, candle]);
+    }
+
+    private static object CreateExcursionTrackers()
+    {
+        var trackerType = typeof(BacktestRunner).GetNestedType("TradeExcursionTracker", BindingFlags.NonPublic);
+        trackerType.Should().NotBeNull();
+
+        var dictionaryType = typeof(Dictionary<,>).MakeGenericType(typeof(string), trackerType!);
+        return Activator.CreateInstance(dictionaryType)!;
     }
 
     private static SimulatedFill CreateFill(

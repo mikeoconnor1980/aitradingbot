@@ -4,7 +4,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTabsModule } from "@angular/material/tabs";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { ModifyOrderDto } from "../../core/models/modify-order.model";
 import { CloseAllProgress, PlaceOrderRequest } from "../../core/models/place-order.model";
 import { ModifyTriggerOrderDto, PlaceTriggerOrderRequest } from "../../core/models/trigger-order.model";
@@ -32,6 +32,7 @@ import { SetSlTpDialogData, SetSlTpModalComponent, SetSlTpResult } from "./posit
 import { PositionsTableComponent } from "./positions-table/positions-table.component";
 import { ActivityFeedComponent } from "./activity-feed/activity-feed.component";
 import { MarketContextCardComponent } from "./market-context-card/market-context-card.component";
+import { SubscriptionService } from "../../core/services/subscription.service";
 
 @Component({
   selector: "app-dashboard",
@@ -41,6 +42,7 @@ import { MarketContextCardComponent } from "./market-context-card/market-context
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    RouterLink,
     AccountSummaryComponent,
     PositionsTableComponent,
     OrdersTableComponent,
@@ -54,12 +56,14 @@ export class DashboardComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _responsiveDialog = inject(ResponsiveDialogService);
   private readonly _router = inject(Router);
+  private readonly _route = inject(ActivatedRoute);
   private readonly _layout = inject(LayoutService);
   private readonly _apiService = inject(HyperliquidApiService);
   private readonly _orderService = inject(OrderService);
   private readonly _notifications = inject(NotificationService);
   private readonly _accountState = inject(AccountStateService);
   private readonly _agentService = inject(AgentService);
+  private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _refresh$ = new Subject<void>();
   private readonly _pendingOrderIds = new Set<string>();
   private readonly _pendingPositionKeys = new Set<string>();
@@ -87,10 +91,22 @@ export class DashboardComponent implements OnInit {
   public errorMessage = "";
   public lastUpdated: Date | null = null;
   public secondsAgo = 0;
+  public showSubscriptionBanner = false;
+  public needsSubscriptionWarning = false;
 
   public ngOnInit(): void {
     this._startPolling();
     this._startStalenessTimer();
+
+    this.needsSubscriptionWarning = this._route.snapshot.queryParamMap.get("needsSubscription") === "true";
+
+    this._subscriptionService.loadStatus();
+    this._subscriptionService.status$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((status) => {
+        this.showSubscriptionBanner = !status?.isActive;
+      });
+
     this._accountState.positions$
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((positions) => { this.positions = positions; });

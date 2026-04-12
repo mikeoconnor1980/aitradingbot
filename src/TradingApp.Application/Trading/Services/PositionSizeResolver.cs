@@ -17,6 +17,23 @@ internal static class PositionSizeResolver
         };
     }
 
+    public static decimal? ResolveInitialR(RiskConfig risk, decimal accountEquity)
+    {
+        ArgumentNullException.ThrowIfNull(risk);
+
+        if (risk.PositionSizeType != PositionSizeType.RiskBased)
+        {
+            return null;
+        }
+
+        if (!risk.RiskPerTradePercent.HasValue || risk.RiskPerTradePercent.Value <= 0m)
+        {
+            return null;
+        }
+
+        return Math.Max(0m, accountEquity) * (risk.RiskPerTradePercent.Value / 100m);
+    }
+
     private static decimal CalculateRiskBased(RiskConfig risk, decimal accountEquity, decimal? stopLossPercent)
     {
         if (!risk.RiskPerTradePercent.HasValue || risk.RiskPerTradePercent.Value <= 0m)

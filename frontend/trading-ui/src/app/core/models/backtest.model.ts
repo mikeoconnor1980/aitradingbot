@@ -1,4 +1,5 @@
 export type BacktestEntryMode = "AutoFromSignalCandle" | "InitialMarketThenGrid" | "WaitForLimitPrice";
+export type BacktestExitRuleType = "fixed_percent" | "swing_low" | "atr_trailing" | "r_multiple";
 
 export interface BacktestGridConfig {
   levels: number;
@@ -24,7 +25,7 @@ export interface BacktestEntryConditionConfig {
 
 export interface BacktestExitRuleConfig {
   enabled: boolean;
-  type: string;
+  type: BacktestExitRuleType;
   value?: number | null;
   lookback?: number | null;
 }
@@ -113,6 +114,10 @@ export interface BacktestTrade {
   tradeType: string;
   gridCycleId?: string | null;
   exitReason?: string | null;
+  initialRDollars?: number | null;
+  rMultipleResult?: number | null;
+  mfe?: number | null;
+  mae?: number | null;
 }
 
 export interface EquitySnapshot {
@@ -144,6 +149,13 @@ export interface BacktestResult {
   averageHoldTimeMinutes: number;
   hedgesOpened: number;
   totalFeesPaid: number;
+  expectancy?: number | null;
+  profitFactor?: number | null;
+  sqn?: number | null;
+  avgWinR?: number | null;
+  avgLossR?: number | null;
+  rWinRate?: number | null;
+  rDistribution?: number[] | null;
   trades: BacktestTrade[];
   createdAt: string;
   equityTimeSeries?: EquitySnapshot[];

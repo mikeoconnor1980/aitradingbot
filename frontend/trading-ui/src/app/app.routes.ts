@@ -1,6 +1,7 @@
 import { Routes } from "@angular/router";
 import { authGuard } from "./core/guards/auth.guard";
 import { mobileRedirectGuard } from "./core/guards/mobile-redirect.guard";
+import { subscriptionGuard } from "./core/guards/subscription.guard";
 import { unsavedChangesGuard } from "./features/strategy-builder/guards/unsaved-changes.guard";
 
 export const routes: Routes = [
@@ -17,20 +18,20 @@ export const routes: Routes = [
   {
     path: "strategies",
     loadComponent: () => import("./features/strategy-builder/strategy-list-page.component").then((m) => m.StrategyListPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     title: "Strategies"
   },
   {
     path: "strategies/new",
     loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     canDeactivate: [unsavedChangesGuard],
     title: "New Strategy"
   },
   {
     path: "strategies/:id/edit",
     loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     canDeactivate: [unsavedChangesGuard],
     title: "Edit Strategy"
   },
@@ -53,13 +54,13 @@ export const routes: Routes = [
   {
     path: "order-entry",
     loadComponent: () => import("./features/order-entry/order-entry.component").then((m) => m.OrderEntryComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, subscriptionGuard],
     title: "Order Entry"
   },
   {
     path: "backtesting",
     loadComponent: () => import("./features/backtesting/backtest-page.component").then((m) => m.BacktestPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     title: "Backtesting"
   },
   {
@@ -71,13 +72,13 @@ export const routes: Routes = [
   {
     path: "optimizer",
     loadComponent: () => import("./features/optimizer/optimizer-page.component").then((m) => m.OptimizerPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     title: "Strategy Optimizer"
   },
   {
     path: "agents",
     loadComponent: () => import("./features/agents/agents-page.component").then((m) => m.AgentsPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     title: "Agents"
   },
   {

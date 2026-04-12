@@ -13,4 +13,8 @@ public sealed class BacktestTradeResponse
     public required string TradeType { get; init; }
     public required string GridCycleId { get; init; }
     public string? ExitReason { get; init; }
+    public decimal? InitialRDollars { get; init; }
+    public decimal? RMultipleResult { get; init; }
+    public decimal? Mfe { get; init; }
+    public decimal? Mae { get; init; }
 }

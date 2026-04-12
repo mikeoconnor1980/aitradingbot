@@ -63,6 +63,9 @@ namespace TradingApp.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<double?>("Expectancy")
+                        .HasColumnType("float");
+
                     b.Property<string>("GridCycleLogJson")
                         .HasColumnType("nvarchar(max)");
 
@@ -85,8 +88,14 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<string>("OrderEventLogJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<double?>("ProfitFactor")
+                        .HasColumnType("float");
+
                     b.Property<int>("Progress")
                         .HasColumnType("int");
+
+                    b.Property<double?>("Sqn")
+                        .HasColumnType("float");
 
                     b.Property<long>("StartDateUtc")
                         .HasColumnType("bigint");
@@ -909,6 +918,37 @@ namespace TradingApp.Persistence.Migrations
                     b.ToTable("StrategyRevisions", (string)null);
                 });
 
+            modelBuilder.Entity("TradingApp.Domain.Entities.Subscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("CreatedAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ExpiresAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("StartedAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Tier")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_Subscriptions_UserId");
+
+                    b.ToTable("Subscriptions", (string)null);
+                });
+
             modelBuilder.Entity("TradingApp.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1017,6 +1057,15 @@ namespace TradingApp.Persistence.Migrations
                     b.HasOne("TradingApp.Domain.Entities.Strategy", null)
                         .WithMany()
                         .HasForeignKey("StrategyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TradingApp.Domain.Entities.Subscription", b =>
+                {
+                    b.HasOne("TradingApp.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

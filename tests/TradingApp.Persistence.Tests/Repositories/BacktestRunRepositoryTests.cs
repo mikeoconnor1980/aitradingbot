@@ -60,7 +60,10 @@ public sealed class BacktestRunRepositoryTests
             averageHoldTimeMinutes: 245.0,
             hedgesOpened: 12,
             totalFeesPaid: 89.23m,
-            tradesJson: "[]");
+            tradesJson: "[]",
+            expectancy: 0.56m,
+            profitFactor: 2.1667m,
+            sqn: 1.4321m);
 
         await using (var writeContext = CreateContext())
         {
@@ -93,6 +96,9 @@ public sealed class BacktestRunRepositoryTests
         result.AverageHoldTimeMinutes.Should().BeApproximately(245.0, 0.001);
         result.HedgesOpened.Should().Be(12);
         result.TotalFeesPaid.Should().BeApproximately(89.23m, 0.01m);
+        result.Expectancy.Should().BeApproximately(0.56m, 0.0001m);
+        result.ProfitFactor.Should().BeApproximately(2.1667m, 0.0001m);
+        result.Sqn.Should().BeApproximately(1.4321m, 0.0001m);
         result.TradesJson.Should().Be("[]");
         result.CreatedAtUtc.Should().BePositive();
     }

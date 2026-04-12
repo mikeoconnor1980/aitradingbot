@@ -118,7 +118,10 @@ public sealed class BacktestProcessorService : BackgroundService
                     : null,
                 gridCycleLogJson: result.GridCycleLog is not null
                     ? BacktestRunResponseMapper.SerializeGridCycleLog(result.GridCycleLog)
-                    : null);
+                    : null,
+                expectancy: result.Expectancy,
+                profitFactor: result.ProfitFactor,
+                sqn: result.Sqn);
 
             await repository.UpdateAsync(backtestRun, CancellationToken.None);
             await BroadcastStatusAsync(backtestRun);

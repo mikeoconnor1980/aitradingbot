@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using TradingApp.Api.Infrastructure;
 using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Repositories;
+using TradingApp.Domain.Enums;
 
 namespace TradingApp.Api.Controllers;
 
@@ -15,15 +16,18 @@ namespace TradingApp.Api.Controllers;
 public sealed class ProfileController : ControllerBase
 {
     private readonly IUserRepository _userRepository;
+    private readonly ISubscriptionRepository _subscriptionRepository;
     private readonly LlmOptions _llmOptions;
     private readonly LlmReviewOptions _llmReviewOptions;
 
     public ProfileController(
         IUserRepository userRepository,
+        ISubscriptionRepository subscriptionRepository,
         IOptions<LlmOptions> llmOptions,
         IOptions<LlmReviewOptions> llmReviewOptions)
     {
         _userRepository = userRepository;
+        _subscriptionRepository = subscriptionRepository;
         _llmOptions = llmOptions.Value;
         _llmReviewOptions = llmReviewOptions.Value;
     }
@@ -39,7 +43,17 @@ public sealed class ProfileController : ControllerBase
         var user = await _userRepository.GetByIdAsync(userId.Value, cancellationToken);
         if (user is null) return Unauthorized();
 
-        return Ok(BuildResponse(user));
+        var subscription = await _subscriptionRepository.GetActiveByUserIdAsync(userId.Value, cancellationToken);
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var isActive = subscription is not null && !subscription.IsExpired(nowMs);
+
+        if (subscription is not null && subscription.IsExpired(nowMs))
+        {
+            subscription.Expire();
+            await _subscriptionRepository.SaveChangesAsync(cancellationToken);
+        }
+
+        return Ok(BuildResponse(user, subscription, isActive));
     }
 
     [HttpPut("network")]
@@ -58,7 +72,12 @@ public sealed class ProfileController : ControllerBase
         {
             user.UpdatePreferredNetwork(request.Network);
             await _userRepository.SaveChangesAsync(cancellationToken);
-            return Ok(BuildResponse(user));
+
+            var subscription = await _subscriptionRepository.GetActiveByUserIdAsync(userId.Value, cancellationToken);
+            var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var isActive = subscription is not null && !subscription.IsExpired(nowMs);
+
+            return Ok(BuildResponse(user, subscription, isActive));
         }
         catch (ArgumentException ex)
         {
@@ -66,14 +85,18 @@ public sealed class ProfileController : ControllerBase
         }
     }
 
-    private ProfileResponse BuildResponse(Domain.Entities.User user)
+    private ProfileResponse BuildResponse(Domain.Entities.User user, Domain.Entities.Subscription? subscription, bool hasActiveSubscription)
     {
         return new ProfileResponse(
             user.Id,
             user.Email,
             user.DisplayName,
             user.PreferredNetwork,
-            new LlmModelsInfo(_llmOptions.ModelName, _llmReviewOptions.ModelName));
+            new LlmModelsInfo(_llmOptions.ModelName, _llmReviewOptions.ModelName),
+            hasActiveSubscription,
+            subscription?.Tier,
+            subscription?.Status,
+            subscription?.ExpiresAtUtc);
     }
 
     private Guid? GetUserId()
@@ -83,6 +106,15 @@ public sealed class ProfileController : ControllerBase
     }
 }
 
-public sealed record ProfileResponse(Guid Id, string Email, string DisplayName, string PreferredNetwork, LlmModelsInfo LlmModels);
+public sealed record ProfileResponse(
+    Guid Id,
+    string Email,
+    string DisplayName,
+    string PreferredNetwork,
+    LlmModelsInfo LlmModels,
+    bool HasActiveSubscription,
+    SubscriptionTier? SubscriptionTier,
+    SubscriptionStatus? SubscriptionStatus,
+    long? SubscriptionExpiresAtUtc);
 public sealed record LlmModelsInfo(string Strategy, string Review);
 public sealed record UpdateNetworkRequest(string Network);

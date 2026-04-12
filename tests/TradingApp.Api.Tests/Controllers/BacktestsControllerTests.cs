@@ -391,6 +391,35 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenBacktestWithRTrackedTrades_WhenGetById_ThenReturnsAggregateAndTradeLevelRMetrics()
+    {
+        var backtestRun = CreateBacktestRunWithRTrackedTrades();
+
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(backtestRun.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(backtestRun);
+
+        var client = GetTestClient();
+
+        var response = await client.GetAsync($"{BaseUrl}/{backtestRun.Id}");
+
+        var result = await response.ReadAndAssertSuccessAsync<BacktestRunResponse>();
+
+        result.Expectancy.Should().Be(0.56m);
+        result.ProfitFactor.Should().BeApproximately(2.1667m, 0.0001m);
+        result.Sqn.Should().NotBeNull();
+        result.AvgWinR.Should().BeApproximately(2.08m, 0.01m);
+        result.AvgLossR.Should().BeApproximately(-0.96m, 0.01m);
+        result.RWinRate.Should().Be(50m);
+        result.RDistribution.Should().Equal([2.1m, -1.0m, 1.5m, -1.0m, 3.0m, -0.8m, 2.0m, -1.0m, 1.8m, -1.0m]);
+        result.Trades.Should().HaveCount(10);
+        result.Trades[0].InitialRDollars.Should().Be(100m);
+        result.Trades[0].RMultipleResult.Should().Be(2.1m);
+        result.Trades[0].Mfe.Should().Be(3m);
+        result.Trades[0].Mae.Should().Be(-0.5m);
+    }
+
+    [TestMethod]
     public async Task GivenBacktestWithAuditData_WhenGetDebug_ThenReturns200WithFilteredData()
     {
         var backtestRun = CreateBacktestRunWithAuditData();
@@ -1122,6 +1151,53 @@ public sealed class BacktestsControllerTests : BaseControllerTests
                     CloseTimestampUtc = 1704068700000,
                 },
             ]));
+    }
+
+    private static BacktestRun CreateBacktestRunWithRTrackedTrades()
+    {
+        var trades = new decimal[] { 2.1m, -1.0m, 1.5m, -1.0m, 3.0m, -0.8m, 2.0m, -1.0m, 1.8m, -1.0m }
+            .Select((rMultiple, index) => new BacktestTrade
+            {
+                TradeId = $"trade-{index + 1}",
+                GridCycleId = "cycle-1",
+                EntryTimeUtc = 1704067200000 + (index * 60_000L),
+                EntryPrice = 50_000m,
+                ExitTimeUtc = 1704067230000 + (index * 60_000L),
+                ExitPrice = 50_000m + (rMultiple * 100m),
+                Side = OrderSide.Buy,
+                Size = 0.1m,
+                PnL = rMultiple * 100m,
+                Fees = 1m,
+                TradeType = TradeType.GridFill,
+                ExitReason = "TakeProfitTriggered",
+                InitialRDollars = 100m,
+                RMultipleResult = rMultiple,
+                MFE = 3m,
+                MAE = -0.5m,
+            })
+            .ToList();
+
+        return BacktestRun.Create(
+            symbol: "BTC",
+            intervalsJson: "[\"15m\",\"1h\",\"4h\"]",
+            startDateUtc: 1704067200000,
+            endDateUtc: 1735689599000,
+            strategyConfigJson: CreateTestStrategyConfigJson(),
+            executionConfigJson: CreateTestExecutionConfigJson(),
+            initialCapital: 10000m,
+            candlesReplayed: 35040,
+            elapsedMs: 12500,
+            totalTrades: trades.Count,
+            winningTrades: trades.Count(trade => trade.PnL > 0m),
+            losingTrades: trades.Count(trade => trade.PnL < 0m),
+            winRate: 50m,
+            totalPnl: trades.Sum(trade => trade.PnL) ?? 0m,
+            maxDrawdown: -1234.56m,
+            averageTradePnl: trades.Average(trade => trade.PnL ?? 0m),
+            averageHoldTimeMinutes: 1.0,
+            hedgesOpened: 0,
+            totalFeesPaid: trades.Sum(trade => trade.Fees),
+            tradesJson: BacktestRunResponseMapper.SerializeTrades(trades));
     }
 
     private static BacktestRunSummary CreateBacktestRunSummary(

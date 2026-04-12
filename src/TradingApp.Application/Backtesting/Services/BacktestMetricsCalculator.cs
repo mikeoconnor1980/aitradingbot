@@ -40,6 +40,7 @@ public sealed class BacktestMetricsCalculator
         var finalEquity = equityTimeSeries.Count > 0
             ? equityTimeSeries[^1].Equity
             : initialCapital;
+        var rMetrics = CalculateRMetrics(completedTrades);
 
         return new BacktestResult
         {
@@ -57,6 +58,13 @@ public sealed class BacktestMetricsCalculator
             GridCycles = gridCycles,
             CandlesReplayed = candlesReplayed,
             FinalEquity = finalEquity,
+            Expectancy = rMetrics.Expectancy,
+            ProfitFactor = rMetrics.ProfitFactor,
+            Sqn = rMetrics.Sqn,
+            AvgWinR = rMetrics.AvgWinR,
+            AvgLossR = rMetrics.AvgLossR,
+            RWinRate = rMetrics.RWinRate,
+            RDistribution = rMetrics.RDistribution,
             EquityTimeSeries = equityTimeSeries.ToList(),
             TradeLog = tradeLog.ToList()
         };
@@ -104,5 +112,59 @@ public sealed class BacktestMetricsCalculator
         }
 
         return (maxDrawdownAbsolute, maxDrawdownPercent);
+    }
+
+    private static RMetricsSummary CalculateRMetrics(IReadOnlyList<BacktestTrade> completedTrades)
+    {
+        var rValues = completedTrades
+            .Where(trade => trade.RMultipleResult.HasValue)
+            .Select(trade => trade.RMultipleResult!.Value)
+            .ToList();
+
+        if (rValues.Count == 0)
+        {
+            return new RMetricsSummary();
+        }
+
+        var winners = rValues.Where(value => value > 0m).ToList();
+        var losers = rValues.Where(value => value < 0m).ToList();
+        var expectancyRaw = rValues.Average();
+        var sumPositiveR = winners.Sum();
+        var sumNegativeR = Math.Abs(losers.Sum());
+        decimal? sqn = null;
+
+        if (rValues.Count > 1)
+        {
+            var mean = (double)expectancyRaw;
+            var variance = rValues.Sum(value => Math.Pow((double)value - mean, 2d)) / (rValues.Count - 1);
+            var standardDeviation = Math.Sqrt(variance);
+
+            if (standardDeviation > 0d)
+            {
+                sqn = Math.Round((decimal)(mean / standardDeviation * Math.Sqrt(rValues.Count)), 4);
+            }
+        }
+
+        return new RMetricsSummary
+        {
+            Expectancy = Math.Round(expectancyRaw, 4),
+            ProfitFactor = sumNegativeR > 0m ? Math.Round(sumPositiveR / sumNegativeR, 4) : null,
+            Sqn = sqn,
+            AvgWinR = winners.Count > 0 ? Math.Round(winners.Average(), 4) : null,
+            AvgLossR = losers.Count > 0 ? Math.Round(losers.Average(), 4) : null,
+            RWinRate = Math.Round((decimal)winners.Count / rValues.Count * 100m, 2),
+            RDistribution = rValues
+        };
+    }
+
+    private sealed class RMetricsSummary
+    {
+        public decimal? Expectancy { get; init; }
+        public decimal? ProfitFactor { get; init; }
+        public decimal? Sqn { get; init; }
+        public decimal? AvgWinR { get; init; }
+        public decimal? AvgLossR { get; init; }
+        public decimal? RWinRate { get; init; }
+        public IReadOnlyList<decimal>? RDistribution { get; init; }
     }
 }

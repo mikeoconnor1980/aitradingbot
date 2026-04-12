@@ -18,7 +18,20 @@ import { BacktestTrade } from "../../../core/models/backtest.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../../core/services/backtest.service";
 
-type SortableColumn = "entryTime" | "exitTime" | "entryPrice" | "exitPrice" | "side" | "size" | "pnl" | "fees" | "exitReason";
+type SortableColumn =
+  | "entryTime"
+  | "exitTime"
+  | "entryPrice"
+  | "exitPrice"
+  | "side"
+  | "size"
+  | "pnl"
+  | "fees"
+  | "initialRDollars"
+  | "rMultipleResult"
+  | "mfe"
+  | "mae"
+  | "exitReason";
 type SortDirection = "asc" | "desc" | null;
 type SetupDetectedFilter = "all" | "true" | "false";
 
@@ -62,6 +75,22 @@ export class TradeLogTableComponent {
 
   public get hasAnyTrades(): boolean {
     return this.trades.length > 0;
+  }
+
+  public get hasRData(): boolean {
+    return this.trades.some((trade: BacktestTrade) =>
+      trade.initialRDollars !== null
+      && trade.initialRDollars !== undefined
+      || trade.rMultipleResult !== null
+      && trade.rMultipleResult !== undefined
+      || trade.mfe !== null
+      && trade.mfe !== undefined
+      || trade.mae !== null
+      && trade.mae !== undefined);
+  }
+
+  public get closedTradeDetailsColspan(): number {
+    return this.hasRData ? 14 : 10;
   }
 
   public get completedTrades(): BacktestTrade[] {
@@ -166,6 +195,14 @@ export class TradeLogTableComponent {
     }
 
     return pnl >= 0 ? "trade-log__pnl--profit" : "trade-log__pnl--loss";
+  }
+
+  public formatCurrency(value: number | null | undefined): string {
+    return value === null || value === undefined ? "—" : `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  public formatRValue(value: number | null | undefined): string {
+    return value === null || value === undefined ? "—" : `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}R`;
   }
 
   public getSetupBadgeClass(setupDetected: boolean): string {
@@ -430,6 +467,14 @@ export class TradeLogTableComponent {
         return trade.pnl ?? 0;
       case "fees":
         return trade.fees;
+      case "initialRDollars":
+        return trade.initialRDollars ?? 0;
+      case "rMultipleResult":
+        return trade.rMultipleResult ?? 0;
+      case "mfe":
+        return trade.mfe ?? 0;
+      case "mae":
+        return trade.mae ?? 0;
       case "exitReason":
         return trade.exitReason ?? "";
       default:

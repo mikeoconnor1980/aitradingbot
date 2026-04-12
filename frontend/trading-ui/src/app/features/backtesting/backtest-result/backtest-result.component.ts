@@ -4,11 +4,12 @@ import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { Router } from "@angular/router";
 import { BacktestResult } from "../../../core/models/backtest.model";
+import { RDistributionChartComponent } from "../r-distribution-chart/r-distribution-chart.component";
 
 @Component({
   selector: "app-backtest-result",
   standalone: true,
-  imports: [DecimalPipe, MatCardModule, MatIconModule],
+  imports: [DecimalPipe, MatCardModule, MatIconModule, RDistributionChartComponent],
   templateUrl: "./backtest-result.component.html",
   styleUrl: "./backtest-result.component.scss"
 })
@@ -20,6 +21,14 @@ export class BacktestResultComponent {
 
   public get hasNoTrades(): boolean {
     return this.result.totalTrades === 0;
+  }
+
+  public get hasRMetrics(): boolean {
+    return this.result.expectancy !== null && this.result.expectancy !== undefined;
+  }
+
+  public get hasRDistribution(): boolean {
+    return (this.result.rDistribution?.length ?? 0) > 0;
   }
 
   public get totalPnlClass(): string {

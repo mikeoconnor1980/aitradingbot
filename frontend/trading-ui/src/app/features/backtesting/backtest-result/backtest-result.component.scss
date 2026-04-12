@@ -1,4 +1,16 @@
 .backtest-result {
+  &__section {
+    margin-bottom: 1rem;
+  }
+
+  &__section-title {
+    margin: 0 0 0.75rem;
+    color: var(--colour-text-primary);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
   &__cards {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -56,6 +68,11 @@
   }
 
   &__config {
+    border: 1px solid var(--colour-border-subtle);
+    background: var(--colour-surface-dark);
+  }
+
+  &__distribution-card {
     border: 1px solid var(--colour-border-subtle);
     background: var(--colour-surface-dark);
   }

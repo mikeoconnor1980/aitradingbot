@@ -58,6 +58,32 @@
                     <mat-icon>{{ getSortIcon("fees") }}</mat-icon>
                   </button>
                 </th>
+                @if (hasRData) {
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('initialRDollars')">
+                      <span>Initial R</span>
+                      <mat-icon>{{ getSortIcon("initialRDollars") }}</mat-icon>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('rMultipleResult')">
+                      <span>R-Multiple</span>
+                      <mat-icon>{{ getSortIcon("rMultipleResult") }}</mat-icon>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('mfe')">
+                      <span>MFE</span>
+                      <mat-icon>{{ getSortIcon("mfe") }}</mat-icon>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('mae')">
+                      <span>MAE</span>
+                      <mat-icon>{{ getSortIcon("mae") }}</mat-icon>
+                    </button>
+                  </th>
+                }
                 <th>
                   <button type="button" class="trade-log__sort-button" (click)="onSort('exitReason')">
                     <span>Exit Reason</span>
@@ -94,12 +120,18 @@
                     {{ trade.pnl !== null ? "$" + (trade.pnl | number: "1.2-2") : "—" }}
                   </td>
                   <td>${{ trade.fees | number: "1.4-4" }}</td>
+                  @if (hasRData) {
+                    <td>{{ formatCurrency(trade.initialRDollars) }}</td>
+                    <td [class]="getPnlClass(trade.rMultipleResult ?? null)">{{ formatRValue(trade.rMultipleResult) }}</td>
+                    <td [class]="getPnlClass(trade.mfe ?? null)">{{ formatRValue(trade.mfe) }}</td>
+                    <td [class]="getPnlClass(trade.mae ?? null)">{{ formatRValue(trade.mae) }}</td>
+                  }
                   <td [class]="getExitReasonClass(trade.exitReason)">{{ formatExitReason(trade.exitReason) }}</td>
                 </tr>
 
                 @if (isExpanded(trade)) {
                   <tr class="trade-log__details-row">
-                    <td colspan="10" class="trade-log__details-cell">
+                    <td [attr.colspan]="closedTradeDetailsColspan" class="trade-log__details-cell">
                       @if (isLoading(trade)) {
                         <div class="trade-log__loading">Loading debug data...</div>
                       } @else {
@@ -373,6 +405,32 @@
                     <mat-icon>{{ getSortIcon("fees") }}</mat-icon>
                   </button>
                 </th>
+                @if (hasRData) {
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('initialRDollars')">
+                      <span>Initial R</span>
+                      <mat-icon>{{ getSortIcon("initialRDollars") }}</mat-icon>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('rMultipleResult')">
+                      <span>R-Multiple</span>
+                      <mat-icon>{{ getSortIcon("rMultipleResult") }}</mat-icon>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('mfe')">
+                      <span>MFE</span>
+                      <mat-icon>{{ getSortIcon("mfe") }}</mat-icon>
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" class="trade-log__sort-button" (click)="onSort('mae')">
+                      <span>MAE</span>
+                      <mat-icon>{{ getSortIcon("mae") }}</mat-icon>
+                    </button>
+                  </th>
+                }
               </tr>
             </thead>
             <tbody>
@@ -386,6 +444,12 @@
                   <td>{{ trade.size | number: "1.4-4" }}</td>
                   <td>—</td>
                   <td>${{ trade.fees | number: "1.4-4" }}</td>
+                  @if (hasRData) {
+                    <td>{{ formatCurrency(trade.initialRDollars) }}</td>
+                    <td>—</td>
+                    <td [class]="getPnlClass(trade.mfe ?? null)">{{ formatRValue(trade.mfe) }}</td>
+                    <td [class]="getPnlClass(trade.mae ?? null)">{{ formatRValue(trade.mae) }}</td>
+                  }
                 </tr>
               }
             </tbody>

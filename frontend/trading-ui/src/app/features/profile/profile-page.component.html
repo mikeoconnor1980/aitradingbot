@@ -24,15 +24,66 @@
             <dt>Email</dt>
             <dd>{{ user.email }}</dd>
           </div>
-          <div class="profile-page__detail">
-            <dt>Membership</dt>
-            <dd>{{ user.membership }}</dd>
-          </div>
-          <div class="profile-page__detail">
-            <dt>Joined</dt>
-            <dd>{{ user.joinedDate }}</dd>
-          </div>
         </dl>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="profile-page__card">
+      <mat-card-header>
+        <mat-card-title>Subscription</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (subscription$ | async; as sub) {
+          @if (sub.isActive) {
+            <dl class="profile-page__details">
+              <div class="profile-page__detail">
+                <dt>Plan</dt>
+                <dd>
+                  <span class="profile-page__badge profile-page__badge--active">{{ getTierName(sub.tier) }}</span>
+                </dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>Status</dt>
+                <dd>
+                  <span class="profile-page__badge profile-page__badge--active">{{ getStatusLabel(sub.status) }}</span>
+                </dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>Expires</dt>
+                <dd>{{ sub.expiresAtUtc | date:'mediumDate' }}</dd>
+              </div>
+            </dl>
+          } @else if (sub.status === 'expired') {
+            <p class="profile-page__placeholder">Your subscription has expired. Renew to continue using trading features.</p>
+            <div class="profile-page__subscription-actions">
+              <button
+                mat-flat-button
+                color="primary"
+                [disabled]="subscribing()"
+                (click)="onSubscribeFreeTier()">
+                <mat-icon>refresh</mat-icon>
+                {{ subscribing() ? 'Renewing...' : 'Renew Free Tier' }}
+              </button>
+            </div>
+          } @else {
+            <p class="profile-page__placeholder">No active subscription. Activate the free tier to access trading features.</p>
+            <div class="profile-page__subscription-actions">
+              <button
+                mat-flat-button
+                color="primary"
+                [disabled]="subscribing()"
+                (click)="onSubscribeFreeTier()">
+                <mat-icon>rocket_launch</mat-icon>
+                {{ subscribing() ? 'Activating...' : 'Activate Free Tier' }}
+              </button>
+            </div>
+          }
+          @if (subscribeError(); as error) {
+            <p class="profile-page__error">{{ error }}</p>
+          }
+        } @else {
+          <p class="profile-page__placeholder">Loading subscription info...</p>
+        }
       </mat-card-content>
     </mat-card>
 

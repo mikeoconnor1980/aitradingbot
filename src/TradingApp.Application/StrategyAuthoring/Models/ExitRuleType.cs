@@ -5,4 +5,5 @@ public enum ExitRuleType
     FixedPercent,
     SwingLow,
     AtrTrailing,
+    RMultiple,
 }

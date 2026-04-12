@@ -397,6 +397,62 @@ public sealed class RealBacktestRunnerTests
         result.TradeLog.Should().BeEmpty();
     }
 
+    [TestMethod]
+    public async Task GivenRiskBasedRMultipleTakeProfit_WhenRunAsync_ThenClosedTradeIncludesRMetrics()
+    {
+        var config = new BacktestConfig
+        {
+            Symbol = "BTC",
+            Intervals = ["15m", "1h", "4h"],
+            StartDateUtc = 12 * OneHourMs,
+            EndDateUtc = (12 * OneHourMs) + (4 * FifteenMinutesMs),
+            InitialCapital = 10_000m,
+            Strategy = CreateStrategyConfig(
+                gridLevels: 1,
+                takeProfitValue: 1m,
+                stopLossPercent: 2m,
+                takeProfitType: ExitRuleType.RMultiple,
+                positionSizeType: PositionSizeType.RiskBased,
+                riskPerTradePercent: 1m),
+            Execution = CreateExecutionConfig(),
+            WarmupPeriod = 2,
+        };
+
+        SetupCandles("15m",
+        [
+            CreateCandle("15m", config.StartDateUtc - (2 * FifteenMinutesMs), 100m, 101m, 99.5m, 100m),
+            CreateCandle("15m", config.StartDateUtc - FifteenMinutesMs, 100m, 100.5m, 99.8m, 100m),
+            CreateCandle("15m", config.StartDateUtc, 100m, 100.2m, 99.9m, 100m),
+            CreateCandle("15m", config.StartDateUtc + FifteenMinutesMs, 100m, 100.1m, 99.4m, 99.6m),
+            CreateCandle("15m", config.StartDateUtc + (2 * FifteenMinutesMs), 99.7m, 102.4m, 99.2m, 102.1m),
+            CreateCandle("15m", config.StartDateUtc + (3 * FifteenMinutesMs), 102.1m, 102.6m, 101.9m, 102.3m),
+        ]);
+
+        SetupCandles("1h",
+        [
+            CreateCandle("1h", 10 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 11 * OneHourMs, 100m, 101m, 99m, 100m),
+            CreateCandle("1h", 12 * OneHourMs, 100m, 103m, 99m, 102m),
+        ]);
+
+        SetupCandles("4h",
+        [
+            CreateCandle("4h", OneHourMs * 4, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", OneHourMs * 8, 100m, 101m, 99m, 100m),
+            CreateCandle("4h", OneHourMs * 12, 100m, 103m, 99m, 102m),
+        ]);
+
+        var result = await _sut.RunAsync(config);
+
+        var trade = result.TradeLog.Should().ContainSingle(t => t.ExitTimeUtc.HasValue).Subject;
+        trade.InitialRDollars.Should().Be(100m);
+        trade.RMultipleResult.Should().Be(1m);
+        trade.MFE.Should().NotBeNull();
+        trade.MAE.Should().NotBeNull();
+        trade.MFE.Should().BeGreaterThan(0m);
+        trade.MAE.Should().BeLessThanOrEqualTo(0m);
+    }
+
     private void SetupCandles(string interval, IReadOnlyList<Candle> candles)
     {
         _candleRepositoryMock
@@ -428,12 +484,15 @@ public sealed class RealBacktestRunnerTests
     private static StrategyConfig CreateStrategyConfig(
         int gridLevels,
         decimal gridSpacing = 0.5m,
-        decimal takeProfitPercent = 1m,
+        decimal takeProfitValue = 1m,
         decimal breakdownThreshold = 2m,
         decimal positionSize = 100m,
         decimal stopLossPercent = 5m,
         string? entryMode = null,
-        decimal? manualAnchorPrice = null)
+        decimal? manualAnchorPrice = null,
+        ExitRuleType takeProfitType = ExitRuleType.FixedPercent,
+        PositionSizeType positionSizeType = PositionSizeType.FixedNotional,
+        decimal? riskPerTradePercent = null)
     {
         return new StrategyConfig
         {
@@ -451,12 +510,14 @@ public sealed class RealBacktestRunnerTests
             },
             Exit = new ExitConfig
             {
-                TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = takeProfitPercent },
+                TakeProfit = new ExitRuleConfig { Enabled = true, Type = takeProfitType, Value = takeProfitValue },
                 StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = stopLossPercent },
             },
             Risk = new RiskConfig
             {
+                PositionSizeType = positionSizeType,
                 PositionSizeValue = positionSize,
+                RiskPerTradePercent = riskPerTradePercent,
                 Leverage = 1m,
                 MaxOpenTrades = 1,
             },

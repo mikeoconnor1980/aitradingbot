@@ -40,6 +40,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<ILlmContextSnapshotRepository, LlmContextSnapshotRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserWalletAddressRepository, UserWalletAddressRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 
         return services;
     }

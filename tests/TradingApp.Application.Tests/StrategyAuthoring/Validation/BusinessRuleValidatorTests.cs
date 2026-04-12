@@ -203,6 +203,73 @@ public sealed class BusinessRuleValidatorTests
     }
 
     [TestMethod]
+    public void GivenRMultipleTakeProfitNegative_WhenValidated_ThenSpecificErrorReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.RMultiple,
+                    Value = -1m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().ContainSingle(error => error.Code == "TP_R_MULTIPLE_NEGATIVE");
+    }
+
+    [TestMethod]
+    public void GivenRMultipleTakeProfitBetweenZeroAndOne_WhenValidated_ThenWarningReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.RMultiple,
+                    Value = 0.5m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Warnings.Should().ContainSingle(error => error.Code == "TP_R_MULTIPLE_SUB_ONE");
+    }
+
+    [TestMethod]
+    public void GivenRMultipleTakeProfitAtOrAboveOne_WhenValidated_ThenNoRMultipleIssuesReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.RMultiple,
+                    Value = 2m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code == "TP_R_MULTIPLE_NEGATIVE");
+        result.Warnings.Should().NotContain(error => error.Code == "TP_R_MULTIPLE_SUB_ONE");
+    }
+
+    [TestMethod]
     public void GivenRsiValueOverHundred_WhenValidated_ThenError()
     {
         var config = new StrategyConfig

@@ -11,6 +11,7 @@ public sealed class CrossFieldValidator
 
         ValidateStrategyModeConsistency(config, result);
         ValidateRiskBasedRequiresStopLoss(config, result);
+        ValidateRMultipleTpRequiresRiskBased(config, result);
     }
 
     private static void ValidateStrategyModeConsistency(StrategyConfig config, ValidationResult result)
@@ -74,6 +75,25 @@ public sealed class CrossFieldValidator
                 FieldPath = "exit.stopLoss",
                 Code = "RISK_BASED_REQUIRES_STOP_LOSS",
                 Message = "Risk-based sizing requires a stop-loss to be configured. Enable a stop-loss or use a different sizing mode.",
+            });
+        }
+    }
+
+    private static void ValidateRMultipleTpRequiresRiskBased(StrategyConfig config, ValidationResult result)
+    {
+        if (!config.Exit.TakeProfit.Enabled || config.Exit.TakeProfit.Type != ExitRuleType.RMultiple)
+        {
+            return;
+        }
+
+        if (config.Risk.PositionSizeType != PositionSizeType.RiskBased)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "exit.takeProfit.type",
+                Code = "R_MULTIPLE_TP_REQUIRES_RISK_BASED",
+                Message = "R-multiple take profit requires Risk-Based position sizing to establish the risk unit (R).",
             });
         }
     }

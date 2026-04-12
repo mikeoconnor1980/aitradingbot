@@ -167,6 +167,34 @@ public sealed class PositionSizeResolverTests
     }
 
     [TestMethod]
+    public void GivenRiskBasedSizing_WhenResolveInitialR_ThenReturnsDollarRisk()
+    {
+        var risk = new RiskConfig
+        {
+            PositionSizeType = PositionSizeType.RiskBased,
+            RiskPerTradePercent = 1m,
+        };
+
+        var result = PositionSizeResolver.ResolveInitialR(risk, accountEquity: 10_000m);
+
+        result.Should().Be(100m);
+    }
+
+    [TestMethod]
+    public void GivenNonRiskBasedSizing_WhenResolveInitialR_ThenReturnsNull()
+    {
+        var risk = new RiskConfig
+        {
+            PositionSizeType = PositionSizeType.FixedNotional,
+            PositionSizeValue = 1_000m,
+        };
+
+        var result = PositionSizeResolver.ResolveInitialR(risk, accountEquity: 10_000m);
+
+        result.Should().BeNull();
+    }
+
+    [TestMethod]
     public void GivenRiskBasedWithNegativeEquity_WhenResolved_ThenReturnsZero()
     {
         var risk = new RiskConfig

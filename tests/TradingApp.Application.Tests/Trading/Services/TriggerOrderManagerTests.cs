@@ -237,6 +237,62 @@ public sealed class TriggerOrderManagerTests
         result.Should().BeNull();
     }
 
+    [TestMethod]
+    public void GivenLongPosition_WhenCalculateRMultipleTP_ThenReturnsCorrectPrice()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.RMultiple, Value = 2m };
+
+        // Act
+        var result = TriggerOrderManager.CalculateTakeProfitPrice(position, config, stopLossPercent: 2m);
+
+        // Assert
+        result.Should().Be(52_000m);
+    }
+
+    [TestMethod]
+    public void GivenShortPosition_WhenCalculateRMultipleTP_ThenReturnsCorrectPrice()
+    {
+        // Arrange
+        var position = CreateShortPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.RMultiple, Value = 3m };
+
+        // Act
+        var result = TriggerOrderManager.CalculateTakeProfitPrice(position, config, stopLossPercent: 2m);
+
+        // Assert
+        result.Should().Be(47_000m);
+    }
+
+    [TestMethod]
+    public void GivenRMultipleTP_WhenStopLossPercentNull_ThenReturnsNull()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.RMultiple, Value = 2m };
+
+        // Act
+        var result = TriggerOrderManager.CalculateTakeProfitPrice(position, config, stopLossPercent: null);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenRMultipleTP_WhenStopLossPercentZero_ThenReturnsNull()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.RMultiple, Value = 2m };
+
+        // Act
+        var result = TriggerOrderManager.CalculateTakeProfitPrice(position, config, stopLossPercent: 0m);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
     // ──────────────────────────────────────────────────────────────
     // PlaceProtectionOrdersAsync
     // ──────────────────────────────────────────────────────────────

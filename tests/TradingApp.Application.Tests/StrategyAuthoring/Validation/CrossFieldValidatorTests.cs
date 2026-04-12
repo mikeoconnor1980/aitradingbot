@@ -176,4 +176,99 @@ public sealed class CrossFieldValidatorTests
 
         result.Errors.Should().NotContain(error => error.Code == "RISK_BASED_REQUIRES_STOP_LOSS");
     }
+
+    [TestMethod]
+    public void GivenRMultipleTakeProfitWithNonRiskBasedSizing_WhenValidated_ThenErrorReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.PercentWallet,
+                PositionSizeValue = 5m,
+            },
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.RMultiple,
+                    Value = 2m,
+                },
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().ContainSingle(error => error.Code == "R_MULTIPLE_TP_REQUIRES_RISK_BASED");
+    }
+
+    [TestMethod]
+    public void GivenRMultipleTakeProfitWithRiskBasedAndStopLoss_WhenValidated_ThenNoRMultipleErrorReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.RMultiple,
+                    Value = 2m,
+                },
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code == "R_MULTIPLE_TP_REQUIRES_RISK_BASED");
+    }
+
+    [TestMethod]
+    public void GivenRMultipleTakeProfitWithRiskBasedAndNoStopLoss_WhenValidated_ThenStopLossErrorReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.RMultiple,
+                    Value = 2m,
+                },
+                StopLoss = new ExitRuleConfig { Enabled = false },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().ContainSingle(error => error.Code == "RISK_BASED_REQUIRES_STOP_LOSS");
+        result.Errors.Should().NotContain(error => error.Code == "R_MULTIPLE_TP_REQUIRES_RISK_BASED");
+    }
 }

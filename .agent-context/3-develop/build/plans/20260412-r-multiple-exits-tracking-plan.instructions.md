@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260412-r-multiple-exits-tracking-changes.md"
 currentAgent: "None"
-agentStartedAt: "2026-04-12T13:17:32Z"
-status: "plan-reviewed"
-lastUpdated: "2026-04-12T13:23:04Z"
+agentStartedAt: "2026-04-12T17:25:12Z"
+status: "implemented"
+lastUpdated: "2026-04-12T18:32:45Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -79,133 +79,133 @@ Express take-profit targets as multiples of R (1R, 2R, 3R) instead of arbitrary 
 - `frontend/trading-ui/src/app/features/backtesting/backtest-result/` — KPI cards
 - `frontend/trading-ui/src/app/features/backtesting/trade-log-table/` — Trade table
 
-### [ ] Phase 1: Domain Models & Validation
+### [x] Phase 1: Domain Models & Validation
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 1.1: Add `RMultiple` to `ExitRuleType` enum
+- [x] Task 1.1: Add `RMultiple` to `ExitRuleType` enum
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-01-details.md#task-11-add-rmultiple-to-exitruletype-enum
 
-- [ ] Task 1.2: Add R-multiple validation rules to `BusinessRuleValidator`
+- [x] Task 1.2: Add R-multiple validation rules to `BusinessRuleValidator`
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-01-details.md#task-12-add-r-multiple-validation-rules
 
-- [ ] Task 1.3: Add cross-field validation for RMultiple TP
+- [x] Task 1.3: Add cross-field validation for RMultiple TP
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-01-details.md#task-13-add-cross-field-validation-for-rmultiple-tp
 
-- [ ] Task 1.4: Unit tests for validation rules
+- [x] Task 1.4: Unit tests for validation rules
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-01-details.md#task-14-unit-tests-for-validation-rules
 
-- [ ] Task 1.5: Build and verify
+- [x] Task 1.5: Build and verify
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-01-details.md#task-15-build-and-verify
 
-### [ ] Phase 2: R-Multiple TP Price Calculation
+### [x] Phase 2: R-Multiple TP Price Calculation
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Extend `TriggerOrderManager.CalculateTakeProfitPrice` for RMultiple
+- [x] Task 2.1: Extend `TriggerOrderManager.CalculateTakeProfitPrice` for RMultiple
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-02-details.md#task-21-extend-calculatetakeprofitprice-for-rmultiple
 
-- [ ] Task 2.2: Update GridController inline TP calculation for RMultiple
+- [x] Task 2.2: Update GridController inline TP calculation for RMultiple
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-02-details.md#task-22-update-gridcontroller-inline-tp-calculation
 
-- [ ] Task 2.3: Unit tests for R-multiple TP price calculation
+- [x] Task 2.3: Unit tests for R-multiple TP price calculation
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-02-details.md#task-23-unit-tests-for-r-multiple-tp-price-calculation
 
-- [ ] Task 2.4: Build and verify
+- [x] Task 2.4: Build and verify
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-02-details.md#task-24-build-and-verify
 
-### [ ] Phase 3: Per-Trade R Tracking & MFE/MAE
+### [x] Phase 3: Per-Trade R Tracking & MFE/MAE
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 3.1: Add InitialR to GridState
+- [x] Task 3.1: Add InitialR to GridState
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-31-add-initialr-to-gridstate
 
-- [ ] Task 3.2: Capture InitialR during grid deployment in GridController
+- [x] Task 3.2: Capture InitialR during grid deployment in GridController
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-32-capture-initialr-during-grid-deployment
 
-- [ ] Task 3.3: Add R tracking fields to BacktestTrade
+- [x] Task 3.3: Add R tracking fields to BacktestTrade
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-33-add-r-tracking-fields-to-backtesttrade
 
-- [ ] Task 3.4: Thread InitialR through RecordFill
+- [x] Task 3.4: Thread InitialR through RecordFill
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-34-thread-initialr-through-recordfill
 
-- [ ] Task 3.5: Add per-trade MFE/MAE tracking in BacktestRunner
+- [x] Task 3.5: Add per-trade MFE/MAE tracking in BacktestRunner
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-35-add-per-trade-mfemae-tracking
 
-- [ ] Task 3.6: Compute RMultipleResult and MFE/MAE at trade close
+- [x] Task 3.6: Compute RMultipleResult and MFE/MAE at trade close
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-36-compute-rmultipleresult-and-mfemae-at-trade-close
 
-- [ ] Task 3.7: Unit tests for R tracking and MFE/MAE
+- [x] Task 3.7: Unit tests for R tracking and MFE/MAE
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-37-unit-tests-for-r-tracking-and-mfemae
 
-- [ ] Task 3.8: Build and verify
+- [x] Task 3.8: Build and verify
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-03-details.md#task-38-build-and-verify
 
-### [ ] Phase 4: Aggregate R Metrics & API
+### [x] Phase 4: Aggregate R Metrics & API
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 4.1: Add R-multiple aggregate fields to BacktestResult
+- [x] Task 4.1: Add R-multiple aggregate fields to BacktestResult
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-41-add-r-multiple-aggregate-fields-to-backtestresult
 
-- [ ] Task 4.2: Extend BacktestMetricsCalculator with R-multiple calculations
+- [x] Task 4.2: Extend BacktestMetricsCalculator with R-multiple calculations
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-42-extend-backtestmetricscalculator
 
-- [ ] Task 4.3: Add R-multiple columns to BacktestRun entity, migration, and update callers
+- [x] Task 4.3: Add R-multiple columns to BacktestRun entity, migration, and update callers
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-43-add-r-multiple-columns-to-backtestrun-entity
 
-- [ ] Task 4.4: Update BacktestRunResponse and BacktestTradeResponse DTOs
+- [x] Task 4.4: Update BacktestRunResponse and BacktestTradeResponse DTOs
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-44-update-response-dtos
 
-- [ ] Task 4.5: Update BacktestRunResponseMapper
+- [x] Task 4.5: Update BacktestRunResponseMapper
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-45-update-backtestrunresponsemapper
 
-- [ ] Task 4.6: Unit tests for aggregate metrics
+- [x] Task 4.6: Unit tests for aggregate metrics
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-46-unit-tests-for-aggregate-metrics
 
-- [ ] Task 4.7: Build and verify
+- [x] Task 4.7: Build and verify
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-04-details.md#task-47-build-and-verify
 
-### [ ] Phase 5: Frontend — Strategy Configuration
+### [x] Phase 5: Frontend — Strategy Configuration
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 5.1: Add `r_multiple` to TypeScript ExitRuleType
+- [x] Task 5.1: Add `r_multiple` to TypeScript ExitRuleType
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-05-details.md#task-51-add-r_multiple-to-typescript-exitruletype
 
-- [ ] Task 5.2: Enable R-multiple option in exit-rules-card
+- [x] Task 5.2: Enable R-multiple option in exit-rules-card
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-05-details.md#task-52-enable-r-multiple-option-in-exit-rules-card
 
-- [ ] Task 5.3: Update strategy-mapper.service.ts
+- [x] Task 5.3: Update strategy-mapper.service.ts
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-05-details.md#task-53-update-strategy-mapper
 
-- [ ] Task 5.4: Add sub-1R warning
+- [x] Task 5.4: Add sub-1R warning
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-05-details.md#task-54-add-sub-1r-warning
 
-- [ ] Task 5.5: Frontend build and lint
+- [x] Task 5.5: Frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-05-details.md#task-55-frontend-build-and-lint
 
-### [ ] Phase 6: Frontend — Backtest Results Display
+### [x] Phase 6: Frontend — Backtest Results Display
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 6.1: Update backtest TypeScript models
+- [x] Task 6.1: Update backtest TypeScript models
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-06-details.md#task-61-update-backtest-typescript-models
 
-- [ ] Task 6.2: Add R-metric KPI cards to backtest-result component
+- [x] Task 6.2: Add R-metric KPI cards to backtest-result component
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-06-details.md#task-62-add-r-metric-kpi-cards
 
-- [ ] Task 6.3: Add R columns to trade-log-table
+- [x] Task 6.3: Add R columns to trade-log-table
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-06-details.md#task-63-add-r-columns-to-trade-log-table
 
-- [ ] Task 6.4: Add R-distribution histogram component
+- [x] Task 6.4: Add R-distribution histogram component
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-06-details.md#task-64-add-r-distribution-histogram-component
 
-- [ ] Task 6.5: Conditional display based on RiskBased mode
+- [x] Task 6.5: Conditional display based on RiskBased mode
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-06-details.md#task-65-conditional-display-based-on-riskbased-mode
 
-- [ ] Task 6.6: Frontend build and lint
+- [x] Task 6.6: Frontend build and lint
   - Details: .agent-context/3-develop/build/plans/details/20260412-r-multiple-exits-tracking-phase-06-details.md#task-66-frontend-build-and-lint
 
 ## Scoping Summary
@@ -254,3 +254,4 @@ Express take-profit targets as multiples of R (1R, 2R, 3R) instead of arbitrary 
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-04-12T12:57:01Z | 2026-04-12T13:16:46Z |
 | Plan Reviewer | plan-reviewed | 2026-04-12T13:17:32Z | 2026-04-12T13:23:04Z |
+| Plan Implementer | implemented | 2026-04-12T17:25:12Z | 2026-04-12T18:32:45Z |

@@ -55,7 +55,8 @@ public sealed class TriggerOrderManager : ITriggerOrderManager
         // Place take profit trigger
         if (exitConfig.TakeProfit.Enabled && !protectionState.HasTakeProfit)
         {
-            var tpPrice = CalculateTakeProfitPrice(positionState, exitConfig.TakeProfit);
+            var tpStopLossPercent = ResolveTakeProfitStopLossPercent(positionState, exitConfig, context);
+            var tpPrice = CalculateTakeProfitPrice(positionState, exitConfig.TakeProfit, tpStopLossPercent);
             if (tpPrice.HasValue && tpPrice.Value > 0)
             {
                 await PlaceTriggerAsync(
@@ -102,7 +103,8 @@ public sealed class TriggerOrderManager : ITriggerOrderManager
         // Update take profit if price changed (e.g., average entry changed from new fill)
         if (exitConfig.TakeProfit.Enabled && protectionState.HasTakeProfit)
         {
-            var newTpPrice = CalculateTakeProfitPrice(positionState, exitConfig.TakeProfit);
+                var tpStopLossPercent = ResolveTakeProfitStopLossPercent(positionState, exitConfig, context);
+                var newTpPrice = CalculateTakeProfitPrice(positionState, exitConfig.TakeProfit, tpStopLossPercent);
             if (newTpPrice.HasValue && newTpPrice.Value > 0
                 && newTpPrice.Value != protectionState.TakeProfitTriggerPrice)
             {
@@ -177,19 +179,52 @@ public sealed class TriggerOrderManager : ITriggerOrderManager
 
     internal static decimal? CalculateTakeProfitPrice(
         PositionState positionState,
-        ExitRuleConfig takeProfitConfig)
+        ExitRuleConfig takeProfitConfig,
+        decimal? stopLossPercent = null)
     {
         if (!takeProfitConfig.Enabled || !takeProfitConfig.Value.HasValue || !positionState.IsOpen)
         {
             return null;
         }
 
-        var percent = Math.Abs(takeProfitConfig.Value.Value);
         var isLong = positionState.Size > 0;
+
+        if (takeProfitConfig.Type == ExitRuleType.RMultiple)
+        {
+            if (!stopLossPercent.HasValue || stopLossPercent.Value <= 0m)
+            {
+                return null;
+            }
+
+            var rMultiple = Math.Abs(takeProfitConfig.Value.Value);
+            var effectivePercent = stopLossPercent.Value * rMultiple;
+
+            return isLong
+                ? positionState.AverageEntryPrice * (1m + (effectivePercent / 100m))
+                : positionState.AverageEntryPrice * (1m - (effectivePercent / 100m));
+        }
+
+        var percent = Math.Abs(takeProfitConfig.Value.Value);
 
         return isLong
             ? positionState.AverageEntryPrice * (1m + (percent / 100m))
             : positionState.AverageEntryPrice * (1m - (percent / 100m));
+    }
+
+    private static decimal? ResolveTakeProfitStopLossPercent(
+        PositionState positionState,
+        ExitConfig exitConfig,
+        MarketContext context)
+    {
+        if (exitConfig.TakeProfit.Type != ExitRuleType.RMultiple)
+        {
+            return null;
+        }
+
+        return StopLossDistanceResolver.Resolve(
+            exitConfig.StopLoss,
+            context.Indicators?.Atr,
+            positionState.AverageEntryPrice);
     }
 
     private async Task PlaceTriggerAsync(

@@ -79,6 +79,24 @@ describe("StrategyMapperService", () => {
     });
   });
 
+  it("should preserve r-multiple take profit type from the form", () => {
+    const config = service.mapFormToConfig({
+      ...buildGridFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "r_multiple", value: 2.5 },
+        stopLoss: { enabled: true, type: "fixed_percent", value: 6 },
+        exitOnOppositeSignal: false,
+      },
+    });
+
+    expect(config.exit.takeProfit).toEqual({
+      enabled: true,
+      type: "r_multiple",
+      value: 2.5,
+      lookback: null,
+    });
+  });
+
   it("should map MACD condition params for signal mode", () => {
     const config = service.mapFormToConfig({
       ...buildSignalFormValue(),

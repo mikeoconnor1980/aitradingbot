@@ -15,6 +15,13 @@ namespace TradingApp.Application.Backtesting.Services;
 /// </summary>
 public sealed class BacktestRunner : IBacktestRunner
 {
+    private sealed class TradeExcursionTracker
+    {
+        public decimal BestPnL { get; set; }
+
+        public decimal WorstPnL { get; set; }
+    }
+
     private readonly ICandleRepository _candleRepository;
     private readonly IMarketContextBuilder _marketContextBuilder;
     private readonly IStrategyEngine _strategyEngine;
@@ -105,6 +112,7 @@ public sealed class BacktestRunner : IBacktestRunner
             var totalCandles = Math.Max(0, triggerCandles.Count - replayData.WarmupEndIndex);
             onProgress?.Invoke(0, totalCandles, config.StartDateUtc);
             var tradeLog = new List<BacktestTrade>();
+            var excursionTrackers = new Dictionary<string, TradeExcursionTracker>(StringComparer.Ordinal);
             var equityTimeSeries = new List<EquitySnapshot>();
             var currentGridState = scheduler.GetGridState();
             var countedClosedCycles = new HashSet<string>(StringComparer.Ordinal);
@@ -169,7 +177,7 @@ public sealed class BacktestRunner : IBacktestRunner
 
                 foreach (var fill in fills)
                 {
-                    RecordFill(tradeLog, currentGridState, fill);
+                    RecordFill(tradeLog, currentGridState, fill, excursionTrackers);
 
                     collector.LogOrderEvent(new OrderEventEntry
                     {
@@ -188,6 +196,8 @@ public sealed class BacktestRunner : IBacktestRunner
 
                     TrackCycleExit(trackedCycles, fill);
                 }
+
+                UpdateTradeExcursions(tradeLog, excursionTrackers, candle);
 
                 if (TryCountClosedGridCycle(currentGridState, countedClosedCycles))
                 {
@@ -322,7 +332,11 @@ public sealed class BacktestRunner : IBacktestRunner
         }
     }
 
-    private static void RecordFill(List<BacktestTrade> tradeLog, GridState gridState, SimulatedFill fill)
+    private static void RecordFill(
+        List<BacktestTrade> tradeLog,
+        GridState gridState,
+        SimulatedFill fill,
+        Dictionary<string, TradeExcursionTracker> excursionTrackers)
     {
         var gridCycleId = fill.GridCycleId ?? gridState.GridCycleId ?? "default";
         ApplyGridFillState(gridState, fill);
@@ -341,7 +355,8 @@ public sealed class BacktestRunner : IBacktestRunner
                 Size = fill.Size,
                 PnL = null,
                 Fees = fill.Fee,
-                TradeType = fill.TradeType
+                TradeType = fill.TradeType,
+                InitialRDollars = gridState.InitialRDollars
             });
 
             return;
@@ -362,7 +377,7 @@ public sealed class BacktestRunner : IBacktestRunner
             return;
         }
 
-        CloseCompatibleTrades(tradeLog, compatibleOpenTrades, fill, gridCycleId);
+        CloseCompatibleTrades(tradeLog, compatibleOpenTrades, fill, gridCycleId, excursionTrackers);
     }
 
     private static void AppendOpenTrade(
@@ -370,7 +385,8 @@ public sealed class BacktestRunner : IBacktestRunner
         SimulatedFill fill,
         string gridCycleId,
         decimal size,
-        decimal fee)
+        decimal fee,
+        decimal? initialRDollars = null)
     {
         tradeLog.Add(new BacktestTrade
         {
@@ -384,7 +400,8 @@ public sealed class BacktestRunner : IBacktestRunner
             Size = size,
             PnL = null,
             Fees = fee,
-            TradeType = fill.TradeType
+            TradeType = fill.TradeType,
+            InitialRDollars = initialRDollars
         });
     }
 
@@ -392,7 +409,8 @@ public sealed class BacktestRunner : IBacktestRunner
         List<BacktestTrade> tradeLog,
         IReadOnlyList<BacktestTrade> compatibleOpenTrades,
         SimulatedFill fill,
-        string gridCycleId)
+        string gridCycleId,
+        Dictionary<string, TradeExcursionTracker> excursionTrackers)
     {
         var remainingSize = fill.Size;
         var remainingFee = fill.Fee;
@@ -408,6 +426,12 @@ public sealed class BacktestRunner : IBacktestRunner
             var allocatedExitFee = fill.Size > 0m
                 ? decimal.Round(fill.Fee * (closedSize / fill.Size), 12, MidpointRounding.AwayFromZero)
                 : 0m;
+            var pnl = CalculateTradePnl(openTrade.Side, openTrade.EntryPrice, fill.FillPrice, closedSize);
+            var (rMultipleResult, mfe, mae) = ResolveTradeRMetrics(
+                openTrade,
+                pnl,
+                excursionTrackers,
+                removeTracker: closedSize == openTrade.Size);
 
             var pairedTrade = new BacktestTrade
             {
@@ -419,10 +443,14 @@ public sealed class BacktestRunner : IBacktestRunner
                 ExitPrice = fill.FillPrice,
                 Side = openTrade.Side,
                 Size = closedSize,
-                PnL = CalculateTradePnl(openTrade.Side, openTrade.EntryPrice, fill.FillPrice, closedSize),
+                PnL = pnl,
                 Fees = openTrade.Fees + allocatedExitFee,
                 TradeType = openTrade.TradeType,
-                ExitReason = fill.CloseReason?.ToString()
+                ExitReason = fill.CloseReason?.ToString(),
+                InitialRDollars = openTrade.InitialRDollars,
+                RMultipleResult = rMultipleResult,
+                MFE = mfe,
+                MAE = mae
             };
 
             var openTradeIndex = tradeLog.IndexOf(openTrade);
@@ -444,7 +472,8 @@ public sealed class BacktestRunner : IBacktestRunner
                     Size = openTrade.Size - closedSize,
                     PnL = null,
                     Fees = openTrade.Fees,
-                    TradeType = openTrade.TradeType
+                    TradeType = openTrade.TradeType,
+                    InitialRDollars = openTrade.InitialRDollars
                 };
 
                 tradeLog[openTradeIndex] = remainingOpenTrade;
@@ -478,6 +507,73 @@ public sealed class BacktestRunner : IBacktestRunner
             : (entryPrice - exitPrice) * size;
     }
 
+    private static void UpdateTradeExcursions(
+        List<BacktestTrade> tradeLog,
+        Dictionary<string, TradeExcursionTracker> trackers,
+        Candle candle)
+    {
+        foreach (var trade in tradeLog)
+        {
+            if (trade.ExitTimeUtc is not null || !trade.InitialRDollars.HasValue || trade.InitialRDollars.Value <= 0m)
+            {
+                continue;
+            }
+
+            if (!trackers.TryGetValue(trade.TradeId, out var tracker))
+            {
+                tracker = new TradeExcursionTracker();
+                trackers[trade.TradeId] = tracker;
+            }
+
+            decimal bestPnl;
+            decimal worstPnl;
+
+            if (trade.Side == OrderSide.Buy)
+            {
+                bestPnl = (candle.High - trade.EntryPrice) * trade.Size;
+                worstPnl = (candle.Low - trade.EntryPrice) * trade.Size;
+            }
+            else
+            {
+                bestPnl = (trade.EntryPrice - candle.Low) * trade.Size;
+                worstPnl = (trade.EntryPrice - candle.High) * trade.Size;
+            }
+
+            tracker.BestPnL = Math.Max(tracker.BestPnL, bestPnl);
+            tracker.WorstPnL = Math.Min(tracker.WorstPnL, worstPnl);
+        }
+    }
+
+    private static (decimal? RMultipleResult, decimal? MFE, decimal? MAE) ResolveTradeRMetrics(
+        BacktestTrade openTrade,
+        decimal pnl,
+        Dictionary<string, TradeExcursionTracker> excursionTrackers,
+        bool removeTracker)
+    {
+        var initialR = openTrade.InitialRDollars;
+        if (!initialR.HasValue || initialR.Value <= 0m)
+        {
+            return (null, null, null);
+        }
+
+        var rMultipleResult = decimal.Round(pnl / initialR.Value, 4);
+        decimal? mfe = null;
+        decimal? mae = null;
+
+        if (excursionTrackers.TryGetValue(openTrade.TradeId, out var tracker))
+        {
+            mfe = decimal.Round(tracker.BestPnL / initialR.Value, 4);
+            mae = decimal.Round(tracker.WorstPnL / initialR.Value, 4);
+
+            if (removeTracker)
+            {
+                excursionTrackers.Remove(openTrade.TradeId);
+            }
+        }
+
+        return (rMultipleResult, mfe, mae);
+    }
+
     private static void ApplyGridFillState(GridState gridState, SimulatedFill fill)
     {
         switch (fill.TradeType)
@@ -497,6 +593,7 @@ public sealed class BacktestRunner : IBacktestRunner
 
                 gridState.FilledLevels = 0;
                 gridState.Lifecycle = GridLifecycle.Closed;
+                gridState.InitialRDollars = null;
                 break;
 
             case TradeType.HedgeOpen:
@@ -505,6 +602,7 @@ public sealed class BacktestRunner : IBacktestRunner
 
             case TradeType.HedgeClose:
                 gridState.Lifecycle = GridLifecycle.Closed;
+                gridState.InitialRDollars = null;
                 break;
 
             case TradeType.SignalEntry:

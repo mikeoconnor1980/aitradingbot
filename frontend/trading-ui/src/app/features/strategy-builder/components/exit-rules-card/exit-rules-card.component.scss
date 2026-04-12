@@ -54,4 +54,10 @@
     gap: 1rem;
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   }
+
+  &__warning {
+    margin: -0.5rem 0 0;
+    color: var(--colour-warning, #f0b429);
+    font-size: 0.85rem;
+  }
 }

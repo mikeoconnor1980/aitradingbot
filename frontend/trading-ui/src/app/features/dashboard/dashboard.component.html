@@ -1,4 +1,18 @@
 <section class="dashboard" [class.dashboard--stale]="isStale">
+  @if (showSubscriptionBanner) {
+    <div class="dashboard__subscription-banner" [class.dashboard__subscription-banner--warning]="needsSubscriptionWarning" role="alert">
+      <mat-icon>info</mat-icon>
+      <span>
+        @if (needsSubscriptionWarning) {
+          An active subscription is required to access trading features.
+        } @else {
+          Activate your free subscription to access trading features.
+        }
+      </span>
+      <a mat-stroked-button routerLink="/profile">Go to Profile</a>
+    </div>
+  }
+
   @if (showErrorBanner) {
     <div class="dashboard__error-banner" role="alert">
       <mat-icon>error</mat-icon>

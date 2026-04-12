@@ -403,7 +403,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       exit: this._fb.group({
         takeProfit: this._fb.group({
           enabled: [true],
-          type: ["fixed_percent"],
+          type: ["fixed_percent", Validators.required],
           value: [2, [Validators.min(0.01), Validators.max(50)]],
         }),
         stopLoss: this._fb.group({

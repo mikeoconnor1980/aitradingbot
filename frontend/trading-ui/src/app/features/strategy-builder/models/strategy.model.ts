@@ -1,6 +1,6 @@
 export type StrategyMode = "grid" | "signal";
 export type Direction = "long" | "short" | "both";
-export type ExitRuleType = "fixed_percent" | "swing_low" | "atr_trailing";
+export type ExitRuleType = "fixed_percent" | "swing_low" | "atr_trailing" | "r_multiple";
 export type PositionSizeType = "percent_wallet" | "fixed_notional" | "risk_based";
 export type CooldownUnit = "candles" | "minutes";
 export type EntryMode = "auto_from_signal_candle" | "manual";

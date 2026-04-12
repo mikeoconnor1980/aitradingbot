@@ -27,6 +27,7 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<LlmContextSnapshot> LlmContextSnapshots => Set<LlmContextSnapshot>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -156,6 +157,15 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.Property(backtestRun => backtestRun.TotalFeesPaid)
                 .HasConversion<double>();
+
+            entity.Property(backtestRun => backtestRun.Expectancy)
+                .HasConversion<double?>();
+
+            entity.Property(backtestRun => backtestRun.ProfitFactor)
+                .HasConversion<double?>();
+
+            entity.Property(backtestRun => backtestRun.Sqn)
+                .HasConversion<double?>();
 
             entity.HasIndex(backtestRun => backtestRun.StrategyId)
                 .HasDatabaseName("IX_BacktestRuns_StrategyId");
@@ -759,6 +769,42 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(e => new { e.UserId, e.IsActive })
                 .HasDatabaseName("IX_UserWalletAddresses_UserId_IsActive");
+        });
+
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.ToTable("Subscriptions");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.Tier)
+                .IsRequired();
+
+            entity.Property(e => e.Status)
+                .IsRequired();
+
+            entity.Property(e => e.StartedAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.ExpiresAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_Subscriptions_UserId");
         });
     }
 }

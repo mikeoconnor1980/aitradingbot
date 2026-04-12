@@ -49,7 +49,10 @@ public sealed class BusinessRuleValidator
 
     private static void ValidateExit(ExitConfig exit, ValidationResult result)
     {
-        if (exit.TakeProfit.Enabled && exit.TakeProfit.Value is not null && exit.TakeProfit.Value <= 0)
+        if (exit.TakeProfit.Enabled
+            && exit.TakeProfit.Type != ExitRuleType.RMultiple
+            && exit.TakeProfit.Value is not null
+            && exit.TakeProfit.Value <= 0)
         {
             result.Add(new ValidationError
             {
@@ -58,6 +61,40 @@ public sealed class BusinessRuleValidator
                 Code = "TP_VALUE_INVALID",
                 Message = "Take profit value must be greater than 0 when enabled.",
             });
+        }
+
+        if (exit.TakeProfit.Enabled && exit.TakeProfit.Type == ExitRuleType.RMultiple)
+        {
+            if (exit.TakeProfit.Value is not null && exit.TakeProfit.Value < 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "exit.takeProfit.value",
+                    Code = "TP_R_MULTIPLE_NEGATIVE",
+                    Message = "R-multiple take profit target must not be negative.",
+                });
+            }
+            else if (exit.TakeProfit.Value is not null && exit.TakeProfit.Value == 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "exit.takeProfit.value",
+                    Code = "TP_VALUE_INVALID",
+                    Message = "Take profit value must be greater than 0 when enabled.",
+                });
+            }
+            else if (exit.TakeProfit.Value is not null && exit.TakeProfit.Value < 1m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Warning,
+                    FieldPath = "exit.takeProfit.value",
+                    Code = "TP_R_MULTIPLE_SUB_ONE",
+                    Message = "Sub-1R take profit - this trade relies on a high win rate to be profitable.",
+                });
+            }
         }
 
         if (exit.StopLoss.Enabled && exit.StopLoss.Value is not null && exit.StopLoss.Value <= 0)

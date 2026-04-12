@@ -16,7 +16,14 @@ public sealed class BacktestResult
     public required int GridCycles { get; init; }
     public required int CandlesReplayed { get; init; }
     public required decimal FinalEquity { get; init; }
+    public decimal? Expectancy { get; init; }
+    public decimal? ProfitFactor { get; init; }
+    public decimal? Sqn { get; init; }
+    public decimal? AvgWinR { get; init; }
+    public decimal? AvgLossR { get; init; }
+    public decimal? RWinRate { get; init; }
     public int HeatBlockedSignalCount { get; init; }
+    public IReadOnlyList<decimal>? RDistribution { get; init; }
     public required IReadOnlyList<EquitySnapshot> EquityTimeSeries { get; init; }
     public required IReadOnlyList<BacktestTrade> TradeLog { get; init; }
     public IReadOnlyList<CandleEvaluationEntry>? CandleEvaluationLog { get; init; }

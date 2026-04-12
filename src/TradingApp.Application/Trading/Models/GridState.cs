@@ -30,6 +30,13 @@ public sealed class GridState
     public int CandlesSinceEntry { get; set; }
 
     /// <summary>
+    /// Dollar risk (1R) for the current grid cycle.
+    /// Set during RiskBased position sizing at grid deployment.
+    /// Null for non-RiskBased sizing modes.
+    /// </summary>
+    public decimal? InitialRDollars { get; set; }
+
+    /// <summary>
     /// Tracks exchange-native TP/SL trigger orders protecting the current position.
     /// In-memory only — rebuilt from exchange on worker restart.
     /// </summary>

@@ -324,6 +324,41 @@ public sealed class GridControllerTests
 
         signals.Should().ContainSingle();
         signals[0].Parameters!["notionalUsd"].Should().Be(500m);
+        gridState.InitialRDollars.Should().Be(100m);
+    }
+
+    [TestMethod]
+    public async Task GivenTrackedRiskBasedGrid_WhenStopLossTriggered_ThenInitialRIsCleared()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2m,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.FullyFilled, filledLevels: 5);
+        gridState.InitialRDollars = 100m;
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 97m),
+            gridState,
+            CreatePositionState(size: 5m, averageEntryPrice: 100m),
+            config);
+
+        signals.Should().ContainSingle();
+        gridState.InitialRDollars.Should().BeNull();
     }
 
     [TestMethod]

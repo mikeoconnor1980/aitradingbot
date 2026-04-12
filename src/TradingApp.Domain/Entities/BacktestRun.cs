@@ -28,6 +28,9 @@ public sealed class BacktestRun
     public double AverageHoldTimeMinutes { get; private set; }
     public int HedgesOpened { get; private set; }
     public decimal TotalFeesPaid { get; private set; }
+    public decimal? Expectancy { get; private set; }
+    public decimal? ProfitFactor { get; private set; }
+    public decimal? Sqn { get; private set; }
     public string TradesJson { get; private set; } = string.Empty;
     public string EquityTimeSeriesJson { get; private set; } = string.Empty;
     public bool AuditLogEnabled { get; private set; }
@@ -122,7 +125,10 @@ public sealed class BacktestRun
         string equityTimeSeriesJson,
         string? candleLogJson = null,
         string? orderEventLogJson = null,
-        string? gridCycleLogJson = null)
+        string? gridCycleLogJson = null,
+        decimal? expectancy = null,
+        decimal? profitFactor = null,
+        decimal? sqn = null)
     {
         Status = BacktestStatus.Completed;
         Progress = 100;
@@ -138,6 +144,9 @@ public sealed class BacktestRun
         AverageHoldTimeMinutes = averageHoldTimeMinutes;
         HedgesOpened = hedgesOpened;
         TotalFeesPaid = totalFeesPaid;
+        Expectancy = expectancy;
+        ProfitFactor = profitFactor;
+        Sqn = sqn;
         TradesJson = tradesJson ?? "[]";
         EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]";
         CandleLogJson = candleLogJson;
@@ -183,6 +192,9 @@ public sealed class BacktestRun
         string? candleLogJson = null,
         string? orderEventLogJson = null,
         string? gridCycleLogJson = null,
+        decimal? expectancy = null,
+        decimal? profitFactor = null,
+        decimal? sqn = null,
         Guid? strategyId = null,
         int? strategyRevisionId = null)
     {
@@ -222,6 +234,9 @@ public sealed class BacktestRun
             AverageHoldTimeMinutes = averageHoldTimeMinutes,
             HedgesOpened = hedgesOpened,
             TotalFeesPaid = totalFeesPaid,
+            Expectancy = expectancy,
+            ProfitFactor = profitFactor,
+            Sqn = sqn,
             TradesJson = tradesJson ?? "[]",
             EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]",
             AuditLogEnabled = auditLogEnabled,

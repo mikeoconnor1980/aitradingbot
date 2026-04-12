@@ -62,7 +62,7 @@ export class StrategyMapperService {
       exit: {
         takeProfit: {
           enabled: !!takeProfit["enabled"],
-          type: "fixed_percent",
+          type: (takeProfit["type"] as ExitRuleType | undefined) ?? "fixed_percent",
           value: takeProfit["enabled"] ? this._toNullableNumber(takeProfit["value"]) : null,
           lookback: null,
         },

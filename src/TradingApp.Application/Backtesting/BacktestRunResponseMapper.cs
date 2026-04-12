@@ -75,6 +75,7 @@ public static class BacktestRunResponseMapper
             : JsonSerializer.Deserialize<List<EquitySnapshot>>(entity.EquityTimeSeriesJson, JsonOptions) ?? [];
         var intervals = JsonSerializer.Deserialize<string[]>(entity.IntervalsJson, JsonOptions)
             ?? [];
+        var rMetrics = ComputeRMetrics(trades);
 
         return new BacktestRunResponse
         {
@@ -101,6 +102,13 @@ public static class BacktestRunResponseMapper
             AverageHoldTimeMinutes = entity.AverageHoldTimeMinutes,
             HedgesOpened = entity.HedgesOpened,
             TotalFeesPaid = entity.TotalFeesPaid,
+            Expectancy = entity.Expectancy ?? rMetrics.Expectancy,
+            ProfitFactor = entity.ProfitFactor ?? rMetrics.ProfitFactor,
+            Sqn = entity.Sqn ?? rMetrics.Sqn,
+            AvgWinR = rMetrics.AvgWinR,
+            AvgLossR = rMetrics.AvgLossR,
+            RWinRate = rMetrics.RWinRate,
+            RDistribution = rMetrics.RDistribution,
             Trades = MapTrades(trades),
             EquityTimeSeries = MapEquityTimeSeries(equityTimeSeries),
             CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(entity.CreatedAtUtc).UtcDateTime,
@@ -128,7 +136,11 @@ public static class BacktestRunResponseMapper
                 Fees = trade.Fees,
                 TradeType = trade.TradeType.ToString(),
                 GridCycleId = trade.GridCycleId,
-                ExitReason = trade.ExitReason
+                ExitReason = trade.ExitReason,
+                InitialRDollars = trade.InitialRDollars,
+                RMultipleResult = trade.RMultipleResult,
+                Mfe = trade.MFE,
+                Mae = trade.MAE
             })
             .ToList();
     }
@@ -142,5 +154,59 @@ public static class BacktestRunResponseMapper
                 Equity = s.Equity
             })
             .ToList();
+    }
+
+    private static RMetricsSummary ComputeRMetrics(IReadOnlyList<BacktestTrade> trades)
+    {
+        var rValues = trades
+            .Where(trade => trade.RMultipleResult.HasValue)
+            .Select(trade => trade.RMultipleResult!.Value)
+            .ToList();
+
+        if (rValues.Count == 0)
+        {
+            return new RMetricsSummary();
+        }
+
+        var winners = rValues.Where(value => value > 0m).ToList();
+        var losers = rValues.Where(value => value < 0m).ToList();
+        var expectancy = rValues.Average();
+        decimal? sqn = null;
+
+        if (rValues.Count > 1)
+        {
+            var mean = (double)expectancy;
+            var variance = rValues.Sum(value => Math.Pow((double)value - mean, 2d)) / (rValues.Count - 1);
+            var standardDeviation = Math.Sqrt(variance);
+
+            if (standardDeviation > 0d)
+            {
+                sqn = Math.Round((decimal)(mean / standardDeviation * Math.Sqrt(rValues.Count)), 4);
+            }
+        }
+
+        var grossLoss = Math.Abs(losers.Sum());
+
+        return new RMetricsSummary
+        {
+            Expectancy = Math.Round(expectancy, 4),
+            ProfitFactor = grossLoss > 0m ? Math.Round(winners.Sum() / grossLoss, 4) : null,
+            Sqn = sqn,
+            AvgWinR = winners.Count > 0 ? Math.Round(winners.Average(), 4) : null,
+            AvgLossR = losers.Count > 0 ? Math.Round(losers.Average(), 4) : null,
+            RWinRate = Math.Round((decimal)winners.Count / rValues.Count * 100m, 2),
+            RDistribution = rValues
+        };
+    }
+
+    private sealed class RMetricsSummary
+    {
+        public decimal? Expectancy { get; init; }
+        public decimal? ProfitFactor { get; init; }
+        public decimal? Sqn { get; init; }
+        public decimal? AvgWinR { get; init; }
+        public decimal? AvgLossR { get; init; }
+        public decimal? RWinRate { get; init; }
+        public IReadOnlyList<decimal>? RDistribution { get; init; }
     }
 }

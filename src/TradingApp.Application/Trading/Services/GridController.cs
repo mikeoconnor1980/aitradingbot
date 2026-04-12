@@ -45,16 +45,18 @@ public sealed class GridController : IGridController
 
             if (gridState.Lifecycle == GridLifecycle.PartiallyFilled)
             {
-                var takeProfitPercent = config.Exit.TakeProfit.Enabled && config.Exit.TakeProfit.Value.HasValue
-                    ? Math.Abs(config.Exit.TakeProfit.Value.Value)
-                    : 0m;
-                var takeProfitTrigger = positionState.AverageEntryPrice * (1m + (takeProfitPercent / 100m));
+                var takeProfitTrigger = ComputeTakeProfitTrigger(
+                    positionState.AverageEntryPrice,
+                    config.Exit,
+                    context.Indicators?.Atr,
+                    config.Grid?.BreakdownThreshold);
 
-                if (takeProfitPercent > 0m && context.CurrentCandle.Close >= takeProfitTrigger)
+                if (takeProfitTrigger > 0m && context.CurrentCandle.Close >= takeProfitTrigger)
                 {
                     gridState.Lifecycle = GridLifecycle.Closing;
                     gridState.TrailingStopHighWatermark = null;
                     gridState.CandlesSinceEntry = 0;
+                    gridState.InitialRDollars = null;
 
                     return Task.FromResult<IReadOnlyList<TradingSignal>>(
                     [
@@ -78,14 +80,16 @@ public sealed class GridController : IGridController
                 return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
             }
 
-            var tpPercent = config.Exit.TakeProfit.Enabled && config.Exit.TakeProfit.Value.HasValue
-                ? Math.Abs(config.Exit.TakeProfit.Value.Value)
-                : 0m;
-            var tpTrigger = positionState.AverageEntryPrice * (1m + (tpPercent / 100m));
+            var tpTrigger = ComputeTakeProfitTrigger(
+                positionState.AverageEntryPrice,
+                config.Exit,
+                context.Indicators?.Atr,
+                config.Grid?.BreakdownThreshold);
 
             gridState.Lifecycle = GridLifecycle.Closing;
             gridState.TrailingStopHighWatermark = null;
             gridState.CandlesSinceEntry = 0;
+            gridState.InitialRDollars = null;
 
             return Task.FromResult<IReadOnlyList<TradingSignal>>(
             [
@@ -164,6 +168,7 @@ public sealed class GridController : IGridController
         gridState.Lifecycle = GridLifecycle.Deploying;
         gridState.TotalLevels = gridLevels;
         gridState.FilledLevels = 0;
+        gridState.InitialRDollars = PositionSizeResolver.ResolveInitialR(config.Risk, context.AccountEquity);
 
         return Task.FromResult<IReadOnlyList<TradingSignal>>(
         [
@@ -254,6 +259,7 @@ public sealed class GridController : IGridController
                 if (context.CurrentCandle.Close <= trailingStopPrice)
                 {
                     gridState.Lifecycle = GridLifecycle.Closing;
+                    gridState.InitialRDollars = null;
 
                     var signal = new TradingSignal
                     {
@@ -288,6 +294,7 @@ public sealed class GridController : IGridController
                 gridState.Lifecycle = GridLifecycle.Closing;
                 gridState.TrailingStopHighWatermark = null;
                 gridState.CandlesSinceEntry = 0;
+                gridState.InitialRDollars = null;
 
                 return new TradingSignal
                 {
@@ -307,5 +314,39 @@ public sealed class GridController : IGridController
         }
 
         return null;
+    }
+
+    // This currently matches the existing long-only grid TP behavior.
+    private static decimal ComputeTakeProfitTrigger(
+        decimal averageEntryPrice,
+        ExitConfig exitConfig,
+        decimal? atr,
+        decimal? gridBreakdownThreshold)
+    {
+        var takeProfitConfig = exitConfig.TakeProfit;
+        if (!takeProfitConfig.Enabled || !takeProfitConfig.Value.HasValue)
+        {
+            return 0m;
+        }
+
+        if (takeProfitConfig.Type == ExitRuleType.RMultiple)
+        {
+            var stopLossPercent = StopLossDistanceResolver.Resolve(
+                exitConfig.StopLoss,
+                atr,
+                averageEntryPrice,
+                gridBreakdownThreshold);
+
+            if (!stopLossPercent.HasValue || stopLossPercent.Value <= 0m)
+            {
+                return 0m;
+            }
+
+            var rMultiple = Math.Abs(takeProfitConfig.Value.Value);
+            return averageEntryPrice * (1m + (stopLossPercent.Value * rMultiple / 100m));
+        }
+
+        var percent = Math.Abs(takeProfitConfig.Value.Value);
+        return averageEntryPrice * (1m + (percent / 100m));
     }
 }

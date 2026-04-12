@@ -9,6 +9,10 @@ export interface UserProfile {
   displayName: string;
   preferredNetwork: string;
   llmModels: LlmModelsInfo;
+  hasActiveSubscription: boolean;
+  subscriptionTier: string | null;
+  subscriptionStatus: string | null;
+  subscriptionExpiresAtUtc: number | null;
 }
 
 export interface LlmModelsInfo {

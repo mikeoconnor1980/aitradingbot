@@ -98,13 +98,62 @@ public sealed class BacktestMetricsCalculatorTests
         result.MaxDrawdownPercent.Should().BeApproximately(35.71m, 0.01m);
     }
 
+    [TestMethod]
+    public void GivenRTrackedTrades_WhenCalculate_ThenReturnsExpectedAggregateRMetrics()
+    {
+        var tradeLog = CreateRTrackedTrades([2.1m, -1.0m, 1.5m, -1.0m, 3.0m, -0.8m, 2.0m, -1.0m, 1.8m, -1.0m]);
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 2);
+
+        result.Expectancy.Should().BeApproximately(0.56m, 0.01m);
+        result.RWinRate.Should().Be(50m);
+        result.ProfitFactor.Should().BeApproximately(2.17m, 0.01m);
+        result.Sqn.Should().NotBeNull();
+        result.AvgWinR.Should().BeApproximately(2.08m, 0.01m);
+        result.AvgLossR.Should().BeApproximately(-0.96m, 0.01m);
+        result.RDistribution.Should().Equal([2.1m, -1.0m, 1.5m, -1.0m, 3.0m, -0.8m, 2.0m, -1.0m, 1.8m, -1.0m]);
+    }
+
+    [TestMethod]
+    public void GivenNoRTrackedTrades_WhenCalculate_ThenReturnsNullRMetrics()
+    {
+        var tradeLog = new List<BacktestTrade>
+        {
+            CreateTrade("trade-1", TradeType.GridFill, entryTimeUtc: 0, exitTimeUtc: 1_000, pnl: 10m, fees: 1m),
+            CreateTrade("trade-2", TradeType.TakeProfit, entryTimeUtc: 2_000, exitTimeUtc: 3_000, pnl: -5m, fees: 1m)
+        };
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 0);
+
+        result.Expectancy.Should().BeNull();
+        result.ProfitFactor.Should().BeNull();
+        result.Sqn.Should().BeNull();
+        result.AvgWinR.Should().BeNull();
+        result.AvgLossR.Should().BeNull();
+        result.RWinRate.Should().BeNull();
+        result.RDistribution.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenSingleRTrackedTrade_WhenCalculate_ThenSqnIsNull()
+    {
+        var tradeLog = CreateRTrackedTrades([1.5m]);
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 1);
+
+        result.Expectancy.Should().Be(1.5m);
+        result.Sqn.Should().BeNull();
+    }
+
     private static BacktestTrade CreateTrade(
         string tradeId,
         TradeType tradeType,
         long entryTimeUtc,
         long? exitTimeUtc,
         decimal? pnl,
-        decimal fees)
+        decimal fees,
+        decimal? initialRDollars = null,
+        decimal? rMultipleResult = null)
     {
         return new BacktestTrade
         {
@@ -118,7 +167,34 @@ public sealed class BacktestMetricsCalculatorTests
             Size = 1m,
             PnL = pnl,
             Fees = fees,
-            TradeType = tradeType
+            TradeType = tradeType,
+            InitialRDollars = initialRDollars,
+            RMultipleResult = rMultipleResult
         };
+    }
+
+    private static List<BacktestTrade> CreateRTrackedTrades(decimal[] rMultiples)
+    {
+        return rMultiples
+            .Select((rMultiple, index) => CreateTrade(
+                tradeId: $"trade-{index + 1}",
+                tradeType: TradeType.GridFill,
+                entryTimeUtc: index * 1_000L,
+                exitTimeUtc: (index * 1_000L) + 500L,
+                pnl: rMultiple * 100m,
+                fees: 1m,
+                initialRDollars: 100m,
+                rMultipleResult: rMultiple))
+            .ToList();
+    }
+
+    private static List<EquitySnapshot> CreateEquityCurve()
+    {
+        return
+        [
+            new EquitySnapshot(0, 10_000m),
+            new EquitySnapshot(1, 10_050m),
+            new EquitySnapshot(2, 10_120m)
+        ];
     }
 }

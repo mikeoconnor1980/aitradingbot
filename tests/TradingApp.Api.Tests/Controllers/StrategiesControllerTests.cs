@@ -742,7 +742,10 @@ public sealed class StrategiesControllerTests : BaseControllerTests
             hedgesOpened: 1,
             totalFeesPaid: 12m,
             tradesJson: "[]",
-            equityTimeSeriesJson: "[]");
+            equityTimeSeriesJson: "[]",
+            expectancy: 0.56m,
+            profitFactor: 2.17m,
+            sqn: 1.41m);
 
         await context.BacktestRuns.AddAsync(run);
         await context.SaveChangesAsync();

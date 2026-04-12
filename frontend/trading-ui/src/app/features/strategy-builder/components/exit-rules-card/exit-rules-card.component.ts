@@ -42,6 +42,25 @@ export class ExitRulesCardComponent implements OnInit {
     return this.group.get("stopLoss.type")?.value === "atr_trailing";
   }
 
+  public get takeProfitType(): string {
+    return String(this.group.get("takeProfit.type")?.value ?? "fixed_percent");
+  }
+
+  public get isRMultipleTakeProfit(): boolean {
+    return this.takeProfitType === "r_multiple";
+  }
+
+  public get showSubOneRWarning(): boolean {
+    const takeProfitValue = this.group.get("takeProfit.value")?.value;
+
+    if (!this.isRMultipleTakeProfit || takeProfitValue === null || takeProfitValue === undefined || takeProfitValue === "") {
+      return false;
+    }
+
+    const numericValue = Number(takeProfitValue);
+    return !Number.isNaN(numericValue) && numericValue > 0 && numericValue < 1;
+  }
+
   private _syncDisabledState(groupName: string): void {
     const enabledControl = this.group.get(`${groupName}.enabled`);
     const valueControl = this.group.get(`${groupName}.value`);

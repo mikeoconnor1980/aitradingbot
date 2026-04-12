@@ -20,6 +20,29 @@
     color: var(--colour-error-text);
   }
 
+  &__subscription-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(121, 207, 195, 0.3);
+    border-radius: 0.5rem;
+    background: rgba(121, 207, 195, 0.06);
+    color: var(--colour-accent, #79cfc3);
+
+    &--warning {
+      border-color: rgba(251, 191, 36, 0.4);
+      background: rgba(251, 191, 36, 0.08);
+      color: #fbbf24;
+    }
+
+    span {
+      flex: 1;
+      font-size: 0.875rem;
+    }
+  }
+
   &__header {
     display: flex;
     align-items: center;
