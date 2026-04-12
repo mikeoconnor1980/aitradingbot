@@ -17,6 +17,7 @@ public sealed class LiveExecutionEngineTests
     private Mock<IHyperliquidSigner> _signer = null!;
     private Mock<INonceProvider> _nonceProvider = null!;
     private IOptions<HyperliquidOptions> _options = null!;
+    private Mock<ILogger<LiveExecutionEngine>> _logger = null!;
     private LiveExecutionEngine _sut = null!;
 
     [TestInitialize]
@@ -25,6 +26,7 @@ public sealed class LiveExecutionEngineTests
         _restClient = new Mock<IHyperliquidRestClient>();
         _signer = new Mock<IHyperliquidSigner>();
         _nonceProvider = new Mock<INonceProvider>();
+        _logger = new Mock<ILogger<LiveExecutionEngine>>();
         _options = Options.Create(new HyperliquidOptions
         {
             BaseUrl = "https://api.hyperliquid-testnet.xyz",
@@ -39,7 +41,7 @@ public sealed class LiveExecutionEngineTests
 
         // Seed asset index cache via meta endpoint
         var metaJson = JsonSerializer.Deserialize<JsonElement>(
-            """{"universe":[{"name":"BTC"},{"name":"ETH"},{"name":"SOL"}]}""");
+            """{"universe":[{"name":"BTC","maxLeverage":50},{"name":"ETH","maxLeverage":25},{"name":"SOL","maxLeverage":20}]}""");
         _restClient.Setup(r => r.PostInfoAsync<JsonElement>(
                 It.Is<object>(o => o.ToString()!.Contains("meta")),
                 It.IsAny<CancellationToken>()))
@@ -50,7 +52,7 @@ public sealed class LiveExecutionEngineTests
             _signer.Object,
             _nonceProvider.Object,
             _options,
-            Mock.Of<ILogger<LiveExecutionEngine>>());
+            _logger.Object);
     }
 
     [TestMethod]
@@ -255,6 +257,52 @@ public sealed class LiveExecutionEngineTests
         orderId.Should().BeEmpty();
     }
 
+    [TestMethod]
+    public async Task GivenAssetWith50xMax_WhenSetLeverageAt33x_ThenSendsUpdateLeverageAction()
+    {
+        // Arrange
+        var exchangeResponse = JsonSerializer.Deserialize<JsonElement>("""{"status":"ok"}""");
+        _restClient.Setup(r => r.PostExchangeAsync<JsonElement>(
+                It.IsAny<object>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(exchangeResponse);
+
+        // Act
+        await _sut.SetLeverageAsync("BTC", 33, isIsolated: true);
+
+        // Assert
+        _signer.Verify(s => s.SignHash(It.IsAny<byte[]>()), Times.Once);
+        _restClient.Verify(r => r.PostExchangeAsync<JsonElement>(
+            It.Is<object>(payload => PayloadHasLeverage(payload, assetIndex: 0, leverage: 33, isCross: false, nonce: 100L)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenLeverageExceedsMax_WhenSetLeverageAsync_ThenClampsToMaxAndLogsWarning()
+    {
+        // Arrange
+        var metaJson = JsonSerializer.Deserialize<JsonElement>(
+            """{"universe":[{"name":"BTC","maxLeverage":50},{"name":"ETH","maxLeverage":25}]}""");
+        _restClient.Setup(r => r.PostInfoAsync<JsonElement>(
+                It.Is<object>(o => o.ToString()!.Contains("meta")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(metaJson);
+        var exchangeResponse = JsonSerializer.Deserialize<JsonElement>("""{"status":"ok"}""");
+        _restClient.Setup(r => r.PostExchangeAsync<JsonElement>(
+                It.IsAny<object>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(exchangeResponse);
+
+        // Act
+        await _sut.SetLeverageAsync("ETH", 60, isIsolated: true);
+
+        // Assert
+        _restClient.Verify(r => r.PostExchangeAsync<JsonElement>(
+            It.Is<object>(payload => PayloadHasLeverage(payload, assetIndex: 1, leverage: 25, isCross: false, nonce: 100L)),
+            It.IsAny<CancellationToken>()), Times.Once);
+        VerifyLogged(LogLevel.Warning, "Leverage 60x exceeds max 25x for ETH. Clamping to 25x.");
+    }
+
     private static HyperliquidExchangeResponse BuildSuccessResponse(long oid)
     {
         return new HyperliquidExchangeResponse
@@ -275,5 +323,29 @@ public sealed class LiveExecutionEngineTests
                 }
             }
         };
+    }
+
+    private static bool PayloadHasLeverage(object payload, int assetIndex, int leverage, bool isCross, long nonce)
+    {
+        var json = JsonSerializer.SerializeToElement(payload);
+        var action = json.GetProperty("action");
+
+        return json.GetProperty("nonce").GetInt64() == nonce
+            && action.GetProperty("type").GetString() == "updateLeverage"
+            && action.GetProperty("asset").GetInt32() == assetIndex
+            && action.GetProperty("isCross").GetBoolean() == isCross
+            && action.GetProperty("leverage").GetInt32() == leverage;
+    }
+
+    private void VerifyLogged(LogLevel level, string message)
+    {
+        _logger.Verify(
+            logger => logger.Log(
+                level,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((state, _) => state.ToString()!.Contains(message, StringComparison.Ordinal)),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 }

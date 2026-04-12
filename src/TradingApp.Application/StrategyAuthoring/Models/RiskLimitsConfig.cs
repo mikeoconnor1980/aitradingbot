@@ -22,4 +22,11 @@ public sealed record RiskLimitsConfig
     /// 0 = manual reset only (via service restart).
     /// </summary>
     public int CircuitBreakerCooldownMinutes { get; init; } = 60;
+
+    /// <summary>
+    /// Maximum portfolio heat (aggregate risk) as a percentage of equity.
+    /// Heat = sum of R (risk in USD) across all open positions / equity x 100.
+    /// 0 = disabled (no heat limit enforced).
+    /// </summary>
+    public decimal MaxPortfolioHeatPercent { get; init; } = 6m;
 }

@@ -36,7 +36,7 @@
 
     @if (hasSlTp) {
       <div class="position-card__row position-card__row--sltp">
-        @if (position.stopLossPrice != null) {
+        @if (position.stopLossPrice !== null && position.stopLossPrice !== undefined) {
           <div class="position-card__metric">
             <span class="position-card__label">SL</span>
             <span class="position-card__sl-value">
@@ -50,7 +50,7 @@
             </span>
           </div>
         }
-        @if (position.takeProfitPrice != null) {
+        @if (position.takeProfitPrice !== null && position.takeProfitPrice !== undefined) {
           <div class="position-card__metric">
             <span class="position-card__label">TP</span>
             <span class="position-card__tp-value">
@@ -90,7 +90,8 @@
   </div>
 
   <div class="position-card__actions">
-    @if (position.stopLossPrice == null && position.takeProfitPrice == null) {
+    @if ((position.stopLossPrice === null || position.stopLossPrice === undefined)
+      && (position.takeProfitPrice === null || position.takeProfitPrice === undefined)) {
       <button
         mat-stroked-button
         type="button"

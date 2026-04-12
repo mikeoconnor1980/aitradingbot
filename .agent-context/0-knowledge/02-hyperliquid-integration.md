@@ -211,3 +211,33 @@ File: `src/TradingApp.Api/Services/HyperliquidOrderService.cs` → `PlaceCompani
 `GetPositionsAsync` fetches `clearinghouseState`, `metaAndAssetCtxs`, and `openOrders` in parallel. After mapping, `EnrichPositionsWithTriggerOrders` correlates reduce-only trigger orders to positions by normalised asset name and populates `PositionDto.StopLossPrice/OrderId` and `TakeProfitPrice/OrderId`.
 
 File: `src/TradingApp.Api/Services/HyperliquidAccountService.cs` → `EnrichPositionsWithTriggerOrders`
+
+---
+
+## Leverage and Margin Mode
+
+Hyperliquid supports per-asset leverage and isolated vs. cross margin modes via the `updateLeverage` exchange action.
+
+### Wire Format
+
+The `type=updateLeverage` action payload:
+
+| Field | Value |
+|-------|-------|
+| `asset` | Asset index from exchange metadata |
+| `leverage` | Leverage multiplier (1–maxLeverage) |
+| `isCross` | `false` for isolated, `true` for cross margin |
+
+File: `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs` → `SetLeverageAsync`
+
+### Isolated Margin for RiskBased Trading
+
+For RiskBased position sizing (see [33-risk-management-and-trade-sizing.md](33-risk-management-and-trade-sizing.md)), **isolated margin is mandatory** — `isCross = false`. This ensures each position's margin is independently contained.
+
+The platform automatically sets `isCross = false` when `StrategyConfig.Risk.PositionSizeType == RiskBased` in the GridController.
+
+### MarketContext MaxLeverage
+
+`MarketContext.MaxLeverage` (nullable `int?`) is populated from exchange metadata. Represents the exchange-imposed maximum leverage for an asset (e.g., 50x for BTC). Used by `LeverageCalculator` as a constraint ceiling.
+
+File: `src/TradingApp.Application/Trading/Models/MarketContext.cs`

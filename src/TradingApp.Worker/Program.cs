@@ -130,6 +130,7 @@ builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
     new LiveMarketContextBuilder(
         sp.GetService<ILlmContextProvider>(),
         sp.GetRequiredService<IServiceScopeFactory>(),
+        sp.GetRequiredService<IHyperliquidRestClient>(),
         sp.GetRequiredService<ILoggerFactory>().CreateLogger<LiveMarketContextBuilder>()));
 builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
 builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();

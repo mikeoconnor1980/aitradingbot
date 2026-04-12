@@ -134,7 +134,30 @@ public sealed class GridController : IGridController
         }
 
         var gridSpacingPercent = Math.Abs(grid.Spacing);
-        var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity);
+        var stopLossPercent = config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            ? StopLossDistanceResolver.Resolve(
+                config.Exit.StopLoss,
+                context.Indicators?.Atr,
+                anchorPrice,
+                grid.BreakdownThreshold)
+            : null;
+        var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
+        var notionalPerLevel = config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            ? positionSize / gridLevels
+            : positionSize;
+        var leverage = config.Risk.AutoLeverage
+            && config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            && stopLossPercent.HasValue
+                ? LeverageCalculator.CalculateLeverage(
+                    stopLossPercent.Value,
+                    context.MaxLeverage ?? LeverageCalculator.FallbackMaxLeverage)
+                : Math.Max(1, (int)Math.Floor(config.Risk.Leverage));
+        var isIsolated = config.Risk.PositionSizeType == PositionSizeType.RiskBased;
+
+        if (notionalPerLevel <= 0m)
+        {
+            return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
+        }
 
         gridState.GridCycleId = Guid.NewGuid().ToString("N");
         gridState.Lifecycle = GridLifecycle.Deploying;
@@ -153,9 +176,11 @@ public sealed class GridController : IGridController
                     ["anchorPrice"] = anchorPrice,
                     ["gridLevels"] = gridLevels,
                     ["gridSpacingPercent"] = gridSpacingPercent,
-                    ["notionalPerLevel"] = positionSize,
+                    ["notionalUsd"] = notionalPerLevel,
                     ["gridCycleId"] = gridState.GridCycleId,
                     ["entryMode"] = entryMode,
+                    ["leverage"] = leverage,
+                    ["isIsolated"] = isIsolated,
                 }
             }
         ]);

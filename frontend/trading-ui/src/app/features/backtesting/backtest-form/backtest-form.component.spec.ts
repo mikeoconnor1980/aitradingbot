@@ -57,6 +57,8 @@ describe("BacktestFormComponent", () => {
       risk: {
         positionSizeType: "fixed_notional",
         positionSizeValue: 250,
+        riskPerTradePercent: 1,
+        autoLeverage: true,
         leverage: 5,
         maxOpenTrades: 1,
         cooldownValue: 0,
@@ -118,6 +120,8 @@ describe("BacktestFormComponent", () => {
       risk: {
         positionSizeType: "percent_wallet",
         positionSizeValue: 5,
+        riskPerTradePercent: 1,
+        autoLeverage: true,
         leverage: 1,
         maxOpenTrades: 1,
         cooldownValue: 0,
@@ -291,6 +295,8 @@ describe("BacktestFormComponent", () => {
         risk: {
           positionSizeType: "percent_wallet",
           positionSizeValue: 5,
+          riskPerTradePercent: 1,
+          autoLeverage: true,
           leverage: 1,
           maxOpenTrades: 1,
           cooldownValue: 0,
@@ -373,6 +379,8 @@ describe("BacktestFormComponent", () => {
         risk: {
           positionSizeType: "fixed_notional",
           positionSizeValue: 250,
+          riskPerTradePercent: 1,
+          autoLeverage: true,
           leverage: 5,
           maxOpenTrades: 1,
           cooldownValue: 0,
@@ -443,6 +451,25 @@ describe("BacktestFormComponent", () => {
     expect(component.form.controls.endDate.hasError("futureDate")).toBeTrue();
     expect(component.getControlErrorMessage("startDate")).toBe("Future dates are not allowed.");
     expect(component.isFormValid).toBeFalse();
+  });
+
+  it("GivenRiskBasedStrategy_WhenPositionSizeLabel_ThenShowsRiskBased", () => {
+    const strategy: StrategyDto = {
+      ...strategyDetail,
+      config: {
+        ...strategyDetail.config,
+        risk: {
+          ...strategyDetail.config.risk,
+          positionSizeType: "risk_based",
+          riskPerTradePercent: 2,
+          autoLeverage: true,
+        }
+      }
+    };
+
+    component.selectedStrategy = strategy;
+
+    expect(component.positionSizeLabel).toBe("R-based (2% risk)");
   });
 
   it("should clear the picker and notify when a selected strategy cannot be loaded", async () => {

@@ -36,6 +36,173 @@ public sealed class BusinessRuleValidatorTests
     }
 
     [TestMethod]
+    public void GivenRiskBasedWithNullRiskPercent_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = null,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "RISK_PER_TRADE_REQUIRED");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithZeroRiskPercent_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 0m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "RISK_PER_TRADE_REQUIRED");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithRiskPercentOver100_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 101m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "RISK_PER_TRADE_INVALID");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithRiskPercentOver5_WhenValidated_ThenWarning()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 8m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Warnings.Should().Contain(error => error.Code == "RISK_PER_TRADE_HIGH");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithValidRiskPercent_WhenValidated_ThenNoRiskErrors()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.0m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error =>
+            error.FieldPath.StartsWith("risk.riskPerTradePercent", StringComparison.Ordinal));
+        result.Warnings.Should().NotContain(error =>
+            error.FieldPath.StartsWith("risk.riskPerTradePercent", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void GivenPercentWalletWithAutoLeverage_WhenValidated_ThenWarningReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.PercentWallet,
+                PositionSizeValue = 5m,
+                RiskPerTradePercent = 1m,
+                AutoLeverage = true,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Warnings.Should().Contain(error => error.Code == "AUTO_LEVERAGE_IGNORED");
+    }
+
+    [TestMethod]
+    public void GivenAutoLeverageWithoutRiskPercent_WhenValidated_ThenErrorReturned()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = null,
+                AutoLeverage = true,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "RISK_PERCENT_REQUIRED_FOR_AUTO_LEVERAGE");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithZeroPositionSizeValue_WhenValidated_ThenNoPositionSizeError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.0m,
+                PositionSizeValue = 0m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code == "POSITION_SIZE_INVALID");
+    }
+
+    [TestMethod]
     public void GivenRsiValueOverHundred_WhenValidated_ThenError()
     {
         var config = new StrategyConfig

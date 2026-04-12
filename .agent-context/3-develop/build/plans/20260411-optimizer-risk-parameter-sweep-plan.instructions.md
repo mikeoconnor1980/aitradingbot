@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260411-optimizer-risk-parameter-sweep-changes.md"
-currentAgent: "None"
-agentStartedAt: "2026-04-11T00:47:54Z"
-status: "plan-reviewed"
-lastUpdated: "2026-04-11T00:49:25Z"
+currentAgent: "3-Develop: 3 Reviewer"
+agentStartedAt: "2026-04-12T09:29:12Z"
+status: "complete"
+lastUpdated: "2026-04-12T09:35:00Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -58,51 +58,51 @@ The current optimizer sweeps `PositionSizeOptions` (percent of wallet) and `Leve
 - `tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — MSTest + FluentAssertions, direct instantiation, seed-based determinism
 - `tests/TradingApp.Application.Tests/StrategyAuthoring/Models/StrategyConfigSerializationTests.cs` — serialization round-trip and snake_case enum tests
 
-### [ ] Phase 1: Domain & Optimizer Model Extensions
+### [x] Phase 1: Domain & Optimizer Model Extensions
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 1.1: Add `RiskBased` value to `PositionSizeType` enum
+- [x] Task 1.1: Add `RiskBased` value to `PositionSizeType` enum
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-01-details.md#task-11-add-riskbased-to-positionsizetype-enum
 
-- [ ] Task 1.2: Add `RiskPerTradePercent` and `AutoLeverage` properties to `RiskConfig`
+- [x] Task 1.2: Add `RiskPerTradePercent` and `AutoLeverage` properties to `RiskConfig`
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-01-details.md#task-12-add-riskpertradePercent-and-autoleverage-to-riskconfig
 
-- [ ] Task 1.3: Create `PositionSizeMode` enum in Optimization models
+- [x] Task 1.3: Create `PositionSizeMode` enum in Optimization models
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-01-details.md#task-13-create-positionsizemode-enum
 
-- [ ] Task 1.4: Extend `ParameterBounds` with risk-based sweep fields
+- [x] Task 1.4: Extend `ParameterBounds` with risk-based sweep fields
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-01-details.md#task-14-extend-parameterbounds-with-risk-based-fields
 
-- [ ] Task 1.5: Add serialization round-trip test for `RiskBased` enum and new `RiskConfig` fields
+- [x] Task 1.5: Add serialization round-trip test for `RiskBased` enum and new `RiskConfig` fields
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-01-details.md#task-15-add-serialization-tests
 
-- [ ] Task 1.6: Run all existing tests to verify backward compatibility
+- [x] Task 1.6: Run all existing tests to verify backward compatibility
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-01-details.md#task-16-run-all-existing-tests
 
-### [ ] Phase 2: Generator Logic, API Wiring & Comprehensive Tests
+### [x] Phase 2: Generator Logic, API Wiring & Comprehensive Tests
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Update `GenerateRiskConfig` to branch on `PositionSizeMode`
+- [x] Task 2.1: Update `GenerateRiskConfig` to branch on `PositionSizeMode`
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-21-update-generateriskconfig
 
-- [ ] Task 2.2: Update `ValidateBounds` for `RiskBased` mode validation
+- [x] Task 2.2: Update `ValidateBounds` for `RiskBased` mode validation
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-22-update-validatebounds
 
-- [ ] Task 2.3: Update `BuildDescription` for `RiskBased` candidates
+- [x] Task 2.3: Update `BuildDescription` for `RiskBased` candidates
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-23-update-builddescription
 
-- [ ] Task 2.4: Add `PositionSizeMode`, `RiskPerTradePercentOptions`, and `IncludeAutoLeverage` to `RunOptimizationRequest`
+- [x] Task 2.4: Add `PositionSizeMode`, `RiskPerTradePercentOptions`, and `IncludeAutoLeverage` to `RunOptimizationRequest`
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-24-update-runoptimizationrequest
 
-- [ ] Task 2.5: Update `BuildBounds` in `OptimizationsController` to wire new fields
+- [x] Task 2.5: Update `BuildBounds` in `OptimizationsController` to wire new fields
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-25-update-buildbounds
 
-- [ ] Task 2.6: Add unit tests for `RiskBased` config generation and `AutoLeverage` behaviour
+- [x] Task 2.6: Add unit tests for `RiskBased` config generation and `AutoLeverage` behaviour
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-26-add-riskbased-unit-tests
 
-- [ ] Task 2.7: Verify existing `PercentWallet` tests pass unchanged and run all tests
+- [x] Task 2.7: Verify existing `PercentWallet` tests pass unchanged and run all tests
   - Details: .agent-context/3-develop/build/plans/details/20260411-optimizer-risk-parameter-sweep-phase-02-details.md#task-27-verify-existing-tests-and-run-all
 
 ## Scoping Summary
@@ -144,3 +144,4 @@ The current optimizer sweeps `PositionSizeOptions` (percent of wallet) and `Leve
 |-------|--------|---------|----------|
 | Implementation Planner | planned | 2026-04-11T12:34:00Z | 2026-04-11T12:43:00Z |
 | Plan Reviewer | plan-reviewed | 2026-04-11T00:47:54Z | 2026-04-11T00:49:25Z |
+| 3-Develop: 2 Implementer | implemented | 2026-04-12T08:05:29Z | 2026-04-12T09:27:12Z |

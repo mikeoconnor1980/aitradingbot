@@ -70,6 +70,64 @@ public sealed class StrategyConfigSerializationTests
     }
 
     [TestMethod]
+    public void GivenRiskBasedConfig_WhenSerialized_ThenEnumIsSnakeCase()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Signal,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.5m,
+                AutoLeverage = true,
+            },
+        };
+
+        var json = JsonSerializer.Serialize(config, StrategyJsonOptions.Default);
+
+        json.Should().Contain("\"positionSizeType\":\"risk_based\"");
+        json.Should().Contain("\"riskPerTradePercent\":1.5");
+        json.Should().Contain("\"autoLeverage\":true");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedConfig_WhenSerializedAndDeserialized_ThenRoundTripsCorrectly()
+    {
+        var config = new StrategyConfig
+        {
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Signal,
+            StrategyName = "Risk Test",
+            Exchange = "Hyperliquid",
+            Market = "BTC-USD",
+            Timeframe = "15m",
+            Direction = Direction.Long,
+            Enabled = true,
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 3m },
+                StopLoss = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.FixedPercent, Value = 2m },
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.0m,
+                AutoLeverage = true,
+                Leverage = 5m,
+                MaxOpenTrades = 1,
+            },
+        };
+
+        var json = JsonSerializer.Serialize(config, StrategyJsonOptions.Default);
+        var deserialized = JsonSerializer.Deserialize<StrategyConfig>(json, StrategyJsonOptions.Default);
+
+        deserialized.Should().NotBeNull();
+        deserialized!.Risk.PositionSizeType.Should().Be(PositionSizeType.RiskBased);
+        deserialized.Risk.RiskPerTradePercent.Should().Be(1.0m);
+        deserialized.Risk.AutoLeverage.Should().BeTrue();
+    }
+
+    [TestMethod]
     public void GivenConfigWithNullOptionalSections_WhenSerialized_ThenNullsPresent()
     {
         var config = new StrategyConfig

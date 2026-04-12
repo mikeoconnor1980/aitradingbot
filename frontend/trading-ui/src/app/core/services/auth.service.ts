@@ -3,7 +3,7 @@ import { Injectable, inject } from "@angular/core";
 import { Router } from "@angular/router";
 import { BehaviorSubject, Observable, tap } from "rxjs";
 import { environment } from "../../../environments/environment";
-import { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from "../models/auth.model";
+import { AuthResponse, AuthUser, GoogleAuthRequest, LoginRequest, RegisterRequest } from "../models/auth.model";
 import { SKIP_ERROR_NOTIFICATION } from "../interceptors/http-context-tokens";
 
 const TOKEN_KEY = "auth_token";
@@ -47,6 +47,12 @@ export class AuthService {
   public login(request: LoginRequest): Observable<AuthResponse> {
     return this._http
       .post<AuthResponse>(`${this._baseUrl}/auth/login`, request)
+      .pipe(tap((response) => this.storeAuth(response)));
+  }
+
+  public googleSignIn(request: GoogleAuthRequest): Observable<AuthResponse> {
+    return this._http
+      .post<AuthResponse>(`${this._baseUrl}/auth/google`, request)
       .pipe(tap((response) => this.storeAuth(response)));
   }
 

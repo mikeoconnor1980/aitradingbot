@@ -10,6 +10,7 @@ import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyBuilderPageComponent } from "./strategy-builder-page.component";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
 import { StrategyValidationService } from "./services/strategy-validation.service";
+import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
 import { NotificationService } from "../../core/services/notification.service";
 
 describe("StrategyBuilderPageComponent", () => {
@@ -68,6 +69,8 @@ describe("StrategyBuilderPageComponent", () => {
               risk: {
                 positionSizeType: "percent_wallet",
                 positionSizeValue: 5,
+                riskPerTradePercent: 1,
+                autoLeverage: true,
                 leverage: 1,
                 maxOpenTrades: 1,
                 cooldownValue: 0,
@@ -104,6 +107,18 @@ describe("StrategyBuilderPageComponent", () => {
           provide: NotificationService,
           useValue: jasmine.createSpyObj("NotificationService", ["success", "error"])
         },
+        {
+          provide: HyperliquidApiService,
+          useValue: {
+            getAccountSummary: () => of({
+              equity: 10000,
+              availableMargin: 8000,
+              crossMarginRatio: 0,
+              maintenanceMargin: 0,
+              unrealisedPnl: 0,
+            })
+          }
+        },
         { provide: MatDialog, useValue: dialogSpy }
       ]
     }).compileComponents();
@@ -136,6 +151,15 @@ describe("StrategyBuilderPageComponent", () => {
     expect(component.form.valid).toBeTrue();
     expect(component.hasUnsavedChanges()).toBeTrue();
     expect(component.canSave).toBeTrue();
+  });
+
+  it("should include risk-based controls in the risk form group", () => {
+    expect(component.riskFormGroup.get("riskPerTradePercent")).not.toBeNull();
+    expect(component.riskFormGroup.get("autoLeverage")).not.toBeNull();
+    expect(component.riskFormGroup.get("riskPerTradePercent")?.value).toBe(1);
+    expect(component.riskFormGroup.get("autoLeverage")?.value).toBeTrue();
+    expect(component.riskFormGroup.get("riskPerTradePercent")?.disabled).toBeTrue();
+    expect(component.riskFormGroup.get("autoLeverage")?.disabled).toBeTrue();
   });
 
   it("should disable save again when changes are reverted", () => {
@@ -188,6 +212,8 @@ describe("StrategyBuilderPageComponent", () => {
         risk: {
           positionSizeType: "percent_wallet",
           positionSizeValue: 8,
+          riskPerTradePercent: 1,
+          autoLeverage: true,
           leverage: 2,
           maxOpenTrades: 1,
           cooldownValue: 1,
@@ -257,6 +283,8 @@ describe("StrategyBuilderPageComponent", () => {
         risk: {
           positionSizeType: "percent_wallet",
           positionSizeValue: 4,
+          riskPerTradePercent: 1,
+          autoLeverage: true,
           leverage: 3,
           maxOpenTrades: 1,
           cooldownValue: 0,

@@ -1,4 +1,4 @@
-import { Pipe, PipeTransform } from "@angular/core";
+import { Pipe, PipeTransform, inject } from "@angular/core";
 import { DomSanitizer, SafeHtml } from "@angular/platform-browser";
 import { marked } from "marked";
 
@@ -7,11 +7,7 @@ import { marked } from "marked";
   standalone: true
 })
 export class HelpMarkdownPipe implements PipeTransform {
-  private readonly _sanitizer: DomSanitizer;
-
-  public constructor(sanitizer: DomSanitizer) {
-    this._sanitizer = sanitizer;
-  }
+  private readonly _sanitizer = inject(DomSanitizer);
 
   public transform(value: string | null | undefined): SafeHtml {
     if (!value) {

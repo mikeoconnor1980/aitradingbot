@@ -695,7 +695,15 @@ public sealed class TradingAppDbContext : DbContext
                 .IsRequired();
 
             entity.Property(e => e.PasswordHash)
-                .IsRequired();
+                .IsRequired(false);
+
+            entity.Property(e => e.AuthProvider)
+                .HasMaxLength(20)
+                .IsRequired(false);
+
+            entity.Property(e => e.ExternalProviderId)
+                .HasMaxLength(256)
+                .IsRequired(false);
 
             entity.Property(e => e.CreatedAtUtc)
                 .IsRequired();
@@ -711,6 +719,11 @@ public sealed class TradingAppDbContext : DbContext
             entity.HasIndex(e => e.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_Users_Email");
+
+            entity.HasIndex(e => new { e.AuthProvider, e.ExternalProviderId })
+                .IsUnique()
+                .HasFilter("[AuthProvider] IS NOT NULL AND [ExternalProviderId] IS NOT NULL")
+                .HasDatabaseName("IX_Users_ExternalProvider");
         });
 
         modelBuilder.Entity<UserWalletAddress>(entity =>

@@ -83,7 +83,7 @@
           <app-entry-conditions-card [conditions]="conditionsFormArray" [entryLogicControl]="form.get('entryLogic')!" />
         }
         <app-exit-rules-card [group]="exitFormGroup" />
-        <app-risk-management-card [group]="riskFormGroup" />
+        <app-risk-management-card [group]="riskFormGroup" [exitGroup]="exitFormGroup" />
         <app-trend-filter-card [group]="isSignalMode ? trendFilterFormGroup : null" />
       </div>
 

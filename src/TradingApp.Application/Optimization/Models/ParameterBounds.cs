@@ -26,7 +26,10 @@ public sealed record ParameterBounds
     public decimal LeverageStep { get; init; } = 1m;
 
     // --- Position Size ---
+    public PositionSizeMode PositionSizeMode { get; init; } = PositionSizeMode.PercentWallet;
     public decimal[] PositionSizeOptions { get; init; } = [10m, 15m, 20m];
+    public decimal[] RiskPerTradePercentOptions { get; init; } = [0.25m, 0.5m, 1.0m, 1.5m, 2.0m, 3.0m];
+    public bool IncludeAutoLeverage { get; init; } = true;
 
     // --- RSI ---
     public int[] RsiPeriods { get; init; } = [7, 14, 21];

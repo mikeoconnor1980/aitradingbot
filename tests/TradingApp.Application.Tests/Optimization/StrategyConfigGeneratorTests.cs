@@ -132,4 +132,178 @@ public sealed class StrategyConfigGeneratorTests
 
         results.Should().OnlyContain(s => s.Config.Timeframe == "4h");
     }
+
+    [TestMethod]
+    public void GivenRiskBasedMode_WhenGenerate_ThenAllCandidatesUseRiskBasedSizing()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            RiskPerTradePercentOptions = [0.5m, 1.0m, 1.5m, 2.0m],
+        };
+
+        var results = _generator.Generate("BTC", bounds, 50, seed: 5000);
+
+        results.Should().OnlyContain(strategy =>
+            strategy.Config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            && strategy.Config.Risk.RiskPerTradePercent > 0m);
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedMode_WhenGenerate_ThenRiskPerTradePercentDrawnFromOptions()
+    {
+        decimal[] options = [0.5m, 1.0m, 1.5m, 2.0m];
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            RiskPerTradePercentOptions = options,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 100, seed: 5001);
+
+        results.Should().OnlyContain(strategy => options.Contains(strategy.Config.Risk.RiskPerTradePercent.GetValueOrDefault()));
+    }
+
+    [TestMethod]
+    public void GivenPercentWalletMode_WhenGenerate_ThenAllCandidatesUsePercentWallet()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.PercentWallet,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 30, seed: 5002);
+
+        results.Should().OnlyContain(strategy =>
+            strategy.Config.Risk.PositionSizeType == PositionSizeType.PercentWallet
+            && strategy.Config.Risk.PositionSizeValue > 0m);
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithAutoLeverageTrue_WhenGenerate_ThenLeverageNotSwept()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            IncludeAutoLeverage = true,
+            LeverageMin = 3m,
+            LeverageMax = 10m,
+            RiskPerTradePercentOptions = [1.0m],
+        };
+
+        var results = _generator.Generate("BTC", bounds, 200, seed: 5003);
+        var autoLeverageCandidates = results.Where(strategy => strategy.Config.Risk.AutoLeverage).ToList();
+
+        autoLeverageCandidates.Should().NotBeEmpty();
+        autoLeverageCandidates.Should().OnlyContain(strategy => strategy.Config.Risk.Leverage == 1m);
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithAutoLeverageFalse_WhenGenerate_ThenLeverageSwept()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            IncludeAutoLeverage = false,
+            LeverageMin = 3m,
+            LeverageMax = 10m,
+            RiskPerTradePercentOptions = [1.0m],
+        };
+
+        var results = _generator.Generate("BTC", bounds, 50, seed: 5004);
+
+        results.Should().OnlyContain(strategy =>
+            strategy.Config.Risk.AutoLeverage == false
+            && strategy.Config.Risk.Leverage >= bounds.LeverageMin
+            && strategy.Config.Risk.Leverage <= bounds.LeverageMax);
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithIncludeAutoLeverage_WhenGenerate_ThenBothVariantsPresent()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            IncludeAutoLeverage = true,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 200, seed: 5005);
+
+        results.Should().Contain(strategy => strategy.Config.Risk.AutoLeverage);
+        results.Should().Contain(strategy => !strategy.Config.Risk.AutoLeverage);
+    }
+
+    [TestMethod]
+    public void GivenIncludeAutoLeverageFalse_WhenGenerate_ThenAllAutoLeverageFalse()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            IncludeAutoLeverage = false,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 50, seed: 5006);
+
+        results.Should().OnlyContain(strategy => !strategy.Config.Risk.AutoLeverage);
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedModeWithEmptyOptions_WhenGenerate_ThenThrows()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            RiskPerTradePercentOptions = [],
+        };
+
+        var action = () => _generator.Generate("BTC", bounds, 10, seed: 5007);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*RiskPerTradePercent*");
+    }
+
+    [TestMethod]
+    public void GivenPercentWalletModeWithEmptyOptions_WhenGenerate_ThenThrows()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.PercentWallet,
+            PositionSizeOptions = [],
+        };
+
+        var action = () => _generator.Generate("BTC", bounds, 10, seed: 5010);
+
+        action.Should().Throw<InvalidOperationException>();
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedMode_WhenGenerate_ThenDescriptionsContainRiskPercent()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            RiskPerTradePercentOptions = [1.0m],
+            IncludeAutoLeverage = false,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 10, seed: 5008);
+
+        results.Should().OnlyContain(strategy => strategy.Description.Contains("R:1%/trade", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedModeWithAutoLeverage_WhenGenerate_ThenDescriptionsContainAutoLev()
+    {
+        var bounds = new ParameterBounds
+        {
+            PositionSizeMode = PositionSizeMode.RiskBased,
+            IncludeAutoLeverage = true,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 200, seed: 5009);
+        var autoLevResults = results.Where(strategy => strategy.Config.Risk.AutoLeverage).ToList();
+
+        autoLevResults.Should().NotBeEmpty();
+        autoLevResults.Should().OnlyContain(strategy => strategy.Description.Contains("AutoLev", StringComparison.Ordinal));
+    }
 }

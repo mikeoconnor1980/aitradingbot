@@ -39,7 +39,7 @@ public sealed class SetLeveragePayload
 {
     public required string Asset { get; init; }
     public required int Leverage { get; init; }
-    public bool IsCross { get; init; } = true;
+    public bool IsCross { get; init; } = false;
 }
 
 /// <summary>

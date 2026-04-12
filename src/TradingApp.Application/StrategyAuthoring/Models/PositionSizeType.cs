@@ -4,4 +4,5 @@ public enum PositionSizeType
 {
     PercentWallet,
     FixedNotional,
+    RiskBased,
 }

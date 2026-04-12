@@ -116,6 +116,11 @@ export class BacktestResultComponent {
 
   public get positionSizeLabel(): string {
     const risk = this.result.strategyConfig.risk;
+
+    if (risk.positionSizeType === "risk_based") {
+      return `R-based (${risk.riskPerTradePercent ?? 1}% risk)`;
+    }
+
     const formattedNotional = `$${this.positionSize.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return risk.positionSizeType === "percent_wallet"

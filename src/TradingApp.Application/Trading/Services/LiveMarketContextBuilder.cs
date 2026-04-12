@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TradingApp.Application.Abstractions.Repositories;
@@ -6,7 +8,6 @@ using TradingApp.Application.MacroCalendar.Models;
 using TradingApp.Application.MacroCalendar.Services;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Enums;
 using TradingApp.Indicators;
@@ -48,7 +49,10 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
     private readonly SyntheticRegimeProvider _syntheticRegimeProvider = new();
     private readonly ILlmContextProvider? _llmContextProvider;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
+    private readonly IHyperliquidRestClient? _restClient;
     private readonly ILogger<LiveMarketContextBuilder>? _logger;
+    private readonly ConcurrentDictionary<string, int> _maxLeverageCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly SemaphoreSlim _metadataLock = new(1, 1);
 
     private bool _dynamicInitialized;
 
@@ -59,10 +63,12 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
     public LiveMarketContextBuilder(
         ILlmContextProvider? llmContextProvider,
         IServiceScopeFactory? serviceScopeFactory,
+        IHyperliquidRestClient? restClient,
         ILogger<LiveMarketContextBuilder>? logger = null)
     {
         _llmContextProvider = llmContextProvider;
         _serviceScopeFactory = serviceScopeFactory;
+        _restClient = restClient;
         _logger = logger;
     }
 
@@ -111,6 +117,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         };
 
         var llmContext = _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp);
+        var maxLeverage = ResolveMaxLeverage(triggerCandle.Symbol);
 
         return new MarketContext
         {
@@ -122,7 +129,8 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             LatestFourHourCandle = latestFourHourCandle,
             Indicators = indicators,
             IndicatorContext = indicatorContext,
-            LlmContext = llmContext
+            LlmContext = llmContext,
+            MaxLeverage = maxLeverage
         };
     }
 
@@ -172,6 +180,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         }
 
         llmContext ??= _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp);
+        var maxLeverage = await ResolveMaxLeverageAsync(triggerCandle.Symbol, cancellationToken);
 
         return new MarketContext
         {
@@ -183,8 +192,77 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             LatestFourHourCandle = latestFourHourCandle,
             Indicators = indicators,
             IndicatorContext = indicatorContext,
-            LlmContext = llmContext
+            LlmContext = llmContext,
+            MaxLeverage = maxLeverage
         };
+    }
+
+    private int? ResolveMaxLeverage(string symbol)
+    {
+        if (_restClient is null || string.IsNullOrWhiteSpace(symbol))
+        {
+            return null;
+        }
+
+        var asset = NormalizeAsset(symbol);
+        return _maxLeverageCache.TryGetValue(asset, out var cached) ? cached : null;
+    }
+
+    private async Task<int?> ResolveMaxLeverageAsync(string symbol, CancellationToken cancellationToken)
+    {
+        if (_restClient is null || string.IsNullOrWhiteSpace(symbol))
+        {
+            return null;
+        }
+
+        var asset = NormalizeAsset(symbol);
+        if (_maxLeverageCache.TryGetValue(asset, out var cachedMaxLeverage))
+        {
+            return cachedMaxLeverage;
+        }
+
+        await _metadataLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_maxLeverageCache.TryGetValue(asset, out cachedMaxLeverage))
+            {
+                return cachedMaxLeverage;
+            }
+
+            var response = await _restClient.PostInfoAsync<JsonElement>(new { type = "meta" }, cancellationToken);
+            if (response.TryGetProperty("universe", out var universe))
+            {
+                foreach (var item in universe.EnumerateArray())
+                {
+                    var name = item.GetProperty("name").GetString();
+                    if (string.IsNullOrWhiteSpace(name))
+                    {
+                        continue;
+                    }
+
+                    var maxLeverage = item.TryGetProperty("maxLeverage", out var maxLeverageElement)
+                        && maxLeverageElement.TryGetInt32(out var parsedMaxLeverage)
+                        && parsedMaxLeverage > 0
+                        ? parsedMaxLeverage
+                        : LeverageCalculator.FallbackMaxLeverage;
+
+                    _maxLeverageCache[name] = maxLeverage;
+                }
+            }
+
+            return _maxLeverageCache.TryGetValue(asset, out cachedMaxLeverage)
+                ? cachedMaxLeverage
+                : null;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger?.LogWarning(ex, "Failed to resolve max leverage metadata for {Symbol}.", symbol);
+            return null;
+        }
+        finally
+        {
+            _metadataLock.Release();
+        }
     }
 
     private async Task<IReadOnlyCollection<MacroEventListItemDto>?> FetchUpcomingEventsAsync(
@@ -442,6 +520,13 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             && string.Equals(candle.Symbol, triggerCandle.Symbol, StringComparison.OrdinalIgnoreCase));
 
         return triggerIndex > 0 ? _candles[triggerIndex - 1] : null;
+    }
+
+    private static string NormalizeAsset(string asset)
+    {
+        return asset.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
+            ? asset[..^5]
+            : asset;
     }
 
     private static string MacdKey(int fast, int slow, int signal) => $"{fast}_{slow}_{signal}";

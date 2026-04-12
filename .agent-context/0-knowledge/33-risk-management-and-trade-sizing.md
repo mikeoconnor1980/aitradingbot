@@ -494,7 +494,7 @@ public sealed record RiskConfig
     public bool AllowSameCandleReentry { get; init; }
 
     // New fields for RiskBased mode
-    public decimal RiskPerTradePercent { get; init; }   // e.g., 1.0 = risk 1% per trade
+    public decimal? RiskPerTradePercent { get; init; }  // e.g., 1.0 = risk 1% per trade; null/0 for non-RiskBased modes
     public bool AutoLeverage { get; init; }             // derive leverage from SL distance
 }
 ```
@@ -535,18 +535,20 @@ risk-adjusted returns.
 // Existing
 public decimal[] PositionSizeOptions { get; init; } = [10m, 15m, 20m];
 
-// New: risk-based sizing options
-public decimal[] RiskPerTradePercentOptions { get; init; } = [0.5m, 1.0m, 1.5m, 2.0m];
-public bool IncludeRiskBasedSizing { get; init; } = true;
+// Selects which sizing strategy the optimizer generates configs for
+public PositionSizeMode PositionSizeMode { get; init; } = PositionSizeMode.PercentWallet;
+
+// Risk-based sizing options (used when PositionSizeMode = RiskBased)
+public decimal[] RiskPerTradePercentOptions { get; init; } = [0.25m, 0.5m, 1.0m, 1.5m, 2.0m, 3.0m];
 public bool IncludeAutoLeverage { get; init; } = true;
 ```
 
 ### StrategyConfigGenerator Changes
 
-When `IncludeRiskBasedSizing = true`, the generator randomly selects between
-`PercentWallet` and `RiskBased` mode. In `RiskBased` mode, it picks from
-`RiskPerTradePercentOptions` instead of `PositionSizeOptions`, and sets
-`AutoLeverage` based on `IncludeAutoLeverage`.
+When `PositionSizeMode = RiskBased`, the generator always produces `RiskBased` configs,
+picking from `RiskPerTradePercentOptions` and setting `AutoLeverage` stochastically
+based on `IncludeAutoLeverage`. When `PositionSizeMode = PercentWallet` (the default),
+it picks from `PositionSizeOptions` as before.
 
 The leverage sweep (`LeverageMin`/`LeverageMax`) is only applied when
 `AutoLeverage = false` — otherwise leverage is derived from SL distance.
@@ -572,26 +574,33 @@ By sweeping risk% alongside SL and TP parameters, the optimizer can find:
 |-----------|--------|
 | `PositionSizeType.PercentWallet` | Working |
 | `PositionSizeType.FixedNotional` | Working |
-| `PositionSizeResolver` | Working (2 modes) |
+| `PositionSizeType.RiskBased` | Working — R-based sizing with SL distance resolution |
+| `PositionSizeResolver` | Working (3 modes) |
+| `StopLossDistanceResolver` | Working — resolves FixedPercent, AtrTrailing, grid breakdown fallback |
+| `GridController` RiskBased branch | Working — resolves SL%, computes total notional, divides by grid levels |
+| `SignalController` RiskBased branch | Working — resolves SL%, passes to resolver |
+| `BusinessRuleValidator` RiskBased | Working — validates RiskPerTradePercent range, high-risk warning |
+| `CrossFieldValidator` RiskBased | Working — requires SL when RiskBased; grid breakdown fallback accepted |
 | `LiveRiskEngine` circuit breaker | Working (but loss recording not wired) |
-| `LiveRiskEngine` max order size | Bug: checks `notionalUsd` key but GridController uses `notionalPerLevel` |
+| `LiveRiskEngine` max order size | Working — checks `notionalUsd` key; GridController, SignalController, LivePositionManager and BacktestPositionManager all use `notionalUsd` |
 | `RiskConfig.Leverage` | Stored but never applied to sizing math |
 | `SetLeverage` agent command | Stub (not implemented) |
 | ATR trailing stop | Working for exits |
 | `maxOpenTrades` | Working |
+| Optimizer `RiskBased` sweep | Working — `PositionSizeMode.RiskBased` in `ParameterBounds`; sweeps `RiskPerTradePercentOptions`, optional `IncludeAutoLeverage`; `StrategyConfigGenerator` branches on mode; `RunOptimizationRequest` accepts `positionSizeMode`, `riskPerTradePercentOptions`, `includeAutoLeverage` |
 
 ### What's Missing
 
 | Capability | Priority |
 |------------|----------|
-| `RiskBased` sizing mode (R calculation) | P1 |
-| Strategy-agnostic SL distance resolution (both controllers) | P1 |
+| ~~`RiskBased` sizing mode (R calculation)~~ | ~~P1~~ Done |
+| ~~Strategy-agnostic SL distance resolution (both controllers)~~ | ~~P1~~ Done |
 | Auto-leverage from R and SL distance | P1 |
 | `SetLeverage` exchange integration before first order | P1 |
 | Isolated margin mode enforcement | P1 |
-| `notionalUsd`/`notionalPerLevel` key mismatch fix | P1 (bug) |
+| ~~`notionalUsd`/`notionalPerLevel` key mismatch fix~~ | ~~P1 (bug)~~ Done |
 | `RecordLoss` wiring in LivePositionManager | P1 (bug) |
-| Optimizer sweep of `riskPerTradePercent` | P1 |
+| ~~Optimizer sweep of `riskPerTradePercent`~~ | ~~P1~~ Done |
 | Portfolio heat enforcement | P2 |
 | R-multiple exit types | P2 |
 | R-multiple trade tracking & expectancy | P2 |
@@ -614,7 +623,7 @@ Implementation touches every layer of the pipeline:
 | PositionSizeResolver | `PositionSizeResolver.cs` | Add RiskBased branch with SL distance param; keep backward compat for existing modes |
 | GridController | `GridController.cs` | Resolve SL% from ExitConfig, pass to resolver; emit auto-leverage in signal params |
 | SignalController | `SignalController.cs` | Same: resolve SL%, pass to resolver; emit auto-leverage in signal params |
-| LiveRiskEngine | `LiveRiskEngine.cs` | Fix `notionalUsd`/`notionalPerLevel` key mismatch; add portfolio heat check; ensure `RecordLoss` called |
+| LiveRiskEngine | `LiveRiskEngine.cs` | ~~Fix `notionalUsd`/`notionalPerLevel` key mismatch~~ Done; add portfolio heat check; ensure `RecordLoss` called |
 | RiskLimitsConfig | `RiskLimitsConfig.cs` | Add `MaxPortfolioHeatPercent` |
 | LivePositionManager | `LivePositionManager.cs` | Call `SetLeverage` before first order; call `RecordLoss` on trade close |
 | BacktestPositionManager | `BacktestPositionManager.cs` | Same sizing changes; respect leverage in simulated margin |
@@ -623,7 +632,7 @@ Implementation touches every layer of the pipeline:
 | StrategyScheduler | `StrategyScheduler.cs` | Consider periodic equity refresh for live |
 | SimulatedExecutionEngine | `SimulatedExecutionEngine.cs` | Track margin, leverage, liquidation |
 | ExitConfig / ExitRuleConfig | `ExitConfig.cs`, `ExitRuleConfig.cs` | Add R-multiple exit type |
-| ParameterBounds | `ParameterBounds.cs` | Add `RiskPerTradePercentOptions`, `IncludeRiskBasedSizing`, `IncludeAutoLeverage` |
+| ParameterBounds | `ParameterBounds.cs` | Added `PositionSizeMode` enum, `RiskPerTradePercentOptions`, `IncludeAutoLeverage` (`IncludeRiskBasedSizing` was not implemented) |
 | StrategyConfigGenerator | `StrategyConfigGenerator.cs` | Generate `RiskBased` configs; skip leverage sweep when auto-leverage |
 | Strategy config schema | `13-strategy-config-schema.md` | Document `riskPerTradePercent`, `autoLeverage`, `risk_based` enum value |
 | Frontend risk card | `risk-management-card.component.*` | RiskBased mode, riskPerTradePercent input, auto-leverage toggle, calculated R preview |

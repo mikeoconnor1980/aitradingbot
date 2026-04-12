@@ -18,6 +18,8 @@ namespace TradingApp.Infrastructure.Services;
 /// </summary>
 public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 {
+    private const int FallbackMaxLeverage = 20;
+
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidSigner _signer;
     private readonly INonceProvider _nonceProvider;
@@ -25,7 +27,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
     private readonly ILogger<LiveExecutionEngine> _logger;
 
     private readonly ConcurrentDictionary<string, string> _orderAssetMap = new();
-    private readonly ConcurrentDictionary<string, int> _assetIndexCache = new();
+    private readonly ConcurrentDictionary<string, (int Index, int MaxLeverage)> _assetMetadataCache = new();
     private readonly SemaphoreSlim _metadataLock = new(1, 1);
 
     public LiveExecutionEngine(
@@ -47,7 +49,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentNullException.ThrowIfNull(order);
 
         var coin = HyperliquidAssetMapper.ToCoin(order.Symbol);
-        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, cancellationToken);
         var isBuy = order.Side == OrderSide.Buy;
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
         var isMarket = order.OrderType == OrderType.Market;
@@ -134,7 +136,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         }
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, cancellationToken);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
         var action = new Dictionary<string, object>
@@ -174,7 +176,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
         var coin = HyperliquidAssetMapper.ToCoin(symbol);
-        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, cancellationToken);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
         var action = new Dictionary<string, object>
@@ -219,7 +221,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(asset);
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, cancellationToken);
         var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
@@ -262,7 +264,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var assetIndex = await ResolveAssetIndexAsync(coin, cancellationToken);
+        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, cancellationToken);
         var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
@@ -314,9 +316,60 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         await _restClient.PostExchangeAsync<HyperliquidExchangeResponse>(payload, cancellationToken);
     }
 
-    private async Task<int> ResolveAssetIndexAsync(string coin, CancellationToken cancellationToken)
+    public async Task SetLeverageAsync(string asset, int leverage, bool isIsolated, CancellationToken cancellationToken = default)
     {
-        if (_assetIndexCache.TryGetValue(coin, out var cached))
+        ArgumentException.ThrowIfNullOrWhiteSpace(asset);
+
+        var coin = HyperliquidAssetMapper.ToCoin(asset);
+        var (assetIndex, maxLeverage) = await ResolveAssetMetadataAsync(coin, cancellationToken);
+        var requestedLeverage = leverage;
+        var clampedLeverage = Math.Clamp(requestedLeverage, 1, maxLeverage);
+
+        if (requestedLeverage > maxLeverage)
+        {
+            _logger.LogWarning(
+                "Leverage {Requested}x exceeds max {Max}x for {Asset}. Clamping to {Max}x.",
+                requestedLeverage,
+                maxLeverage,
+                asset,
+                maxLeverage);
+        }
+
+        var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
+        var action = new Dictionary<string, object>
+        {
+            ["type"] = "updateLeverage",
+            ["asset"] = assetIndex,
+            ["isCross"] = !isIsolated,
+            ["leverage"] = clampedLeverage,
+        };
+
+        var nonce = _nonceProvider.GetNextNonce();
+        var connectionId = HyperliquidEip712.ComputeActionHash(action, nonce, vaultAddress: null);
+        var eip712Hash = HyperliquidEip712.ComputeEip712Hash(connectionId, isMainnet);
+        var (r, s, v) = _signer.SignHash(eip712Hash);
+
+        var payload = new
+        {
+            action,
+            nonce,
+            signature = new { r, s, v },
+            vaultAddress = (string?)null,
+        };
+
+        await _restClient.PostExchangeAsync<JsonElement>(payload, cancellationToken);
+
+        _logger.LogInformation(
+            "Set leverage for {Asset}: {Leverage}x, isolated={IsIsolated}",
+            coin,
+            clampedLeverage,
+            isIsolated);
+    }
+
+    private async Task<(int Index, int MaxLeverage)> ResolveAssetMetadataAsync(string asset, CancellationToken cancellationToken)
+    {
+        var coin = NormalizeCoin(asset);
+        if (_assetMetadataCache.TryGetValue(coin, out var cached))
         {
             return cached;
         }
@@ -324,7 +377,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         await _metadataLock.WaitAsync(cancellationToken);
         try
         {
-            if (_assetIndexCache.TryGetValue(coin, out cached))
+            if (_assetMetadataCache.TryGetValue(coin, out cached))
             {
                 return cached;
             }
@@ -336,15 +389,24 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
             {
                 for (var i = 0; i < universe.GetArrayLength(); i++)
                 {
-                    var name = universe[i].GetProperty("name").GetString();
-                    if (name is not null)
+                    var item = universe[i];
+                    var name = item.GetProperty("name").GetString();
+                    if (string.IsNullOrWhiteSpace(name))
                     {
-                        _assetIndexCache[name] = i;
+                        continue;
                     }
+
+                    var maxLeverage = item.TryGetProperty("maxLeverage", out var maxLeverageElement)
+                        && maxLeverageElement.TryGetInt32(out var parsedMaxLeverage)
+                        && parsedMaxLeverage > 0
+                        ? parsedMaxLeverage
+                        : FallbackMaxLeverage;
+
+                    _assetMetadataCache[name] = (i, maxLeverage);
                 }
             }
 
-            if (_assetIndexCache.TryGetValue(coin, out cached))
+            if (_assetMetadataCache.TryGetValue(coin, out cached))
             {
                 return cached;
             }
@@ -385,6 +447,13 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 
         var first = statuses[0];
         return first.Resting?.Oid.ToString() ?? first.Filled?.Oid.ToString();
+    }
+
+    private static string NormalizeCoin(string asset)
+    {
+        return asset.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
+            ? HyperliquidAssetMapper.ToCoin(asset)
+            : asset;
     }
 
     private static decimal RoundToSignificantFigures(decimal value, int significantFigures)

@@ -10,6 +10,7 @@ public sealed class CrossFieldValidator
         ArgumentNullException.ThrowIfNull(result);
 
         ValidateStrategyModeConsistency(config, result);
+        ValidateRiskBasedRequiresStopLoss(config, result);
     }
 
     private static void ValidateStrategyModeConsistency(StrategyConfig config, ValidationResult result)
@@ -48,6 +49,32 @@ public sealed class CrossFieldValidator
                     Message = "Entry logic is required for signal mode.",
                 });
             }
+        }
+    }
+
+    private static void ValidateRiskBasedRequiresStopLoss(StrategyConfig config, ValidationResult result)
+    {
+        if (config.Risk.PositionSizeType != PositionSizeType.RiskBased)
+        {
+            return;
+        }
+
+        if (!config.Exit.StopLoss.Enabled)
+        {
+            if (config.StrategyMode == StrategyMode.Grid
+                && config.Grid is not null
+                && config.Grid.BreakdownThreshold > 0m)
+            {
+                return;
+            }
+
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "exit.stopLoss",
+                Code = "RISK_BASED_REQUIRES_STOP_LOSS",
+                Message = "Risk-based sizing requires a stop-loss to be configured. Enable a stop-loss or use a different sizing mode.",
+            });
         }
     }
 }

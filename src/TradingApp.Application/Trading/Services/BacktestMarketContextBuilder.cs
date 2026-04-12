@@ -40,8 +40,14 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 
     // Synthetic regime provider for LLM context in backtest mode
     private readonly SyntheticRegimeProvider _syntheticRegimeProvider = new();
+    private readonly int _maxLeverage;
 
     private bool _dynamicInitialized;
+
+    public BacktestMarketContextBuilder(int? maxLeverage = null)
+    {
+        _maxLeverage = maxLeverage is > 0 ? maxLeverage.Value : LeverageCalculator.FallbackMaxLeverage;
+    }
 
     public void UpdateIndicators(Candle candle)
     {
@@ -99,7 +105,8 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             LatestFourHourCandle = latestFourHourCandle,
             Indicators = indicators,
             IndicatorContext = indicatorContext,
-            LlmContext = llmContext
+            LlmContext = llmContext,
+            MaxLeverage = _maxLeverage
         };
     }
 

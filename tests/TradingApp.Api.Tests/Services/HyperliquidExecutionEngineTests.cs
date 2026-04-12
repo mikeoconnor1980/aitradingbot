@@ -197,4 +197,14 @@ public sealed class HyperliquidExecutionEngineTests
 
         await act.Should().ThrowAsync<ArgumentException>();
     }
+
+    [TestMethod]
+    public async Task GivenIsolatedLeverageRequest_WhenSetLeverageAsync_ThenDelegatesWithCrossInversion()
+    {
+        await _sut.SetLeverageAsync("BTC-PERP", 33, isIsolated: true);
+
+        _orderServiceMock.Verify(
+            s => s.UpdateLeverageAsync("BTC-PERP", 33, false, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }

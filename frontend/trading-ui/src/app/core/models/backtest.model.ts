@@ -43,6 +43,8 @@ export interface BacktestRiskConfig {
   cooldownValue: number;
   cooldownUnit: string;
   allowSameCandleReentry: boolean;
+  riskPerTradePercent?: number;
+  autoLeverage?: boolean;
 }
 
 export interface BacktestSourceMetadata {

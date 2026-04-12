@@ -1,4 +1,4 @@
-import { Component, inject, signal } from "@angular/core";
+import { AfterViewInit, Component, ElementRef, ViewChild, inject, signal } from "@angular/core";
 import { AbstractControl, ReactiveFormsModule, FormBuilder, FormGroup, ValidationErrors, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -6,6 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { Router, RouterLink } from "@angular/router";
 import { AuthService } from "../../core/services/auth.service";
+import { GoogleAuthService } from "../../core/services/google-auth.service";
 
 @Component({
   selector: "app-register-page",
@@ -14,10 +15,14 @@ import { AuthService } from "../../core/services/auth.service";
   templateUrl: "./register-page.component.html",
   styleUrl: "./register-page.component.scss"
 })
-export class RegisterPageComponent {
+export class RegisterPageComponent implements AfterViewInit {
   private readonly _authService = inject(AuthService);
+  private readonly _googleAuthService = inject(GoogleAuthService);
   private readonly _router = inject(Router);
   private readonly _fb = inject(FormBuilder);
+
+  @ViewChild("googleButtonContainer", { static: false })
+  public googleButtonContainer!: ElementRef<HTMLDivElement>;
 
   public readonly form: FormGroup = this._fb.group({
     email: ["", [Validators.required, Validators.email]],
@@ -29,6 +34,14 @@ export class RegisterPageComponent {
   public readonly submitting = signal(false);
   public readonly errorMessage = signal<string | null>(null);
   public readonly hidePassword = signal(true);
+
+  public ngAfterViewInit(): void {
+    this._googleAuthService.initialize((idToken) => this.onGoogleCredential(idToken));
+
+    if (this.googleButtonContainer) {
+      this._googleAuthService.renderButton(this.googleButtonContainer.nativeElement, "signup_with");
+    }
+  }
 
   public onSubmit(): void {
     if (this.form.invalid) return;
@@ -64,5 +77,21 @@ export class RegisterPageComponent {
     const pw = group.get("password")?.value;
     const confirm = group.get("confirmPassword")?.value;
     return pw === confirm ? null : { passwordMismatch: true };
+  }
+
+  private onGoogleCredential(idToken: string): void {
+    this.submitting.set(true);
+    this.errorMessage.set(null);
+
+    this._authService.googleSignIn({ idToken }).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this._router.navigate(["/dashboard"]);
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        this.errorMessage.set(err.error?.errorMessage ?? "Google sign-up failed. Please try again.");
+      }
+    });
   }
 }

@@ -68,7 +68,7 @@ public sealed class SignalControllerTests
         signal.Parameters.Should().NotBeNull();
         signal.Parameters!["entryPrice"].Should().Be(50_000m);
         signal.Parameters["size"].Should().Be(0.02m);
-        signal.Parameters["notional"].Should().Be(1000m);
+        signal.Parameters["notionalUsd"].Should().Be(1000m);
         signal.Parameters["orderType"].Should().Be(OrderType.Market.ToString());
     }
 
@@ -173,8 +173,74 @@ public sealed class SignalControllerTests
             config);
 
         signals.Should().ContainSingle();
-        signals[0].Parameters!["notional"].Should().Be(500m);
-        signals[0].Parameters["size"].Should().Be(0.01m);
+        var parameters = signals[0].Parameters;
+        parameters.Should().NotBeNull();
+        parameters!["notionalUsd"].Should().Be(500m);
+        parameters["size"].Should().Be(0.01m);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskBasedSizingWithFixedPercentStopLoss_WhenProcessAsync_ThenUsesRBasedNotional()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2m,
+                },
+            },
+        };
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true, Reason = "RSI below 30." },
+            CreateMarketContext(close: 50_000m, accountEquity: 10_000m),
+            CreateGridState(),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().ContainSingle();
+        var parameters = signals[0].Parameters;
+        parameters.Should().NotBeNull();
+        parameters!["notionalUsd"].Should().Be(5_000m);
+        parameters["size"].Should().Be(0.1m);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskBasedSizingWithNoStopLoss_WhenProcessAsync_ThenEmitsNoSignals()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = false,
+                },
+            },
+        };
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true, Reason = "RSI below 30." },
+            CreateMarketContext(close: 50_000m, accountEquity: 10_000m),
+            CreateGridState(),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().BeEmpty();
     }
 
     private static PositionState CreatePositionState(decimal size, decimal averageEntryPrice)

@@ -1,7 +1,5 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Moq;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
@@ -31,7 +29,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_EmptySignals_ReturnsEmpty()
+    public async Task GivenEmptySignals_WhenValidateAsync_ThenReturnsEmpty()
     {
         var result = await _sut.ValidateAsync([]);
 
@@ -39,7 +37,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_NormalSignal_PassesThrough()
+    public async Task GivenNormalSignal_WhenValidateAsync_ThenPassesThrough()
     {
         var signals = new List<TradingSignal>
         {
@@ -47,7 +45,7 @@ public sealed class LiveRiskEngineTests
             {
                 SignalType = "DeployGrid",
                 Symbol = "BTC-PERP",
-                Parameters = new Dictionary<string, object> { ["levels"] = 5 }
+                Parameters = new Dictionary<string, object> { ["gridLevels"] = 5 }
             }
         };
 
@@ -57,7 +55,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_TakeProfitAlwaysPasses_EvenWhenCircuitBreakerTripped()
+    public async Task GivenCircuitBreakerTripped_WhenValidateTakeProfit_ThenPassesThrough()
     {
         // Trip the circuit breaker
         _sut.RecordLoss(600m);
@@ -74,7 +72,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_CancelGridAlwaysPasses_EvenWhenCircuitBreakerTripped()
+    public async Task GivenCircuitBreakerTripped_WhenValidateCancelGrid_ThenPassesThrough()
     {
         _sut.RecordLoss(600m);
 
@@ -89,7 +87,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_CircuitBreakerTripped_BlocksNewOrders()
+    public async Task GivenCircuitBreakerTripped_WhenValidateNewOrder_ThenBlocked()
     {
         _sut.RecordLoss(600m);
 
@@ -104,7 +102,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_OrderSizeExceedsMax_Blocked()
+    public async Task GivenOrderSizeExceedsMax_WhenValidateAsync_ThenBlocked()
     {
         var signals = new List<TradingSignal>
         {
@@ -122,7 +120,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_OrderSizeWithinLimit_Passes()
+    public async Task GivenOrderSizeWithinLimit_WhenValidateAsync_ThenPasses()
     {
         var signals = new List<TradingSignal>
         {
@@ -140,7 +138,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_DeployGridExceedsMaxOpenOrders_Blocked()
+    public async Task GivenDeployGridExceedsMaxOpenOrders_WhenValidateAsync_ThenBlocked()
     {
         // Pre-fill 8 orders (max is 10)
         _sut.RecordOrdersPlaced(8);
@@ -151,7 +149,7 @@ public sealed class LiveRiskEngineTests
             {
                 SignalType = "DeployGrid",
                 Symbol = "BTC-PERP",
-                Parameters = new Dictionary<string, object> { ["levels"] = 5 }
+                Parameters = new Dictionary<string, object> { ["gridLevels"] = 5 }
             }
         };
 
@@ -161,7 +159,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_DeployGridWithinLimit_Passes()
+    public async Task GivenDeployGridWithinLimit_WhenValidateAsync_ThenPasses()
     {
         _sut.RecordOrdersPlaced(3);
 
@@ -171,7 +169,7 @@ public sealed class LiveRiskEngineTests
             {
                 SignalType = "DeployGrid",
                 Symbol = "BTC-PERP",
-                Parameters = new Dictionary<string, object> { ["levels"] = 5 }
+                Parameters = new Dictionary<string, object> { ["gridLevels"] = 5 }
             }
         };
 
@@ -181,7 +179,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public void RecordLoss_BelowThreshold_DoesNotTripCircuitBreaker()
+    public void GivenLossBelowThreshold_WhenRecordLoss_ThenCircuitBreakerNotTripped()
     {
         _sut.RecordLoss(100m);
 
@@ -189,7 +187,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public void RecordLoss_ExceedsThreshold_TripsCircuitBreaker()
+    public void GivenLossExceedsThreshold_WhenRecordLoss_ThenCircuitBreakerTripped()
     {
         _sut.RecordLoss(300m);
         _sut.RecordLoss(250m);
@@ -198,7 +196,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public void RecordLoss_ZeroOrNegative_Ignored()
+    public void GivenZeroOrNegativeLoss_WhenRecordLoss_ThenIgnored()
     {
         _sut.RecordLoss(0m);
         _sut.RecordLoss(-50m);
@@ -207,14 +205,14 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public void RecordOrdersPlaced_TracksCount()
+    public void GivenOrdersPlaced_WhenRecordOrdersPlaced_ThenCountTracked()
     {
         _sut.RecordOrdersPlaced(5);
         _sut.ActiveOrderCount.Should().Be(5);
     }
 
     [TestMethod]
-    public void RecordOrdersClosed_DecrementsCount()
+    public void GivenOrdersPlacedAndClosed_WhenRecordOrdersClosed_ThenCountDecremented()
     {
         _sut.RecordOrdersPlaced(5);
         _sut.RecordOrdersClosed(3);
@@ -223,7 +221,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public void RecordOrdersClosed_NeverGoesNegative()
+    public void GivenNoOrdersPlaced_WhenRecordOrdersClosed_ThenCountStaysAtZero()
     {
         _sut.RecordOrdersClosed(10);
 
@@ -231,7 +229,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public void ResetCircuitBreaker_ClearsTrip()
+    public void GivenCircuitBreakerTripped_WhenResetCircuitBreaker_ThenCleared()
     {
         _sut.RecordLoss(600m);
         _sut.IsCircuitBreakerTripped.Should().BeTrue();
@@ -242,7 +240,7 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
-    public async Task ValidateAsync_MixedSignals_ApprovesCorrectSubset()
+    public async Task GivenMixedSignals_WhenValidateAsync_ThenApprovesCorrectSubset()
     {
         _sut.RecordOrdersPlaced(9);
 
@@ -255,9 +253,9 @@ public sealed class LiveRiskEngineTests
             {
                 SignalType = "DeployGrid",
                 Symbol = "BTC-PERP",
-                Parameters = new Dictionary<string, object> { ["levels"] = 5 }
+                Parameters = new Dictionary<string, object> { ["gridLevels"] = 5 }
             },
-            // Should pass — no notionalUsd parameter so size check is skipped
+            // Should pass — no notionalUsd parameter, so size check is skipped (backward compatible)
             new() { SignalType = "OpenPosition", Symbol = "ETH-PERP" },
         };
 
@@ -266,5 +264,109 @@ public sealed class LiveRiskEngineTests
         result.Should().HaveCount(2);
         result.Select(s => s.SignalType).Should().Contain("TakeProfit");
         result.Select(s => s.SignalType).Should().Contain("OpenPosition");
+    }
+
+    [TestMethod]
+    public async Task GivenMaxOrderSize1000_WhenDeployGridNotionalUsd1500_ThenBlocked()
+    {
+        _limits = _limits with { MaxOrderSizeUsd = 1_000m };
+        _sut = new LiveRiskEngine(
+            Options.Create(_limits),
+            new Mock<ILogger<LiveRiskEngine>>().Object);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["notionalUsd"] = 1_500m,
+                    ["gridLevels"] = 5,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenMaxOrderSize1000_WhenDeployGridNotionalUsd800_ThenApproved()
+    {
+        _limits = _limits with { MaxOrderSizeUsd = 1_000m };
+        _sut = new LiveRiskEngine(
+            Options.Create(_limits),
+            new Mock<ILogger<LiveRiskEngine>>().Object);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["notionalUsd"] = 800m,
+                    ["gridLevels"] = 5,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
+    }
+
+    [TestMethod]
+    public async Task GivenMaxOrderSize1000_WhenOpenPositionNotionalUsd1500_ThenBlocked()
+    {
+        _limits = _limits with { MaxOrderSizeUsd = 1_000m };
+        _sut = new LiveRiskEngine(
+            Options.Create(_limits),
+            new Mock<ILogger<LiveRiskEngine>>().Object);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "OpenPosition",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["notionalUsd"] = 1_500m,
+                    ["size"] = 0.5m,
+                    ["entryPrice"] = 3_000m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenSignalWithNoNotionalUsd_WhenValidated_ThenPassesBackwardCompatible()
+    {
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "OpenPosition",
+                Symbol = "ETH-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["size"] = 1m,
+                    ["entryPrice"] = 2_000m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
     }
 }

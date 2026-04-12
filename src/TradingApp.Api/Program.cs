@@ -67,6 +67,13 @@ if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey))
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 
+// Google Authentication
+builder.Services.AddOptions<GoogleAuthOptions>()
+    .Bind(builder.Configuration.GetSection(GoogleAuthOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {

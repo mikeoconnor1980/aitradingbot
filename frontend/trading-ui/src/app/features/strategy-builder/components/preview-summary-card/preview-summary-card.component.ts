@@ -59,7 +59,15 @@ export class PreviewSummaryCardComponent {
     }
 
     if (risk !== null) {
-      parts.push(`Risk: ${positionSize}% of wallet, ${leverage}x leverage.`);
+      const positionSizeType = risk["positionSizeType"];
+
+      if (positionSizeType === "risk_based") {
+        const riskPercent = this._formatNumber(risk["riskPerTradePercent"] ?? 1);
+        const leverageText = risk["autoLeverage"] ? "auto-leverage" : `${leverage}x leverage`;
+        parts.push(`Risk: R-based ${riskPercent}% risk per trade, ${leverageText}.`);
+      } else {
+        parts.push(`Risk: ${positionSize}% of wallet, ${leverage}x leverage.`);
+      }
     }
 
     return parts.join(" ");

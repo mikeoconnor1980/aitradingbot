@@ -313,6 +313,10 @@ export class BacktestFormComponent implements OnInit, OnChanges {
       return "Not configured";
     }
 
+    if (risk.positionSizeType === "risk_based") {
+      return `R-based (${risk.riskPerTradePercent ?? 1}% risk)`;
+    }
+
     return risk.positionSizeType === "percent_wallet"
       ? `${risk.positionSizeValue}% wallet`
       : `$${risk.positionSizeValue} fixed notional`;

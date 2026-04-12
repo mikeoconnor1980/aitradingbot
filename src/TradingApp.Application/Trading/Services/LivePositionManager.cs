@@ -113,10 +113,17 @@ public sealed class LivePositionManager : IPositionManager
     {
         await _executionEngine.CancelAllOrdersAsync(signal.Symbol, cancellationToken);
 
+        var leverage = GetOptionalInt(signal.Parameters, "leverage");
+        if (leverage is > 0)
+        {
+            var isIsolated = GetOptionalBool(signal.Parameters, "isIsolated");
+            await _executionEngine.SetLeverageAsync(signal.Symbol, leverage.Value, isIsolated, cancellationToken);
+        }
+
         var anchorPrice = GetDecimal(signal.Parameters, "anchorPrice");
         var gridLevels = GetInt(signal.Parameters, "gridLevels");
         var gridSpacingPercent = Math.Abs(GetDecimal(signal.Parameters, "gridSpacingPercent"));
-        var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalPerLevel"));
+        var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalUsd"));
         var gridCycleId = GetGridCycleId(signal.Parameters);
         var entryMode = GetOptionalString(signal.Parameters, "entryMode") ?? EntryModes.AutoFromSignalCandle;
 
@@ -359,6 +366,39 @@ public sealed class LivePositionManager : IPositionManager
             double doubleValue => Convert.ToInt32(doubleValue),
             string stringValue => int.Parse(stringValue),
             _ => Convert.ToInt32(value)
+        };
+    }
+
+    private static int? GetOptionalInt(IReadOnlyDictionary<string, object>? parameters, string key)
+    {
+        if (parameters is null || !parameters.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            int intValue => intValue,
+            long longValue => checked((int)longValue),
+            decimal decimalValue => decimal.ToInt32(decimalValue),
+            double doubleValue => Convert.ToInt32(doubleValue),
+            string stringValue when int.TryParse(stringValue, out var parsedInt) => parsedInt,
+            _ => Convert.ToInt32(value)
+        };
+    }
+
+    private static bool GetOptionalBool(IReadOnlyDictionary<string, object>? parameters, string key)
+    {
+        if (parameters is null || !parameters.TryGetValue(key, out var value) || value is null)
+        {
+            return false;
+        }
+
+        return value switch
+        {
+            bool boolValue => boolValue,
+            string stringValue when bool.TryParse(stringValue, out var parsedBool) => parsedBool,
+            _ => Convert.ToBoolean(value)
         };
     }
 

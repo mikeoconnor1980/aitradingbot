@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260411-risk-management-ui-changes.md"
 currentAgent: "None"
-agentStartedAt: "2026-04-11T00:50:38Z"
-status: "plan-reviewed"
-lastUpdated: "2026-04-11T00:58:33Z"
+agentStartedAt: "2026-04-12T09:28:27Z"
+status: "implemented"
+lastUpdated: "2026-04-12T13:35:00Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -66,86 +66,86 @@ Add `RiskBased` position sizing mode, auto-leverage toggle, and live R-based pre
 - `frontend/trading-ui/src/app/features/backtesting/backtest-result/backtest-result.component.ts` — `positionSizeLabel` getter
 - `frontend/trading-ui/src/app/features/strategy-builder/components/preview-summary-card/preview-summary-card.component.ts` — Risk text display
 
-### [ ] Phase 1: TypeScript Models & Form Infrastructure
+### [x] Phase 1: TypeScript Models & Form Infrastructure
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 1.1: Update `PositionSizeType` and `RiskConfig` in `strategy.model.ts`
+- [x] Task 1.1: Update `PositionSizeType` and `RiskConfig` in `strategy.model.ts`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-11-update-positionsizetype-and-riskconfig
 
-- [ ] Task 1.2: Update `BacktestRiskConfig` in `backtest.model.ts`
+- [x] Task 1.2: Update `BacktestRiskConfig` in `backtest.model.ts`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-12-update-backtestriskconfig
 
-- [ ] Task 1.3: Add new form controls in `strategy-builder-page._buildForm()`
+- [x] Task 1.3: Add new form controls in `strategy-builder-page._buildForm()`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-13-add-new-form-controls
 
-- [ ] Task 1.4: Pass `exitGroup` to risk card from parent template
+- [x] Task 1.4: Pass `exitGroup` to risk card from parent template
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-14-pass-exitgroup-to-risk-card
 
-- [ ] Task 1.5: Update `strategy-mapper.service.ts` risk mapping
+- [x] Task 1.5: Update `strategy-mapper.service.ts` risk mapping
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-15-update-strategy-mapper
 
-- [ ] Task 1.6: Update `strategy-validation.service.ts` for mode-conditional validation
+- [x] Task 1.6: Update `strategy-validation.service.ts` for mode-conditional validation
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-16-update-strategy-validation
 
-- [ ] Task 1.7: Build verification
+- [x] Task 1.7: Build verification
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-01-details.md#task-17-build-verification
 
-### [ ] Phase 2: Risk Management Card UI & Unit Tests
+### [x] Phase 2: Risk Management Card UI & Unit Tests
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 2.1: Add imports, inputs, and reactive lifecycle to `risk-management-card.component.ts`
+- [x] Task 2.1: Add imports, inputs, and reactive lifecycle to `risk-management-card.component.ts`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-02-details.md#task-21-add-imports-inputs-and-reactive-lifecycle
 
-- [ ] Task 2.2: Update `risk-management-card.component.html` with new fields and conditional visibility
+- [x] Task 2.2: Update `risk-management-card.component.html` with new fields and conditional visibility
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-02-details.md#task-22-update-template-with-new-fields
 
-- [ ] Task 2.3: Update `risk-management-card.component.scss` for new layout sections
+- [x] Task 2.3: Update `risk-management-card.component.scss` for new layout sections
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-02-details.md#task-23-update-styles
 
-- [ ] Task 2.4: Create `risk-management-card.component.spec.ts`
+- [x] Task 2.4: Create `risk-management-card.component.spec.ts`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-02-details.md#task-24-create-unit-tests
 
-- [ ] Task 2.5: Build + lint + test verification
+- [x] Task 2.5: Build + lint + test verification
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-02-details.md#task-25-build-lint-test
 
-### [ ] Phase 3: Live Calculation Preview
+### [x] Phase 3: Live Calculation Preview
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 3.1: Add equity fetching and preview calculation logic to `risk-management-card.component.ts`
+- [x] Task 3.1: Add equity fetching and preview calculation logic to `risk-management-card.component.ts`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-03-details.md#task-31-add-equity-fetching-and-preview-logic
 
-- [ ] Task 3.2: Add preview panel template to `risk-management-card.component.html`
+- [x] Task 3.2: Add preview panel template to `risk-management-card.component.html`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-03-details.md#task-32-add-preview-panel-template
 
-- [ ] Task 3.3: Add preview panel styles to `risk-management-card.component.scss`
+- [x] Task 3.3: Add preview panel styles to `risk-management-card.component.scss`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-03-details.md#task-33-add-preview-panel-styles
 
-- [ ] Task 3.4: Add unit tests for preview calculations
+- [x] Task 3.4: Add unit tests for preview calculations
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-03-details.md#task-34-add-preview-calculation-tests
 
-- [ ] Task 3.5: Build + test verification
+- [x] Task 3.5: Build + test verification
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-03-details.md#task-35-build-test-verification
 
-### [ ] Phase 4: Backtest & Preview Summary Updates
+### [x] Phase 4: Backtest & Preview Summary Updates
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 4.1: Update `backtest-form.component.ts` positionSizeLabel for `risk_based`
+- [x] Task 4.1: Update `backtest-form.component.ts` positionSizeLabel for `risk_based`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-04-details.md#task-41-update-backtest-form-label
 
-- [ ] Task 4.2: Update `backtest-result.component.ts` positionSizeLabel for `risk_based`
+- [x] Task 4.2: Update `backtest-result.component.ts` positionSizeLabel for `risk_based`
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-04-details.md#task-42-update-backtest-result-label
 
-- [ ] Task 4.3: Update `preview-summary-card.component.ts` risk display
+- [x] Task 4.3: Update `preview-summary-card.component.ts` risk display
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-04-details.md#task-43-update-preview-summary-card
 
-- [ ] Task 4.4: Update existing test specs for new `risk_based` mode
+- [x] Task 4.4: Update existing test specs for new `risk_based` mode
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-04-details.md#task-44-update-existing-test-specs
 
-- [ ] Task 4.5: Full build + lint + all tests
+- [x] Task 4.5: Full build + lint + all tests
   - Details: .agent-context/3-develop/build/plans/details/20260411-risk-management-ui-phase-04-details.md#task-45-full-build-lint-all-tests
 
 ## Scoping Summary
@@ -190,3 +190,4 @@ Add `RiskBased` position sizing mode, auto-leverage toggle, and live R-based pre
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-04-11T12:00:00Z | 2026-04-11T12:30:00Z |
 | Plan Reviewer | plan-reviewed | 2026-04-11T00:50:38Z | 2026-04-11T00:58:33Z |
+| 3-Develop: 2 Implementer | implemented | 2026-04-12T09:28:27Z | 2026-04-12T13:35:00Z |

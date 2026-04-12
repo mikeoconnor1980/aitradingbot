@@ -11,5 +11,5 @@ public sealed class SetLeverageRequest
     [Range(1, 100)]
     public int Leverage { get; set; }
 
-    public bool IsCross { get; set; } = true;
+    public bool IsCross { get; set; } = false;
 }

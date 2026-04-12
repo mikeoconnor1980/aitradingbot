@@ -259,13 +259,36 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
 
     private static RiskConfig GenerateRiskConfig(ParameterBounds bounds, Random rng)
     {
+        var maxOpenTrades = NextFrom(bounds.MaxOpenTradesOptions, rng);
+        var cooldownValue = NextFrom(bounds.CooldownCandlesOptions, rng);
+
+        if (bounds.PositionSizeMode == PositionSizeMode.RiskBased)
+        {
+            var autoLeverage = bounds.IncludeAutoLeverage && rng.Next(2) == 0;
+            var leverage = autoLeverage
+                ? 1m
+                : NextFromRange(bounds.LeverageMin, bounds.LeverageMax, bounds.LeverageStep, rng);
+
+            return new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = NextFrom(bounds.RiskPerTradePercentOptions, rng),
+                AutoLeverage = autoLeverage,
+                Leverage = leverage,
+                MaxOpenTrades = maxOpenTrades,
+                CooldownValue = cooldownValue,
+                CooldownUnit = CooldownUnit.Candles,
+                AllowSameCandleReentry = false,
+            };
+        }
+
         return new RiskConfig
         {
             PositionSizeType = PositionSizeType.PercentWallet,
             PositionSizeValue = NextFrom(bounds.PositionSizeOptions, rng),
             Leverage = NextFromRange(bounds.LeverageMin, bounds.LeverageMax, bounds.LeverageStep, rng),
-            MaxOpenTrades = NextFrom(bounds.MaxOpenTradesOptions, rng),
-            CooldownValue = NextFrom(bounds.CooldownCandlesOptions, rng),
+            MaxOpenTrades = maxOpenTrades,
+            CooldownValue = cooldownValue,
             CooldownUnit = CooldownUnit.Candles,
             AllowSameCandleReentry = false,
         };
@@ -325,7 +348,13 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         var separator = entryLogic == EntryLogic.All ? " + " : " | ";
         var description = string.Join(separator, parts);
 
-        description += $" | {entryLogic} | SL:{Format(exit.StopLoss.Value)}% TP:{Format(exit.TakeProfit.Value)}% Lev:{Format(risk.Leverage)}x Size:{Format(risk.PositionSizeValue)}%";
+        var sizeLabel = risk.PositionSizeType == PositionSizeType.RiskBased
+            ? $"R:{Format(risk.RiskPerTradePercent)}%/trade"
+            : $"Size:{Format(risk.PositionSizeValue)}%";
+
+        var leverageLabel = risk.AutoLeverage ? "AutoLev" : $"Lev:{Format(risk.Leverage)}x";
+
+        description += $" | {entryLogic} | SL:{Format(exit.StopLoss.Value)}% TP:{Format(exit.TakeProfit.Value)}% {leverageLabel} {sizeLabel}";
         description += $" | {direction.ToString().ToUpperInvariant()}";
 
         if (exit.ExitOnOppositeSignal)
@@ -402,8 +431,19 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         EnsureRange(bounds.TakeProfitMin, bounds.TakeProfitMax, bounds.TakeProfitStep, nameof(bounds.TakeProfitMin));
         EnsureRange(bounds.LeverageMin, bounds.LeverageMax, bounds.LeverageStep, nameof(bounds.LeverageMin));
 
+        if (bounds.PositionSizeMode == PositionSizeMode.RiskBased)
+        {
+            if (bounds.RiskPerTradePercentOptions.Length == 0)
+            {
+                throw new InvalidOperationException("Optimizer bounds must include at least one RiskPerTradePercent option when using RiskBased sizing mode.");
+            }
+        }
+        else if (bounds.PositionSizeOptions.Length == 0)
+        {
+            throw new InvalidOperationException("Optimizer bounds must include at least one option for each parameter family.");
+        }
+
         if (bounds.Directions.Length == 0
-            || bounds.PositionSizeOptions.Length == 0
             || bounds.RsiPeriods.Length == 0
             || bounds.RsiThresholds.Length == 0
             || bounds.RsiOperators.Length == 0

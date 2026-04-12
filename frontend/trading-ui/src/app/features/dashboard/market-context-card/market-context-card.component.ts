@@ -101,7 +101,6 @@ export class MarketContextCardComponent implements OnInit {
     if (!this.context) {
       return "";
     }
-    const date = new Date(this.context.generatedAtUtc);
     const now = Date.now();
     const diffMinutes = Math.round((now - this.context.generatedAtUtc) / 60_000);
 

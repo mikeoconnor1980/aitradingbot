@@ -29,6 +29,9 @@ public sealed class RunOptimizationRequest
     public decimal? LeverageMin { get; set; }
     public decimal? LeverageMax { get; set; }
     public decimal? PositionSizePercent { get; set; }
+    public string? PositionSizeMode { get; set; }
+    public decimal[]? RiskPerTradePercentOptions { get; set; }
+    public bool? IncludeAutoLeverage { get; set; }
 
     // --- Signal Operators ---
     public string[]? RsiOperators { get; set; }

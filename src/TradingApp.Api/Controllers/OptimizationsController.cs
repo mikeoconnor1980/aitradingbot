@@ -143,6 +143,17 @@ public sealed class OptimizationsController : ApiController
 
         var directions = ParseDirections(request.Directions) ?? defaults.Directions;
         var timeframes = FilterValid(request.Timeframes, ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "12h", "1d"]) ?? defaults.Timeframes;
+        var positionSizeMode = defaults.PositionSizeMode;
+        if (request.PositionSizeMode is not null)
+        {
+            if (!Enum.TryParse<PositionSizeMode>(request.PositionSizeMode, ignoreCase: true, out var sizeMode))
+            {
+                throw new DomainException(
+                    $"Invalid positionSizeMode '{request.PositionSizeMode}'. Allowed: {string.Join(", ", Enum.GetNames<PositionSizeMode>())}");
+            }
+
+            positionSizeMode = sizeMode;
+        }
 
         // Map operator string arrays, filtering to known valid ones
         var rsiOperators = FilterValid(request.RsiOperators, ["lt", "lte", "gt", "gte", "cross_above", "cross_below"]) ?? defaults.RsiOperators;
@@ -154,6 +165,15 @@ public sealed class OptimizationsController : ApiController
             ? [request.ExitOnOppositeSignal.Value]
             : defaults.ExitOnOppositeSignalOptions;
 
+        var riskPerTradeOptions = request.RiskPerTradePercentOptions is { Length: > 0 }
+            ? request.RiskPerTradePercentOptions
+            : defaults.RiskPerTradePercentOptions;
+
+        if (riskPerTradeOptions.Any(r => r <= 0m || r > 100m))
+        {
+            throw new DomainException("riskPerTradePercentOptions values must be between 0 (exclusive) and 100");
+        }
+
         return defaults with
         {
             Directions = directions,
@@ -164,6 +184,7 @@ public sealed class OptimizationsController : ApiController
             TakeProfitMax = takeProfitMax,
             LeverageMin = leverageMin,
             LeverageMax = leverageMax,
+            PositionSizeMode = positionSizeMode,
             RsiOperators = rsiOperators,
             RsiPeriods = request.RsiPeriods is { Length: > 0 } ? request.RsiPeriods : defaults.RsiPeriods,
             RsiThresholds = request.RsiThresholds is { Length: > 0 } ? request.RsiThresholds : defaults.RsiThresholds,
@@ -178,6 +199,8 @@ public sealed class OptimizationsController : ApiController
             CooldownCandlesOptions = request.CooldownCandlesOptions is { Length: > 0 } ? request.CooldownCandlesOptions : defaults.CooldownCandlesOptions,
             IncludeTrendFilter = request.IncludeTrendFilter ?? defaults.IncludeTrendFilter,
             PositionSizeOptions = request.PositionSizePercent.HasValue ? [request.PositionSizePercent.Value] : defaults.PositionSizeOptions,
+            RiskPerTradePercentOptions = riskPerTradeOptions,
+            IncludeAutoLeverage = request.IncludeAutoLeverage ?? defaults.IncludeAutoLeverage,
         };
     }
 

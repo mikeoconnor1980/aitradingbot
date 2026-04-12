@@ -190,7 +190,7 @@ public sealed class LiveRiskEngine : IRiskEngine
     {
         if (signal.SignalType == "DeployGrid"
             && signal.Parameters is not null
-            && signal.Parameters.TryGetValue("levels", out var levelsObj)
+            && signal.Parameters.TryGetValue("gridLevels", out var levelsObj)
             && levelsObj is int levels)
         {
             lock (_lock)

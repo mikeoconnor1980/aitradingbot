@@ -164,10 +164,10 @@ FUNCTION ProcessCandle(evaluation, context, gridState, position, config):
     gridState.FilledLevels = 0
 
     EMIT DeployGrid(
-        anchorPrice     = candle.Close,
-        gridLevels      = config.GridLevels,
-        gridSpacingPct  = config.GridSpacing,
-        notionalPerLevel = config.PositionSize
+        anchorPrice    = candle.Close,
+        gridLevels     = config.GridLevels,
+        gridSpacingPct = config.GridSpacing,
+        notionalUsd    = config.PositionSize
     )
 ```
 
@@ -183,7 +183,7 @@ FUNCTION DeployGrid(signal):
 
     FOR level = 1 TO signal.gridLevels:
         price = anchorPrice × (1 − (gridSpacing% / 100) × level)
-        size  = notionalPerLevel / price
+        size  = notionalUsd / price
 
         PLACE limit buy order at (price, size, type=GridFill)
 ```

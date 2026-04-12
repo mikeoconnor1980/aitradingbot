@@ -37,6 +37,7 @@ export class StrategyMapperService {
     const strategyMode = String(formValue["strategyMode"] ?? "grid");
     const isSignalMode = strategyMode === "signal" || this._isSignalTemplate(templateId);
     const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
+    const positionSizeType = (risk["positionSizeType"] as PositionSizeType | undefined) ?? "percent_wallet";
 
     return {
       schemaVersion: 1,
@@ -69,13 +70,15 @@ export class StrategyMapperService {
         exitOnOppositeSignal: !!exit["exitOnOppositeSignal"],
       },
       risk: {
-        positionSizeType: (risk["positionSizeType"] as PositionSizeType | undefined) ?? "percent_wallet",
+        positionSizeType,
         positionSizeValue: Number(risk["positionSizeValue"] ?? 0),
         leverage: Number(risk["leverage"] ?? 1),
         maxOpenTrades: Number(risk["maxOpenTrades"] ?? 1),
         cooldownValue: Number(risk["cooldownValue"] ?? 0),
         cooldownUnit: risk["cooldownUnit"] === "minutes" ? "minutes" : "candles",
         allowSameCandleReentry: !!risk["allowSameCandleReentry"],
+        riskPerTradePercent: positionSizeType === "risk_based" ? Number(risk["riskPerTradePercent"] ?? 1) : undefined,
+        autoLeverage: positionSizeType === "risk_based" ? Boolean(risk["autoLeverage"] ?? true) : undefined,
       },
       metadata: {
         tags: Array.isArray(metadata["tags"]) ? metadata["tags"].map((tag) => String(tag)) : [],

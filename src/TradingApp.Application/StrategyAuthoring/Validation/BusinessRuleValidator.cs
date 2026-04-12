@@ -114,7 +114,40 @@ public sealed class BusinessRuleValidator
 
     private static void ValidateRisk(RiskConfig risk, ValidationResult result)
     {
-        if (risk.PositionSizeValue <= 0)
+        if (risk.PositionSizeType == PositionSizeType.RiskBased)
+        {
+            if (!risk.RiskPerTradePercent.HasValue || risk.RiskPerTradePercent.Value <= 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "risk.riskPerTradePercent",
+                    Code = "RISK_PER_TRADE_REQUIRED",
+                    Message = "Risk per trade percent must be greater than 0 when using risk-based sizing.",
+                });
+            }
+            else if (risk.RiskPerTradePercent.Value > 100m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "risk.riskPerTradePercent",
+                    Code = "RISK_PER_TRADE_INVALID",
+                    Message = "Risk per trade percent must not exceed 100.",
+                });
+            }
+            else if (risk.RiskPerTradePercent.Value > 5m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Warning,
+                    FieldPath = "risk.riskPerTradePercent",
+                    Code = "RISK_PER_TRADE_HIGH",
+                    Message = "Risk per trade exceeds 5% - this is considered high risk.",
+                });
+            }
+        }
+        else if (risk.PositionSizeValue <= 0)
         {
             result.Add(new ValidationError
             {
@@ -133,6 +166,30 @@ public sealed class BusinessRuleValidator
                 FieldPath = "risk.leverage",
                 Code = "LEVERAGE_INVALID",
                 Message = "Leverage must be greater than or equal to 1.",
+            });
+        }
+
+        if (risk.AutoLeverage && risk.PositionSizeType != PositionSizeType.RiskBased)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Warning,
+                FieldPath = "risk.autoLeverage",
+                Code = "AUTO_LEVERAGE_IGNORED",
+                Message = "Auto-leverage is only effective with RiskBased position sizing. It will be ignored.",
+            });
+        }
+
+        if (risk.AutoLeverage
+            && risk.PositionSizeType == PositionSizeType.RiskBased
+            && risk.RiskPerTradePercent is null)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "risk.riskPerTradePercent",
+                Code = "RISK_PERCENT_REQUIRED_FOR_AUTO_LEVERAGE",
+                Message = "RiskPerTradePercent is required when AutoLeverage is enabled.",
             });
         }
 

@@ -51,8 +51,14 @@ public sealed class SignalController : ISignalController
         StrategyConfig config,
         string? reason)
     {
-        var notional = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity);
         var entryPrice = context.CurrentCandle.Close;
+        var stopLossPercent = config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            ? StopLossDistanceResolver.Resolve(
+                config.Exit.StopLoss,
+                context.Indicators?.Atr,
+                entryPrice)
+            : null;
+        var notional = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
         var size = entryPrice > 0m
             ? decimal.Round(notional / entryPrice, 8, MidpointRounding.AwayFromZero)
             : 0m;
@@ -73,7 +79,7 @@ public sealed class SignalController : ISignalController
                 {
                     ["entryPrice"] = entryPrice,
                     ["size"] = size,
-                    ["notional"] = notional,
+                    ["notionalUsd"] = notional,
                     ["orderType"] = OrderType.Market.ToString(),
                     ["gridCycleId"] = "signal"
                 }

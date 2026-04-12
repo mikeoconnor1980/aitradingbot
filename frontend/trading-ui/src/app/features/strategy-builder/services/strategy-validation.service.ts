@@ -72,12 +72,26 @@ export class StrategyValidationService {
     this._validateExitRule(stopLoss, "exit.stopLoss", "Stop loss", errors);
 
     if (risk !== null) {
+      const positionSizeType = String(risk["positionSizeType"] ?? "percent_wallet");
       const positionSizeValue = Number(risk["positionSizeValue"] ?? 0);
       const leverage = Number(risk["leverage"] ?? 0);
       const maxOpenTrades = Number(risk["maxOpenTrades"] ?? 0);
       const cooldownValue = Number(risk["cooldownValue"] ?? 0);
 
-      if (positionSizeValue < 0.01 || positionSizeValue > 100) {
+      if (positionSizeType === "risk_based") {
+        const riskPercent = Number(risk["riskPerTradePercent"] ?? 0);
+
+        if (riskPercent < 0.01 || riskPercent > 100) {
+          errors.push(this._error("risk.riskPerTradePercent", "RANGE", "Risk per trade must be between 0.01% and 100%."));
+        }
+
+        const stopLossEnabled = Boolean(stopLoss?.["enabled"] ?? false);
+        const stopLossType = String(stopLoss?.["type"] ?? "");
+
+        if (!stopLossEnabled || stopLossType !== "fixed_percent") {
+          errors.push(this._error("risk.positionSizeType", "SL_REQUIRED", "Risk-based sizing requires a fixed-percent stop-loss to be enabled."));
+        }
+      } else if (positionSizeValue < 0.01 || positionSizeValue > 100) {
         errors.push(this._error("risk.positionSizeValue", "RANGE", "Position size must be between 0.01 and 100."));
       }
 

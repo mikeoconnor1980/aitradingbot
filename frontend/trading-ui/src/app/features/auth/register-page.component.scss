@@ -95,6 +95,33 @@
     border-radius: 6px;
   }
 
+  &__divider {
+    display: flex;
+    align-items: center;
+    margin: 1.25rem 0;
+    gap: 0.75rem;
+
+    &::before,
+    &::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(121, 207, 195, 0.15);
+    }
+  }
+
+  &__divider-text {
+    color: var(--colour-muted, #7f9d99);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  &__google-btn {
+    display: flex;
+    justify-content: center;
+  }
+
   &__footer {
     text-align: center;
     margin: 1.5rem 0 0;

@@ -22,7 +22,7 @@
         <span>{{ order.status }}</span>
       </div>
     </div>
-    @if (order.triggerPrice != null) {
+    @if (order.triggerPrice !== null && order.triggerPrice !== undefined) {
       <div class="order-card__row">
         <div class="order-card__metric">
           <span class="order-card__label">Trigger</span>

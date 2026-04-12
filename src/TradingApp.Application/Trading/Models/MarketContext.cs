@@ -18,4 +18,5 @@ public sealed class MarketContext
     public IndicatorContext? IndicatorContext { get; init; }
     public LlmContext? LlmContext { get; init; }
     public decimal AccountEquity { get; set; }
+    public int? MaxLeverage { get; init; }
 }

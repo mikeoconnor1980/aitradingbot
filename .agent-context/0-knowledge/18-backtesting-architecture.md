@@ -138,6 +138,21 @@ Instead, a SimulatedExecutionEngine must:
 
 ---
 
+# Leverage and Liquidation Simulation
+
+When backtesting starts, `BacktestRunner` calls `executionEngine.SetMaxLeverage(symbol, fallbackMaxLeverage)` to initialize the engine with the asset's maximum allowable leverage.
+
+For each open position, `SimulatedExecutionEngine` computes a **liquidation price** based on leverage and the derived maintenance margin rate. Within each candle, the engine checks:
+
+1. **Stop-loss first** — SL trigger fires if the candle breaches the SL price
+2. **Liquidation fallback** — if SL did not fill (e.g., price gapped beyond SL to liquidation level), the position is force-closed at the liquidation price with `CancellationReason.LiquidationTriggered`
+
+Key methods: `TryProcessProtectionOrLiquidation`, `TryCreateLiquidationFill`, `IsLiquidationBreached`
+
+File: `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
+
+---
+
 # Fill Logic
 
 At minimum, a limit buy order fills when:
@@ -261,7 +276,7 @@ A sweep runs many backtests automatically and compares performance.
 |-----------|---------|------|
 | `BacktestRunner` | Orchestrates the full backtest: validation → data load → warmup → candle loop → metrics | `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` |
 | `CandleReplayEngine` | Loads and aligns historical candles from the database; resolves warmup boundary; provides `GetLatestClosedCandle` for HTF context | `src/TradingApp.Application/Backtesting/Services/CandleReplayEngine.cs` |
-| `SimulatedExecutionEngine` | Pure in-memory `IExecutionEngine`; accepts `OrderRequest`s, processes candles, simulates fills, tracks position and fees | `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
+| `SimulatedExecutionEngine` | Pure in-memory `IExecutionEngine`; accepts `OrderRequest`s, processes candles, simulates fills, tracks position and fees; computes liquidation prices, simulates liquidation triggers, force-closes gapped positions | `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
 | `BacktestMetricsCalculator` | Computes summary statistics from the trade log and equity curve | `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
 | `IBacktestRunner` | Public contract for the orchestrator | `src/TradingApp.Application/Abstractions/Services/IBacktestRunner.cs` |
 | `IExecutionEngine` | Execution boundary; `SimulatedExecutionEngine` (backtest) and a future `LiveExecutionEngine` both implement this | `src/TradingApp.Application/Abstractions/Services/IExecutionEngine.cs` |

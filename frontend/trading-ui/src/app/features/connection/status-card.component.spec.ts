@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
+import { provideRouter } from "@angular/router";
 import { BehaviorSubject } from "rxjs";
 import { ConnectionStatus } from "../../core/models/connection-status.model";
 import { HealthResponse } from "../../core/models/health-response.model";
@@ -43,6 +44,7 @@ describe("StatusCardComponent", () => {
     await TestBed.configureTestingModule({
       imports: [StatusCardComponent],
       providers: [
+        provideRouter([]),
         { provide: HealthService, useValue: healthServiceMock },
         { provide: SignalRService, useValue: signalRServiceMock }
       ]
