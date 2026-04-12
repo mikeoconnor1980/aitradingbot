@@ -22,11 +22,18 @@ export class SubscriptionService {
     return this._status$.value;
   }
 
+  private static readonly _noSubscription: SubscriptionStatusResponse = {
+    tier: null,
+    status: null,
+    expiresAtUtc: null,
+    isActive: false
+  };
+
   public loadStatus(): void {
     this._http
       .get<SubscriptionStatusResponse>(`${this._url}/status`)
-      .pipe(catchError(() => of(null)))
-      .subscribe((status) => this._status$.next(status));
+      .pipe(catchError(() => of(SubscriptionService._noSubscription)))
+      .subscribe((status) => this._status$.next(status ?? SubscriptionService._noSubscription));
   }
 
   public subscribeFreeTier(): Observable<{ id: string }> {
