@@ -37,7 +37,7 @@ export const routes: Routes = [
   {
     path: "market-data",
     loadComponent: () => import("./features/market-data/market-data.component").then((m) => m.MarketDataComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard],
     title: "Market Data"
   },
   {
