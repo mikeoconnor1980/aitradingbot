@@ -1,7 +1,8 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
-import { BehaviorSubject, Observable, tap, catchError, of } from "rxjs";
+import { BehaviorSubject, Observable, tap, catchError, of, timer, switchMap } from "rxjs";
 import { environment } from "../../../environments/environment";
+import { SKIP_ERROR_NOTIFICATION } from "../interceptors/http-context-tokens";
 
 export interface SubscriptionStatusResponse {
   tier: string | null;
@@ -30,10 +31,24 @@ export class SubscriptionService {
   };
 
   public loadStatus(): void {
-    this._http
-      .get<SubscriptionStatusResponse>(`${this._url}/status`)
-      .pipe(catchError(() => of(SubscriptionService._noSubscription)))
-      .subscribe((status) => this._status$.next(status ?? SubscriptionService._noSubscription));
+    this._fetchStatus().subscribe((status) =>  {
+      if (status.isActive) {
+        this._status$.next(status);
+      } else {
+        // Retry once after 1s — handles race where token isn't ready yet
+        timer(1000).pipe(
+          switchMap(() => this._fetchStatus())
+        ).subscribe((retryStatus) => this._status$.next(retryStatus));
+      }
+    });
+  }
+
+  private _fetchStatus(): Observable<SubscriptionStatusResponse> {
+    return this._http
+      .get<SubscriptionStatusResponse>(`${this._url}/status`, {
+        context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true)
+      })
+      .pipe(catchError(() => of(SubscriptionService._noSubscription)));
   }
 
   public subscribeFreeTier(): Observable<{ id: string }> {

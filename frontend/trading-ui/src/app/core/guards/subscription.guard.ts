@@ -2,9 +2,10 @@ import { inject } from "@angular/core";
 import { CanActivateFn, Router } from "@angular/router";
 import { SubscriptionService } from "../services/subscription.service";
 import { map, catchError, of } from "rxjs";
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpContext } from "@angular/common/http";
 import { environment } from "../../../environments/environment";
 import { SubscriptionStatusResponse } from "../services/subscription.service";
+import { SKIP_ERROR_NOTIFICATION } from "../interceptors/http-context-tokens";
 
 export const subscriptionGuard: CanActivateFn = () => {
   const subscriptionService = inject(SubscriptionService);
@@ -17,7 +18,9 @@ export const subscriptionGuard: CanActivateFn = () => {
     return cached.isActive ? true : denyTree;
   }
 
-  return http.get<SubscriptionStatusResponse>(`${environment.apiBaseUrl}/subscriptions/status`).pipe(
+  return http.get<SubscriptionStatusResponse>(`${environment.apiBaseUrl}/subscriptions/status`, {
+    context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true)
+  }).pipe(
     map((status) => {
       subscriptionService.setStatus(status);
       return status.isActive ? true : denyTree;
