@@ -30,6 +30,15 @@
           <span class="account-summary__label">Cross Margin Ratio</span>
           <app-margin-ratio-indicator [ratio]="summary.crossMarginRatio" />
         </div>
+        @if (portfolioHeat) {
+          <div class="account-summary__metric">
+            <span class="account-summary__label">Portfolio Heat</span>
+            <app-portfolio-heat-indicator
+              [heatPercent]="portfolioHeat.heatPercent"
+              [maxHeatPercent]="portfolioHeat.maxHeatPercent"
+              [positions]="portfolioHeat.positions"></app-portfolio-heat-indicator>
+          </div>
+        }
         <div class="account-summary__metric">
           <span class="account-summary__label">Maintenance Margin</span>
           <span class="account-summary__value">{{ summary.maintenanceMargin | number: "1.2-2" }}</span>

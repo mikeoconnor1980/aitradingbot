@@ -1,0 +1,20 @@
+<div
+  class="portfolio-heat"
+  [class.portfolio-heat--critical]="isCritical"
+  [matTooltip]="tooltipText"
+  matTooltipClass="portfolio-heat__tooltip">
+  <div class="portfolio-heat__bar-container">
+    <mat-progress-bar mode="determinate" [value]="barValue" [class]="'portfolio-heat__bar portfolio-heat__bar--' + threshold.cssClass">
+    </mat-progress-bar>
+  </div>
+  <span class="portfolio-heat__value">
+    @if (maxHeatPercent > 0) {
+      {{ heatPercent | number: "1.1-1" }}%
+    } @else {
+      Disabled
+    }
+  </span>
+  @if (isCritical) {
+    <mat-icon class="portfolio-heat__warning-icon">warning</mat-icon>
+  }
+</div>

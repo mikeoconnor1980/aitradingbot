@@ -1,8 +1,9 @@
+---
 applyTo: ".agent-context/3-develop/build/changes/20260412-portfolio-heat-enforcement-changes.md"
-currentAgent: "Plan Implementer"
+currentAgent: "None"
 agentStartedAt: "2026-04-12T13:29:21Z"
-status: "in-progress"
-lastUpdated: "2026-04-12T13:29:21Z"
+status: "implemented"
+lastUpdated: "2026-04-12T15:23:42Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -63,111 +64,111 @@ Enforce a maximum portfolio-wide risk exposure (portfolio heat) to prevent catas
 - `frontend/trading-ui/src/app/features/dashboard/account-summary/margin-ratio-indicator/` — Threshold indicator pattern (TS + HTML + SCSS)
 - `frontend/trading-ui/src/app/core/services/hyperliquid-api.service.ts` — API service GET pattern
 
-### [ ] Phase 1: Configuration + Heat Calculation Core
+### [x] Phase 1: Configuration + Heat Calculation Core
 
 **Complexity**: Low | **Risk**: Low
 
-- [ ] Task 1.1: Add `MaxPortfolioHeatPercent` to `RiskLimitsConfig`
+- [x] Task 1.1: Add `MaxPortfolioHeatPercent` to `RiskLimitsConfig`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-01-details.md#task-11-add-maxportfolioheatpercent-to-risklimitsconfig
 
-- [ ] Task 1.2: Create `PortfolioHeatEntry` model and `PortfolioHeatResult` model
+- [x] Task 1.2: Create `PortfolioHeatEntry` model and `PortfolioHeatResult` model
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-01-details.md#task-12-create-portfolioheatentry-and-portfolioheatresult-models
 
-- [ ] Task 1.3: Create `PortfolioHeatCalculator` static class
+- [x] Task 1.3: Create `PortfolioHeatCalculator` static class
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-01-details.md#task-13-create-portfolioheatcalculator-static-class
 
-- [ ] Task 1.4: Update `appsettings.json` with `RiskLimits` section
+- [x] Task 1.4: Update `appsettings.json` with `RiskLimits` section
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-01-details.md#task-14-update-appssettingsjson-with-risklimits-section
 
-- [ ] Task 1.5: Unit tests for `PortfolioHeatCalculator`
+- [x] Task 1.5: Unit tests for `PortfolioHeatCalculator`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-01-details.md#task-15-unit-tests-for-portfolioheatcalculator
 
-- [ ] Task 1.6: Build verification
+- [x] Task 1.6: Build verification
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-01-details.md#task-16-build-verification
 
-### [ ] Phase 2: LiveRiskEngine Heat Enforcement
+### [x] Phase 2: LiveRiskEngine Heat Enforcement
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 2.1: Add position/equity tracking methods to `IRiskEngine`
+- [x] Task 2.1: Add position/equity tracking methods to `IRiskEngine`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-21-add-positionequity-tracking-methods-to-iriskengine
 
-- [ ] Task 2.2: Implement heat tracking state in `LiveRiskEngine`
+- [x] Task 2.2: Implement heat tracking state in `LiveRiskEngine`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-22-implement-heat-tracking-state-in-liveriskengine
 
-- [ ] Task 2.3: Add `CheckPortfolioHeat` to `ValidateAsync` pipeline
+- [x] Task 2.3: Add `CheckPortfolioHeat` to `ValidateAsync` pipeline
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-23-add-checkportfolioheat-to-validateasync-pipeline
 
-- [ ] Task 2.4: Add `estimatedRiskUsd` to signal parameters in `GridController`
+- [x] Task 2.4: Add `estimatedRiskUsd` to signal parameters in `GridController`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-24-add-estimatedriskusd-to-signal-parameters-in-gridcontroller
 
-- [ ] Task 2.5: Wire `StrategyScheduler` to call `UpdatePortfolioState`
+- [x] Task 2.5: Wire `StrategyScheduler` to call `UpdatePortfolioState`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-25-wire-strategyscheduler-to-call-updateportfoliostate
 
-- [ ] Task 2.6: Wire `FillProcessor` to call `RecordPositionClosed`
+- [x] Task 2.6: Wire `FillProcessor` to call `RecordPositionClosed`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-26-wire-fillprocessor-to-call-recordpositionclosed
 
-- [ ] Task 2.7: Unit tests for heat enforcement in `LiveRiskEngineTests`
+- [x] Task 2.7: Unit tests for heat enforcement in `LiveRiskEngineTests`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-27-unit-tests-for-heat-enforcement
 
-- [ ] Task 2.8: Build + existing test verification
+- [x] Task 2.8: Build + existing test verification
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-02-details.md#task-28-build-and-existing-test-verification
 
-### [ ] Phase 3: API Endpoint
+### [x] Phase 3: API Endpoint
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 3.1: Create `PortfolioHeatResponse` DTO
+- [x] Task 3.1: Create `PortfolioHeatResponse` DTO
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-03-details.md#task-31-create-portfolioheatresponse-dto
 
-- [ ] Task 3.2: Create `RiskController` with `GET /api/risk/portfolio-heat`
+- [x] Task 3.2: Create `RiskController` with `GET /api/risk/portfolio-heat`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-03-details.md#task-32-create-riskcontroller
 
-- [ ] Task 3.3: Register `RiskLimitsConfig` in API `Program.cs`
+- [x] Task 3.3: Register `RiskLimitsConfig` in API `Program.cs`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-03-details.md#task-33-register-risklimitsconfig-in-api-programcs
 
-- [ ] Task 3.4: Controller integration tests
+- [x] Task 3.4: Controller integration tests
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-03-details.md#task-34-controller-integration-tests
 
-- [ ] Task 3.5: Build + test verification
+- [x] Task 3.5: Build + test verification
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-03-details.md#task-35-build-and-test-verification
 
-### [ ] Phase 4: Frontend Dashboard
+### [x] Phase 4: Frontend Dashboard
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 4.1: Create `PortfolioHeatDto` TypeScript interface
+- [x] Task 4.1: Create `PortfolioHeatDto` TypeScript interface
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-04-details.md#task-41-create-portfolioheatdto-typescript-interface
 
-- [ ] Task 4.2: Add `getPortfolioHeat()` to `HyperliquidApiService`
+- [x] Task 4.2: Add `getPortfolioHeat()` to `HyperliquidApiService`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-04-details.md#task-42-add-getportfolioheat-to-hyperliquidapiservice
 
-- [ ] Task 4.3: Create `PortfolioHeatIndicatorComponent`
+- [x] Task 4.3: Create `PortfolioHeatIndicatorComponent`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-04-details.md#task-43-create-portfolioheatindicatorcomponent
 
-- [ ] Task 4.4: Integrate into `AccountSummaryComponent`
+- [x] Task 4.4: Integrate into `AccountSummaryComponent`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-04-details.md#task-44-integrate-into-accountsummarycomponent
 
-- [ ] Task 4.5: Frontend build + lint verification
+- [x] Task 4.5: Frontend build + lint verification
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-04-details.md#task-45-frontend-build-and-lint-verification
 
-### [ ] Phase 5: Backtest Heat Enforcement
+### [x] Phase 5: Backtest Heat Enforcement
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 5.1: Create `BacktestRiskEngine` with heat checking
+- [x] Task 5.1: Create `BacktestRiskEngine` with heat checking
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-05-details.md#task-51-create-backtestriskengine
 
-- [ ] Task 5.2: Register `BacktestRiskEngine` for backtest runs
+- [x] Task 5.2: Register `BacktestRiskEngine` for backtest runs
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-05-details.md#task-52-register-backtestriskengine-for-backtest-runs
 
-- [ ] Task 5.3: Add `HeatBlockedSignalCount` to `BacktestResult`
+- [x] Task 5.3: Add `HeatBlockedSignalCount` to `BacktestResult`
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-05-details.md#task-53-add-heatblockedsignalcount-to-backtestresult
 
-- [ ] Task 5.4: Unit tests for backtest heat enforcement
+- [x] Task 5.4: Unit tests for backtest heat enforcement
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-05-details.md#task-54-unit-tests-for-backtest-heat-enforcement
 
-- [ ] Task 5.5: Build + test verification
+- [x] Task 5.5: Build + test verification
   - Details: .agent-context/3-develop/build/plans/details/20260412-portfolio-heat-enforcement-phase-05-details.md#task-55-build-and-test-verification
 
 ## Scoping Summary
@@ -213,4 +214,4 @@ Enforce a maximum portfolio-wide risk exposure (portfolio heat) to prevent catas
 | Agent | Status | Started | Completed |
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-04-12T07:00:00Z | 2026-04-12T13:06:32Z |
-| Plan Implementer | in-progress | 2026-04-12T13:29:21Z | - |
+| Plan Implementer | implemented | 2026-04-12T13:29:21Z | 2026-04-12T15:23:42Z |

@@ -18,9 +18,11 @@ public sealed class LiveRiskEngine : IRiskEngine
     private readonly ILogger<LiveRiskEngine> _logger;
 
     private readonly ConcurrentQueue<LossRecord> _recentLosses = new();
+    private readonly ConcurrentDictionary<string, decimal> _positionRisks = new(StringComparer.OrdinalIgnoreCase);
     private volatile bool _circuitBreakerTripped;
     private DateTimeOffset _circuitBreakerTrippedAt;
     private int _activeOrderCount;
+    private decimal _accountEquity;
     private readonly object _lock = new();
 
     public LiveRiskEngine(
@@ -35,6 +37,13 @@ public sealed class LiveRiskEngine : IRiskEngine
     internal int ActiveOrderCount
     {
         get { lock (_lock) return _activeOrderCount; }
+    }
+
+    internal int TrackedPositionCount => _positionRisks.Count;
+
+    internal decimal TrackedEquity
+    {
+        get { lock (_lock) return _accountEquity; }
     }
 
     /// <summary>Whether the circuit breaker is currently tripped.</summary>
@@ -63,6 +72,7 @@ public sealed class LiveRiskEngine : IRiskEngine
             if (IsRiskReducing(signal))
             {
                 approved.Add(signal);
+                TrackPositionCloseFromSignal(signal);
                 continue;
             }
 
@@ -86,7 +96,13 @@ public sealed class LiveRiskEngine : IRiskEngine
                 continue;
             }
 
+            if (!CheckPortfolioHeat(signal))
+            {
+                continue;
+            }
+
             approved.Add(signal);
+            TrackPositionOpenFromSignal(signal);
         }
 
         _logger.LogInformation(
@@ -153,6 +169,51 @@ public sealed class LiveRiskEngine : IRiskEngine
         _logger.LogWarning("RISK: Circuit breaker manually reset.");
     }
 
+    /// <summary>
+    /// Update the engine's knowledge of current account equity.
+    /// Called before validation so portfolio heat checks can be evaluated.
+    /// </summary>
+    public void UpdatePortfolioState(decimal accountEquity)
+    {
+        lock (_lock)
+        {
+            _accountEquity = Math.Max(0m, accountEquity);
+        }
+    }
+
+    /// <summary>
+    /// Record that a position was opened with the given risk amount.
+    /// </summary>
+    public void RecordPositionOpened(string symbol, decimal riskUsd)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
+        if (riskUsd <= 0m)
+        {
+            return;
+        }
+
+        _positionRisks[symbol] = riskUsd;
+        _logger.LogInformation(
+            "RISK: Position opened - Symbol={Symbol}, RiskUsd={RiskUsd:N2}, TrackedPositions={TrackedPositions}",
+            symbol, riskUsd, _positionRisks.Count);
+    }
+
+    /// <summary>
+    /// Record that a position was fully closed.
+    /// </summary>
+    public void RecordPositionClosed(string symbol)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
+        if (_positionRisks.TryRemove(symbol, out var removedRisk))
+        {
+            _logger.LogInformation(
+                "RISK: Position closed - Symbol={Symbol}, RemovedRiskUsd={RemovedRiskUsd:N2}, TrackedPositions={TrackedPositions}",
+                symbol, removedRisk, _positionRisks.Count);
+        }
+    }
+
     internal decimal GetRollingDailyLoss()
     {
         PruneOldLosses();
@@ -168,6 +229,41 @@ public sealed class LiveRiskEngine : IRiskEngine
     private static bool IsRiskReducing(TradingSignal signal)
     {
         return signal.SignalType is "TakeProfit" or "CancelGrid" or "FlattenPosition" or "CloseHedge";
+    }
+
+    private bool CheckPortfolioHeat(TradingSignal signal)
+    {
+        decimal equity;
+        lock (_lock)
+        {
+            equity = _accountEquity;
+        }
+
+        if (_limits.MaxPortfolioHeatPercent <= 0m || equity <= 0m)
+        {
+            return true;
+        }
+
+        if (!TryGetEstimatedRisk(signal, out var newTradeRiskUsd))
+        {
+            return true;
+        }
+
+        var currentHeatUsd = _positionRisks.Values.Sum();
+        var maxHeatUsd = equity * (_limits.MaxPortfolioHeatPercent / 100m);
+
+        if (currentHeatUsd + newTradeRiskUsd <= maxHeatUsd)
+        {
+            return true;
+        }
+
+        var currentHeatPct = PortfolioHeatCalculator.CalculateHeatPercent(_positionRisks.Values, equity);
+        var newTradePct = (newTradeRiskUsd / equity) * 100m;
+
+        _logger.LogWarning(
+            "RISK: Signal BLOCKED by portfolio heat - CurrentHeat={CurrentHeatPct:N2}%, NewTrade={NewTradePct:N2}%, MaxHeat={MaxHeatPct:N2}%, Type={SignalType}, Symbol={Symbol}",
+            currentHeatPct, newTradePct, _limits.MaxPortfolioHeatPercent, signal.SignalType, signal.Symbol);
+        return false;
     }
 
     private bool CheckOrderSize(TradingSignal signal)
@@ -206,6 +302,36 @@ public sealed class LiveRiskEngine : IRiskEngine
         }
 
         return true;
+    }
+
+    private static bool TryGetEstimatedRisk(TradingSignal signal, out decimal riskUsd)
+    {
+        riskUsd = 0m;
+
+        if (signal.Parameters is null
+            || !signal.Parameters.TryGetValue("estimatedRiskUsd", out var estimatedRisk))
+        {
+            return false;
+        }
+
+        riskUsd = Convert.ToDecimal(estimatedRisk);
+        return riskUsd > 0m;
+    }
+
+    private void TrackPositionOpenFromSignal(TradingSignal signal)
+    {
+        if (TryGetEstimatedRisk(signal, out var riskUsd))
+        {
+            RecordPositionOpened(signal.Symbol, riskUsd);
+        }
+    }
+
+    private void TrackPositionCloseFromSignal(TradingSignal signal)
+    {
+        if (signal.SignalType is "FlattenPosition" or "CloseHedge")
+        {
+            RecordPositionClosed(signal.Symbol);
+        }
     }
 
     private void CheckCircuitBreakerReset()

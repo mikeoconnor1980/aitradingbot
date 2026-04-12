@@ -26,6 +26,7 @@ using TradingApp.Application.MarketData.Queries;
 using TradingApp.Application.Optimization;
 using TradingApp.Application.Optimization.Services;
 using TradingApp.Application.Scheduling;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
@@ -116,6 +117,11 @@ builder.Services.AddOptions<MacroCalendarOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<RiskLimitsConfig>()
+    .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // The control plane does not hold private keys.
 // Wallet addresses are stored in the database; private keys live only on the execution agent (Worker).
 var signerProvider = new MutableSignerProvider(
@@ -182,7 +188,7 @@ builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();
 builder.Services.AddScoped<IGridController, GridController>();
 builder.Services.AddScoped<ISignalController, SignalController>();
-builder.Services.AddScoped<IRiskEngine, PassThroughRiskEngine>();
+builder.Services.AddScoped<IRiskEngine, BacktestRiskEngine>();
 builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
 builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
 builder.Services.AddScoped<IStrategyConfigGenerator, StrategyConfigGenerator>();

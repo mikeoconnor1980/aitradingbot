@@ -264,6 +264,9 @@ public sealed class BacktestRunner : IBacktestRunner
                 GridCycles = metrics.GridCycles,
                 CandlesReplayed = metrics.CandlesReplayed,
                 FinalEquity = metrics.FinalEquity,
+                HeatBlockedSignalCount = _riskEngine is BacktestRiskEngine backtestRiskEngine
+                    ? backtestRiskEngine.HeatBlockedSignalCount
+                    : 0,
                 EquityTimeSeries = metrics.EquityTimeSeries,
                 TradeLog = metrics.TradeLog,
                 CandleEvaluationLog = auditCollector?.CandleEvaluations,

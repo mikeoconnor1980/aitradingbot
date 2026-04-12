@@ -6,11 +6,21 @@ import { MatIconModule } from "@angular/material/icon";
 import { LayoutService } from "../../../core/services/layout.service";
 import { AccountSummary } from "../../../core/models/account-summary.model";
 import { MarginRatioIndicatorComponent } from "./margin-ratio-indicator/margin-ratio-indicator.component";
+import { PortfolioHeat } from "../../../core/models/portfolio-heat.model";
+import { PortfolioHeatIndicatorComponent } from "./portfolio-heat-indicator/portfolio-heat-indicator.component";
 
 @Component({
   selector: "app-account-summary",
   standalone: true,
-  imports: [DecimalPipe, NgClass, MatButtonModule, MatCardModule, MatIconModule, MarginRatioIndicatorComponent],
+  imports: [
+    DecimalPipe,
+    NgClass,
+    MatButtonModule,
+    MatCardModule,
+    MatIconModule,
+    MarginRatioIndicatorComponent,
+    PortfolioHeatIndicatorComponent
+  ],
   templateUrl: "./account-summary.component.html",
   styleUrl: "./account-summary.component.scss"
 })
@@ -22,6 +32,9 @@ export class AccountSummaryComponent {
 
   @Input({ required: true })
   public summary!: AccountSummary;
+
+  @Input()
+  public portfolioHeat: PortfolioHeat | null = null;
 
   public get pnlClass(): string {
     return this.summary.unrealisedPnl >= 0 ? "pnl--profit" : "pnl--loss";

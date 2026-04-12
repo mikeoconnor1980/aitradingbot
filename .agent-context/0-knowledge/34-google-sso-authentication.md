@@ -117,7 +117,7 @@ export const environment = {
 4. Name: `TradePilot Web` (or any name)
 5. **Authorized JavaScript origins**:
    - `http://localhost:4200` (Angular dev server)
-   - Add production URL later (e.g., `https://yourdomain.com`)
+   - `https://gentle-river-027f7d003.6.azurestaticapps.net` (Azure Static Web Apps production)
 6. **Authorized redirect URIs**: leave empty (GIS popup flow doesn't use redirects)
 7. Click **Create**
 8. Copy the **Client ID** (format: `xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com`)
@@ -176,7 +176,7 @@ dotnet ef database update --project src/TradingApp.Persistence --startup-project
 ## Production Deployment
 
 For production:
-1. Add production domain to **Authorized JavaScript origins** in Google Cloud Console
+1. Add `https://gentle-river-027f7d003.6.azurestaticapps.net` to **Authorized JavaScript origins** in Google Cloud Console
 2. Set `Google:ClientId` in production `appsettings.json` (or via environment variable / Key Vault)
 3. Set `googleClientId` in `environment.prod.ts`
 4. Publish the OAuth consent screen (move from Testing to Published status in Google Cloud Console)
@@ -188,3 +188,8 @@ The `AuthProvider` + `ExternalProviderId` pattern supports additional providers 
 2. Add a new endpoint (e.g., `POST /api/auth/github`)
 3. Add frontend button + SDK integration
 4. No database migration needed — reuses the same columns
+
+
+### Credentials 
+- Client Id: 894614860421-8o8t4h5oc7baj3he9adtl4p5jroomho5.apps.googleusercontent.com
+- CLient Secret: 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

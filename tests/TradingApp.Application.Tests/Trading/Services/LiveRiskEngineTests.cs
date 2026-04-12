@@ -21,6 +21,7 @@ public sealed class LiveRiskEngineTests
             MaxOpenOrders = 10,
             MaxOrderSizeUsd = 5_000m,
             CircuitBreakerCooldownMinutes = 60,
+            MaxPortfolioHeatPercent = 6m,
         };
 
         _sut = new LiveRiskEngine(
@@ -237,6 +238,192 @@ public sealed class LiveRiskEngineTests
         _sut.ResetCircuitBreaker();
 
         _sut.IsCircuitBreakerTripped.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public void GivenPortfolioStateUpdate_WhenCalled_ThenTracksEquity()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+
+        _sut.TrackedEquity.Should().Be(10_000m);
+    }
+
+    [TestMethod]
+    public void GivenPositionLifecycleUpdates_WhenCalled_ThenTracksPositions()
+    {
+        _sut.RecordPositionOpened("BTC-PERP", 100m);
+        _sut.RecordPositionOpened("ETH-PERP", 50m);
+
+        _sut.TrackedPositionCount.Should().Be(2);
+
+        _sut.RecordPositionClosed("BTC-PERP");
+
+        _sut.TrackedPositionCount.Should().Be(1);
+    }
+
+    [TestMethod]
+    public async Task GivenHeatBelowLimit_WhenEntrySignalValidated_ThenAllowed()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("ETH-PERP", 500m);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["gridLevels"] = 3,
+                    ["estimatedRiskUsd"] = 100m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
+        _sut.TrackedPositionCount.Should().Be(2);
+    }
+
+    [TestMethod]
+    public async Task GivenHeatAboveLimit_WhenEntrySignalValidated_ThenBlocked()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("ETH-PERP", 600m);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["gridLevels"] = 2,
+                    ["estimatedRiskUsd"] = 100m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().BeEmpty();
+        _sut.TrackedPositionCount.Should().Be(1);
+    }
+
+    [TestMethod]
+    public async Task GivenHeatAtLimit_WhenRiskReducingSignalValidated_ThenAllowed()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("BTC-PERP", 600m);
+
+        var signals = new List<TradingSignal>
+        {
+            new() { SignalType = "TakeProfit", Symbol = "BTC-PERP" }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
+    }
+
+    [TestMethod]
+    public async Task GivenHeatLimitDisabled_WhenEntrySignalValidated_ThenAllowed()
+    {
+        _limits = _limits with { MaxPortfolioHeatPercent = 0m };
+        _sut = new LiveRiskEngine(
+            Options.Create(_limits),
+            new Mock<ILogger<LiveRiskEngine>>().Object);
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("ETH-PERP", 600m);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["gridLevels"] = 2,
+                    ["estimatedRiskUsd"] = 200m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
+    }
+
+    [TestMethod]
+    public async Task GivenPositionClosed_WhenHeatRechecked_ThenEntryAllowed()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("ETH-PERP", 600m);
+        _sut.RecordPositionClosed("ETH-PERP");
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["gridLevels"] = 2,
+                    ["estimatedRiskUsd"] = 100m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
+    }
+
+    [TestMethod]
+    public async Task GivenFlattenPositionSignal_WhenValidated_ThenTrackedRiskRemoved()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("BTC-PERP", 100m);
+
+        var signals = new List<TradingSignal>
+        {
+            new() { SignalType = "FlattenPosition", Symbol = "BTC-PERP" }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
+        _sut.TrackedPositionCount.Should().Be(0);
+    }
+
+    [TestMethod]
+    public async Task GivenSignalWithoutEstimatedRisk_WhenHeatChecked_ThenAllowed()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.RecordPositionOpened("ETH-PERP", 600m);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "OpenPosition",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object>
+                {
+                    ["entryPrice"] = 50_000m,
+                    ["size"] = 0.1m,
+                }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().HaveCount(1);
     }
 
     [TestMethod]
