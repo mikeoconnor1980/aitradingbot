@@ -140,6 +140,14 @@ public sealed class HyperliquidExecutionEngine : IExecutionEngine
         await _orderService.ModifyTriggerOrderAsync(orderId, asset, side, triggerPrice, size, tpslType, cancellationToken);
     }
 
+    public Task SetLeverageAsync(string asset, int leverage, bool isIsolated, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(asset);
+        ArgumentOutOfRangeException.ThrowIfLessThan(leverage, 1);
+
+        return _orderService.UpdateLeverageAsync(asset, leverage, isCross: !isIsolated, cancellationToken);
+    }
+
     private static string MapSide(OrderSide side) => side switch
     {
         OrderSide.Buy => "buy",

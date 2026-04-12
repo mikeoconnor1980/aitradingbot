@@ -6,6 +6,7 @@ import { AccountSummary } from "../models/account-summary.model";
 import { FillEvent } from "../models/fill-event.model";
 import { HealthResponse } from "../models/health-response.model";
 import { OpenOrder } from "../models/open-order.model";
+import { PortfolioHeat } from "../models/portfolio-heat.model";
 import { Position } from "../models/position.model";
 
 @Injectable({ providedIn: "root" })
@@ -27,6 +28,10 @@ export class HyperliquidApiService {
 
   public getOpenOrders(context?: HttpContext): Observable<OpenOrder[]> {
     return this._http.get<OpenOrder[]>(`${this._baseUrl}/account/orders`, context ? { context } : undefined);
+  }
+
+  public getPortfolioHeat(context?: HttpContext): Observable<PortfolioHeat> {
+    return this._http.get<PortfolioHeat>(`${this._baseUrl}/risk/portfolio-heat`, context ? { context } : undefined);
   }
 
   public getRecentFills(asset?: string): Observable<FillEvent[]> {

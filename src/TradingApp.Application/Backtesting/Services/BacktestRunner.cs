@@ -72,6 +72,7 @@ public sealed class BacktestRunner : IBacktestRunner
             ? auditCollector
             : NullBacktestAuditCollector.Instance;
         var executionEngine = new SimulatedExecutionEngine(config.Execution.FeeModel);
+        executionEngine.SetMaxLeverage(config.Symbol, LeverageCalculator.FallbackMaxLeverage);
         var replayEngine = new CandleReplayEngine(_candleRepository);
         var candleClock = new CandleClock();
         var metricsCalculator = new BacktestMetricsCalculator();
@@ -263,6 +264,9 @@ public sealed class BacktestRunner : IBacktestRunner
                 GridCycles = metrics.GridCycles,
                 CandlesReplayed = metrics.CandlesReplayed,
                 FinalEquity = metrics.FinalEquity,
+                HeatBlockedSignalCount = _riskEngine is BacktestRiskEngine backtestRiskEngine
+                    ? backtestRiskEngine.HeatBlockedSignalCount
+                    : 0,
                 EquityTimeSeries = metrics.EquityTimeSeries,
                 TradeLog = metrics.TradeLog,
                 CandleEvaluationLog = auditCollector?.CandleEvaluations,
@@ -583,6 +587,11 @@ public sealed class BacktestRunner : IBacktestRunner
         {
             trackingState.ExitReason = "TakeProfit";
             trackingState.TakeProfitPrice = fill.FillPrice;
+        }
+        else if (fill.CloseReason == CancellationReason.LiquidationTriggered)
+        {
+            trackingState.ExitReason = "Liquidation";
+            trackingState.StopLossPrice = fill.FillPrice;
         }
         else if (fill.CloseReason == CancellationReason.StopLossTriggered)
         {

@@ -15,5 +15,7 @@ public sealed class SimulatedOrder
     public required TradeType TradeType { get; init; }
     public string? GridCycleId { get; init; }
     public CancellationReason? CloseReason { get; init; }
+    public decimal? TriggerPrice { get; init; }
+    public string? TriggerType { get; init; }
     public long PlacedAtUtc { get; init; }
 }

@@ -141,12 +141,16 @@ Contains `TakeProfit` and `StopLoss`, each an `ExitRuleConfig` with nullable `Va
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `positionSizeType` | `PositionSizeType` enum | How size is calculated |
-| `positionSizeValue` | `decimal` | Size value (e.g. 10 = 10% of equity) |
-| `leverage` | `decimal` | Leverage multiplier (≥ 1, default 1) |
+| `positionSizeType` | `PositionSizeType` enum | How size is calculated: `percent_wallet`, `fixed_notional`, or `risk_based` |
+| `positionSizeValue` | `decimal` | Size value (e.g. 10 = 10% of equity); unused for `risk_based` |
+| `riskPerTradePercent` | `decimal?` | Percent of equity to risk per trade (required for `risk_based`; e.g. 1.0 = 1%) |
+| `leverage` | `decimal` | Leverage multiplier (≥ 1, default 1); ignored when `autoLeverage = true` |
+| `autoLeverage` | `bool` | When true, leverage auto-derived from SL distance; only effective with `risk_based` |
 | `maxOpenTrades` | `int` | Max concurrent positions |
 | `cooldownValue` / `cooldownUnit` | `int` / `CooldownUnit` enum | Post-trade cooldown |
 | `allowSameCandleReentry` | `bool` | Whether same-candle re-entry is permitted |
+
+`RiskBased` sizing: `R = equity × riskPerTradePercent / 100`; `notional = R / (stopLossPercent / 100)`. For grids, total notional is divided by grid levels. Requires stop-loss to be configured. See [33-risk-management-and-trade-sizing.md](33-risk-management-and-trade-sizing.md) for full details.
 
 ### TrendFilterConfig
 

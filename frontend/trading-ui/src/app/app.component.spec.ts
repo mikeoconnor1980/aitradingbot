@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { provideHttpClient } from "@angular/common/http";
+import { signal } from "@angular/core";
 import { provideRouter } from "@angular/router";
 import { of } from "rxjs";
 import { AppComponent } from "./app.component";
@@ -10,6 +11,7 @@ import { HealthService } from "./core/services/health.service";
 import { ProfileService, UserProfile } from "./core/services/profile.service";
 import { AuthService } from "./core/services/auth.service";
 import { SignalRService } from "./core/services/signalr.service";
+import { LayoutService } from "./core/services/layout.service";
 
 const signalRServiceMock: Pick<SignalRService, "connectionStatus$"> = {
   connectionStatus$: of({
@@ -38,12 +40,16 @@ const profileServiceMock: Pick<ProfileService, "profile$" | "load"> = {
     preferredNetwork: "testnet",
     llmModels: { strategy: "gemini-2.5-flash-lite", review: "gemini-2.5-flash" }
   } as UserProfile),
-  load: () => {}
+  load: (): undefined => undefined
 };
 
 const authServiceMock = {
   user$: of({ displayName: "Test", email: "test@test.com" }),
   isAuthenticated$: of(true)
+};
+
+const layoutServiceMock: Pick<LayoutService, "isMobile"> = {
+  isMobile: signal(false)
 };
 
 describe("AppComponent", () => {
@@ -60,7 +66,8 @@ describe("AppComponent", () => {
         { provide: SignalRService, useValue: signalRServiceMock },
         { provide: HealthService, useValue: healthServiceMock },
         { provide: ProfileService, useValue: profileServiceMock },
-        { provide: AuthService, useValue: authServiceMock }
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: LayoutService, useValue: layoutServiceMock }
       ]
     }).compileComponents();
 
@@ -82,22 +89,30 @@ describe("AppComponent", () => {
     expect(compiled.querySelector("h1")?.textContent).toContain("TradePilot");
   });
 
-  it("should not have a Connection nav link", () => {
+  it("should not have a Connection nav link", async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".app-shell__link")) as HTMLAnchorElement[];
-    const linkTexts = navLinks.map((link: HTMLAnchorElement) => link.textContent?.trim() ?? "");
+    const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".sidebar__nav .sidebar__link")) as HTMLAnchorElement[];
+    const linkTexts = navLinks.map((link: HTMLAnchorElement) =>
+      (link.querySelector(".sidebar__label")?.textContent ?? "").trim()
+    );
 
     expect(linkTexts).not.toContain("Connection");
   });
 
-  it("should have exactly 6 nav links including Optimizer and Strategies", () => {
+  it("should have exactly 9 sidebar nav links including Optimizer and Strategies", async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
-    const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".app-shell__link")) as HTMLAnchorElement[];
-    const linkTexts = navLinks.map((link: HTMLAnchorElement) => link.textContent?.trim() ?? "");
+    const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".sidebar__nav .sidebar__link")) as HTMLAnchorElement[];
+    const linkTexts = navLinks.map((link: HTMLAnchorElement) =>
+      (link.querySelector(".sidebar__label")?.textContent ?? "").trim()
+    );
 
-    expect(navLinks.length).toBe(6);
+    expect(navLinks.length).toBe(9);
     expect(linkTexts).toContain("Optimizer");
     expect(linkTexts).toContain("Strategies");
   });
@@ -111,11 +126,14 @@ describe("AppComponent", () => {
     expect(pill.getAttribute("href") ?? "").toContain("/connection");
   });
 
-  it("should show the testnet label when the wallet health is connected to testnet", () => {
+  it("should show the testnet label when the preferred network is testnet", async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const badge = fixture.nativeElement.querySelector(".app-shell__network-badge") as HTMLElement;
 
+    expect(badge).toBeTruthy();
     expect(badge.textContent?.trim()).toBe("Testnet");
   });
 });

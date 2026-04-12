@@ -17,7 +17,7 @@ namespace TradingApp.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.12")
+                .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -914,6 +914,10 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AuthProvider")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<long>("CreatedAtUtc")
                         .HasColumnType("bigint");
 
@@ -927,11 +931,14 @@ namespace TradingApp.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("ExternalProviderId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PreferredNetwork")
@@ -946,6 +953,11 @@ namespace TradingApp.Persistence.Migrations
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("IX_Users_Email");
+
+                    b.HasIndex("AuthProvider", "ExternalProviderId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_ExternalProvider")
+                        .HasFilter("[AuthProvider] IS NOT NULL AND [ExternalProviderId] IS NOT NULL");
 
                     b.ToTable("Users", (string)null);
                 });

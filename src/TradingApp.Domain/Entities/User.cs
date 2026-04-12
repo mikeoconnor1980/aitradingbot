@@ -5,10 +5,12 @@ public sealed class User
     public Guid Id { get; private set; }
     public string Email { get; private set; } = string.Empty;
     public string DisplayName { get; private set; } = string.Empty;
-    public string PasswordHash { get; private set; } = string.Empty;
+    public string? PasswordHash { get; private set; }
     public long CreatedAtUtc { get; private set; }
     public bool IsActive { get; private set; }
     public string PreferredNetwork { get; private set; } = "mainnet";
+    public string? AuthProvider { get; private set; }
+    public string? ExternalProviderId { get; private set; }
 
     private User()
     {
@@ -30,6 +32,35 @@ public sealed class User
             IsActive = true,
             PreferredNetwork = "mainnet",
         };
+    }
+
+    public static User CreateExternal(string email, string displayName, string authProvider, string externalProviderId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(authProvider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalProviderId);
+
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Email = email.Trim().ToLowerInvariant(),
+            DisplayName = displayName.Trim(),
+            PasswordHash = null,
+            AuthProvider = authProvider,
+            ExternalProviderId = externalProviderId,
+            CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            IsActive = true,
+            PreferredNetwork = "mainnet",
+        };
+    }
+
+    public void LinkExternalProvider(string authProvider, string externalProviderId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(authProvider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalProviderId);
+        AuthProvider = authProvider;
+        ExternalProviderId = externalProviderId;
     }
 
     public void UpdateDisplayName(string displayName)

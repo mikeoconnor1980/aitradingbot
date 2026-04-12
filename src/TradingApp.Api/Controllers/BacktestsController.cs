@@ -385,7 +385,9 @@ public sealed class BacktestsController : ApiController
             {
                 PositionSizeType = ParseSchemaEnum(request.Risk.PositionSizeType, PositionSizeType.PercentWallet),
                 PositionSizeValue = request.Risk.PositionSizeValue,
+                RiskPerTradePercent = request.Risk.RiskPerTradePercent,
                 Leverage = request.Risk.Leverage,
+                AutoLeverage = request.Risk.AutoLeverage,
                 MaxOpenTrades = request.Risk.MaxOpenTrades,
                 CooldownValue = request.Risk.CooldownValue,
                 CooldownUnit = ParseSchemaEnum(request.Risk.CooldownUnit, CooldownUnit.Candles),

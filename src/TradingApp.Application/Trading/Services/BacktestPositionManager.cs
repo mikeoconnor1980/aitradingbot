@@ -79,7 +79,7 @@ public sealed class BacktestPositionManager : IPositionManager
         var anchorPrice = GetDecimal(signal.Parameters, "anchorPrice");
         var gridLevels = GetInt(signal.Parameters, "gridLevels");
         var gridSpacingPercent = Math.Abs(GetDecimal(signal.Parameters, "gridSpacingPercent"));
-        var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalPerLevel"));
+        var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalUsd"));
         var gridCycleId = GetGridCycleId(signal.Parameters);
         var entryMode = GetOptionalString(signal.Parameters, "entryMode") ?? EntryModes.AutoFromSignalCandle;
 

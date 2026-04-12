@@ -134,7 +134,31 @@ public sealed class GridController : IGridController
         }
 
         var gridSpacingPercent = Math.Abs(grid.Spacing);
-        var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity);
+        var stopLossPercent = config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            ? StopLossDistanceResolver.Resolve(
+                config.Exit.StopLoss,
+                context.Indicators?.Atr,
+                anchorPrice,
+                grid.BreakdownThreshold)
+            : null;
+        var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
+        var notionalPerLevel = config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            ? positionSize / gridLevels
+            : positionSize;
+        var leverage = config.Risk.AutoLeverage
+            && config.Risk.PositionSizeType == PositionSizeType.RiskBased
+            && stopLossPercent.HasValue
+                ? LeverageCalculator.CalculateLeverage(
+                    stopLossPercent.Value,
+                    context.MaxLeverage ?? LeverageCalculator.FallbackMaxLeverage)
+                : Math.Max(1, (int)Math.Floor(config.Risk.Leverage));
+        var isIsolated = config.Risk.PositionSizeType == PositionSizeType.RiskBased;
+        var estimatedRiskUsd = EstimateSignalRisk(config.Risk, notionalPerLevel, context.AccountEquity, stopLossPercent, gridLevels);
+
+        if (notionalPerLevel <= 0m)
+        {
+            return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
+        }
 
         gridState.GridCycleId = Guid.NewGuid().ToString("N");
         gridState.Lifecycle = GridLifecycle.Deploying;
@@ -153,12 +177,42 @@ public sealed class GridController : IGridController
                     ["anchorPrice"] = anchorPrice,
                     ["gridLevels"] = gridLevels,
                     ["gridSpacingPercent"] = gridSpacingPercent,
-                    ["notionalPerLevel"] = positionSize,
+                    ["notionalUsd"] = notionalPerLevel,
                     ["gridCycleId"] = gridState.GridCycleId,
                     ["entryMode"] = entryMode,
+                    ["leverage"] = leverage,
+                    ["isIsolated"] = isIsolated,
+                    ["estimatedRiskUsd"] = estimatedRiskUsd,
                 }
             }
         ]);
+    }
+
+    private static decimal EstimateSignalRisk(
+        RiskConfig risk,
+        decimal notionalUsd,
+        decimal equity,
+        decimal? stopLossPercent,
+        int gridLevels)
+    {
+        if (risk.PositionSizeType == PositionSizeType.RiskBased
+            && risk.RiskPerTradePercent.HasValue
+            && risk.RiskPerTradePercent.Value > 0m)
+        {
+            return Math.Max(0m, equity) * (risk.RiskPerTradePercent.Value / 100m);
+        }
+
+        var totalNotionalUsd = risk.PositionSizeType == PositionSizeType.RiskBased
+            ? notionalUsd * Math.Max(1, gridLevels)
+            : notionalUsd * Math.Max(1, gridLevels);
+
+        if (stopLossPercent.HasValue && stopLossPercent.Value > 0m)
+        {
+            return totalNotionalUsd * (stopLossPercent.Value / 100m);
+        }
+
+        var leverage = Math.Max(1m, risk.Leverage);
+        return totalNotionalUsd / leverage;
     }
 
     private static TradingSignal? EvaluateExitConditions(

@@ -424,6 +424,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         cooldownValue: [0, [Validators.min(0)]],
         cooldownUnit: ["candles", Validators.required],
         allowSameCandleReentry: [false],
+        riskPerTradePercent: [1, [Validators.min(0.01), Validators.max(100)]],
+        autoLeverage: [true],
       }),
       metadata: this._fb.group({
         tags: [[]],

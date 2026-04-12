@@ -16,45 +16,73 @@
         <mat-select formControlName="positionSizeType">
           <mat-option value="percent_wallet">Percent of wallet</mat-option>
           <mat-option value="fixed_notional">Fixed notional</mat-option>
+          <mat-option value="risk_based">Risk-based (R%)</mat-option>
         </mat-select>
         <app-info-popover
           matSuffix
           title="Position Size Type"
-          description="Position size type controls how trade exposure is measured. Percent of wallet scales each trade relative to account size, while fixed notional keeps each trade at a fixed currency amount."
+          description="Position size type controls how trade exposure is measured. Percent of wallet scales each trade relative to account size, fixed notional keeps each trade at a fixed currency amount, and risk-based (R%) sizes each trade so that your stop-loss equals a defined percentage of equity."
         />
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Position size value</mat-label>
-        <input matInput type="number" formControlName="positionSizeValue" min="0.01" max="100" step="0.01" />
-        <app-info-popover
-          matSuffix
-          title="Position Size Value"
-          description="Position size value sets the actual exposure amount for each entry. Use smaller values for tighter risk control and larger values only when the strategy has room to absorb drawdown."
-        />
-        @if (hasError("positionSizeValue", "required")) {
-          <mat-error>Position size is required.</mat-error>
-        }
-        @if (hasError("positionSizeValue", "min") || hasError("positionSizeValue", "max")) {
-          <mat-error>Position size must be between 0.01 and 100.</mat-error>
-        }
-      </mat-form-field>
+      @if (showPositionSizeValue) {
+        <mat-form-field appearance="outline">
+          <mat-label>Position size value</mat-label>
+          <input matInput type="number" formControlName="positionSizeValue" min="0.01" max="100" step="0.01" />
+          <app-info-popover
+            matSuffix
+            title="Position Size Value"
+            description="Position size value sets the actual exposure amount for each entry. Use smaller values for tighter risk control and larger values only when the strategy has room to absorb drawdown."
+          />
+          @if (hasError("positionSizeValue", "required")) {
+            <mat-error>Position size is required.</mat-error>
+          }
+          @if (hasError("positionSizeValue", "min") || hasError("positionSizeValue", "max")) {
+            <mat-error>Position size must be between 0.01 and 100.</mat-error>
+          }
+        </mat-form-field>
+      }
 
-      <mat-form-field appearance="outline">
-        <mat-label>Leverage</mat-label>
-        <input matInput type="number" formControlName="leverage" min="1" max="50" step="1" />
-        <app-info-popover
-          matSuffix
-          title="Leverage"
-          description="Leverage multiplies position exposure beyond the underlying wallet allocation. Higher leverage increases both potential return and liquidation risk, so it should stay aligned with the strategy's stop loss and volatility."
-        />
-        @if (hasError("leverage", "required")) {
-          <mat-error>Leverage is required.</mat-error>
-        }
-        @if (hasError("leverage", "min") || hasError("leverage", "max")) {
-          <mat-error>Leverage must be between 1 and 50.</mat-error>
-        }
-      </mat-form-field>
+      @if (isRiskBased) {
+        <mat-form-field appearance="outline">
+          <mat-label>Risk per trade (%)</mat-label>
+          <input matInput type="number" formControlName="riskPerTradePercent" min="0.01" max="100" step="0.1" />
+          <app-info-popover
+            matSuffix
+            title="Risk Per Trade"
+            description="The percentage of your account equity risked per trade. R = Equity x this value. For example, 1% of a $10,000 account means $100 at risk per trade."
+          />
+          @if (hasError("riskPerTradePercent", "min") || hasError("riskPerTradePercent", "max")) {
+            <mat-error>Risk per trade must be between 0.01% and 100%.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-slide-toggle formControlName="autoLeverage" class="risk-card__toggle">
+          Auto-leverage
+          <app-info-popover
+            title="Auto-Leverage"
+            description="When enabled, leverage is calculated from your stop-loss distance so the stop-loss fires before liquidation. The formula is: leverage = 1 / (SL% + maintenance margin rate)."
+          />
+        </mat-slide-toggle>
+      }
+
+      @if (showLeverage) {
+        <mat-form-field appearance="outline">
+          <mat-label>Leverage</mat-label>
+          <input matInput type="number" formControlName="leverage" min="1" max="50" step="1" />
+          <app-info-popover
+            matSuffix
+            title="Leverage"
+            description="Leverage multiplies position exposure beyond the underlying wallet allocation. Higher leverage increases both potential return and liquidation risk, so it should stay aligned with the strategy's stop loss and volatility."
+          />
+          @if (hasError("leverage", "required")) {
+            <mat-error>Leverage is required.</mat-error>
+          }
+          @if (hasError("leverage", "min") || hasError("leverage", "max")) {
+            <mat-error>Leverage must be between 1 and 50.</mat-error>
+          }
+        </mat-form-field>
+      }
 
       <mat-form-field appearance="outline">
         <mat-label>Max open trades</mat-label>
@@ -97,5 +125,62 @@
 
       <mat-checkbox formControlName="allowSameCandleReentry">Allow same candle re-entry</mat-checkbox>
     </div>
+
+    @if (showRiskWarning) {
+      <div class="risk-card__warning">
+        Warning: Risk per trade is above 5%. This is aggressive and can materially increase drawdown.
+      </div>
+    }
+
+    @if (isRiskBased && stopLossNotEnabled) {
+      <div class="risk-card__error">
+        Risk-based sizing requires a stop-loss. Enable a stop-loss in the exit rules section.
+      </div>
+    }
+
+    @if (isRiskBased) {
+      <div class="risk-card__preview">
+        <div class="risk-card__preview-header">
+          <span>Position Sizing Preview</span>
+          <app-info-popover
+            title="Position Sizing Preview"
+            description="This preview shows how your R-based risk settings translate into actual position sizing. R is your dollar risk per trade, position size is the total notional exposure, and leverage is derived from your stop-loss distance."
+          />
+        </div>
+
+        @if (noEquity) {
+          <div class="risk-card__preview-message">
+            Connect a wallet to see position sizing preview.
+          </div>
+        } @else if (stopLossPercent <= 0) {
+          <div class="risk-card__preview-message">
+            Configure a fixed-percent stop-loss to see position sizing preview.
+          </div>
+        } @else if (showPreview) {
+          <div class="risk-card__preview-grid">
+            <div class="risk-card__preview-item">
+              <span class="risk-card__preview-label">R (risk per trade)</span>
+              <span class="risk-card__preview-value">${{ rAmount | number:"1.2-2" }}</span>
+            </div>
+            <div class="risk-card__preview-item">
+              <span class="risk-card__preview-label">Position Size</span>
+              <span class="risk-card__preview-value">${{ positionSize | number:"1.2-2" }}</span>
+            </div>
+            <div class="risk-card__preview-item">
+              <span class="risk-card__preview-label">Leverage</span>
+              <span class="risk-card__preview-value">{{ derivedLeverage }}x</span>
+            </div>
+            <div class="risk-card__preview-item">
+              <span class="risk-card__preview-label">Margin Required</span>
+              <span class="risk-card__preview-value">≈${{ marginRequired | number:"1.2-2" }}</span>
+            </div>
+            <div class="risk-card__preview-item">
+              <span class="risk-card__preview-label">Est. Liquidation Distance</span>
+              <span class="risk-card__preview-value">≈{{ estLiquidationPercent | number:"1.1-1" }}%</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
   </mat-card-content>
 </mat-card>

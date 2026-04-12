@@ -286,7 +286,225 @@ public sealed class GridControllerTests
             config);
 
         signals.Should().ContainSingle();
-        signals[0].Parameters!["notionalPerLevel"].Should().Be(500m);
+        signals[0].Parameters!["notionalUsd"].Should().Be(500m);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskBasedSizingWithTenLevelsAndFixedPercentStopLoss_WhenDeployingGrid_ThenDividesNotionalByLevels()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Grid = DefaultConfig.Grid! with
+            {
+                Levels = 10,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2m,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m),
+            gridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Parameters!["notionalUsd"].Should().Be(500m);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskBasedSizingWithGridBreakdownFallback_WhenDeployingGrid_ThenUsesBreakdownThreshold()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Grid = DefaultConfig.Grid! with
+            {
+                BreakdownThreshold = 5m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = false,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m),
+            gridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Parameters!["notionalUsd"].Should().Be(400m);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskBasedSizingWithNoResolvableStopLoss_WhenDeployingGrid_ThenEmitsNoSignals()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Grid = DefaultConfig.Grid! with
+            {
+                BreakdownThreshold = 0m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = false,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m),
+            gridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenAutoLeverageEnabledWithRiskBased_WhenDeployGridEmitted_ThenComputesLeverageFromMarketContext()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+                AutoLeverage = true,
+                Leverage = 10m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2m,
+                },
+            },
+        };
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m, maxLeverage: 50),
+            CreateGridState(GridLifecycle.Inactive, totalLevels: 0),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        var deployGrid = signals.Should().ContainSingle().Subject;
+        deployGrid.SignalType.Should().Be("DeployGrid");
+        deployGrid.Parameters!["leverage"].Should().Be(33);
+        deployGrid.Parameters["isIsolated"].Should().Be(true);
+    }
+
+    [TestMethod]
+    public async Task GivenAutoLeverageDisabled_WhenDeployGridEmitted_ThenUsesManualLeverage()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                AutoLeverage = false,
+                Leverage = 10m,
+            },
+        };
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m),
+            CreateGridState(GridLifecycle.Inactive, totalLevels: 0),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        var deployGrid = signals.Should().ContainSingle().Subject;
+        deployGrid.Parameters!["leverage"].Should().Be(10);
+        deployGrid.Parameters["isIsolated"].Should().Be(false);
+    }
+
+    [TestMethod]
+    public async Task GivenPercentWalletSizingWithAutoLeverageEnabled_WhenDeployGridEmitted_ThenIgnoresAutoLeverageAndUsesManualValue()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.PercentWallet,
+                PositionSizeValue = 5m,
+                AutoLeverage = true,
+                Leverage = 7m,
+            },
+        };
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m, maxLeverage: 50),
+            CreateGridState(GridLifecycle.Inactive, totalLevels: 0),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        var deployGrid = signals.Should().ContainSingle().Subject;
+        deployGrid.Parameters!["leverage"].Should().Be(7);
+        deployGrid.Parameters["isIsolated"].Should().Be(false);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskBasedSizing_WhenDeployGridEmitted_ThenIsolatedMarginIsAlwaysTrue()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+                AutoLeverage = false,
+                Leverage = 3m,
+            },
+        };
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, accountEquity: 10_000m),
+            CreateGridState(GridLifecycle.Inactive, totalLevels: 0),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        var deployGrid = signals.Should().ContainSingle().Subject;
+        deployGrid.Parameters!["isIsolated"].Should().Be(true);
+        deployGrid.Parameters["leverage"].Should().Be(3);
     }
 
     private static StrategyEvaluation CreateEvaluation(bool setupDetected = true)
@@ -324,7 +542,7 @@ public sealed class GridControllerTests
         };
     }
 
-    private static MarketContext CreateMarketContext(decimal close, decimal accountEquity = 0m)
+    private static MarketContext CreateMarketContext(decimal close, decimal accountEquity = 0m, int? maxLeverage = null)
     {
         return new MarketContext
         {
@@ -342,7 +560,8 @@ public sealed class GridControllerTests
                 1_000m,
                 10),
             Indicators = new IndicatorSnapshot(),
-            AccountEquity = accountEquity
+            AccountEquity = accountEquity,
+            MaxLeverage = maxLeverage
         };
     }
 }

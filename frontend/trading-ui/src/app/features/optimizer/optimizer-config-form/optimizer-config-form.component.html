@@ -85,9 +85,9 @@
         </h3>
 
         <div class="optimizer-config-form__range-group">
-          <label class="optimizer-config-form__range-label">
+          <span class="optimizer-config-form__range-label">
             Stop Loss: {{ form.controls.stopLossMin.value }}% — {{ form.controls.stopLossMax.value }}%
-          </label>
+          </span>
           <mat-slider min="0.5" max="10" step="0.5" discrete [displayWith]="formatSliderLabel">
             <input matSliderStartThumb [formControl]="form.controls.stopLossMin">
             <input matSliderEndThumb [formControl]="form.controls.stopLossMax">
@@ -95,9 +95,9 @@
         </div>
 
         <div class="optimizer-config-form__range-group">
-          <label class="optimizer-config-form__range-label">
+          <span class="optimizer-config-form__range-label">
             Take Profit: {{ form.controls.takeProfitMin.value }}% — {{ form.controls.takeProfitMax.value }}%
-          </label>
+          </span>
           <mat-slider min="0.5" max="15" step="0.5" discrete [displayWith]="formatSliderLabel">
             <input matSliderStartThumb [formControl]="form.controls.takeProfitMin">
             <input matSliderEndThumb [formControl]="form.controls.takeProfitMax">
@@ -127,7 +127,7 @@
           <mat-icon class="optimizer-config-form__info-icon" matTooltip="Relative Strength Index — a momentum oscillator (0–100) measuring speed and magnitude of price changes">info_outline</mat-icon>
         </h3>
         <div class="optimizer-config-form__chip-group">
-          <label class="optimizer-config-form__chip-label">Periods</label>
+          <span class="optimizer-config-form__chip-label">Periods</span>
           <mat-chip-listbox multiple [formControl]="form.controls.rsiPeriods">
             @for (p of availableRsiPeriods; track p) {
               <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
@@ -135,7 +135,7 @@
           </mat-chip-listbox>
         </div>
         <div class="optimizer-config-form__chip-group">
-          <label class="optimizer-config-form__chip-label">Thresholds</label>
+          <span class="optimizer-config-form__chip-label">Thresholds</span>
           <mat-chip-listbox multiple [formControl]="form.controls.rsiThresholds">
             @for (t of availableRsiThresholds; track t) {
               <mat-chip-option [value]="t">{{ t }}</mat-chip-option>
@@ -155,7 +155,7 @@
           <mat-icon class="optimizer-config-form__info-icon" matTooltip="Moving Average Convergence Divergence — a trend-following momentum indicator using the difference between fast and slow exponential moving averages">info_outline</mat-icon>
         </h3>
         <div class="optimizer-config-form__chip-group">
-          <label class="optimizer-config-form__chip-label">Fast Periods</label>
+          <span class="optimizer-config-form__chip-label">Fast Periods</span>
           <mat-chip-listbox multiple [formControl]="form.controls.macdFastPeriods">
             @for (p of availableMacdFastPeriods; track p) {
               <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
@@ -163,7 +163,7 @@
           </mat-chip-listbox>
         </div>
         <div class="optimizer-config-form__chip-group">
-          <label class="optimizer-config-form__chip-label">Slow Periods</label>
+          <span class="optimizer-config-form__chip-label">Slow Periods</span>
           <mat-chip-listbox multiple [formControl]="form.controls.macdSlowPeriods">
             @for (p of availableMacdSlowPeriods; track p) {
               <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
@@ -183,7 +183,7 @@
           <mat-icon class="optimizer-config-form__info-icon" matTooltip="Exponential Moving Average — a smoothed average of recent prices. Tests whether price is near, above, or below the EMA.">info_outline</mat-icon>
         </h3>
         <div class="optimizer-config-form__chip-group">
-          <label class="optimizer-config-form__chip-label">EMA Periods</label>
+          <span class="optimizer-config-form__chip-label">EMA Periods</span>
           <mat-chip-listbox multiple [formControl]="form.controls.emaPeriods">
             @for (p of availableEmaPeriods; track p) {
               <mat-chip-option [value]="p">{{ p }}</mat-chip-option>
@@ -191,7 +191,7 @@
           </mat-chip-listbox>
         </div>
         <div class="optimizer-config-form__chip-group">
-          <label class="optimizer-config-form__chip-label">Proximity (%)</label>
+          <span class="optimizer-config-form__chip-label">Proximity (%)</span>
           <mat-chip-listbox multiple [formControl]="form.controls.emaProximityPercents">
             @for (p of availableEmaProximity; track p) {
               <mat-chip-option [value]="p">{{ p }}%</mat-chip-option>
@@ -260,10 +260,10 @@
         </div>
         @if (form.controls.walkForwardEnabled.value) {
           <div class="optimizer-config-form__range-group">
-            <label class="optimizer-config-form__range-label">
+            <span class="optimizer-config-form__range-label">
               OOS Split: {{ form.controls.walkForwardSplitPercent.value }}%
               <mat-icon class="optimizer-config-form__info-icon" matTooltip="Percentage of historical data reserved for out-of-sample validation. E.g. 20% means the last 20% of data is unseen by the optimizer.">info_outline</mat-icon>
-            </label>
+            </span>
             <mat-slider min="5" max="50" step="5" discrete [displayWith]="formatSliderLabel">
               <input matSliderThumb [formControl]="form.controls.walkForwardSplitPercent">
             </mat-slider>
@@ -294,20 +294,20 @@
           </mat-form-field>
 
           <div class="optimizer-config-form__range-group">
-            <label class="optimizer-config-form__range-label">
+            <span class="optimizer-config-form__range-label">
               Mutation Rate: {{ form.controls.evolutionaryMutationRate.value }}%
               <mat-icon class="optimizer-config-form__info-icon" matTooltip="Probability of randomly changing a parameter in offspring. Higher = more exploration, lower = more exploitation.">info_outline</mat-icon>
-            </label>
+            </span>
             <mat-slider min="0" max="100" step="5" discrete [displayWith]="formatSliderLabel">
               <input matSliderThumb [formControl]="form.controls.evolutionaryMutationRate">
             </mat-slider>
           </div>
 
           <div class="optimizer-config-form__range-group">
-            <label class="optimizer-config-form__range-label">
+            <span class="optimizer-config-form__range-label">
               Crossover Rate: {{ form.controls.evolutionaryCrossoverRate.value }}%
               <mat-icon class="optimizer-config-form__info-icon" matTooltip="Probability of combining parameters from two parent strategies to create offspring">info_outline</mat-icon>
-            </label>
+            </span>
             <mat-slider min="0" max="100" step="5" discrete [displayWith]="formatSliderLabel">
               <input matSliderThumb [formControl]="form.controls.evolutionaryCrossoverRate">
             </mat-slider>

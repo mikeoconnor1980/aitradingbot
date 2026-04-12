@@ -36,6 +36,8 @@ describe("BacktestResultComponent", () => {
       risk: {
         positionSizeType: "fixed_notional",
         positionSizeValue: 250,
+        riskPerTradePercent: 1,
+        autoLeverage: true,
         leverage: 4,
         maxOpenTrades: 1,
         cooldownValue: 0,
@@ -140,5 +142,23 @@ describe("BacktestResultComponent", () => {
 
     expect(component.entryModeLabel).toBe("Initial market buy, then grid");
     expect(fixture.nativeElement.textContent).toContain("Initial market buy, then grid");
+  });
+
+  it("GivenRiskBasedResult_WhenPositionSizeLabel_ThenShowsRiskBased", () => {
+    fixture.componentRef.setInput("result", {
+      ...mockResult,
+      strategyConfig: {
+        ...mockResult.strategyConfig,
+        risk: {
+          ...mockResult.strategyConfig.risk,
+          positionSizeType: "risk_based",
+          riskPerTradePercent: 2,
+          autoLeverage: true
+        }
+      }
+    });
+    fixture.detectChanges();
+
+    expect(component.positionSizeLabel).toBe("R-based (2% risk)");
   });
 });

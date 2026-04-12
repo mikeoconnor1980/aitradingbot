@@ -131,6 +131,7 @@ public sealed class StrategyScheduler
             return;
         }
 
+        _riskEngine.UpdatePortfolioState(context.AccountEquity);
         var approvedSignals = await _riskEngine.ValidateAsync(signals, cancellationToken);
         if (approvedSignals.Count == 0)
         {

@@ -58,6 +58,7 @@ public sealed class FillProcessor : IFillProcessor
             ProcessProtectionTriggerFill(fill);
             await PersistProtectionFillAsync(fill, cancellationToken);
             _riskEngine?.RecordOrdersClosed(1);
+            _riskEngine?.RecordPositionClosed(fill.Asset);
             if (fill.ClosedPnl < 0m)
             {
                 _riskEngine?.RecordLoss(Math.Abs(fill.ClosedPnl));
@@ -182,6 +183,8 @@ public sealed class FillProcessor : IFillProcessor
             _gridState.CandlesSinceEntry = 0;
             _gridState.ProtectionOrders.Clear();
         }
+
+        _riskEngine?.RecordPositionClosed(fill.Asset);
 
         _logger.LogInformation(
             "Take profit fill processed: GridCycleId={GridCycleId} → Closed, ClosedPnl={ClosedPnl}",

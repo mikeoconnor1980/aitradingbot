@@ -19,4 +19,13 @@ public interface IRiskEngine
 
     /// <summary>Notify the engine that orders were filled or cancelled.</summary>
     void RecordOrdersClosed(int count) { }
+
+    /// <summary>Update the engine's knowledge of current account equity.</summary>
+    void UpdatePortfolioState(decimal accountEquity) { }
+
+    /// <summary>Record that a position was opened with the given risk amount.</summary>
+    void RecordPositionOpened(string symbol, decimal riskUsd) { }
+
+    /// <summary>Record that a position was fully closed.</summary>
+    void RecordPositionClosed(string symbol) { }
 }

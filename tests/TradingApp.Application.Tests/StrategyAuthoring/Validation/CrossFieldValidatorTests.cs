@@ -76,4 +76,104 @@ public sealed class CrossFieldValidatorTests
 
         result.InfoMessages.Should().NotContain(error => error.Code == "SIGNAL_MODE_NOT_SUPPORTED");
     }
+
+    [TestMethod]
+    public void GivenRiskBasedWithNoStopLoss_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.0m,
+            },
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig { Enabled = false },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "RISK_BASED_REQUIRES_STOP_LOSS");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedWithStopLossEnabled_WhenValidated_ThenNoError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.0m,
+            },
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2.0m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code == "RISK_BASED_REQUIRES_STOP_LOSS");
+    }
+
+    [TestMethod]
+    public void GivenRiskBasedGridWithBreakdownThresholdNoStopLoss_WhenValidated_ThenNoError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Grid,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1.0m,
+            },
+            Grid = new GridConfig
+            {
+                Levels = 5,
+                Spacing = 0.5m,
+                BreakdownThreshold = 5.0m,
+            },
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig { Enabled = false },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code == "RISK_BASED_REQUIRES_STOP_LOSS");
+    }
+
+    [TestMethod]
+    public void GivenPercentWalletWithNoStopLoss_WhenValidated_ThenNoRiskBasedError()
+    {
+        var config = new StrategyConfig
+        {
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.PercentWallet,
+                PositionSizeValue = 5m,
+            },
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig { Enabled = false },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code == "RISK_BASED_REQUIRES_STOP_LOSS");
+    }
 }

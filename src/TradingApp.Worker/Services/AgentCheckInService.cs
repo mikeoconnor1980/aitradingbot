@@ -449,14 +449,60 @@ public sealed class AgentCheckInService : BackgroundService
         if (command.LeveragePayload is null)
         {
             _logger.LogError("SetLeverage command missing payload. CommandId={CommandId}", command.CommandId);
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Missing leverage payload."
+            });
             return;
         }
 
-        // TODO: Implement leverage via LiveExecutionEngine when IExecutionEngine supports it.
-        // Leverage requires EIP-712 signing which is only available in the Worker's LiveExecutionEngine.
-        _logger.LogWarning(
-            "SetLeverage command not yet implemented on agent. Asset={Asset}, Leverage={Leverage}x",
-            command.LeveragePayload.Asset, command.LeveragePayload.Leverage);
+        if (!_signerProvider.IsConfigured)
+        {
+            _logger.LogError("Cannot set leverage — wallet not configured.");
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Wallet not configured on agent."
+            });
+            return;
+        }
+
+        var payload = command.LeveragePayload;
+        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+
+        try
+        {
+            await executionEngine.SetLeverageAsync(
+                payload.Asset,
+                payload.Leverage,
+                isIsolated: !payload.IsCross,
+                cancellationToken);
+
+            _logger.LogInformation(
+                "SetLeverage executed. Asset={Asset}, Leverage={Leverage}x, IsCross={IsCross}",
+                payload.Asset,
+                payload.Leverage,
+                payload.IsCross);
+
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SetLeverage failed: CommandId={CommandId}", command.CommandId);
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = ex.Message
+            });
+        }
     }
 
     private async Task HandlePlaceTriggerOrderAsync(AgentCommand command, CancellationToken cancellationToken)

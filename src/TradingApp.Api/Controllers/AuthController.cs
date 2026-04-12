@@ -16,15 +16,18 @@ public sealed class AuthController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IGoogleTokenValidator _googleTokenValidator;
 
     public AuthController(
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
-        IPasswordHasher passwordHasher)
+        IPasswordHasher passwordHasher,
+        IGoogleTokenValidator googleTokenValidator)
     {
         _userRepository = userRepository;
         _jwtTokenService = jwtTokenService;
         _passwordHasher = passwordHasher;
+        _googleTokenValidator = googleTokenValidator;
     }
 
     [HttpPost("register")]
@@ -66,7 +69,19 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
-        if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
+        if (user is null)
+        {
+            return Unauthorized(new Envelope("Invalid email or password.", "invalid_credentials"));
+        }
+
+        if (string.IsNullOrEmpty(user.PasswordHash))
+        {
+            return BadRequest(new Envelope(
+                "This account uses Google sign-in. Please sign in with Google instead.",
+                "external_auth_only"));
+        }
+
+        if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             return Unauthorized(new Envelope("Invalid email or password.", "invalid_credentials"));
         }
@@ -96,6 +111,47 @@ public sealed class AuthController : ControllerBase
         if (user is null)
         {
             return Unauthorized(new Envelope("Invalid or expired refresh token.", "invalid_refresh_token"));
+        }
+
+        var tokens = _jwtTokenService.GenerateTokens(user);
+
+        return Ok(new AuthResponse(
+            tokens.AccessToken,
+            tokens.RefreshToken,
+            new UserInfo(user.Id, user.Email, user.DisplayName)));
+    }
+
+    [HttpPost("google")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GoogleSignIn([FromBody] GoogleAuthRequest request, CancellationToken cancellationToken)
+    {
+        var googleUser = await _googleTokenValidator.ValidateAsync(request.IdToken);
+        if (googleUser is null)
+        {
+            return Unauthorized(new Envelope("Invalid Google token.", "invalid_google_token"));
+        }
+
+        // 1. Look up by external provider ID (returning user)
+        var user = await _userRepository.GetByExternalProviderAsync("Google", googleUser.Subject, cancellationToken);
+
+        // 2. If not found, try to link by email (existing local account)
+        if (user is null)
+        {
+            user = await _userRepository.GetByEmailAsync(googleUser.Email, cancellationToken);
+            if (user is not null)
+            {
+                user.LinkExternalProvider("Google", googleUser.Subject);
+                await _userRepository.SaveChangesAsync(cancellationToken);
+            }
+        }
+
+        // 3. If still not found, create new user
+        if (user is null)
+        {
+            user = Domain.Entities.User.CreateExternal(googleUser.Email, googleUser.Name, "Google", googleUser.Subject);
+            await _userRepository.AddAsync(user, cancellationToken);
         }
 
         var tokens = _jwtTokenService.GenerateTokens(user);
@@ -137,6 +193,7 @@ public sealed class AuthController : ControllerBase
 public sealed record RegisterRequest(string Email, string DisplayName, string Password);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record RefreshRequest(string RefreshToken);
+public sealed record GoogleAuthRequest(string IdToken);
 public sealed record AuthResponse(string Token, string RefreshToken, UserInfo User);
 public sealed record UserInfo(Guid Id, string Email, string DisplayName);
 public sealed record MeResponse(Guid Id, string Email, string DisplayName);

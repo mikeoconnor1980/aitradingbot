@@ -14,6 +14,7 @@ import { HttpContext } from "@angular/common/http";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { AccountSummary } from "../../core/models/account-summary.model";
 import { OpenOrder } from "../../core/models/open-order.model";
+import { PortfolioHeat } from "../../core/models/portfolio-heat.model";
 import { Position } from "../../core/models/position.model";
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
 import { NotificationService } from "../../core/services/notification.service";
@@ -22,7 +23,7 @@ import { AccountStateService } from "../../core/services/account-state.service";
 import { AgentService } from "../../core/services/agent.service";
 import { LayoutService } from "../../core/services/layout.service";
 import { ResponsiveDialogService } from "../../core/services/responsive-dialog.service";
-import { ConfirmDialogComponent } from "../order-entry/confirm-dialog/confirm-dialog.component";
+import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AccountSummaryComponent } from "./account-summary/account-summary.component";
 import { CloseAllDialogComponent, CloseAllResult } from "./positions-table/close-all-dialog/close-all-dialog.component";
 import { OrdersTableComponent } from "./orders-table/orders-table.component";
@@ -77,6 +78,7 @@ export class DashboardComponent implements OnInit {
   public positionsTable?: PositionsTableComponent;
 
   public accountSummary: AccountSummary | null = null;
+  public portfolioHeat: PortfolioHeat | null = null;
   public positions: Position[] = [];
   public orders: OpenOrder[] = [];
   public isLoading = true;
@@ -130,7 +132,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._responsiveDialog.open(ConfirmDialogComponent, {
+    this._responsiveDialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
         title: "Cancel Order",
         message: `Cancel order #${order.orderId}?`,
@@ -138,7 +140,7 @@ export class DashboardComponent implements OnInit {
         cancelText: "Keep Order"
       },
       width: "400px"
-    }).afterClosed().subscribe((confirmed: boolean) => {
+    }).afterClosed().subscribe((confirmed) => {
       if (!confirmed) {
         return;
       }
@@ -183,7 +185,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._responsiveDialog.open(ConfirmDialogComponent, {
+    this._responsiveDialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
         title: "Cancel All Orders",
         message: `Cancel all ${orderCount} open orders for ${this.orders[0]?.asset ?? "BTC-PERP"}?`,
@@ -191,7 +193,7 @@ export class DashboardComponent implements OnInit {
         cancelText: "Keep Orders"
       },
       width: "400px"
-    }).afterClosed().subscribe((confirmed: boolean) => {
+    }).afterClosed().subscribe((confirmed) => {
       if (!confirmed) {
         return;
       }
@@ -221,7 +223,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._responsiveDialog.open(ModifyOrderModalComponent, {
+    this._responsiveDialog.open<ModifyOrderModalComponent, ModifyOrderDialogData, ModifyOrderDto>(ModifyOrderModalComponent, {
       data: { order } as ModifyOrderDialogData,
       width: "400px"
     }).afterClosed().subscribe((result: ModifyOrderDto | undefined) => {
@@ -273,7 +275,7 @@ export class DashboardComponent implements OnInit {
 
     const closeSide: "buy" | "sell" = position.side === "Long" ? "sell" : "buy";
 
-    this._responsiveDialog.open(ConfirmDialogComponent, {
+    this._responsiveDialog.open<ConfirmDialogComponent, ConfirmDialogData, boolean>(ConfirmDialogComponent, {
       data: {
         title: "Close Position",
         message: `Close ${position.side} ${position.asset}-PERP position?`,
@@ -285,7 +287,7 @@ export class DashboardComponent implements OnInit {
         cancelText: "Keep Position"
       },
       width: "400px"
-    }).afterClosed().subscribe((confirmed: boolean) => {
+    }).afterClosed().subscribe((confirmed) => {
       if (!confirmed) {
         return;
       }
@@ -339,7 +341,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    this._responsiveDialog.open(CloseAllDialogComponent, {
+    this._responsiveDialog.open<CloseAllDialogComponent, { positions: typeof currentPositions }, CloseAllResult>(CloseAllDialogComponent, {
       data: { positions: currentPositions },
       width: "450px"
     }).afterClosed().subscribe((result: CloseAllResult | undefined) => {
@@ -418,7 +420,7 @@ export class DashboardComponent implements OnInit {
 
     const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
 
-    this._responsiveDialog.open(SetSlTpModalComponent, {
+    this._responsiveDialog.open<SetSlTpModalComponent, SetSlTpDialogData, SetSlTpResult>(SetSlTpModalComponent, {
       data: { position } as SetSlTpDialogData,
       width: "400px"
     }).afterClosed().subscribe((result: SetSlTpResult | undefined) => {
@@ -548,6 +550,9 @@ export class DashboardComponent implements OnInit {
       account: this._apiService.getAccountSummary(skipCtx).pipe(
         catchError(() => of(null))
       ),
+      portfolioHeat: this._apiService.getPortfolioHeat(skipCtx).pipe(
+        catchError(() => of(null))
+      ),
       positions: this._apiService.getPositions(skipCtx).pipe(
         catchError(() => of(null))
       ),
@@ -556,9 +561,9 @@ export class DashboardComponent implements OnInit {
       )
     }).pipe(
       tap((results) => {
-        const failedCount = [results.account, results.positions, results.orders].filter(r => r === null).length;
+        const failedCount = [results.account, results.portfolioHeat, results.positions, results.orders].filter((result) => result === null).length;
 
-        if (failedCount === 3) {
+        if (failedCount === 4) {
           this._consecutiveErrors += 1;
           if (this._consecutiveErrors >= 3) {
             this.showErrorBanner = true;
@@ -575,6 +580,7 @@ export class DashboardComponent implements OnInit {
           }
 
           if (results.account !== null) { this.accountSummary = results.account; }
+          if (results.portfolioHeat !== null) { this.portfolioHeat = results.portfolioHeat; }
           if (results.positions !== null) {
             const newPositions = this._pendingPositionKeys.size === 0
               ? results.positions

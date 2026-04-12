@@ -132,6 +132,41 @@ These signals are then validated by the RiskEngine.
 
 ---
 
+# Position Sizing for RiskBased Mode
+
+When `StrategyConfig.Risk.PositionSizeType == RiskBased`, the controller resolves stop-loss distance and computes R-based notional:
+
+1. **Stop-Loss Distance Resolution** via `StopLossDistanceResolver.Resolve()`:
+   - `FixedPercent` → uses `StopLoss.Value` directly
+   - `AtrTrailing` → computes `(ATR × multiplier) / anchorPrice × 100`
+   - Fallback → `GridConfig.BreakdownThreshold` (grid-only)
+
+2. **Total Notional**: `R = equity × riskPerTradePercent / 100`; `notional = R / (SL% / 100)`
+
+3. **Per-Level Notional**: `notionalUsd = notional / gridLevels`
+   (For PercentWallet/FixedNotional, the resolver output is used directly as `notionalUsd`.)
+   This value is emitted in the `DeployGrid` signal under the key `"notionalUsd"`.
+
+4. **Safety**: If `notionalUsd ≤ 0` (unresolvable SL distance), no signal is emitted.
+
+Key files:
+- `src/TradingApp.Application/Trading/Services/StopLossDistanceResolver.cs`
+- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs`
+
+### Leverage Calculation in DeployGrid Signal
+
+When `AutoLeverage = true` and mode = `RiskBased`, the controller computes leverage before emitting `DeployGrid`:
+
+- Auto-leverage: `LeverageCalculator.CalculateLeverage(stopLossPercent, maxLeverage)`
+- Manual fallback: `Math.Max(1, (int)Math.Floor(config.Risk.Leverage))`
+- `isIsolated = true` for all RiskBased mode trades
+
+The `DeployGrid` signal includes `["leverage"]` and `["isIsolated"]` parameters. `LivePositionManager` extracts these and calls `IExecutionEngine.SetLeverageAsync()` before placing grid orders.
+
+File: `src/TradingApp.Application/Trading/Services/GridController.cs` → `DeployNewGridAsync`
+
+---
+
 # Interaction with GridPlanner
 
 GridPlanner calculates:

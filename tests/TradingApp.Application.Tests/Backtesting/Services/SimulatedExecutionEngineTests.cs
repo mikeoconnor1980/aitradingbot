@@ -186,6 +186,101 @@ public sealed class SimulatedExecutionEngineTests
         _sut.GetPosition().IsOpen.Should().BeFalse();
     }
 
+    [TestMethod]
+    public async Task GivenSetLeverage_WhenCalled_ThenRecordsLeverageForAsset()
+    {
+        await _sut.SetLeverageAsync("BTC", 33, isIsolated: true);
+
+        _sut.LeverageByAsset.Should().ContainKey("BTC");
+        _sut.LeverageByAsset["BTC"].Leverage.Should().Be(33);
+        _sut.LeverageByAsset["BTC"].IsIsolated.Should().BeTrue();
+    }
+
+    [TestMethod]
+    public async Task GivenLeveragedLongPosition_WhenEntryFills_ThenTracksMarginAndLiquidationPrice()
+    {
+        _sut.SetMaxLeverage("BTC", 50);
+        await _sut.SetLeverageAsync("BTC", 33, isIsolated: true);
+        await _sut.PlaceOrderAsync(CreateOrderRequest(OrderSide.Buy, OrderType.Limit, 50000m, 1m));
+
+        _sut.ProcessCandle(CreateCandle(open: 50100m, high: 50200m, low: 49900m, close: 50000m));
+
+        var position = _sut.GetPosition();
+        position.MarginUsed.Should().BeApproximately(1515.15151515m, 0.00000001m);
+        position.Leverage.Should().Be(33);
+        position.LiquidationPrice.Should().BeApproximately(48984.84848485m, 0.00000001m);
+    }
+
+    [TestMethod]
+    public async Task GivenLongPositionWithLeverage_WhenStopLossCrossesBeforeLiquidation_ThenClosesAtStopLoss()
+    {
+        _sut.SetMaxLeverage("BTC", 50);
+        await _sut.SetLeverageAsync("BTC", 33, isIsolated: true);
+        await _sut.PlaceOrderAsync(CreateOrderRequest(OrderSide.Buy, OrderType.Limit, 50000m, 1m));
+        _sut.ProcessCandle(CreateCandle(open: 50100m, high: 50200m, low: 49900m, close: 50000m, timestampUtc: 1_000));
+        await _sut.PlaceTriggerOrderAsync("BTC", "sell", 1m, 49000m, "sl");
+
+        var fills = _sut.ProcessCandle(CreateCandle(open: 50000m, high: 50050m, low: 49000m, close: 49200m, timestampUtc: 2_000));
+
+        fills.Should().ContainSingle();
+        fills[0].CloseReason.Should().Be(CancellationReason.StopLossTriggered);
+        fills[0].FillPrice.Should().Be(49000m);
+        _sut.GetPosition().IsOpen.Should().BeFalse();
+        _sut.GetPosition().LiquidationPrice.Should().Be(0m);
+        _sut.GetOpenOrders().Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenLongPositionWithLeverage_WhenPriceGapsThroughStopLossToLiquidation_ThenForceClosedAtLiquidationPrice()
+    {
+        _sut.SetMaxLeverage("BTC", 50);
+        await _sut.SetLeverageAsync("BTC", 33, isIsolated: true);
+        await _sut.PlaceOrderAsync(CreateOrderRequest(OrderSide.Buy, OrderType.Limit, 50000m, 1m));
+        _sut.ProcessCandle(CreateCandle(open: 50100m, high: 50200m, low: 49900m, close: 50000m, timestampUtc: 1_000));
+        await _sut.PlaceTriggerOrderAsync("BTC", "sell", 1m, 49000m, "sl");
+
+        var fills = _sut.ProcessCandle(CreateCandle(open: 48990m, high: 48995m, low: 48900m, close: 48920m, timestampUtc: 2_000));
+
+        fills.Should().ContainSingle();
+        fills[0].CloseReason.Should().Be(CancellationReason.LiquidationTriggered);
+        fills[0].FillPrice.Should().BeApproximately(48984.84848485m, 0.00000001m);
+        fills[0].IsMaker.Should().BeFalse();
+        _sut.GetPosition().IsOpen.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public async Task GivenPositionWithLeverageOne_WhenPriceGapsBeyondStopLoss_ThenDoesNotLiquidate()
+    {
+        _sut.SetMaxLeverage("BTC", 50);
+        await _sut.SetLeverageAsync("BTC", 1, isIsolated: true);
+        await _sut.PlaceOrderAsync(CreateOrderRequest(OrderSide.Buy, OrderType.Limit, 50000m, 1m));
+        _sut.ProcessCandle(CreateCandle(open: 50100m, high: 50200m, low: 49900m, close: 50000m, timestampUtc: 1_000));
+        await _sut.PlaceTriggerOrderAsync("BTC", "sell", 1m, 49000m, "sl");
+
+        var fills = _sut.ProcessCandle(CreateCandle(open: 48900m, high: 48950m, low: 47000m, close: 47500m, timestampUtc: 2_000));
+
+        fills.Should().ContainSingle();
+        fills[0].CloseReason.Should().Be(CancellationReason.StopLossTriggered);
+        _sut.GetAllFills().Should().NotContain(fill => fill.CloseReason == CancellationReason.LiquidationTriggered);
+    }
+
+    [TestMethod]
+    public async Task GivenShortPositionWithLeverage_WhenPriceGapsThroughStopLoss_ThenLiquidatedAtHighPrice()
+    {
+        _sut.SetMaxLeverage("BTC", 20);
+        await _sut.SetLeverageAsync("BTC", 20, isIsolated: true);
+        await _sut.PlaceOrderAsync(CreateOrderRequest(OrderSide.Sell, OrderType.Market, 0m, 1m, TradeType.HedgeOpen));
+        _sut.ProcessCandle(CreateCandle(open: 50000m, high: 50050m, low: 49950m, close: 50000m, timestampUtc: 1_000));
+        await _sut.PlaceTriggerOrderAsync("BTC", "buy", 1m, 51000m, "sl");
+
+        var fills = _sut.ProcessCandle(CreateCandle(open: 51050m, high: 51300m, low: 51040m, close: 51200m, timestampUtc: 2_000));
+
+        fills.Should().ContainSingle();
+        fills[0].CloseReason.Should().Be(CancellationReason.LiquidationTriggered);
+        fills[0].FillPrice.Should().Be(51250m);
+        _sut.GetPosition().IsOpen.Should().BeFalse();
+    }
+
     private static Candle CreateCandle(
         decimal open,
         decimal high,

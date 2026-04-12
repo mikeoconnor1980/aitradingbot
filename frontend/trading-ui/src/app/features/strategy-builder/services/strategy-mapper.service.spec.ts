@@ -75,6 +75,7 @@ describe("StrategyMapperService", () => {
       value: null,
       lookback: 5,
       atrMultiplier: null,
+      trailingStopWarmup: null,
     });
   });
 

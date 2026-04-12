@@ -24,6 +24,13 @@ public sealed class UserRepository : IUserRepository
         return await _db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.IsActive, cancellationToken);
     }
 
+    public async Task<User?> GetByExternalProviderAsync(string provider, string externalId, CancellationToken cancellationToken = default)
+    {
+        return await _db.Users.FirstOrDefaultAsync(
+            u => u.AuthProvider == provider && u.ExternalProviderId == externalId && u.IsActive,
+            cancellationToken);
+    }
+
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
         await _db.Users.AddAsync(user, cancellationToken);

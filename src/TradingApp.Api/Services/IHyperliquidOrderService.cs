@@ -33,5 +33,5 @@ public interface IHyperliquidOrderService
 
     Task<TestSignResponse> TestSignAsync(CancellationToken cancellationToken = default);
 
-    Task UpdateLeverageAsync(string asset, int leverage, bool isCross = true, CancellationToken cancellationToken = default);
+    Task UpdateLeverageAsync(string asset, int leverage, bool isCross = false, CancellationToken cancellationToken = default);
 }

@@ -145,7 +145,7 @@ The API marks an agent as `Disconnected` if no heartbeat is received within **30
 | `PlaceOrder` | `OrderCommandPayload` | Place a market or limit order |
 | `CancelOrder` | `CancelOrderPayload` | Cancel a specific order by ID |
 | `CancelAllOrders` | `CancelAllOrdersPayload` | Cancel all orders for an asset |
-| `SetLeverage` | `SetLeveragePayload` | Set leverage for an asset (not yet implemented) |
+| `SetLeverage` | `SetLeveragePayload` | Set leverage and margin mode (isolated/cross) for an asset |
 | `PlaceTriggerOrder` | `TriggerOrderPayload` | Place a stop-loss or take-profit trigger order |
 | `ModifyTriggerOrder` | `ModifyTriggerOrderPayload` | Modify an existing trigger order |
 | `CancelTriggerOrder` | `CancelOrderPayload` | Cancel a trigger order by ID |

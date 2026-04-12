@@ -146,6 +146,67 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenRiskBasedRequest_WhenPostBacktest_ThenMapsRiskPerTradePercent()
+    {
+        BacktestRun? savedRun = null;
+
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
+            .Callback<BacktestRun, CancellationToken>((run, _) => savedRun = run)
+            .Returns(Task.CompletedTask);
+
+        var client = GetTestClient();
+        var request = CreateValidRequest();
+        request.StrategyConfig!.Risk.PositionSizeType = "risk_based";
+        request.StrategyConfig.Risk.PositionSizeValue = 1m;
+        request.StrategyConfig.Risk.RiskPerTradePercent = 1.5m;
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.Accepted);
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>(BaseControllerTestsJson.Options);
+
+        result.Should().NotBeNull();
+        result!.StrategyConfig.Risk.PositionSizeType.Should().Be(PositionSizeType.RiskBased);
+        result.StrategyConfig.Risk.RiskPerTradePercent.Should().Be(1.5m);
+        savedRun.Should().NotBeNull();
+
+        var mappedConfig = JsonSerializer.Deserialize<StrategyConfig>(savedRun!.StrategyConfigJson, StrategyJsonOptions.Default);
+        mappedConfig.Should().NotBeNull();
+        mappedConfig!.Risk.PositionSizeType.Should().Be(PositionSizeType.RiskBased);
+        mappedConfig.Risk.RiskPerTradePercent.Should().Be(1.5m);
+    }
+
+    [TestMethod]
+    public async Task GivenAutoLeverageRequest_WhenPostBacktest_ThenMapsAutoLeverage()
+    {
+        BacktestRun? savedRun = null;
+
+        _backtestRunRepositoryMock
+            .Setup(repository => repository.AddAsync(It.IsAny<BacktestRun>(), It.IsAny<CancellationToken>()))
+            .Callback<BacktestRun, CancellationToken>((run, _) => savedRun = run)
+            .Returns(Task.CompletedTask);
+
+        var client = GetTestClient();
+        var request = CreateValidRequest();
+        request.StrategyConfig!.Risk.AutoLeverage = true;
+        request.StrategyConfig.Risk.RiskPerTradePercent = 1.5m;
+
+        var response = await client.PostAsJsonAsync(BaseUrl, request);
+
+        response.AssertStatusCode(HttpStatusCode.Accepted);
+        var result = await response.Content.ReadFromJsonAsync<BacktestRunResponse>(BaseControllerTestsJson.Options);
+
+        result.Should().NotBeNull();
+        result!.StrategyConfig.Risk.AutoLeverage.Should().BeTrue();
+        savedRun.Should().NotBeNull();
+
+        var mappedConfig = JsonSerializer.Deserialize<StrategyConfig>(savedRun!.StrategyConfigJson, StrategyJsonOptions.Default);
+        mappedConfig.Should().NotBeNull();
+        mappedConfig!.Risk.AutoLeverage.Should().BeTrue();
+    }
+
+    [TestMethod]
     public async Task GivenValidStrategyId_WhenPostBacktest_ThenReturnsAcceptedWithStrategyFields()
     {
         BacktestRun? savedRun = null;
@@ -853,6 +914,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
                 {
                     PositionSizeType = "fixed_notional",
                     PositionSizeValue = 100m,
+                    RiskPerTradePercent = null,
                     Leverage = 3m,
                     MaxOpenTrades = 1,
                     CooldownValue = 0,

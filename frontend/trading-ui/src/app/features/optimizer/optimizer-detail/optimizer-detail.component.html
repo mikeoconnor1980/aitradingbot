@@ -33,29 +33,32 @@
         </div>
       </section>
 
-      @if (result.sharpeRatio != null || result.sortinoRatio != null || result.profitFactor != null || result.calmarRatio != null) {
+      @if ((result.sharpeRatio !== null && result.sharpeRatio !== undefined)
+        || (result.sortinoRatio !== null && result.sortinoRatio !== undefined)
+        || (result.profitFactor !== null && result.profitFactor !== undefined)
+        || (result.calmarRatio !== null && result.calmarRatio !== undefined)) {
         <section class="optimizer-detail__metrics">
           <h4 class="optimizer-detail__label" style="grid-column:1/-1;margin:0">Risk Metrics</h4>
           <div class="optimizer-detail__metric">
             <span class="optimizer-detail__label" matTooltip="Measures how consistent profits are relative to risk. Higher = more reliable returns with less variance. Below 0 = losing. 1–2 = good. 2–3 = very good. 3+ = excellent — profits are very steady.">Sharpe</span>
-            <strong>{{ result.sharpeRatio != null ? (result.sharpeRatio | number:"1.2-2") : "—" }}</strong>
+            <strong>{{ result.sharpeRatio !== null && result.sharpeRatio !== undefined ? (result.sharpeRatio | number:"1.2-2") : "—" }}</strong>
           </div>
           <div class="optimizer-detail__metric">
             <span class="optimizer-detail__label" matTooltip="Like Sharpe but only cares about losing trades’ variability — ignores upside swings. 1–2 = acceptable. 2–5 = good. 5+ = excellent. Shows 10.00 when there are no losing trades (capped).">Sortino</span>
-            <strong>{{ result.sortinoRatio != null ? (result.sortinoRatio | number:"1.2-2") : "—" }}</strong>
+            <strong>{{ result.sortinoRatio !== null && result.sortinoRatio !== undefined ? (result.sortinoRatio | number:"1.2-2") : "—" }}</strong>
           </div>
           <div class="optimizer-detail__metric">
             <span class="optimizer-detail__label" matTooltip="How much you earn for every dollar you lose. E.g. 2.0 = £2 profit per £1 lost. Below 1 = losing money. 1.5–2 = good. 2–3 = very good. Shows 100.00 when there are no losing trades (capped).">Profit Factor</span>
-            <strong>{{ result.profitFactor != null ? (result.profitFactor | number:"1.2-2") : "—" }}</strong>
+            <strong>{{ result.profitFactor !== null && result.profitFactor !== undefined ? (result.profitFactor | number:"1.2-2") : "—" }}</strong>
           </div>
           <div class="optimizer-detail__metric">
             <span class="optimizer-detail__label" matTooltip="Profit relative to the worst drawdown. E.g. 5.0 = earned 5x more than the worst dip. Below 1 = drawdown exceeds total profit. 1–3 = OK. 3–5 = good. 5+ = excellent. Shows 100.00 if no drawdown (capped).">Calmar</span>
-            <strong>{{ result.calmarRatio != null ? (result.calmarRatio | number:"1.2-2") : "—" }}</strong>
+            <strong>{{ result.calmarRatio !== null && result.calmarRatio !== undefined ? (result.calmarRatio | number:"1.2-2") : "—" }}</strong>
           </div>
         </section>
       }
 
-      @if (result.oosFitnessScore != null) {
+      @if (result.oosFitnessScore !== null && result.oosFitnessScore !== undefined) {
         <section class="optimizer-detail__metrics">
           <h4 class="optimizer-detail__label" style="grid-column:1/-1;margin:0">Out-of-Sample</h4>
           <div class="optimizer-detail__metric">

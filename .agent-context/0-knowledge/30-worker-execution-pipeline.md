@@ -194,7 +194,7 @@ Both produce `TradingSignal[]` — the contract boundary between strategy logic 
 
 | Signal | Action |
 |--------|--------|
-| `DeployGrid` | Cancel all existing orders, then place grid ladder (market + limits depending on `EntryMode`) |
+| `DeployGrid` | Set leverage via `SetLeverageAsync(symbol, leverage, isIsolated)` from signal parameters, cancel all existing orders, then place grid ladder (market + limits depending on `EntryMode`) |
 | `TakeProfit` | Cancel all pending orders, place sell at target price |
 | `CancelGrid` | Cancel all orders for the symbol |
 | `OpenPosition` | Place a single entry order |

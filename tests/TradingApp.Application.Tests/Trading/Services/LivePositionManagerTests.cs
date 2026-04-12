@@ -45,7 +45,7 @@ public sealed class LivePositionManagerTests
                 ["anchorPrice"] = 50000m,
                 ["gridLevels"] = 3,
                 ["gridSpacingPercent"] = 1.0m,
-                ["notionalPerLevel"] = 100m,
+                ["notionalUsd"] = 100m,
                 ["gridCycleId"] = "cycle-1",
                 ["entryMode"] = EntryModes.AutoFromSignalCandle
             }
@@ -77,7 +77,7 @@ public sealed class LivePositionManagerTests
                 ["anchorPrice"] = 50000m,
                 ["gridLevels"] = 3,
                 ["gridSpacingPercent"] = 1.0m,
-                ["notionalPerLevel"] = 100m,
+                ["notionalUsd"] = 100m,
                 ["gridCycleId"] = "cycle-1",
                 ["entryMode"] = EntryModes.InitialMarketThenGrid
             }
@@ -93,6 +93,68 @@ public sealed class LivePositionManagerTests
         _executionEngine.Verify(e => e.PlaceOrderAsync(
             It.Is<OrderRequest>(o => o.OrderType == OrderType.Limit),
             It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [TestMethod]
+    public async Task GivenDeployGridSignalWithLeverage_WhenExecuteSignalsAsync_ThenSetsLeverageBeforeOrders()
+    {
+        var callOrder = new List<string>();
+        _executionEngine.Setup(e => e.CancelAllOrdersAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("CancelAllOrders"))
+            .Returns(Task.CompletedTask);
+        _executionEngine.Setup(e => e.SetLeverageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("SetLeverage"))
+            .Returns(Task.CompletedTask);
+        _executionEngine.Setup(e => e.PlaceOrderAsync(It.IsAny<OrderRequest>(), It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("PlaceOrder"))
+            .ReturnsAsync("order-1");
+
+        var signal = new TradingSignal
+        {
+            SignalType = "DeployGrid",
+            Symbol = "BTC-PERP",
+            Parameters = new Dictionary<string, object>
+            {
+                ["anchorPrice"] = 50000m,
+                ["gridLevels"] = 3,
+                ["gridSpacingPercent"] = 1.0m,
+                ["notionalUsd"] = 100m,
+                ["gridCycleId"] = "cycle-1",
+                ["entryMode"] = EntryModes.AutoFromSignalCandle,
+                ["leverage"] = 33L,
+                ["isIsolated"] = true,
+            }
+        };
+
+        await _sut.ExecuteSignalsAsync([signal]);
+
+        _executionEngine.Verify(e => e.SetLeverageAsync("BTC-PERP", 33, true, It.IsAny<CancellationToken>()), Times.Once);
+        callOrder.IndexOf("SetLeverage").Should().BeGreaterOrEqualTo(0);
+        callOrder.IndexOf("PlaceOrder").Should().BeGreaterOrEqualTo(0);
+        callOrder.IndexOf("SetLeverage").Should().BeLessThan(callOrder.IndexOf("PlaceOrder"));
+    }
+
+    [TestMethod]
+    public async Task GivenDeployGridSignalWithoutLeverage_WhenExecuteSignalsAsync_ThenDoesNotSetLeverage()
+    {
+        var signal = new TradingSignal
+        {
+            SignalType = "DeployGrid",
+            Symbol = "BTC-PERP",
+            Parameters = new Dictionary<string, object>
+            {
+                ["anchorPrice"] = 50000m,
+                ["gridLevels"] = 3,
+                ["gridSpacingPercent"] = 1.0m,
+                ["notionalUsd"] = 100m,
+                ["gridCycleId"] = "cycle-1",
+                ["entryMode"] = EntryModes.AutoFromSignalCandle
+            }
+        };
+
+        await _sut.ExecuteSignalsAsync([signal]);
+
+        _executionEngine.Verify(e => e.SetLeverageAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [TestMethod]

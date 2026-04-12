@@ -117,9 +117,14 @@ public sealed class RiskConfigRequest
     [Range(0.01, double.MaxValue, ErrorMessage = "positionSizeValue must be > 0")]
     public decimal PositionSizeValue { get; set; }
 
+    [Range(0.01, 100, ErrorMessage = "riskPerTradePercent must be between 0.01 and 100")]
+    public decimal? RiskPerTradePercent { get; set; }
+
     [Required]
     [Range(1, double.MaxValue, ErrorMessage = "leverage must be >= 1")]
     public decimal Leverage { get; set; } = 1m;
+
+    public bool AutoLeverage { get; set; }
 
     public int MaxOpenTrades { get; set; } = 1;
     public int CooldownValue { get; set; }

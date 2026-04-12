@@ -8,7 +8,7 @@ export class ResponsiveDialogService {
   private readonly _dialog = inject(MatDialog);
   private readonly _layout = inject(LayoutService);
 
-  public open<T, D = unknown, R = any>(
+  public open<T, D = unknown, R = unknown>(
     component: ComponentType<T>,
     config?: MatDialogConfig<D>
   ): MatDialogRef<T, R> {

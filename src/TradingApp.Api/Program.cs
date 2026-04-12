@@ -26,6 +26,7 @@ using TradingApp.Application.MarketData.Queries;
 using TradingApp.Application.Optimization;
 using TradingApp.Application.Optimization.Services;
 using TradingApp.Application.Scheduling;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
@@ -67,6 +68,13 @@ if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey))
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
 
+// Google Authentication
+builder.Services.AddOptions<GoogleAuthOptions>()
+    .Bind(builder.Configuration.GetSection(GoogleAuthOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -106,6 +114,11 @@ builder.Services.AddOptions<BinanceIngestionOptions>()
 // Bind MacroCalendar configuration
 builder.Services.AddOptions<MacroCalendarOptions>()
     .Bind(builder.Configuration.GetSection(MacroCalendarOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddOptions<RiskLimitsConfig>()
+    .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
@@ -175,7 +188,7 @@ builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();
 builder.Services.AddScoped<IGridController, GridController>();
 builder.Services.AddScoped<ISignalController, SignalController>();
-builder.Services.AddScoped<IRiskEngine, PassThroughRiskEngine>();
+builder.Services.AddScoped<IRiskEngine, BacktestRiskEngine>();
 builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
 builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
 builder.Services.AddScoped<IStrategyConfigGenerator, StrategyConfigGenerator>();

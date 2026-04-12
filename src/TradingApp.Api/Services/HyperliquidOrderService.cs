@@ -508,7 +508,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         }
     }
 
-    public async Task UpdateLeverageAsync(string asset, int leverage, bool isCross = true, CancellationToken cancellationToken = default)
+    public async Task UpdateLeverageAsync(string asset, int leverage, bool isCross = false, CancellationToken cancellationToken = default)
     {
         var coin = NormalizeAsset(asset);
         var metadata = await _metadataCache.GetAsync(coin, cancellationToken);
