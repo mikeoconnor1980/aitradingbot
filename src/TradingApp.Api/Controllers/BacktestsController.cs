@@ -153,6 +153,8 @@ public sealed class BacktestsController : ApiController
                     WinRate = summary.WinRate,
                     TotalPnl = summary.TotalPnl,
                     MaxDrawdown = summary.MaxDrawdown,
+                    ProfitFactor = summary.ProfitFactor,
+                    Sqn = summary.Sqn,
                     CreatedAt = summary.CreatedAt,
                     StrategyId = summary.StrategyId,
                     StrategyRevisionId = summary.StrategyRevisionId,

@@ -87,7 +87,8 @@ public sealed class TriggerOrderManager : ITriggerOrderManager
         var absSize = Math.Abs(positionState.Size);
 
         // Update stop loss if price changed (e.g., trailing stop moved)
-        if (exitConfig.StopLoss.Enabled && protectionState.HasStopLoss)
+        if (exitConfig.StopLoss.Enabled && protectionState.HasStopLoss
+            && exitConfig.StopLoss.Type != ExitRuleType.AtrInitial)
         {
             var newSlPrice = CalculateStopLossPrice(positionState, exitConfig.StopLoss, context);
             if (newSlPrice.HasValue && newSlPrice.Value > 0
@@ -164,6 +165,30 @@ public sealed class TriggerOrderManager : ITriggerOrderManager
             return isLong
                 ? referencePrice - (atr * multiplier)
                 : referencePrice + (atr * multiplier);
+        }
+
+        if (stopLossConfig.Type == ExitRuleType.AtrInitial)
+        {
+            var atr = context.Indicators?.Atr ?? 0m;
+            var multiplier = stopLossConfig.AtrMultiplier ?? 2m;
+
+            if (atr <= 0m)
+            {
+                if (stopLossConfig.Value.HasValue)
+                {
+                    var percent = Math.Abs(stopLossConfig.Value.Value);
+                    return isLong
+                        ? positionState.AverageEntryPrice * (1m - (percent / 100m))
+                        : positionState.AverageEntryPrice * (1m + (percent / 100m));
+                }
+
+                return null;
+            }
+
+            var entryPrice = positionState.AverageEntryPrice;
+            return isLong
+                ? entryPrice - (atr * multiplier)
+                : entryPrice + (atr * multiplier);
         }
 
         if (stopLossConfig.Value.HasValue)

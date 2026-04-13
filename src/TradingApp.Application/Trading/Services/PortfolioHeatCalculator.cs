@@ -16,6 +16,8 @@ public static class PortfolioHeatCalculator
         decimal equity,
         decimal maxHeatPercent)
     {
+        ArgumentNullException.ThrowIfNull(positions);
+
         if (positions.Count == 0 || equity <= 0m)
         {
             return PortfolioHeatResult.Empty(maxHeatPercent) with
@@ -48,7 +50,7 @@ public static class PortfolioHeatCalculator
 
         return new PortfolioHeatResult
         {
-            HeatPercent = CalculateHeatPercent(entries.Select(entry => entry.RiskUsd), equity),
+            HeatPercent = equity > 0m ? (totalRiskUsd / equity) * 100m : 0m,
             HeatUsd = totalRiskUsd,
             MaxHeatPercent = maxHeatPercent,
             Equity = equity,

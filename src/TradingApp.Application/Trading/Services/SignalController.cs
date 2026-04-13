@@ -43,14 +43,19 @@ public sealed class SignalController : ISignalController
             return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
-        return Task.FromResult(EmitOpenPosition(context, config, evaluation.Reason));
+        return Task.FromResult(EmitOpenPosition(context, gridState, config, evaluation.Reason));
     }
 
     private static IReadOnlyList<TradingSignal> EmitOpenPosition(
         MarketContext context,
+        GridState gridState,
         StrategyConfig config,
         string? reason)
     {
+        gridState.AtrAtEntry = config.Exit.StopLoss.Type == ExitRuleType.AtrInitial
+            ? context.Indicators?.Atr
+            : null;
+
         var entryPrice = context.CurrentCandle.Close;
         var stopLossPercent = config.Risk.PositionSizeType == PositionSizeType.RiskBased
             ? StopLossDistanceResolver.Resolve(
@@ -59,6 +64,7 @@ public sealed class SignalController : ISignalController
                 entryPrice)
             : null;
         var notional = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
+        notional *= context.DrawdownScalingFactor;
         var size = entryPrice > 0m
             ? decimal.Round(notional / entryPrice, 8, MidpointRounding.AwayFromZero)
             : 0m;
@@ -97,7 +103,12 @@ public sealed class SignalController : ISignalController
         var isAtrTrailing = stopLossConfig.Enabled && stopLossConfig.Type == ExitRuleType.AtrTrailing;
         var isFixedStopLoss = stopLossConfig.Enabled
             && stopLossConfig.Type != ExitRuleType.AtrTrailing
+            && stopLossConfig.Type != ExitRuleType.AtrInitial
             && stopLossConfig.Value.HasValue;
+        var isAtrInitial = stopLossConfig.Enabled
+            && stopLossConfig.Type == ExitRuleType.AtrInitial
+            && gridState.AtrAtEntry.HasValue
+            && gridState.AtrAtEntry.Value > 0m;
 
         // ATR trailing stop
         if (isAtrTrailing)
@@ -141,6 +152,7 @@ public sealed class SignalController : ISignalController
 
                     gridState.TrailingStopHighWatermark = null;
                     gridState.CandlesSinceEntry = 0;
+                    gridState.AtrAtEntry = null;
                     return [signal];
                 }
             }
@@ -177,6 +189,45 @@ public sealed class SignalController : ISignalController
             }
         }
 
+        if (isAtrInitial)
+        {
+            var multiplier = stopLossConfig.AtrMultiplier ?? 2m;
+            var isLong = positionState.Size > 0m;
+            var atrAtEntry = gridState.AtrAtEntry.GetValueOrDefault();
+            var stopPrice = isLong
+                ? positionState.AverageEntryPrice - (atrAtEntry * multiplier)
+                : positionState.AverageEntryPrice + (atrAtEntry * multiplier);
+
+            var triggered = isLong
+                ? context.CurrentCandle.Close <= stopPrice
+                : context.CurrentCandle.Close >= stopPrice;
+
+            if (triggered)
+            {
+                gridState.TrailingStopHighWatermark = null;
+                gridState.CandlesSinceEntry = 0;
+                gridState.AtrAtEntry = null;
+
+                return
+                [
+                    new TradingSignal
+                    {
+                        SignalType = "TakeProfit",
+                        Symbol = context.Symbol,
+                        Reason = $"ATR initial stop triggered (stop: {stopPrice:F2}).",
+                        Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                        {
+                            ["targetPrice"] = context.CurrentCandle.Close,
+                            ["size"] = Math.Abs(positionState.Size),
+                            ["orderType"] = OrderType.Market.ToString(),
+                            ["cancellationReason"] = CancellationReason.StopLossTriggered.ToString(),
+                            ["gridCycleId"] = "signal"
+                        }
+                    }
+                ];
+            }
+        }
+
         // Take profit
         var takeProfitPercent = config.Exit.TakeProfit.Enabled && config.Exit.TakeProfit.Value.HasValue
             ? Math.Abs(config.Exit.TakeProfit.Value.Value)
@@ -187,6 +238,7 @@ public sealed class SignalController : ISignalController
         {
             gridState.TrailingStopHighWatermark = null;
             gridState.CandlesSinceEntry = 0;
+            gridState.AtrAtEntry = null;
 
             return
             [

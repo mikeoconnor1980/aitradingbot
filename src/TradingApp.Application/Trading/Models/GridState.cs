@@ -37,6 +37,13 @@ public sealed class GridState
     public decimal? InitialRDollars { get; set; }
 
     /// <summary>
+    /// ATR value captured when the grid was deployed.
+    /// Used by AtrInitial stop to compute the fixed stop price from entry-time volatility.
+    /// Reset to null when position is closed.
+    /// </summary>
+    public decimal? AtrAtEntry { get; set; }
+
+    /// <summary>
     /// Tracks exchange-native TP/SL trigger orders protecting the current position.
     /// In-memory only — rebuilt from exchange on worker restart.
     /// </summary>

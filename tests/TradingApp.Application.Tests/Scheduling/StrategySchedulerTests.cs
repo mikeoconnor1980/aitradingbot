@@ -1,4 +1,5 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
@@ -83,6 +84,7 @@ public sealed class StrategySchedulerTests
     private Mock<ISignalController> _signalControllerMock = default!;
     private Mock<IRiskEngine> _riskEngineMock = default!;
     private Mock<IPositionManager> _positionManagerMock = default!;
+    private Mock<IStrategyRepository> _strategyRepositoryMock = default!;
     private StrategyScheduler _sut = default!;
 
     [TestInitialize]
@@ -94,6 +96,7 @@ public sealed class StrategySchedulerTests
         _signalControllerMock = new Mock<ISignalController>();
         _riskEngineMock = new Mock<IRiskEngine>();
         _positionManagerMock = new Mock<IPositionManager>();
+        _strategyRepositoryMock = new Mock<IStrategyRepository>();
 
         _sut = new StrategyScheduler(
             _contextBuilderMock.Object,
@@ -179,6 +182,12 @@ public sealed class StrategySchedulerTests
         var callOrder = new List<string>();
         using var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
+        _riskEngineMock
+            .Setup(engine => engine.UpdatePortfolioState(It.IsAny<decimal>()))
+            .Callback(() => callOrder.Add("portfolio"));
+        _riskEngineMock
+            .Setup(engine => engine.UpdateDrawdownState(It.IsAny<decimal>(), It.IsAny<bool>()))
+            .Callback(() => callOrder.Add("drawdown"));
         var marketContext = new MarketContext
         {
             Symbol = "BTC",
@@ -236,7 +245,7 @@ public sealed class StrategySchedulerTests
 
         await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null, cancellationToken);
 
-        callOrder.Should().Equal("context", "strategy", "grid", "risk", "position");
+        callOrder.Should().Equal("context", "portfolio", "drawdown", "strategy", "grid", "risk", "position");
     }
 
     [TestMethod]
@@ -468,6 +477,68 @@ public sealed class StrategySchedulerTests
                 It.Is<MarketContext>(context => context.AccountEquity == 10_100m),
                 It.IsAny<IStrategyConfig>(),
                 It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenDrawdownTiersAndPersistedHighWaterMark_WhenHandleCandleClosedAsync_ThenContextAndRiskEngineReceiveScaling()
+    {
+        var strategy = Strategy.Create("user-1", "Test Grid", "grid", "{}");
+        strategy.UpdateHighWaterMark(10_000m);
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            TestConfig,
+            initialCapital: 8_800m,
+            drawdownTiers: RiskLimitsConfig.DefaultDrawdownTiers,
+            strategy: strategy,
+            strategyRepository: _strategyRepositoryMock.Object,
+            signalController: _signalControllerMock.Object);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        _riskEngineMock.Verify(engine => engine.UpdatePortfolioState(8_800m), Times.Once);
+        _riskEngineMock.Verify(engine => engine.UpdateDrawdownState(0.50m, false), Times.Once);
+        _gridControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.Is<MarketContext>(context => context.DrawdownScalingFactor == 0.50m),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        _strategyRepositoryMock.Verify(
+            repository => repository.UpdateAsync(It.IsAny<Strategy>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenEquityAboveHighWaterMark_WhenHandleCandleClosedAsync_ThenHighWaterMarkPersisted()
+    {
+        var strategy = Strategy.Create("user-1", "Test Grid", "grid", "{}");
+        strategy.UpdateHighWaterMark(10_000m);
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            TestConfig,
+            initialCapital: 10_500m,
+            drawdownTiers: RiskLimitsConfig.DefaultDrawdownTiers,
+            strategy: strategy,
+            strategyRepository: _strategyRepositoryMock.Object,
+            signalController: _signalControllerMock.Object);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        strategy.HighWaterMarkUsd.Should().Be(10_500m);
+        _strategyRepositoryMock.Verify(
+            repository => repository.UpdateAsync(strategy, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

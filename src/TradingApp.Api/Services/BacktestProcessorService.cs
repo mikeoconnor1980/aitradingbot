@@ -121,7 +121,10 @@ public sealed class BacktestProcessorService : BackgroundService
                     : null,
                 expectancy: result.Expectancy,
                 profitFactor: result.ProfitFactor,
-                sqn: result.Sqn);
+                sqn: result.Sqn,
+                kellyPercent: result.KellyPercent,
+                halfKellyPercent: result.HalfKellyPercent,
+                winLossRRatio: result.WinLossRRatio);
 
             await repository.UpdateAsync(backtestRun, CancellationToken.None);
             await BroadcastStatusAsync(backtestRun);
@@ -168,7 +171,10 @@ public sealed class BacktestProcessorService : BackgroundService
             if (backtestRun.Progress != lastBroadcastPercent)
             {
                 lastBroadcastPercent = backtestRun.Progress;
-                _ = BroadcastProgressAsync(backtestRun, lastCandleTimestamp);
+                _ = BroadcastProgressAsync(backtestRun, lastCandleTimestamp)
+                    .ContinueWith(
+                        t => _logger.LogWarning(t.Exception, "Failed to broadcast backtest progress for {BacktestRunId}", backtestRun.Id),
+                        TaskContinuationOptions.OnlyOnFaulted);
             }
         }
     }

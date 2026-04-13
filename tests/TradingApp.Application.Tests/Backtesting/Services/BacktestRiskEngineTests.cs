@@ -14,7 +14,11 @@ public sealed class BacktestRiskEngineTests
     [TestInitialize]
     public void Setup()
     {
-        _limits = new RiskLimitsConfig { MaxPortfolioHeatPercent = 6m };
+        _limits = new RiskLimitsConfig
+        {
+            MaxPortfolioHeatPercent = 6m,
+            DrawdownTiers = RiskLimitsConfig.DefaultDrawdownTiers.ToArray()
+        };
         _sut = new BacktestRiskEngine(Options.Create(_limits));
     }
 
@@ -87,6 +91,64 @@ public sealed class BacktestRiskEngineTests
 
         exitSignals.Should().HaveCount(1);
         entrySignals.Should().HaveCount(1);
+        _sut.HeatBlockedSignalCount.Should().Be(0);
+    }
+
+    [TestMethod]
+    public async Task GivenEquityDropsIntoHaltTier_WhenEntrySignalValidated_ThenBlockedAndCounted()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.UpdatePortfolioState(8_400m);
+
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeTrue();
+        _sut.DrawdownScalingFactor.Should().Be(0m);
+
+        var approvedSignals = await _sut.ValidateAsync([CreateEntrySignal("BTC", 100m)]);
+
+        approvedSignals.Should().BeEmpty();
+        _sut.DrawdownBlockedSignalCount.Should().Be(1);
+        _sut.HeatBlockedSignalCount.Should().Be(0);
+    }
+
+    [TestMethod]
+    public async Task GivenEquityRecoversFromHalt_WhenEntrySignalValidated_ThenApproved()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.UpdatePortfolioState(8_400m);
+        _sut.UpdatePortfolioState(8_600m);
+
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
+        _sut.DrawdownScalingFactor.Should().Be(0.5m);
+
+        var approvedSignals = await _sut.ValidateAsync([CreateEntrySignal("BTC", 100m)]);
+
+        approvedSignals.Should().HaveCount(1);
+        _sut.DrawdownBlockedSignalCount.Should().Be(0);
+    }
+
+    [TestMethod]
+    public async Task GivenRiskReducingSignal_WhenDrawdownCircuitBreakerTripped_ThenSignalPasses()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.UpdatePortfolioState(8_400m);
+
+        var approvedSignals = await _sut.ValidateAsync([
+            new TradingSignal { SignalType = "TakeProfit", Symbol = "BTC" }
+        ]);
+
+        approvedSignals.Should().HaveCount(1);
+        _sut.DrawdownBlockedSignalCount.Should().Be(0);
+    }
+
+    [TestMethod]
+    public void GivenEquitySetsNewHighAndPullsBack_WhenPortfolioStateUpdated_ThenDrawdownUsesRatchetedHighWaterMark()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.UpdatePortfolioState(10_500m);
+        _sut.UpdatePortfolioState(9_900m);
+
+        _sut.DrawdownScalingFactor.Should().Be(0.75m);
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
     }
 
     private static TradingSignal CreateEntrySignal(string symbol, decimal estimatedRiskUsd)

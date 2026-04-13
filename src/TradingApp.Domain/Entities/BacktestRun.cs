@@ -31,6 +31,9 @@ public sealed class BacktestRun
     public decimal? Expectancy { get; private set; }
     public decimal? ProfitFactor { get; private set; }
     public decimal? Sqn { get; private set; }
+    public decimal? KellyPercent { get; private set; }
+    public decimal? HalfKellyPercent { get; private set; }
+    public decimal? WinLossRRatio { get; private set; }
     public string TradesJson { get; private set; } = string.Empty;
     public string EquityTimeSeriesJson { get; private set; } = string.Empty;
     public bool AuditLogEnabled { get; private set; }
@@ -128,7 +131,10 @@ public sealed class BacktestRun
         string? gridCycleLogJson = null,
         decimal? expectancy = null,
         decimal? profitFactor = null,
-        decimal? sqn = null)
+        decimal? sqn = null,
+        decimal? kellyPercent = null,
+        decimal? halfKellyPercent = null,
+        decimal? winLossRRatio = null)
     {
         Status = BacktestStatus.Completed;
         Progress = 100;
@@ -147,6 +153,9 @@ public sealed class BacktestRun
         Expectancy = expectancy;
         ProfitFactor = profitFactor;
         Sqn = sqn;
+        KellyPercent = kellyPercent;
+        HalfKellyPercent = halfKellyPercent;
+        WinLossRRatio = winLossRRatio;
         TradesJson = tradesJson ?? "[]";
         EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]";
         CandleLogJson = candleLogJson;
@@ -195,6 +204,9 @@ public sealed class BacktestRun
         decimal? expectancy = null,
         decimal? profitFactor = null,
         decimal? sqn = null,
+        decimal? kellyPercent = null,
+        decimal? halfKellyPercent = null,
+        decimal? winLossRRatio = null,
         Guid? strategyId = null,
         int? strategyRevisionId = null)
     {
@@ -237,6 +249,9 @@ public sealed class BacktestRun
             Expectancy = expectancy,
             ProfitFactor = profitFactor,
             Sqn = sqn,
+            KellyPercent = kellyPercent,
+            HalfKellyPercent = halfKellyPercent,
+            WinLossRRatio = winLossRRatio,
             TradesJson = tradesJson ?? "[]",
             EquityTimeSeriesJson = equityTimeSeriesJson ?? "[]",
             AuditLogEnabled = auditLogEnabled,

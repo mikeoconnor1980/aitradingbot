@@ -42,11 +42,19 @@ Risk signals
 
 DeployGrid
 
+Entry signal to activate a grid strategy. Emitted once per grid lifecycle when setup is detected.
+
 Payload:
 
-symbol
-gridPlan
-reason
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `symbol` | string | Trading pair (e.g. `"BTC-PERP"`) |
+| `gridPlan` | object | Grid configuration (levels, spacing, notional, entryMode) |
+| `estimatedRiskUsd` | decimal | Estimated R (risk in USD) across all grid levels; used for portfolio heat validation and tracking |
+| `reason` | string | Human-readable setup reason |
+| `autoLeverage` (optional) | int | Derived leverage for `RiskBased` mode with `autoLeverage = true` |
+
+Rejection: blocked if `currentPortfolioHeat + estimatedRiskUsd > equity × maxPortfolioHeatPercent / 100`.
 
 ---
 

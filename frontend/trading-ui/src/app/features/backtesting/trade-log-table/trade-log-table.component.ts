@@ -79,14 +79,10 @@ export class TradeLogTableComponent {
 
   public get hasRData(): boolean {
     return this.trades.some((trade: BacktestTrade) =>
-      trade.initialRDollars !== null
-      && trade.initialRDollars !== undefined
-      || trade.rMultipleResult !== null
-      && trade.rMultipleResult !== undefined
-      || trade.mfe !== null
-      && trade.mfe !== undefined
-      || trade.mae !== null
-      && trade.mae !== undefined);
+      (trade.initialRDollars !== null && trade.initialRDollars !== undefined)
+      || (trade.rMultipleResult !== null && trade.rMultipleResult !== undefined)
+      || (trade.mfe !== null && trade.mfe !== undefined)
+      || (trade.mae !== null && trade.mae !== undefined));
   }
 
   public get closedTradeDetailsColspan(): number {

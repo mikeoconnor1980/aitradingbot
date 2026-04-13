@@ -54,6 +54,8 @@ Key model files:
 | `GridLifecycle` (enum) | `src/TradingApp.Application/Trading/Models/GridLifecycle.cs` |
 | `GridState` | `src/TradingApp.Application/Trading/Models/GridState.cs` |
 
+`GridState` tracks `InitialRDollars` (nullable decimal) — the one-R dollar risk captured at grid deployment time when using `RiskBased` sizing. Cleared when grids enter `Closing` or `Closed` states to prevent stale values leaking into subsequent cycles.
+
 Note: Signals are currently emitted as `TradingSignal` with a `string SignalType` (e.g. `"DeployGrid"`).
 Typed signal classes are planned — see [Signal Contracts](16-signal-contracts.md).
 

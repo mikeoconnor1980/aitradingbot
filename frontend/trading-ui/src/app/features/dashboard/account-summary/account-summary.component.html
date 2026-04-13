@@ -40,6 +40,10 @@
           </div>
         }
         <div class="account-summary__metric">
+          <span class="account-summary__label">Drawdown</span>
+          <app-drawdown-indicator [drawdownState]="drawdownState"></app-drawdown-indicator>
+        </div>
+        <div class="account-summary__metric">
           <span class="account-summary__label">Maintenance Margin</span>
           <span class="account-summary__value">{{ summary.maintenanceMargin | number: "1.2-2" }}</span>
         </div>

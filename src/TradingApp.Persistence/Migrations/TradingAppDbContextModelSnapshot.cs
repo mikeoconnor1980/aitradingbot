@@ -69,6 +69,9 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<string>("GridCycleLogJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<double?>("HalfKellyPercent")
+                        .HasColumnType("float");
+
                     b.Property<int>("HedgesOpened")
                         .HasColumnType("int");
 
@@ -78,6 +81,9 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<string>("IntervalsJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("KellyPercent")
+                        .HasColumnType("float");
 
                     b.Property<int>("LosingTrades")
                         .HasColumnType("int");
@@ -133,6 +139,9 @@ namespace TradingApp.Persistence.Migrations
                     b.Property<string>("TradesJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<double?>("WinLossRRatio")
+                        .HasColumnType("float");
 
                     b.Property<double>("WinRate")
                         .HasColumnType("float");
@@ -799,6 +808,10 @@ namespace TradingApp.Persistence.Migrations
 
                     b.Property<long>("CreatedAtUtc")
                         .HasColumnType("bigint");
+
+                    b.Property<double?>("HighWaterMarkUsd")
+                        .HasColumnType("float")
+                        .HasColumnName("HighWaterMarkUsd");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");

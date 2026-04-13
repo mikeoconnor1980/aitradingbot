@@ -1,0 +1,30 @@
+<div class="drawdown-indicator" [class.drawdown-indicator--halted]="isHalted">
+  <div class="drawdown-indicator__header">
+    <div class="drawdown-indicator__title-group">
+      <span class="drawdown-indicator__value">{{ drawdownState?.drawdownPercent ?? 0 | number: "1.1-1" }}%</span>
+      <span class="drawdown-indicator__label">drawdown</span>
+    </div>
+
+    @if (isHalted) {
+      <mat-icon class="drawdown-indicator__warning-icon">warning</mat-icon>
+    }
+  </div>
+
+  <mat-progress-bar
+    class="drawdown-indicator__bar"
+    [class]="'drawdown-indicator__bar drawdown-indicator__bar--' + threshold.cssClass"
+    mode="determinate"
+    [value]="barValue">
+  </mat-progress-bar>
+
+  <div class="drawdown-indicator__footer">
+    <span class="drawdown-indicator__tier">{{ threshold.label }}</span>
+    <span
+      class="drawdown-indicator__badge"
+      [class.drawdown-indicator__badge--active]="isHalted"
+      [class.drawdown-indicator__badge--inactive]="!isHalted">
+      <span class="drawdown-indicator__badge-dot"></span>
+      {{ isHalted ? "CB Active" : "Normal" }}
+    </span>
+  </div>
+</div>

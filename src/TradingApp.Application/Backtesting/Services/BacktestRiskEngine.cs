@@ -8,21 +8,33 @@ using TradingApp.Application.Trading.Services;
 namespace TradingApp.Application.Backtesting.Services;
 
 /// <summary>
-/// Risk engine for backtesting that enforces portfolio heat limits only.
+/// Risk engine for backtesting that enforces portfolio heat and drawdown limits.
 /// </summary>
 public sealed class BacktestRiskEngine : IRiskEngine
 {
     private readonly RiskLimitsConfig _limits;
+    private readonly IReadOnlyList<DrawdownTier> _drawdownTiers;
     private readonly ConcurrentDictionary<string, decimal> _positionRisks = new(StringComparer.OrdinalIgnoreCase);
     private decimal _accountEquity;
+    private decimal _highWaterMark;
+    private decimal _drawdownScalingFactor = 1.0m;
+    private volatile bool _drawdownCircuitBreakerTripped;
     private int _heatBlockedSignalCount;
+    private int _drawdownBlockedSignalCount;
 
     public BacktestRiskEngine(IOptions<RiskLimitsConfig> limits)
     {
         _limits = limits?.Value ?? throw new ArgumentNullException(nameof(limits));
+        _drawdownTiers = _limits.DrawdownTiers;
     }
 
     public int HeatBlockedSignalCount => _heatBlockedSignalCount;
+
+    public int DrawdownBlockedSignalCount => _drawdownBlockedSignalCount;
+
+    public decimal DrawdownScalingFactor => _drawdownScalingFactor;
+
+    public bool IsDrawdownCircuitBreakerTripped => _drawdownCircuitBreakerTripped;
 
     public Task<IReadOnlyList<TradingSignal>> ValidateAsync(
         IReadOnlyList<TradingSignal> signals,
@@ -31,7 +43,7 @@ public sealed class BacktestRiskEngine : IRiskEngine
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(signals);
 
-        if (signals.Count == 0 || _limits.MaxPortfolioHeatPercent <= 0m)
+        if (signals.Count == 0)
         {
             return Task.FromResult(signals);
         }
@@ -46,7 +58,13 @@ public sealed class BacktestRiskEngine : IRiskEngine
                 continue;
             }
 
-            if (!CheckPortfolioHeat(signal))
+            if (_drawdownCircuitBreakerTripped)
+            {
+                Interlocked.Increment(ref _drawdownBlockedSignalCount);
+                continue;
+            }
+
+            if (_limits.MaxPortfolioHeatPercent > 0m && !CheckPortfolioHeat(signal))
             {
                 Interlocked.Increment(ref _heatBlockedSignalCount);
                 continue;
@@ -62,6 +80,25 @@ public sealed class BacktestRiskEngine : IRiskEngine
     public void UpdatePortfolioState(decimal accountEquity)
     {
         _accountEquity = Math.Max(0m, accountEquity);
+
+        if (_highWaterMark == 0m)
+        {
+            _highWaterMark = _accountEquity;
+        }
+
+        var drawdownResult = DrawdownEvaluator.Evaluate(
+            _accountEquity,
+            _highWaterMark,
+            _drawdownTiers);
+
+        _highWaterMark = drawdownResult.NewHighWaterMark;
+        UpdateDrawdownState(drawdownResult.ScalingFactor, drawdownResult.IsHalted);
+    }
+
+    public void UpdateDrawdownState(decimal scalingFactor, bool isHalted)
+    {
+        _drawdownScalingFactor = Math.Max(0m, scalingFactor);
+        _drawdownCircuitBreakerTripped = isHalted;
     }
 
     public void RecordPositionOpened(string symbol, decimal riskUsd)
@@ -131,7 +168,14 @@ public sealed class BacktestRiskEngine : IRiskEngine
             return false;
         }
 
-        riskUsd = Convert.ToDecimal(estimatedRisk);
-        return riskUsd > 0m;
+        try
+        {
+            riskUsd = Convert.ToDecimal(estimatedRisk);
+            return riskUsd > 0m;
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            return false;
+        }
     }
 }

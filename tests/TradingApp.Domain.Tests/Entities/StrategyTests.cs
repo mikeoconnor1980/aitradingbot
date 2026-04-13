@@ -111,4 +111,16 @@ public sealed class StrategyTests
 
         strategy.IsRunning.Should().BeFalse();
     }
+
+    [TestMethod]
+    public void GivenStrategy_WhenUpdateHighWaterMark_ThenValueAndUpdatedAtSet()
+    {
+        var strategy = Strategy.Create("user-1", "Test", "GridStrategy", "{}");
+        var originalUpdatedAt = strategy.UpdatedAtUtc;
+
+        strategy.UpdateHighWaterMark(12_345.67m);
+
+        strategy.HighWaterMarkUsd.Should().Be(12_345.67m);
+        strategy.UpdatedAtUtc.Should().BeGreaterThanOrEqualTo(originalUpdatedAt);
+    }
 }

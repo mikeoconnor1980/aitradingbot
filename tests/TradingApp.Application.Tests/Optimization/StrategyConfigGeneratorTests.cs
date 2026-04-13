@@ -68,6 +68,84 @@ public sealed class StrategyConfigGeneratorTests
     }
 
     [TestMethod]
+    public void GivenDefaultStopLossTypes_WhenGenerate_ThenAllConfigsUseFixedPercentStopLoss()
+    {
+        var results = _generator.Generate("BTC", new ParameterBounds(), 25, seed: 1010);
+
+        results.Should().OnlyContain(strategy => strategy.Config.Exit.StopLoss.Type == ExitRuleType.FixedPercent);
+    }
+
+    [TestMethod]
+    public void GivenAtrInitialStopLossType_WhenGenerate_ThenConfigUsesAtrOptions()
+    {
+        decimal[] atrMultiplierOptions = [1.0m, 1.5m, 2.0m, 2.5m, 3.0m];
+        int[] atrPeriodOptions = [14, 21];
+        var bounds = new ParameterBounds
+        {
+            StopLossTypes = [ExitRuleType.AtrInitial],
+            AtrMultiplierOptions = atrMultiplierOptions,
+            AtrPeriodOptions = atrPeriodOptions,
+        };
+
+        var results = _generator.Generate("BTC", bounds, 25, seed: 1011);
+
+        results.Should().OnlyContain(strategy =>
+            strategy.Config.Exit.StopLoss.Type == ExitRuleType.AtrInitial
+            && strategy.Config.Exit.StopLoss.AtrMultiplier.HasValue
+            && atrMultiplierOptions.Contains(strategy.Config.Exit.StopLoss.AtrMultiplier.Value)
+            && strategy.Config.Exit.StopLoss.AtrPeriod.HasValue
+            && atrPeriodOptions.Contains(strategy.Config.Exit.StopLoss.AtrPeriod.Value)
+            && strategy.Config.Exit.StopLoss.Value == null);
+        results.Should().OnlyContain(strategy => strategy.Description.Contains("SL:ATRx", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void GivenMixedStopLossTypes_WhenGenerate_ThenConfigsContainBothSupportedTypes()
+    {
+        var bounds = new ParameterBounds
+        {
+            StopLossTypes = [ExitRuleType.FixedPercent, ExitRuleType.AtrInitial],
+            AtrMultiplierOptions = [2.0m],
+            AtrPeriodOptions = [14],
+        };
+
+        var results = _generator.Generate("BTC", bounds, 200, seed: 1012);
+
+        results.Should().Contain(strategy => strategy.Config.Exit.StopLoss.Type == ExitRuleType.FixedPercent);
+        results.Should().Contain(strategy => strategy.Config.Exit.StopLoss.Type == ExitRuleType.AtrInitial);
+    }
+
+    [TestMethod]
+    public void GivenAtrInitialWithoutMultiplierOptions_WhenGenerate_ThenThrows()
+    {
+        var bounds = new ParameterBounds
+        {
+            StopLossTypes = [ExitRuleType.AtrInitial],
+            AtrMultiplierOptions = [],
+        };
+
+        var action = () => _generator.Generate("BTC", bounds, 10, seed: 1013);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*ATR multiplier*");
+    }
+
+    [TestMethod]
+    public void GivenAtrInitialWithoutPeriodOptions_WhenGenerate_ThenThrows()
+    {
+        var bounds = new ParameterBounds
+        {
+            StopLossTypes = [ExitRuleType.AtrInitial],
+            AtrPeriodOptions = [],
+        };
+
+        var action = () => _generator.Generate("BTC", bounds, 10, seed: 1014);
+
+        action.Should().Throw<InvalidOperationException>()
+            .WithMessage("*ATR period*");
+    }
+
+    [TestMethod]
     public void GivenDefaultBounds_WhenGenerate_ThenTakeProfitWithinBounds()
     {
         var bounds = new ParameterBounds();

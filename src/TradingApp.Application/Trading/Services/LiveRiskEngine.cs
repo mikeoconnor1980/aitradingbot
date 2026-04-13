@@ -20,9 +20,11 @@ public sealed class LiveRiskEngine : IRiskEngine
     private readonly ConcurrentQueue<LossRecord> _recentLosses = new();
     private readonly ConcurrentDictionary<string, decimal> _positionRisks = new(StringComparer.OrdinalIgnoreCase);
     private volatile bool _circuitBreakerTripped;
+    private volatile bool _drawdownCircuitBreakerTripped;
     private DateTimeOffset _circuitBreakerTrippedAt;
     private int _activeOrderCount;
     private decimal _accountEquity;
+    private decimal _drawdownScalingFactor = 1.0m;
     private readonly object _lock = new();
 
     public LiveRiskEngine(
@@ -48,6 +50,19 @@ public sealed class LiveRiskEngine : IRiskEngine
 
     /// <summary>Whether the circuit breaker is currently tripped.</summary>
     public bool IsCircuitBreakerTripped => _circuitBreakerTripped;
+
+    public decimal DrawdownScalingFactor
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _drawdownScalingFactor;
+            }
+        }
+    }
+
+    public bool IsDrawdownCircuitBreakerTripped => _drawdownCircuitBreakerTripped;
 
     public Task<IReadOnlyList<TradingSignal>> ValidateAsync(
         IReadOnlyList<TradingSignal> signals,
@@ -80,6 +95,14 @@ public sealed class LiveRiskEngine : IRiskEngine
             {
                 _logger.LogWarning(
                     "RISK: Signal BLOCKED by circuit breaker — Type={SignalType}, Symbol={Symbol}",
+                    signal.SignalType, signal.Symbol);
+                continue;
+            }
+
+            if (_drawdownCircuitBreakerTripped)
+            {
+                _logger.LogWarning(
+                    "RISK: Signal BLOCKED by drawdown circuit breaker — Type={SignalType}, Symbol={Symbol}",
                     signal.SignalType, signal.Symbol);
                 continue;
             }
@@ -178,6 +201,30 @@ public sealed class LiveRiskEngine : IRiskEngine
         lock (_lock)
         {
             _accountEquity = Math.Max(0m, accountEquity);
+        }
+    }
+
+    public void UpdateDrawdownState(decimal scalingFactor, bool isHalted)
+    {
+        var wasHalted = _drawdownCircuitBreakerTripped;
+
+        lock (_lock)
+        {
+            _drawdownScalingFactor = Math.Max(0m, scalingFactor);
+            _drawdownCircuitBreakerTripped = isHalted;
+        }
+
+        if (isHalted && !wasHalted)
+        {
+            _logger.LogCritical("RISK: Drawdown circuit breaker TRIPPED — all new entries halted.");
+            return;
+        }
+
+        if (!isHalted && wasHalted)
+        {
+            _logger.LogWarning(
+                "RISK: Drawdown circuit breaker RESET — trading resumed at scaling factor {ScalingFactor}.",
+                DrawdownScalingFactor);
         }
     }
 
@@ -314,8 +361,15 @@ public sealed class LiveRiskEngine : IRiskEngine
             return false;
         }
 
-        riskUsd = Convert.ToDecimal(estimatedRisk);
-        return riskUsd > 0m;
+        try
+        {
+            riskUsd = Convert.ToDecimal(estimatedRisk);
+            return riskUsd > 0m;
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            return false;
+        }
     }
 
     private void TrackPositionOpenFromSignal(TradingSignal signal)

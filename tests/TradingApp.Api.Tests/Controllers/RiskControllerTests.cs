@@ -67,8 +67,11 @@ public sealed class RiskControllerTests
     [TestCleanup]
     public async Task Cleanup()
     {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        _client?.Dispose();
+        if (_factory is not null)
+        {
+            await _factory.DisposeAsync();
+        }
     }
 
     [TestMethod]

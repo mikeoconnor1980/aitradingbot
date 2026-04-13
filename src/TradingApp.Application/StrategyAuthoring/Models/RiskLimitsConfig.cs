@@ -8,6 +8,13 @@ public sealed record RiskLimitsConfig
 {
     public const string SectionName = "RiskLimits";
 
+    public static IReadOnlyList<DrawdownTier> DefaultDrawdownTiers { get; } =
+    [
+        new DrawdownTier { ThresholdPercent = 5m, ScalingFactor = 0.75m },
+        new DrawdownTier { ThresholdPercent = 10m, ScalingFactor = 0.50m },
+        new DrawdownTier { ThresholdPercent = 15m, ScalingFactor = 0.0m },
+    ];
+
     /// <summary>Maximum USD loss allowed in a rolling 24-hour window before the circuit breaker trips.</summary>
     public decimal MaxDailyLossUsd { get; init; } = 500m;
 
@@ -29,4 +36,10 @@ public sealed record RiskLimitsConfig
     /// 0 = disabled (no heat limit enforced).
     /// </summary>
     public decimal MaxPortfolioHeatPercent { get; init; } = 6m;
+
+    /// <summary>
+    /// Drawdown-based adaptive risk tiers ordered by ascending threshold percent.
+    /// The first tier reached applies its scaling factor to base risk.
+    /// </summary>
+    public IReadOnlyList<DrawdownTier> DrawdownTiers { get; set; } = [];
 }

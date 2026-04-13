@@ -112,6 +112,9 @@ public sealed class BacktestMetricsCalculatorTests
         result.AvgWinR.Should().BeApproximately(2.08m, 0.01m);
         result.AvgLossR.Should().BeApproximately(-0.96m, 0.01m);
         result.RDistribution.Should().Equal([2.1m, -1.0m, 1.5m, -1.0m, 3.0m, -0.8m, 2.0m, -1.0m, 1.8m, -1.0m]);
+        result.WinLossRRatio.Should().BeApproximately(2.1667m, 0.0001m);
+        result.KellyPercent.Should().BeApproximately(0.2692m, 0.0001m);
+        result.HalfKellyPercent.Should().BeApproximately(0.1346m, 0.0001m);
     }
 
     [TestMethod]
@@ -132,6 +135,9 @@ public sealed class BacktestMetricsCalculatorTests
         result.AvgLossR.Should().BeNull();
         result.RWinRate.Should().BeNull();
         result.RDistribution.Should().BeNull();
+        result.KellyPercent.Should().BeNull();
+        result.HalfKellyPercent.Should().BeNull();
+        result.WinLossRRatio.Should().BeNull();
     }
 
     [TestMethod]
@@ -143,6 +149,58 @@ public sealed class BacktestMetricsCalculatorTests
 
         result.Expectancy.Should().Be(1.5m);
         result.Sqn.Should().BeNull();
+        result.KellyPercent.Should().BeNull();
+        result.HalfKellyPercent.Should().BeNull();
+        result.WinLossRRatio.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenRTrackedTradesWithKnownRatio_WhenCalculate_ThenKellyPercentIsCorrect()
+    {
+        var tradeLog = CreateRTrackedTrades([2.0m, 2.0m, 2.0m, -1.0m, -1.0m, 2.0m, 2.0m, 2.0m, -1.0m, -1.0m]);
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 2);
+
+        result.WinLossRRatio.Should().Be(2.0m);
+        result.KellyPercent.Should().Be(0.4m);
+        result.HalfKellyPercent.Should().Be(0.2m);
+    }
+
+    [TestMethod]
+    public void GivenLosingSystem_WhenCalculate_ThenKellyPercentIsNegative()
+    {
+        var tradeLog = CreateRTrackedTrades([1.0m, -1.0m, -1.0m, -1.0m, -1.0m, 1.0m, -1.0m, -1.0m, 1.0m, -1.0m]);
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 2);
+
+        result.KellyPercent.Should().BeApproximately(-0.4m, 0.0001m);
+        result.HalfKellyPercent.Should().BeApproximately(-0.2m, 0.0001m);
+    }
+
+    [TestMethod]
+    public void GivenAllWinningTrades_WhenCalculate_ThenKellyAndWinLossRRatioAreNull()
+    {
+        var tradeLog = CreateRTrackedTrades([1.5m, 2.0m, 3.0m]);
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 1);
+
+        result.AvgLossR.Should().BeNull();
+        result.WinLossRRatio.Should().BeNull();
+        result.KellyPercent.Should().BeNull();
+        result.HalfKellyPercent.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenAllLosingTrades_WhenCalculate_ThenKellyAndWinLossRRatioAreNull()
+    {
+        var tradeLog = CreateRTrackedTrades([-1.0m, -0.8m, -1.2m]);
+
+        var result = _sut.Calculate(tradeLog, CreateEquityCurve(), initialCapital: 10_000m, gridCycles: 1);
+
+        result.AvgWinR.Should().BeNull();
+        result.WinLossRRatio.Should().BeNull();
+        result.KellyPercent.Should().BeNull();
+        result.HalfKellyPercent.Should().BeNull();
     }
 
     private static BacktestTrade CreateTrade(

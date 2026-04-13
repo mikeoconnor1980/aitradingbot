@@ -121,6 +121,11 @@ builder.Services.AddOptions<RiskLimitsConfig>()
     .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName))
     .ValidateDataAnnotations()
     .ValidateOnStart();
+builder.Services.PostConfigure<RiskLimitsConfig>(options =>
+{
+    RiskLimitsConfigDefaults.Apply(options);
+});
+builder.Services.AddSingleton<IValidateOptions<RiskLimitsConfig>, RiskLimitsConfigValidator>();
 
 // The control plane does not hold private keys.
 // Wallet addresses are stored in the database; private keys live only on the execution agent (Worker).

@@ -180,6 +180,23 @@ public sealed class SignalControllerTests
     }
 
     [TestMethod]
+    public async Task GivenDrawdownScalingFactor_WhenProcessAsync_ThenResolvedNotionalIsScaled()
+    {
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true, Reason = "RSI below 30." },
+            CreateMarketContext(close: 50_000m, drawdownScalingFactor: 0.5m),
+            CreateGridState(),
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            DefaultConfig);
+
+        signals.Should().ContainSingle();
+        var parameters = signals[0].Parameters;
+        parameters.Should().NotBeNull();
+        parameters!["notionalUsd"].Should().Be(500m);
+        parameters["size"].Should().Be(0.01m);
+    }
+
+    [TestMethod]
     public async Task GivenRiskBasedSizingWithFixedPercentStopLoss_WhenProcessAsync_ThenUsesRBasedNotional()
     {
         var config = DefaultConfig with
@@ -243,6 +260,97 @@ public sealed class SignalControllerTests
         signals.Should().BeEmpty();
     }
 
+    [TestMethod]
+    public async Task GivenAtrInitialStopLoss_WhenOpenPositionEmitted_ThenCapturesAtrAtEntry()
+    {
+        var config = DefaultConfig with
+        {
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                },
+            },
+        };
+        var gridState = CreateGridState();
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true, Reason = "RSI below 30." },
+            CreateMarketContext(close: 50_000m, atr: 500m),
+            gridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].SignalType.Should().Be("OpenPosition");
+        gridState.AtrAtEntry.Should().Be(500m);
+    }
+
+    [TestMethod]
+    public async Task GivenAtrInitialStopLoss_WhenPriceBreachesLockedStop_ThenEmitsStopLossAndClearsAtrAtEntry()
+    {
+        var config = DefaultConfig with
+        {
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                    Value = 1m,
+                },
+            },
+        };
+        var gridState = CreateGridState();
+        gridState.AtrAtEntry = 500m;
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = false },
+            CreateMarketContext(close: 48_900m, atr: 800m),
+            gridState,
+            CreatePositionState(size: 0.02m, averageEntryPrice: 50_000m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Reason.Should().Be("ATR initial stop triggered (stop: 49000.00).");
+        signals[0].Parameters!["cancellationReason"].Should().Be(CancellationReason.StopLossTriggered.ToString());
+        gridState.AtrAtEntry.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenAtrInitialStopLossWithFallbackValue_WhenPriceBreachesFallbackButNotLockedStop_ThenDoesNotUseFixedStopLossGuard()
+    {
+        var config = DefaultConfig with
+        {
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                    Value = 1m,
+                },
+            },
+        };
+        var gridState = CreateGridState();
+        gridState.AtrAtEntry = 500m;
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = false },
+            CreateMarketContext(close: 49_400m, atr: 800m),
+            gridState,
+            CreatePositionState(size: 0.02m, averageEntryPrice: 50_000m),
+            config);
+
+        signals.Should().BeEmpty();
+        gridState.AtrAtEntry.Should().Be(500m);
+    }
+
     private static PositionState CreatePositionState(decimal size, decimal averageEntryPrice)
     {
         return new PositionState
@@ -264,7 +372,11 @@ public sealed class SignalControllerTests
         };
     }
 
-    private static MarketContext CreateMarketContext(decimal close, decimal accountEquity = 0m)
+    private static MarketContext CreateMarketContext(
+        decimal close,
+        decimal atr = 0m,
+        decimal accountEquity = 0m,
+        decimal drawdownScalingFactor = 1.0m)
     {
         return new MarketContext
         {
@@ -281,8 +393,12 @@ public sealed class SignalControllerTests
                 close,
                 1_000m,
                 10),
-            Indicators = new IndicatorSnapshot(),
-            AccountEquity = accountEquity
+            Indicators = new IndicatorSnapshot
+            {
+                Atr = atr,
+            },
+            AccountEquity = accountEquity,
+            DrawdownScalingFactor = drawdownScalingFactor
         };
     }
 }

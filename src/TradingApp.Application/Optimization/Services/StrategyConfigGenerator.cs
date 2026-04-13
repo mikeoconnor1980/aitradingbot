@@ -239,6 +239,26 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
 
     private static ExitConfig GenerateExitConfig(ParameterBounds bounds, Random rng)
     {
+        var stopLossType = NextFrom(bounds.StopLossTypes, rng);
+
+        var stopLoss = stopLossType switch
+        {
+            ExitRuleType.AtrInitial => new ExitRuleConfig
+            {
+                Enabled = true,
+                Type = ExitRuleType.AtrInitial,
+                AtrMultiplier = NextFrom(bounds.AtrMultiplierOptions, rng),
+                AtrPeriod = NextFrom(bounds.AtrPeriodOptions, rng),
+            },
+            ExitRuleType.FixedPercent => new ExitRuleConfig
+            {
+                Enabled = true,
+                Type = ExitRuleType.FixedPercent,
+                Value = NextFromRange(bounds.StopLossMin, bounds.StopLossMax, bounds.StopLossStep, rng),
+            },
+            _ => throw new InvalidOperationException($"Unsupported optimizer stop-loss type: {stopLossType}.")
+        };
+
         return new ExitConfig
         {
             TakeProfit = new ExitRuleConfig
@@ -247,12 +267,7 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
                 Type = ExitRuleType.FixedPercent,
                 Value = NextFromRange(bounds.TakeProfitMin, bounds.TakeProfitMax, bounds.TakeProfitStep, rng),
             },
-            StopLoss = new ExitRuleConfig
-            {
-                Enabled = true,
-                Type = ExitRuleType.FixedPercent,
-                Value = NextFromRange(bounds.StopLossMin, bounds.StopLossMax, bounds.StopLossStep, rng),
-            },
+            StopLoss = stopLoss,
             ExitOnOppositeSignal = NextFrom(bounds.ExitOnOppositeSignalOptions, rng),
         };
     }
@@ -353,8 +368,11 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
             : $"Size:{Format(risk.PositionSizeValue)}%";
 
         var leverageLabel = risk.AutoLeverage ? "AutoLev" : $"Lev:{Format(risk.Leverage)}x";
+        var stopLossLabel = exit.StopLoss.Type == ExitRuleType.AtrInitial
+            ? $"SL:ATRx{Format(exit.StopLoss.AtrMultiplier)}"
+            : $"SL:{Format(exit.StopLoss.Value)}%";
 
-        description += $" | {entryLogic} | SL:{Format(exit.StopLoss.Value)}% TP:{Format(exit.TakeProfit.Value)}% {leverageLabel} {sizeLabel}";
+        description += $" | {entryLogic} | {stopLossLabel} TP:{Format(exit.TakeProfit.Value)}% {leverageLabel} {sizeLabel}";
         description += $" | {direction.ToString().ToUpperInvariant()}";
 
         if (exit.ExitOnOppositeSignal)
@@ -430,6 +448,24 @@ public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
         EnsureRange(bounds.StopLossMin, bounds.StopLossMax, bounds.StopLossStep, nameof(bounds.StopLossMin));
         EnsureRange(bounds.TakeProfitMin, bounds.TakeProfitMax, bounds.TakeProfitStep, nameof(bounds.TakeProfitMin));
         EnsureRange(bounds.LeverageMin, bounds.LeverageMax, bounds.LeverageStep, nameof(bounds.LeverageMin));
+
+        if (bounds.StopLossTypes.Length == 0)
+        {
+            throw new InvalidOperationException("Optimizer bounds must include at least one stop-loss type.");
+        }
+
+        if (bounds.StopLossTypes.Contains(ExitRuleType.AtrInitial))
+        {
+            if (bounds.AtrMultiplierOptions.Length == 0)
+            {
+                throw new InvalidOperationException("Optimizer bounds must include at least one ATR multiplier when using AtrInitial stop-loss type.");
+            }
+
+            if (bounds.AtrPeriodOptions.Length == 0)
+            {
+                throw new InvalidOperationException("Optimizer bounds must include at least one ATR period when using AtrInitial stop-loss type.");
+            }
+        }
 
         if (bounds.PositionSizeMode == PositionSizeMode.RiskBased)
         {

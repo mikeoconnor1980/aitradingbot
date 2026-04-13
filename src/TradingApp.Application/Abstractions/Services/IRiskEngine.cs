@@ -23,6 +23,15 @@ public interface IRiskEngine
     /// <summary>Update the engine's knowledge of current account equity.</summary>
     void UpdatePortfolioState(decimal accountEquity) { }
 
+    /// <summary>Updates the drawdown state computed by the scheduler from equity vs HWM.</summary>
+    void UpdateDrawdownState(decimal scalingFactor, bool isHalted) { }
+
+    /// <summary>Current drawdown scaling factor (1.0 = full risk, 0.0 = halted).</summary>
+    decimal DrawdownScalingFactor => 1.0m;
+
+    /// <summary>Whether the drawdown circuit breaker is currently active.</summary>
+    bool IsDrawdownCircuitBreakerTripped => false;
+
     /// <summary>Record that a position was opened with the given risk amount.</summary>
     void RecordPositionOpened(string symbol, decimal riskUsd) { }
 

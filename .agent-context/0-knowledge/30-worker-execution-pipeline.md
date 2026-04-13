@@ -180,13 +180,14 @@ Both produce `TradingSignal[]` — the contract boundary between strategy logic 
 `LiveRiskEngine.ValidateAsync` checks each signal against:
 
 | Check | Config Key | Applies To |
-|-------|-----------|-----------|
-| Circuit breaker | `CircuitBreakerCooldownMinutes` | Entry signals only |
+|-------|-----------|-----------|| Portfolio heat | `MaxPortfolioHeatPercent` | Entry signals (`DeployGrid`, `OpenPosition`) only; blocks if `currentHeat + estimatedRiskUsd > equity × limit / 100` || Circuit breaker | `CircuitBreakerCooldownMinutes` | Entry signals only |
 | Max daily loss | `MaxDailyLossUsd` | Rolling 24h window |
 | Max order size | `MaxOrderSizeUsd` | `DeployGrid` notional, `OpenPosition` size |
 | Max open orders | `MaxOpenOrders` | `DeployGrid` level count |
 
 **Risk-reducing signals bypass all checks:** `TakeProfit`, `CancelGrid`, `FlattenPosition`, `CloseHedge`.
+
+**Portfolio state tracking:** `StrategyScheduler` calls `UpdatePortfolioState(equity)` each candle close to keep heat percentage calculations current. `FillProcessor` calls `RecordPositionClosed(symbol)` when exit fills arrive to clear tracked risk for that symbol.
 
 ### Step 6 — Position Manager
 

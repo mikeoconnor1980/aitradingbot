@@ -156,6 +156,9 @@ export interface BacktestResult {
   avgLossR?: number | null;
   rWinRate?: number | null;
   rDistribution?: number[] | null;
+  kellyPercent?: number | null;
+  halfKellyPercent?: number | null;
+  winLossRRatio?: number | null;
   trades: BacktestTrade[];
   createdAt: string;
   equityTimeSeries?: EquitySnapshot[];
@@ -184,6 +187,8 @@ export interface BacktestSummary {
   winRate: number;
   totalPnl: number;
   maxDrawdown: number;
+  profitFactor?: number | null;
+  sqn?: number | null;
   createdAt: string;
   strategyId?: string | null;
   strategyRevisionId?: number | null;

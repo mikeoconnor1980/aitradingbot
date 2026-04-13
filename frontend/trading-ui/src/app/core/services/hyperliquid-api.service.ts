@@ -3,6 +3,7 @@ import { Injectable, inject } from "@angular/core";
 import { Observable } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { AccountSummary } from "../models/account-summary.model";
+import { DrawdownState } from "../models/drawdown-state.model";
 import { FillEvent } from "../models/fill-event.model";
 import { HealthResponse } from "../models/health-response.model";
 import { OpenOrder } from "../models/open-order.model";
@@ -32,6 +33,10 @@ export class HyperliquidApiService {
 
   public getPortfolioHeat(context?: HttpContext): Observable<PortfolioHeat> {
     return this._http.get<PortfolioHeat>(`${this._baseUrl}/risk/portfolio-heat`, context ? { context } : undefined);
+  }
+
+  public getDrawdownState(context?: HttpContext): Observable<DrawdownState> {
+    return this._http.get<DrawdownState>(`${this._baseUrl}/risk/drawdown-state`, context ? { context } : undefined);
   }
 
   public getRecentFills(asset?: string): Observable<FillEvent[]> {

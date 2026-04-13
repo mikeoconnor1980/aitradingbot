@@ -167,6 +167,15 @@ public sealed class TradingAppDbContext : DbContext
             entity.Property(backtestRun => backtestRun.Sqn)
                 .HasConversion<double?>();
 
+            entity.Property(backtestRun => backtestRun.KellyPercent)
+                .HasConversion<double?>();
+
+            entity.Property(backtestRun => backtestRun.HalfKellyPercent)
+                .HasConversion<double?>();
+
+            entity.Property(backtestRun => backtestRun.WinLossRRatio)
+                .HasConversion<double?>();
+
             entity.HasIndex(backtestRun => backtestRun.StrategyId)
                 .HasDatabaseName("IX_BacktestRuns_StrategyId");
         });
@@ -313,6 +322,10 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.Property(strategy => strategy.UpdatedAtUtc)
                 .IsRequired();
+
+            entity.Property(strategy => strategy.HighWaterMarkUsd)
+                .HasColumnName("HighWaterMarkUsd")
+                .HasConversion<double?>();
 
             entity.HasIndex(strategy => new { strategy.UserId, strategy.IsActive })
                 .HasDatabaseName("IX_Strategies_UserId_IsActive");

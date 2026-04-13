@@ -698,7 +698,8 @@ public sealed class AgentCheckInService : BackgroundService
             scope.ServiceProvider.GetService<IStateRecoveryService>(),
             orderTracker,
             scope,
-            triggerOrderManager);
+            triggerOrderManager,
+            _serviceProvider.GetRequiredService<IOptions<RiskLimitsConfig>>());
     }
 
     private static string GetAgentVersion()

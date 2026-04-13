@@ -122,7 +122,7 @@ public sealed class BusinessRuleValidator
         }
 
         if (exit.StopLoss.Enabled
-            && exit.StopLoss.Type == ExitRuleType.AtrTrailing
+            && (exit.StopLoss.Type == ExitRuleType.AtrTrailing || exit.StopLoss.Type == ExitRuleType.AtrInitial)
             && (exit.StopLoss.AtrMultiplier is null || exit.StopLoss.AtrMultiplier <= 0))
         {
             result.Add(new ValidationError
@@ -130,7 +130,21 @@ public sealed class BusinessRuleValidator
                 Severity = ValidationSeverity.Error,
                 FieldPath = "exit.stopLoss.atrMultiplier",
                 Code = "SL_ATR_MULTIPLIER_REQUIRED",
-                Message = "ATR multiplier must be > 0 when type is atr_trailing.",
+                Message = "ATR multiplier must be > 0 when type is atr_trailing or atr_initial.",
+            });
+        }
+
+        if (exit.StopLoss.Enabled
+            && (exit.StopLoss.Type == ExitRuleType.AtrTrailing || exit.StopLoss.Type == ExitRuleType.AtrInitial)
+            && exit.StopLoss.AtrPeriod.HasValue
+            && exit.StopLoss.AtrPeriod <= 0)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "exit.stopLoss.atrPeriod",
+                Code = "SL_ATR_PERIOD_INVALID",
+                Message = "ATR period must be > 0 when specified.",
             });
         }
 

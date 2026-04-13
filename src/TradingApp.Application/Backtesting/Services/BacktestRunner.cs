@@ -2,11 +2,13 @@ using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Scheduling;
+using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Enums;
 using TradingApp.Domain.Trading;
+using Microsoft.Extensions.Options;
 
 namespace TradingApp.Application.Backtesting.Services;
 
@@ -30,6 +32,7 @@ public sealed class BacktestRunner : IBacktestRunner
     private readonly IPositionManager _positionManager;
     private readonly BacktestExecutionContextAccessor _executionContextAccessor;
     private readonly ISignalController _signalController;
+    private readonly RiskLimitsConfig _riskLimits;
 
     public BacktestRunner(
         ICandleRepository candleRepository,
@@ -39,7 +42,8 @@ public sealed class BacktestRunner : IBacktestRunner
         IRiskEngine riskEngine,
         IPositionManager positionManager,
         BacktestExecutionContextAccessor executionContextAccessor,
-        ISignalController signalController)
+        ISignalController signalController,
+        IOptions<RiskLimitsConfig>? riskLimits = null)
     {
         _candleRepository = candleRepository ?? throw new ArgumentNullException(nameof(candleRepository));
         _marketContextBuilder = marketContextBuilder ?? throw new ArgumentNullException(nameof(marketContextBuilder));
@@ -49,6 +53,7 @@ public sealed class BacktestRunner : IBacktestRunner
         _positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
         _executionContextAccessor = executionContextAccessor ?? throw new ArgumentNullException(nameof(executionContextAccessor));
         _signalController = signalController ?? throw new ArgumentNullException(nameof(signalController));
+        _riskLimits = riskLimits?.Value ?? new RiskLimitsConfig { DrawdownTiers = RiskLimitsConfig.DefaultDrawdownTiers.ToArray() };
     }
 
     public Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
@@ -101,7 +106,8 @@ public sealed class BacktestRunner : IBacktestRunner
             auditCollector: collector,
             signalController: _signalController,
             initialCapital: config.InitialCapital,
-            executionContextAccessor: _executionContextAccessor);
+            executionContextAccessor: _executionContextAccessor,
+            drawdownTiers: _riskLimits.DrawdownTiers);
 
         _executionContextAccessor.CurrentExecutionEngine = executionEngine;
 
@@ -276,6 +282,9 @@ public sealed class BacktestRunner : IBacktestRunner
                 FinalEquity = metrics.FinalEquity,
                 HeatBlockedSignalCount = _riskEngine is BacktestRiskEngine backtestRiskEngine
                     ? backtestRiskEngine.HeatBlockedSignalCount
+                    : 0,
+                DrawdownBlockedSignalCount = _riskEngine is BacktestRiskEngine drawdownRiskEngine
+                    ? drawdownRiskEngine.DrawdownBlockedSignalCount
                     : 0,
                 EquityTimeSeries = metrics.EquityTimeSeries,
                 TradeLog = metrics.TradeLog,

@@ -7,6 +7,9 @@ public sealed record ParameterBounds
     // --- Direction ---
     public Direction[] Directions { get; init; } = [Direction.Long, Direction.Short];
 
+    // --- Stop Loss Type ---
+    public ExitRuleType[] StopLossTypes { get; init; } = [ExitRuleType.FixedPercent];
+
     // --- Timeframe ---
     public string[] Timeframes { get; init; } = ["15m"];
 
@@ -14,6 +17,10 @@ public sealed record ParameterBounds
     public decimal StopLossMin { get; init; } = 1m;
     public decimal StopLossMax { get; init; } = 5m;
     public decimal StopLossStep { get; init; } = 0.5m;
+
+    // --- ATR Initial Stop ---
+    public decimal[] AtrMultiplierOptions { get; init; } = [1.5m, 2.0m, 2.5m, 3.0m];
+    public int[] AtrPeriodOptions { get; init; } = [14];
 
     // --- Take Profit ---
     public decimal TakeProfitMin { get; init; } = 2m;

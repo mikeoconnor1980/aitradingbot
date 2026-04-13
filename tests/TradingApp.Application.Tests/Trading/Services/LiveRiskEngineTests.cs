@@ -249,6 +249,15 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
+    public void GivenDrawdownStateUpdated_WhenCalled_ThenTracksScalingFactor()
+    {
+        _sut.UpdateDrawdownState(0.5m, isHalted: false);
+
+        _sut.DrawdownScalingFactor.Should().Be(0.5m);
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
+    }
+
+    [TestMethod]
     public void GivenPositionLifecycleUpdates_WhenCalled_ThenTracksPositions()
     {
         _sut.RecordPositionOpened("BTC-PERP", 100m);
@@ -555,5 +564,73 @@ public sealed class LiveRiskEngineTests
         var result = await _sut.ValidateAsync(signals);
 
         result.Should().HaveCount(1);
+    }
+
+    [TestMethod]
+    public async Task GivenDrawdownCircuitBreakerTripped_WhenDeployGridSignalValidated_ThenBlocked()
+    {
+        _sut.UpdateDrawdownState(0m, isHalted: true);
+
+        var signals = new List<TradingSignal>
+        {
+            new()
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object> { ["gridLevels"] = 5 }
+            }
+        };
+
+        var result = await _sut.ValidateAsync(signals);
+
+        result.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenDrawdownCircuitBreakerTripped_WhenTakeProfitSignalValidated_ThenPassesThrough()
+    {
+        _sut.UpdateDrawdownState(0m, isHalted: true);
+
+        var result = await _sut.ValidateAsync(
+        [
+            new TradingSignal { SignalType = "TakeProfit", Symbol = "BTC-PERP" }
+        ]);
+
+        result.Should().ContainSingle();
+    }
+
+    [TestMethod]
+    public async Task GivenDailyLossCircuitBreakerTrippedButDrawdownNot_WhenSignalValidated_ThenBlockedByDailyLoss()
+    {
+        _sut.RecordLoss(_limits.MaxDailyLossUsd + 1m);
+        _sut.UpdateDrawdownState(1.0m, isHalted: false);
+
+        var result = await _sut.ValidateAsync(
+        [
+            new TradingSignal { SignalType = "DeployGrid", Symbol = "BTC-PERP" }
+        ]);
+
+        result.Should().BeEmpty();
+        _sut.IsCircuitBreakerTripped.Should().BeTrue();
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public async Task GivenDrawdownCircuitBreakerReset_WhenDeployGridSignalValidated_ThenPasses()
+    {
+        _sut.UpdateDrawdownState(0m, isHalted: true);
+        _sut.UpdateDrawdownState(0.5m, isHalted: false);
+
+        var result = await _sut.ValidateAsync(
+        [
+            new TradingSignal
+            {
+                SignalType = "DeployGrid",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object> { ["gridLevels"] = 2 }
+            }
+        ]);
+
+        result.Should().ContainSingle();
     }
 }

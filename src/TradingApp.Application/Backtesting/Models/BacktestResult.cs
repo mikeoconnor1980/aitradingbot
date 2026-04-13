@@ -23,7 +23,11 @@ public sealed class BacktestResult
     public decimal? AvgLossR { get; init; }
     public decimal? RWinRate { get; init; }
     public int HeatBlockedSignalCount { get; init; }
+    public int DrawdownBlockedSignalCount { get; init; }
     public IReadOnlyList<decimal>? RDistribution { get; init; }
+    public decimal? KellyPercent { get; init; }
+    public decimal? HalfKellyPercent { get; init; }
+    public decimal? WinLossRRatio { get; init; }
     public required IReadOnlyList<EquitySnapshot> EquityTimeSeries { get; init; }
     public required IReadOnlyList<BacktestTrade> TradeLog { get; init; }
     public IReadOnlyList<CandleEvaluationEntry>? CandleEvaluationLog { get; init; }

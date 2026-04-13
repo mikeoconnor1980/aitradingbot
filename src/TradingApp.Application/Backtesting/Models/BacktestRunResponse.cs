@@ -35,6 +35,9 @@ public sealed class BacktestRunResponse
     public decimal? AvgLossR { get; init; }
     public decimal? RWinRate { get; init; }
     public IReadOnlyList<decimal>? RDistribution { get; init; }
+    public decimal? KellyPercent { get; init; }
+    public decimal? HalfKellyPercent { get; init; }
+    public decimal? WinLossRRatio { get; init; }
     public required IReadOnlyList<BacktestTradeResponse> Trades { get; init; }
     public required IReadOnlyList<EquitySnapshotResponse> EquityTimeSeries { get; init; }
     public required DateTime CreatedAt { get; init; }

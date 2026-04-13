@@ -1,6 +1,7 @@
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Application.Trading.Services;
+using TradingApp.Application.Backtesting.Models;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Trading;
 
@@ -290,6 +291,22 @@ public sealed class GridControllerTests
     }
 
     [TestMethod]
+    public async Task GivenDrawdownScalingFactor_WhenDeployingGrid_ThenResolvedNotionalIsScaled()
+    {
+        var gridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 100m, drawdownScalingFactor: 0.5m),
+            gridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            DefaultConfig);
+
+        signals.Should().ContainSingle();
+        signals[0].Parameters!["notionalUsd"].Should().Be(50m);
+    }
+
+    [TestMethod]
     public async Task GivenRiskBasedSizingWithTenLevelsAndFixedPercentStopLoss_WhenDeployingGrid_ThenDividesNotionalByLevels()
     {
         var config = DefaultConfig with
@@ -328,6 +345,53 @@ public sealed class GridControllerTests
     }
 
     [TestMethod]
+    public async Task GivenRiskBasedSizingWithAtrInitialStopLoss_WhenAtrDoubles_ThenNotionalPerLevelHalves()
+    {
+        var config = DefaultConfig with
+        {
+            Risk = DefaultConfig.Risk with
+            {
+                PositionSizeType = PositionSizeType.RiskBased,
+                RiskPerTradePercent = 1m,
+            },
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                    Value = 3m,
+                },
+            },
+        };
+
+        var lowVolGridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+        var highVolGridState = CreateGridState(GridLifecycle.Inactive, totalLevels: 0);
+
+        var lowVolSignals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 50_000m, atr: 500m, accountEquity: 10_000m),
+            lowVolGridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        var highVolSignals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 50_000m, atr: 1_000m, accountEquity: 10_000m),
+            highVolGridState,
+            CreatePositionState(size: 0m, averageEntryPrice: 0m),
+            config);
+
+        lowVolSignals.Should().ContainSingle();
+        highVolSignals.Should().ContainSingle();
+        lowVolSignals[0].Parameters!["notionalUsd"].Should().Be(1_000m);
+        highVolSignals[0].Parameters!["notionalUsd"].Should().Be(500m);
+        lowVolGridState.AtrAtEntry.Should().Be(500m);
+        highVolGridState.AtrAtEntry.Should().Be(1_000m);
+    }
+
+    [TestMethod]
     public async Task GivenTrackedRiskBasedGrid_WhenStopLossTriggered_ThenInitialRIsCleared()
     {
         var config = DefaultConfig with
@@ -359,6 +423,99 @@ public sealed class GridControllerTests
 
         signals.Should().ContainSingle();
         gridState.InitialRDollars.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenAtrInitialStopLoss_WhenPriceBreachesLockedStop_ThenEmitsStopLossAndClearsAtrAtEntry()
+    {
+        var config = DefaultConfig with
+        {
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                    Value = 1m,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.FullyFilled, filledLevels: 5, atrAtEntry: 500m);
+        gridState.InitialRDollars = 100m;
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 48_900m, atr: 800m),
+            gridState,
+            CreatePositionState(size: 5m, averageEntryPrice: 50_000m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Reason.Should().Be("ATR initial stop triggered (stop: 49000.00).");
+        signals[0].Parameters!["cancellationReason"].Should().Be(CancellationReason.StopLossTriggered.ToString());
+        gridState.Lifecycle.Should().Be(GridLifecycle.Closing);
+        gridState.InitialRDollars.Should().BeNull();
+        gridState.AtrAtEntry.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenAtrInitialStopLossWithFallbackValue_WhenPriceBreachesFallbackButNotLockedStop_ThenDoesNotTriggerFixedStop()
+    {
+        var config = DefaultConfig with
+        {
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                    Value = 1m,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.FullyFilled, filledLevels: 5, atrAtEntry: 500m);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 49_400m, atr: 800m),
+            gridState,
+            CreatePositionState(size: 5m, averageEntryPrice: 50_000m),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Reason.Should().Be("Take profit active.");
+        gridState.AtrAtEntry.Should().BeNull();
+    }
+
+    [TestMethod]
+    public async Task GivenAtrInitialStopLoss_WhenLiveAtrChanges_ThenLockedAtrStillControlsExit()
+    {
+        var config = DefaultConfig with
+        {
+            Exit = DefaultConfig.Exit with
+            {
+                StopLoss = DefaultConfig.Exit.StopLoss with
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2m,
+                },
+            },
+        };
+        var gridState = CreateGridState(GridLifecycle.PartiallyFilled, filledLevels: 2, atrAtEntry: 500m);
+
+        var signals = await _sut.ProcessAsync(
+            CreateEvaluation(),
+            CreateMarketContext(close: 49_500m, atr: 800m),
+            gridState,
+            CreatePositionState(size: 2m, averageEntryPrice: 50_000m),
+            config);
+
+        signals.Should().BeEmpty();
+        gridState.Lifecycle.Should().Be(GridLifecycle.PartiallyFilled);
+        gridState.AtrAtEntry.Should().Be(500m);
     }
 
     [TestMethod]
@@ -555,14 +712,16 @@ public sealed class GridControllerTests
         GridLifecycle lifecycle,
         int filledLevels = 0,
         int totalLevels = 5,
-        string? gridCycleId = "test-cycle-001")
+        string? gridCycleId = "test-cycle-001",
+        decimal? atrAtEntry = null)
     {
         return new GridState
         {
             Lifecycle = lifecycle,
             GridCycleId = gridCycleId,
             FilledLevels = filledLevels,
-            TotalLevels = totalLevels
+            TotalLevels = totalLevels,
+            AtrAtEntry = atrAtEntry,
         };
     }
 
@@ -577,7 +736,12 @@ public sealed class GridControllerTests
         };
     }
 
-    private static MarketContext CreateMarketContext(decimal close, decimal accountEquity = 0m, int? maxLeverage = null)
+    private static MarketContext CreateMarketContext(
+        decimal close,
+        decimal atr = 0m,
+        decimal accountEquity = 0m,
+        int? maxLeverage = null,
+        decimal drawdownScalingFactor = 1.0m)
     {
         return new MarketContext
         {
@@ -594,8 +758,12 @@ public sealed class GridControllerTests
                 close,
                 1_000m,
                 10),
-            Indicators = new IndicatorSnapshot(),
+            Indicators = new IndicatorSnapshot
+            {
+                Atr = atr,
+            },
             AccountEquity = accountEquity,
+            DrawdownScalingFactor = drawdownScalingFactor,
             MaxLeverage = maxLeverage
         };
     }

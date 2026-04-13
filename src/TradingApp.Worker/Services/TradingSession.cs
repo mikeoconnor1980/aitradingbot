@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.MarketData.Models;
 using TradingApp.Application.Scheduling;
@@ -43,6 +44,7 @@ public sealed class TradingSession : IAsyncDisposable
     private readonly ITradingHealthProvider _healthProvider;
     private readonly ITriggerOrderManager? _triggerOrderManager;
     private readonly ILogger _logger;
+    private readonly IReadOnlyList<DrawdownTier> _drawdownTiers;
 
     private CancellationTokenSource? _cts;
     private Task? _runTask;
@@ -75,7 +77,8 @@ public sealed class TradingSession : IAsyncDisposable
         IStateRecoveryService? stateRecoveryService = null,
         IOrderTracker? orderTracker = null,
         IServiceScope? serviceScope = null,
-        ITriggerOrderManager? triggerOrderManager = null)
+        ITriggerOrderManager? triggerOrderManager = null,
+        IOptions<RiskLimitsConfig>? riskLimits = null)
     {
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
@@ -98,6 +101,7 @@ public sealed class TradingSession : IAsyncDisposable
         _triggerOrderManager = triggerOrderManager;
         _logger = logger;
         GridState = gridState ?? new GridState();
+        _drawdownTiers = riskLimits?.Value.DrawdownTiers ?? [];
     }
 
     public void Start()
@@ -247,7 +251,8 @@ public sealed class TradingSession : IAsyncDisposable
             triggerTimeframe,
             signalController: _signalController,
             initialCapital: initialCapital,
-            gridState: GridState);
+            gridState: GridState,
+            drawdownTiers: _drawdownTiers);
 
         // Wire fill callback to update PositionState on the scheduler
         if (_fillProcessor is FillProcessor concreteProcessor)

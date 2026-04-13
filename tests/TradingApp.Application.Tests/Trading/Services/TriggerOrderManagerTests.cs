@@ -134,6 +134,66 @@ public sealed class TriggerOrderManagerTests
     }
 
     [TestMethod]
+    public void GivenLongPosition_WhenCalculateAtrInitialSL_ThenUsesEntryMinusAtrMultiple()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.AtrInitial, AtrMultiplier = 2m };
+        var context = CreateContext(atr: 500m);
+
+        // Act
+        var result = TriggerOrderManager.CalculateStopLossPrice(position, config, context);
+
+        // Assert
+        result.Should().Be(49_000m);
+    }
+
+    [TestMethod]
+    public void GivenShortPosition_WhenCalculateAtrInitialSL_ThenUsesEntryPlusAtrMultiple()
+    {
+        // Arrange
+        var position = CreateShortPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.AtrInitial, AtrMultiplier = 2m };
+        var context = CreateContext(atr: 500m);
+
+        // Act
+        var result = TriggerOrderManager.CalculateStopLossPrice(position, config, context);
+
+        // Assert
+        result.Should().Be(51_000m);
+    }
+
+    [TestMethod]
+    public void GivenAtrInitialWithZeroAtrAndFallbackValue_WhenCalculateStopLossPrice_ThenUsesFixedPercent()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.AtrInitial, AtrMultiplier = 2m, Value = 2m };
+        var context = CreateContext(atr: 0m);
+
+        // Act
+        var result = TriggerOrderManager.CalculateStopLossPrice(position, config, context);
+
+        // Assert
+        result.Should().Be(49_000m);
+    }
+
+    [TestMethod]
+    public void GivenAtrInitialWithZeroAtrAndNoFallback_WhenCalculateStopLossPrice_ThenReturnsNull()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m);
+        var config = new ExitRuleConfig { Enabled = true, Type = ExitRuleType.AtrInitial, AtrMultiplier = 2m };
+        var context = CreateContext(atr: 0m);
+
+        // Act
+        var result = TriggerOrderManager.CalculateStopLossPrice(position, config, context);
+
+        // Assert
+        result.Should().BeNull();
+    }
+
+    [TestMethod]
     public void GivenNoAtrMultiplier_WhenCalculateAtrTrailingSL_ThenDefaultsTo3x()
     {
         // Arrange
@@ -503,6 +563,44 @@ public sealed class TriggerOrderManagerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
         protectionState.StopLossTriggerPrice.Should().Be(105m);
+    }
+
+    [TestMethod]
+    public async Task GivenAtrInitialStopLoss_WhenUpdateProtectionOrdersAsync_ThenStopLossNotModified()
+    {
+        // Arrange
+        var position = CreateLongPosition(entryPrice: 50_000m, size: 1m);
+        var exitConfig = new ExitConfig
+        {
+            StopLoss = new ExitRuleConfig
+            {
+                Enabled = true,
+                Type = ExitRuleType.AtrInitial,
+                AtrMultiplier = 2m,
+            },
+            TakeProfit = new ExitRuleConfig
+            {
+                Enabled = false,
+                Type = ExitRuleType.FixedPercent,
+            }
+        };
+        var context = CreateContext(symbol: "ETH", atr: 800m);
+        var protectionState = new ProtectionOrderState
+        {
+            StopLossOrderId = "sl-1",
+            StopLossTriggerPrice = 49_000m,
+        };
+
+        // Act
+        await _sut.UpdateProtectionOrdersAsync(position, exitConfig, context, protectionState);
+
+        // Assert
+        _executionEngine.Verify(
+            e => e.ModifyTriggerOrderAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<decimal>(),
+                It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        protectionState.StopLossTriggerPrice.Should().Be(49_000m);
     }
 
     [TestMethod]

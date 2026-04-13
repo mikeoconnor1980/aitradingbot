@@ -13,6 +13,7 @@ import { catchError, last, startWith, switchMap, tap } from "rxjs/operators";
 import { HttpContext } from "@angular/common/http";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { AccountSummary } from "../../core/models/account-summary.model";
+import { DrawdownState } from "../../core/models/drawdown-state.model";
 import { OpenOrder } from "../../core/models/open-order.model";
 import { PortfolioHeat } from "../../core/models/portfolio-heat.model";
 import { Position } from "../../core/models/position.model";
@@ -82,6 +83,7 @@ export class DashboardComponent implements OnInit {
   public positionsTable?: PositionsTableComponent;
 
   public accountSummary: AccountSummary | null = null;
+  public drawdownState: DrawdownState | null = null;
   public portfolioHeat: PortfolioHeat | null = null;
   public positions: Position[] = [];
   public orders: OpenOrder[] = [];
@@ -566,6 +568,9 @@ export class DashboardComponent implements OnInit {
       account: this._apiService.getAccountSummary(skipCtx).pipe(
         catchError(() => of(null))
       ),
+      drawdownState: this._apiService.getDrawdownState(skipCtx).pipe(
+        catchError(() => of(null))
+      ),
       portfolioHeat: this._apiService.getPortfolioHeat(skipCtx).pipe(
         catchError(() => of(null))
       ),
@@ -577,7 +582,8 @@ export class DashboardComponent implements OnInit {
       )
     }).pipe(
       tap((results) => {
-        const failedCount = [results.account, results.portfolioHeat, results.positions, results.orders].filter((result) => result === null).length;
+        const failedCount = [results.account, results.drawdownState, results.portfolioHeat, results.positions, results.orders]
+          .filter((result) => result === null).length;
 
         if (failedCount === 4) {
           this._consecutiveErrors += 1;
@@ -596,6 +602,7 @@ export class DashboardComponent implements OnInit {
           }
 
           if (results.account !== null) { this.accountSummary = results.account; }
+          if (results.drawdownState !== null) { this.drawdownState = results.drawdownState; }
           if (results.portfolioHeat !== null) { this.portfolioHeat = results.portfolioHeat; }
           if (results.positions !== null) {
             const newPositions = this._pendingPositionKeys.size === 0

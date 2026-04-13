@@ -22,6 +22,12 @@ internal static class StopLossDistanceResolver
                 ExitRuleType.AtrTrailing when atr.HasValue && atr.Value > 0m && anchorPrice > 0m
                     => (atr.Value * (stopLossConfig.AtrMultiplier ?? 3m)) / anchorPrice * 100m,
 
+                ExitRuleType.AtrInitial when atr.HasValue && atr.Value > 0m && anchorPrice > 0m
+                    => (atr.Value * (stopLossConfig.AtrMultiplier ?? 2m)) / anchorPrice * 100m,
+
+                ExitRuleType.AtrInitial when stopLossConfig.Value.HasValue && stopLossConfig.Value.Value > 0m
+                    => stopLossConfig.Value.Value,
+
                 _ => (decimal?)null,
             };
 

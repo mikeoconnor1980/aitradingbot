@@ -105,7 +105,7 @@
     Trade metrics are counted per trade lot. Each filled grid level becomes its own lot, while cycle outcomes are summarized in the Grid Cycles tab.
   </div>
 
-  @if (hasRMetrics) {
+  @if (!hasNoTrades) {
     <section class="backtest-result__section">
       <h3 class="backtest-result__section-title">R-Multiple Metrics</h3>
 
@@ -115,7 +115,11 @@
             <mat-card-title>Expectancy</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <span [class]="getPnlClass(result.expectancy ?? 0)">{{ result.expectancy | number: "1.2-2" }}R</span>
+            @if (result.expectancy !== null && result.expectancy !== undefined) {
+              <span [class]="getPnlClass(result.expectancy)">{{ result.expectancy | number: "1.2-2" }}R</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
           </mat-card-content>
         </mat-card>
 
@@ -124,7 +128,13 @@
             <mat-card-title>Profit Factor</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <span>{{ result.profitFactor | number: "1.2-2" }}</span>
+            @if (result.profitFactor !== null && result.profitFactor !== undefined) {
+              <span>{{ result.profitFactor | number: "1.2-2" }}</span>
+            } @else if (hasInfiniteProfitFactor) {
+              <span>∞</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
           </mat-card-content>
         </mat-card>
 
@@ -133,7 +143,12 @@
             <mat-card-title>SQN</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <span>{{ result.sqn | number: "1.2-2" }}</span>
+            @if (result.sqn !== null && result.sqn !== undefined) {
+              <span>{{ result.sqn | number: "1.2-2" }}</span>
+              <span class="backtest-result__subtitle">{{ getSqnLabel(result.sqn) }}</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
           </mat-card-content>
         </mat-card>
 
@@ -142,7 +157,11 @@
             <mat-card-title>R Win Rate</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <span>{{ result.rWinRate | number: "1.1-1" }}%</span>
+            @if (result.rWinRate !== null && result.rWinRate !== undefined) {
+              <span>{{ result.rWinRate | number: "1.1-1" }}%</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
           </mat-card-content>
         </mat-card>
 
@@ -151,7 +170,11 @@
             <mat-card-title>Avg Winner</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <span class="backtest-result__value--profit">{{ result.avgWinR | number: "1.2-2" }}R</span>
+            @if (result.avgWinR !== null && result.avgWinR !== undefined) {
+              <span class="backtest-result__value--profit">{{ result.avgWinR | number: "1.2-2" }}R</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
           </mat-card-content>
         </mat-card>
 
@@ -160,9 +183,73 @@
             <mat-card-title>Avg Loser</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <span class="backtest-result__value--loss">{{ result.avgLossR | number: "1.2-2" }}R</span>
+            @if (result.avgLossR !== null && result.avgLossR !== undefined) {
+              <span class="backtest-result__value--loss">{{ result.avgLossR | number: "1.2-2" }}R</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
           </mat-card-content>
         </mat-card>
+
+        <mat-card class="backtest-result__card">
+          <mat-card-header>
+            <mat-card-title>Win/Loss R-Ratio</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (result.winLossRRatio !== null && result.winLossRRatio !== undefined) {
+              <span>{{ result.winLossRRatio | number: "1.2-2" }}</span>
+            } @else {
+              <span class="backtest-result__subtitle">-</span>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <div class="backtest-result__kelly-comparison">
+        <mat-card class="backtest-result__card backtest-result__card--kelly">
+          <mat-card-header>
+            <mat-card-title>Kelly Criterion</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="backtest-result__kelly-row">
+              @if (configuredRiskPercent !== null) {
+                <span>Your risk: <strong>{{ configuredRiskPercent | number: "1.0-2" }}%</strong></span>
+                <span class="backtest-result__kelly-separator">|</span>
+              }
+
+              <span>
+                Kelly suggests:
+                @if (result.kellyPercent !== null && result.kellyPercent !== undefined) {
+                  <strong [class]="getKellyClass(result.kellyPercent)">{{ result.kellyPercent * 100 | number: "1.1-1" }}%</strong>
+                } @else {
+                  <strong class="backtest-result__subtitle">-</strong>
+                }
+              </span>
+
+              <span class="backtest-result__kelly-separator">|</span>
+
+              <span>
+                Half-Kelly:
+                @if (result.halfKellyPercent !== null && result.halfKellyPercent !== undefined) {
+                  <strong>{{ result.halfKellyPercent * 100 | number: "1.1-1" }}%</strong>
+                } @else {
+                  <strong class="backtest-result__subtitle">-</strong>
+                }
+              </span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      @if (isLowSampleSize) {
+        <div class="backtest-result__warning">
+          <mat-icon>warning</mat-icon>
+          <span>Low sample size ({{ result.totalTrades }} trades) - metrics may be unreliable</span>
+        </div>
+      }
+
+      <div class="backtest-result__metric-note">
+        Advisory - not automatically applied. R-based metrics require stop-loss sizing to be enabled.
       </div>
 
       @if (hasRDistribution) {

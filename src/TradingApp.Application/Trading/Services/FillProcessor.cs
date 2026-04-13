@@ -12,7 +12,7 @@ public sealed class FillProcessor : IFillProcessor
 {
     private readonly IOrderTracker _orderTracker;
     private readonly GridState _gridState;
-    private readonly IRiskEngine _riskEngine;
+    private readonly IRiskEngine? _riskEngine;
     private readonly ILiveOrderRepository? _orderRepository;
     private readonly ILiveFillRepository? _fillRepository;
     private readonly IGridCycleRepository? _gridCycleRepository;

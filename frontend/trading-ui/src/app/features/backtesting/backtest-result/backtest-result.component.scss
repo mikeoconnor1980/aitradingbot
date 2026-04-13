@@ -67,6 +67,49 @@
     line-height: 1.5;
   }
 
+  &__kelly-comparison {
+    margin-bottom: 1rem;
+  }
+
+  &__card--kelly {
+    mat-card-content {
+      font-size: 1.05rem;
+    }
+  }
+
+  &__kelly-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    line-height: 1.6;
+  }
+
+  &__kelly-separator {
+    color: var(--colour-label);
+    opacity: 0.55;
+  }
+
+  &__warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid rgba(255, 193, 7, 0.35);
+    border-radius: 12px;
+    background: rgba(255, 193, 7, 0.12);
+    color: #ffc107;
+    font-size: 0.9rem;
+
+    mat-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      font-size: 1.25rem;
+    }
+  }
+
   &__config {
     border: 1px solid var(--colour-border-subtle);
     background: var(--colour-surface-dark);

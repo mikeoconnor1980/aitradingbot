@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TradingApp.Application.Abstractions.Repositories;
@@ -70,6 +71,7 @@ public static class PersistenceServiceExtensions
             {
                 // DB already existed — check for missing tables and create them.
                 await CreateMissingTablesAsync(db);
+                await CreateMissingColumnsAsync(db);
             }
         }
         else
@@ -130,6 +132,87 @@ public static class PersistenceServiceExtensions
             execCmd.CommandText = statement;
             await execCmd.ExecuteNonQueryAsync();
         }
+    }
+
+    private static async Task CreateMissingColumnsAsync(TradingAppDbContext db)
+    {
+        await using var conn = new SqliteConnection(db.Database.GetConnectionString());
+        await conn.OpenAsync();
+
+        var entityTypes = db.Model.GetEntityTypes()
+            .Where(entityType => !string.IsNullOrWhiteSpace(entityType.GetTableName()));
+
+        foreach (var entityType in entityTypes)
+        {
+            var tableName = entityType.GetTableName();
+            if (string.IsNullOrWhiteSpace(tableName))
+            {
+                continue;
+            }
+
+            var existingColumns = await GetExistingColumnsAsync(conn, tableName);
+
+            foreach (var property in entityType.GetProperties())
+            {
+                var columnName = property.GetColumnName(StoreObjectIdentifier.Table(tableName, null));
+                if (string.IsNullOrWhiteSpace(columnName) || existingColumns.Contains(columnName))
+                {
+                    continue;
+                }
+
+                var columnType = GetSqliteColumnType(property);
+                var nullability = property.IsNullable ? "NULL" : "NOT NULL";
+
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{columnName}\" {columnType} {nullability};";
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+    }
+
+    private static async Task<HashSet<string>> GetExistingColumnsAsync(SqliteConnection conn, string tableName)
+    {
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"PRAGMA table_info(\"{tableName}\")";
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            columns.Add(reader.GetString(1));
+        }
+
+        return columns;
+    }
+
+    private static string GetSqliteColumnType(IProperty property)
+    {
+        var providerType = property.GetProviderClrType() ?? property.ClrType;
+        var underlyingType = Nullable.GetUnderlyingType(providerType) ?? providerType;
+
+        if (underlyingType == typeof(int)
+            || underlyingType == typeof(long)
+            || underlyingType == typeof(short)
+            || underlyingType == typeof(bool)
+            || underlyingType.IsEnum)
+        {
+            return "INTEGER";
+        }
+
+        if (underlyingType == typeof(double)
+            || underlyingType == typeof(float)
+            || underlyingType == typeof(decimal))
+        {
+            return "REAL";
+        }
+
+        if (underlyingType == typeof(byte[]))
+        {
+            return "BLOB";
+        }
+
+        return "TEXT";
     }
 
     private static bool IsSqlServerConnectionString(string connectionString)

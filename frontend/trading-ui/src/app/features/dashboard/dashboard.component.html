@@ -39,7 +39,10 @@
   }
 
   @if (accountSummary) {
-    <app-account-summary [summary]="accountSummary" [portfolioHeat]="portfolioHeat"></app-account-summary>
+    <app-account-summary
+      [summary]="accountSummary"
+      [drawdownState]="drawdownState"
+      [portfolioHeat]="portfolioHeat"></app-account-summary>
   }
 
   <div class="dashboard__context">

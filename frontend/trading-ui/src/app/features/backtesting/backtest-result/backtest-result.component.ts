@@ -31,6 +31,23 @@ export class BacktestResultComponent {
     return (this.result.rDistribution?.length ?? 0) > 0;
   }
 
+  public get isLowSampleSize(): boolean {
+    return this.hasRMetrics && this.result.totalTrades < 30;
+  }
+
+  public get configuredRiskPercent(): number | null {
+    const risk = this.result.strategyConfig.risk;
+
+    return risk.positionSizeType === "risk_based" ? (risk.riskPerTradePercent ?? null) : null;
+  }
+
+  public get hasInfiniteProfitFactor(): boolean {
+    return (this.result.profitFactor === null || this.result.profitFactor === undefined)
+      && this.result.winningTrades > 0
+      && this.result.losingTrades === 0
+      && this.hasRMetrics;
+  }
+
   public get totalPnlClass(): string {
     return this.getPnlClass(this.result.totalPnl);
   }
@@ -59,7 +76,7 @@ export class BacktestResultComponent {
       return 0;
     }
 
-    return (this.result.maxDrawdown / this.result.initialCapital) * 100;
+    return -(this.result.maxDrawdown / this.result.initialCapital) * 100;
   }
 
   public get averageHoldTimeLabel(): string {
@@ -155,6 +172,38 @@ export class BacktestResultComponent {
 
   public getPnlClass(value: number): string {
     return value >= 0 ? "backtest-result__value--profit" : "backtest-result__value--loss";
+  }
+
+  public getSqnLabel(sqn: number): string {
+    if (sqn >= 7.0) {
+      return "Holy Grail";
+    }
+
+    if (sqn >= 5.1) {
+      return "Superb";
+    }
+
+    if (sqn >= 3.0) {
+      return "Excellent";
+    }
+
+    if (sqn >= 2.5) {
+      return "Good";
+    }
+
+    if (sqn >= 2.0) {
+      return "Average";
+    }
+
+    if (sqn >= 1.6) {
+      return "Below Average";
+    }
+
+    return "Poor";
+  }
+
+  public getKellyClass(kelly: number | null | undefined): string {
+    return (kelly ?? 0) >= 0 ? "backtest-result__value--profit" : "backtest-result__value--loss";
   }
 
   private _formatDurationFromMinutes(totalMinutes: number): string {

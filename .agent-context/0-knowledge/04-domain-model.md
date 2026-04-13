@@ -274,6 +274,12 @@ TradesJson (serialised trade log)
 EquityTimeSeriesJson (serialised equity curve)
 AuditLogEnabled (bool — whether audit log was collected for this run)
 CandleLogJson / OrderEventLogJson / GridCycleLogJson (nullable — populated when AuditLogEnabled = true; queried by the debug endpoint)
+Expectancy (nullable decimal — mean R-multiple across all R-tracked trades)
+ProfitFactor (nullable decimal — sum of positive R / abs(sum of negative R))
+Sqn (nullable decimal — System Quality Number: `(Expectancy / StdDev(R)) × √N`)
+KellyPercent (nullable decimal — Kelly Criterion optimal allocation %)
+HalfKellyPercent (nullable decimal — conservative half-Kelly allocation %)
+WinLossRRatio (nullable decimal — ratio of average winning R to average losing R)
 CreatedAtUtc (Unix ms)
 
 Key design patterns:

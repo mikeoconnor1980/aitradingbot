@@ -76,6 +76,8 @@ export class BacktestListComponent implements OnInit {
     "winRate",
     "totalPnl",
     "maxDrawdown",
+    "profitFactor",
+    "sqn",
     "actions"
   ];
 
@@ -189,6 +191,12 @@ export class BacktestListComponent implements OnInit {
 
   public getPnlClass(pnl: number): string {
     return pnl >= 0 ? "backtest-list__pnl--profit" : "backtest-list__pnl--loss";
+  }
+
+  public hasInfiniteProfitFactor(summary: BacktestSummary): boolean {
+    return (summary.profitFactor === null || summary.profitFactor === undefined)
+      && summary.totalTrades > 0
+      && summary.winRate >= 100;
   }
 
   private _pruneSelection(): void {

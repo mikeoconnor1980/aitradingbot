@@ -105,6 +105,9 @@ public static class BacktestRunResponseMapper
             Expectancy = entity.Expectancy ?? rMetrics.Expectancy,
             ProfitFactor = entity.ProfitFactor ?? rMetrics.ProfitFactor,
             Sqn = entity.Sqn ?? rMetrics.Sqn,
+            KellyPercent = entity.KellyPercent ?? rMetrics.KellyPercent,
+            HalfKellyPercent = entity.HalfKellyPercent ?? rMetrics.HalfKellyPercent,
+            WinLossRRatio = entity.WinLossRRatio ?? rMetrics.WinLossRRatio,
             AvgWinR = rMetrics.AvgWinR,
             AvgLossR = rMetrics.AvgLossR,
             RWinRate = rMetrics.RWinRate,
@@ -171,7 +174,20 @@ public static class BacktestRunResponseMapper
         var winners = rValues.Where(value => value > 0m).ToList();
         var losers = rValues.Where(value => value < 0m).ToList();
         var expectancy = rValues.Average();
+        var avgWinR = winners.Count > 0 ? Math.Round(winners.Average(), 4) : (decimal?)null;
+        var avgLossR = losers.Count > 0 ? Math.Round(losers.Average(), 4) : (decimal?)null;
+        decimal? winLossRRatio = null;
+        decimal? kellyPercent = null;
+        decimal? halfKellyPercent = null;
         decimal? sqn = null;
+
+        if (avgWinR.HasValue && avgLossR.HasValue && avgLossR.Value != 0m)
+        {
+            winLossRRatio = Math.Round(avgWinR.Value / Math.Abs(avgLossR.Value), 4);
+            var winFraction = (decimal)winners.Count / rValues.Count;
+            kellyPercent = Math.Round(winFraction - ((1m - winFraction) / winLossRRatio.Value), 4);
+            halfKellyPercent = Math.Round(kellyPercent.Value / 2m, 4);
+        }
 
         if (rValues.Count > 1)
         {
@@ -192,10 +208,13 @@ public static class BacktestRunResponseMapper
             Expectancy = Math.Round(expectancy, 4),
             ProfitFactor = grossLoss > 0m ? Math.Round(winners.Sum() / grossLoss, 4) : null,
             Sqn = sqn,
-            AvgWinR = winners.Count > 0 ? Math.Round(winners.Average(), 4) : null,
-            AvgLossR = losers.Count > 0 ? Math.Round(losers.Average(), 4) : null,
+            AvgWinR = avgWinR,
+            AvgLossR = avgLossR,
             RWinRate = Math.Round((decimal)winners.Count / rValues.Count * 100m, 2),
-            RDistribution = rValues
+            RDistribution = rValues,
+            KellyPercent = kellyPercent,
+            HalfKellyPercent = halfKellyPercent,
+            WinLossRRatio = winLossRRatio
         };
     }
 
@@ -208,5 +227,8 @@ public static class BacktestRunResponseMapper
         public decimal? AvgLossR { get; init; }
         public decimal? RWinRate { get; init; }
         public IReadOnlyList<decimal>? RDistribution { get; init; }
+        public decimal? KellyPercent { get; init; }
+        public decimal? HalfKellyPercent { get; init; }
+        public decimal? WinLossRRatio { get; init; }
     }
 }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Extensions.Options;
 using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Abstractions.Exceptions;
@@ -7,6 +8,7 @@ using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Enums;
 using TradingApp.Domain.Trading;
@@ -253,6 +255,66 @@ public sealed class BacktestRunnerTests
     }
 
     [TestMethod]
+    public async Task GivenBacktestEquityEntersDrawdownHalt_WhenRunAsync_ThenDrawdownBlockedSignalsReported()
+    {
+        var limits = new RiskLimitsConfig
+        {
+            MaxPortfolioHeatPercent = 0m,
+            DrawdownTiers = RiskLimitsConfig.DefaultDrawdownTiers.ToArray()
+        };
+        var riskEngine = new BacktestRiskEngine(Options.Create(limits));
+        var positionManager = new BacktestPositionManager(_executionContextAccessor);
+        var runner = new BacktestRunner(
+            _candleRepositoryMock.Object,
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            riskEngine,
+            positionManager,
+            _executionContextAccessor,
+            _signalControllerMock.Object,
+            Options.Create(limits));
+
+        var config = CreateConfig(
+            warmupPeriod: 1,
+            execution: new ExecutionConfig
+            {
+                FeeModel = new FeeModel
+                {
+                    MakerFeeRate = 0m,
+                    TakerFeeRate = 0m,
+                    SlippageRate = 0m,
+                }
+            });
+
+        _gridControllerMock
+            .SetupSequence(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([CreateDeployGridSignal()])
+            .ReturnsAsync([CreateDeployGridSignal()]);
+
+        var first15mTimestamp = config.StartDateUtc - FifteenMinutesMs;
+        SetupCandles("15m", [
+            Candle.Create("Binance", "BTC", "15m", first15mTimestamp, 100m, 101m, 99m, 100m, 1_000m, 10),
+            Candle.Create("Binance", "BTC", "15m", first15mTimestamp + FifteenMinutesMs, 100m, 101m, 99m, 100m, 1_000m, 10),
+            Candle.Create("Binance", "BTC", "15m", first15mTimestamp + (2 * FifteenMinutesMs), 100m, 101m, 84m, 84m, 1_000m, 10)
+        ]);
+        SetupCandles("1h", CreateCandles("1h", OneHourMs, 2));
+        SetupCandles("4h", CreateCandles("4h", FourHoursMs, 2));
+
+        var result = await runner.RunAsync(config);
+
+        result.DrawdownBlockedSignalCount.Should().Be(1);
+        result.HeatBlockedSignalCount.Should().Be(0);
+        result.FinalEquity.Should().Be(8_400m);
+    }
+
+    [TestMethod]
     public void GivenExitFillFromDifferentCycle_WhenRecordFill_ThenOnlyMatchingCycleTradeIsClosed()
     {
         var tradeLog = new List<BacktestTrade>();
@@ -466,6 +528,24 @@ public sealed class BacktestRunnerTests
                 1_000m,
                 10))
             .ToList();
+    }
+
+    private static TradingSignal CreateDeployGridSignal()
+    {
+        return new TradingSignal
+        {
+            SignalType = "DeployGrid",
+            Symbol = "BTC",
+            Parameters = new Dictionary<string, object>
+            {
+                ["anchorPrice"] = 100m,
+                ["gridLevels"] = 1,
+                ["gridSpacingPercent"] = 0m,
+                ["notionalUsd"] = 10_000m,
+                ["estimatedRiskUsd"] = 100m,
+                ["gridCycleId"] = Guid.NewGuid().ToString("N")
+            }
+        };
     }
 
     private static void InvokeRecordFill(

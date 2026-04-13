@@ -1,4 +1,5 @@
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Abstractions.Repositories;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
@@ -6,6 +7,7 @@ using TradingApp.Application.Scheduling.Models;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Services;
 using TradingApp.Application.Trading.Models;
+using TradingApp.Application.Trading.Services;
 using TradingApp.Domain.Entities;
 using TradingApp.Domain.Trading;
 
@@ -28,10 +30,14 @@ public sealed class StrategyScheduler
     private readonly string _triggerTimeframe;
     private readonly decimal _initialCapital;
     private readonly BacktestExecutionContextAccessor? _executionContextAccessor;
+    private readonly IReadOnlyList<DrawdownTier> _drawdownTiers;
+    private readonly IStrategyRepository? _strategyRepository;
+    private readonly Strategy? _strategy;
 
     private readonly GridState _gridState;
     private PositionState _positionState = new();
     private MarketContext? _lastContext;
+    private decimal? _highWaterMarkUsd;
 
     public StrategyScheduler(
         IMarketContextBuilder contextBuilder,
@@ -45,7 +51,10 @@ public sealed class StrategyScheduler
         ISignalController? signalController = null,
         decimal initialCapital = 0m,
         BacktestExecutionContextAccessor? executionContextAccessor = null,
-        GridState? gridState = null)
+        GridState? gridState = null,
+        IReadOnlyList<DrawdownTier>? drawdownTiers = null,
+        Strategy? strategy = null,
+        IStrategyRepository? strategyRepository = null)
     {
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
         _strategyEngine = strategyEngine ?? throw new ArgumentNullException(nameof(strategyEngine));
@@ -62,6 +71,10 @@ public sealed class StrategyScheduler
         _initialCapital = initialCapital;
         _executionContextAccessor = executionContextAccessor;
         _gridState = gridState ?? new GridState();
+        _drawdownTiers = drawdownTiers ?? [];
+        _strategy = strategy;
+        _strategyRepository = strategyRepository;
+        _highWaterMarkUsd = strategy?.HighWaterMarkUsd;
     }
 
     public async Task HandleCandleClosedAsync(
@@ -91,6 +104,8 @@ public sealed class StrategyScheduler
             requiredIndicators,
             cancellationToken);
         context.AccountEquity = ResolveAccountEquity();
+        _riskEngine.UpdatePortfolioState(context.AccountEquity);
+        await ApplyDrawdownStateAsync(context, cancellationToken);
         _lastContext = context;
 
         var evaluation = await _strategyEngine.EvaluateAsync(
@@ -131,7 +146,6 @@ public sealed class StrategyScheduler
             return;
         }
 
-        _riskEngine.UpdatePortfolioState(context.AccountEquity);
         var approvedSignals = await _riskEngine.ValidateAsync(signals, cancellationToken);
         if (approvedSignals.Count == 0)
         {
@@ -208,5 +222,34 @@ public sealed class StrategyScheduler
             _positionState,
             _strategyConfig,
             cancellationToken);
+    }
+
+    private async Task ApplyDrawdownStateAsync(MarketContext context, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var currentHighWaterMark = _highWaterMarkUsd
+            ?? _strategy?.HighWaterMarkUsd
+            ?? context.AccountEquity;
+        var drawdownResult = DrawdownEvaluator.Evaluate(
+            context.AccountEquity,
+            currentHighWaterMark,
+            _drawdownTiers);
+
+        _highWaterMarkUsd = drawdownResult.NewHighWaterMark;
+        context.DrawdownScalingFactor = drawdownResult.ScalingFactor;
+        _riskEngine.UpdateDrawdownState(drawdownResult.ScalingFactor, drawdownResult.IsHalted);
+
+        if (_strategy is null || drawdownResult.NewHighWaterMark == currentHighWaterMark)
+        {
+            return;
+        }
+
+        _strategy.UpdateHighWaterMark(drawdownResult.NewHighWaterMark);
+
+        if (_strategyRepository is not null)
+        {
+            await _strategyRepository.UpdateAsync(_strategy, cancellationToken);
+        }
     }
 }

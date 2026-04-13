@@ -6,4 +6,5 @@ public enum ExitRuleType
     SwingLow,
     AtrTrailing,
     RMultiple,
+    AtrInitial,
 }

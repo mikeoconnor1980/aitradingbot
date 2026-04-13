@@ -11,6 +11,7 @@ using TradingApp.Application.MacroCalendar.Services;
 using TradingApp.Application.Scheduling;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.StrategyAuthoring.Services;
+using TradingApp.Application.StrategyAuthoring.Validation;
 using TradingApp.Application.Trading.Services;
 using TradingApp.Infrastructure.Services;
 using TradingApp.Persistence;
@@ -145,7 +146,14 @@ builder.Services.AddSingleton<ITriggerOrderManager, TriggerOrderManager>();
 
 // ---------- Risk engine (live limits: daily loss, order size, circuit breaker) ----------
 builder.Services.AddOptions<RiskLimitsConfig>()
-    .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName));
+    .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.PostConfigure<RiskLimitsConfig>(options =>
+{
+    RiskLimitsConfigDefaults.Apply(options);
+});
+builder.Services.AddSingleton<IValidateOptions<RiskLimitsConfig>, RiskLimitsConfigValidator>();
 builder.Services.AddSingleton<LiveRiskEngine>();
 builder.Services.AddSingleton<IRiskEngine>(sp => sp.GetRequiredService<LiveRiskEngine>());
 

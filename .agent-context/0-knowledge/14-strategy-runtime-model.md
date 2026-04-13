@@ -196,7 +196,7 @@ All of these are shared between live trading and backtesting:
 | `IStrategyEngine` | `EvaluateAsync(MarketContext, IStrategyConfig) → StrategyEvaluation` | Detects valid setups |
 | `IMarketContextBuilder` | `UpdateIndicators(Candle)` + `Build(trigger, 1h?, 4h?) → MarketContext` | Builds shared market context |
 | `IGridController` | `ProcessAsync(evaluation, context, gridState, positionState, IStrategyConfig) → IReadOnlyList<TradingSignal>` | Grid lifecycle + signal emission |
-| `IRiskEngine` | `ValidateAsync(signals) → IReadOnlyList<TradingSignal>` | Filters signals against risk limits |
+| `IRiskEngine` | `ValidateAsync(signals)`; `UpdatePortfolioState(equity)`; `RecordPositionClosed(symbol)` | Filters signals against risk limits; tracks portfolio equity and per-symbol risk for portfolio heat enforcement |
 | `IPositionManager` | `ExecuteSignalsAsync(approvedSignals)` | Routes approved signals to `IExecutionEngine` |
 | `IExecutionEngine` | `PlaceOrderAsync`, `CancelOrderAsync`, `CancelAllOrdersAsync` | Execution boundary (live vs. simulated) |
 

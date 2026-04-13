@@ -102,6 +102,10 @@
     color: var(--colour-muted);
   }
 
+  &__na {
+    color: var(--colour-muted);
+  }
+
   &__empty,
   &__loading {
     display: flex;

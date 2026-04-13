@@ -57,6 +57,7 @@ public sealed class GridController : IGridController
                     gridState.TrailingStopHighWatermark = null;
                     gridState.CandlesSinceEntry = 0;
                     gridState.InitialRDollars = null;
+                    gridState.AtrAtEntry = null;
 
                     return Task.FromResult<IReadOnlyList<TradingSignal>>(
                     [
@@ -86,10 +87,16 @@ public sealed class GridController : IGridController
                 context.Indicators?.Atr,
                 config.Grid?.BreakdownThreshold);
 
+            if (tpTrigger <= 0m)
+            {
+                return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
+            }
+
             gridState.Lifecycle = GridLifecycle.Closing;
             gridState.TrailingStopHighWatermark = null;
             gridState.CandlesSinceEntry = 0;
             gridState.InitialRDollars = null;
+            gridState.AtrAtEntry = null;
 
             return Task.FromResult<IReadOnlyList<TradingSignal>>(
             [
@@ -146,6 +153,7 @@ public sealed class GridController : IGridController
                 grid.BreakdownThreshold)
             : null;
         var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
+        positionSize *= context.DrawdownScalingFactor;
         var notionalPerLevel = config.Risk.PositionSizeType == PositionSizeType.RiskBased
             ? positionSize / gridLevels
             : positionSize;
@@ -157,7 +165,13 @@ public sealed class GridController : IGridController
                     context.MaxLeverage ?? LeverageCalculator.FallbackMaxLeverage)
                 : Math.Max(1, (int)Math.Floor(config.Risk.Leverage));
         var isIsolated = config.Risk.PositionSizeType == PositionSizeType.RiskBased;
-        var estimatedRiskUsd = EstimateSignalRisk(config.Risk, notionalPerLevel, context.AccountEquity, stopLossPercent, gridLevels);
+        var estimatedRiskUsd = EstimateSignalRisk(
+            config.Risk,
+            notionalPerLevel,
+            context.AccountEquity,
+            stopLossPercent,
+            gridLevels,
+            context.DrawdownScalingFactor);
 
         if (notionalPerLevel <= 0m)
         {
@@ -169,6 +183,9 @@ public sealed class GridController : IGridController
         gridState.TotalLevels = gridLevels;
         gridState.FilledLevels = 0;
         gridState.InitialRDollars = PositionSizeResolver.ResolveInitialR(config.Risk, context.AccountEquity);
+        gridState.AtrAtEntry = config.Exit.StopLoss.Type == ExitRuleType.AtrInitial
+            ? context.Indicators?.Atr
+            : null;
 
         return Task.FromResult<IReadOnlyList<TradingSignal>>(
         [
@@ -198,13 +215,14 @@ public sealed class GridController : IGridController
         decimal notionalUsd,
         decimal equity,
         decimal? stopLossPercent,
-        int gridLevels)
+        int gridLevels,
+        decimal drawdownScalingFactor)
     {
         if (risk.PositionSizeType == PositionSizeType.RiskBased
             && risk.RiskPerTradePercent.HasValue
             && risk.RiskPerTradePercent.Value > 0m)
         {
-            return Math.Max(0m, equity) * (risk.RiskPerTradePercent.Value / 100m);
+            return Math.Max(0m, equity) * (risk.RiskPerTradePercent.Value / 100m) * Math.Max(0m, drawdownScalingFactor);
         }
 
         var totalNotionalUsd = risk.PositionSizeType == PositionSizeType.RiskBased
@@ -231,7 +249,12 @@ public sealed class GridController : IGridController
         var isAtrTrailing = stopLossConfig.Enabled && stopLossConfig.Type == ExitRuleType.AtrTrailing;
         var isFixedStopLoss = stopLossConfig.Enabled
             && stopLossConfig.Type != ExitRuleType.AtrTrailing
+            && stopLossConfig.Type != ExitRuleType.AtrInitial
             && stopLossConfig.Value.HasValue;
+        var isAtrInitial = stopLossConfig.Enabled
+            && stopLossConfig.Type == ExitRuleType.AtrInitial
+            && gridState.AtrAtEntry.HasValue
+            && gridState.AtrAtEntry.Value > 0m;
 
         // Update trailing stop high watermark when position is open
         if (isAtrTrailing)
@@ -260,6 +283,7 @@ public sealed class GridController : IGridController
                 {
                     gridState.Lifecycle = GridLifecycle.Closing;
                     gridState.InitialRDollars = null;
+                    gridState.AtrAtEntry = null;
 
                     var signal = new TradingSignal
                     {
@@ -301,6 +325,44 @@ public sealed class GridController : IGridController
                     SignalType = "TakeProfit",
                     Symbol = context.Symbol,
                     Reason = "Stop loss triggered.",
+                    Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["targetPrice"] = context.CurrentCandle.Close,
+                        ["size"] = Math.Abs(positionState.Size),
+                        ["orderType"] = OrderType.Market.ToString(),
+                        ["gridCycleId"] = gridCycleId,
+                        ["cancellationReason"] = CancellationReason.StopLossTriggered.ToString()
+                    }
+                };
+            }
+        }
+
+        if (isAtrInitial)
+        {
+            var multiplier = stopLossConfig.AtrMultiplier ?? 2m;
+            var isLong = positionState.Size > 0m;
+            var atrAtEntry = gridState.AtrAtEntry.GetValueOrDefault();
+            var stopPrice = isLong
+                ? positionState.AverageEntryPrice - (atrAtEntry * multiplier)
+                : positionState.AverageEntryPrice + (atrAtEntry * multiplier);
+
+            var triggered = isLong
+                ? context.CurrentCandle.Close <= stopPrice
+                : context.CurrentCandle.Close >= stopPrice;
+
+            if (triggered)
+            {
+                gridState.Lifecycle = GridLifecycle.Closing;
+                gridState.TrailingStopHighWatermark = null;
+                gridState.CandlesSinceEntry = 0;
+                gridState.InitialRDollars = null;
+                gridState.AtrAtEntry = null;
+
+                return new TradingSignal
+                {
+                    SignalType = "TakeProfit",
+                    Symbol = context.Symbol,
+                    Reason = $"ATR initial stop triggered (stop: {stopPrice:F2}).",
                     Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["targetPrice"] = context.CurrentCandle.Close,

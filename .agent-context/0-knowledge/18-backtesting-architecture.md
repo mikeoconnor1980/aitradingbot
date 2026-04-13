@@ -126,6 +126,8 @@ Instead, a SimulatedExecutionEngine must:
 
 **Fill priority**: Within each candle, buys are processed before sells. This avoids incorrect same-candle pairing when both a buy and sell price range would be satisfied.
 
+**Portfolio heat enforcement**: Within each candle, after candidate entry signals are generated, `BacktestRiskEngine.ValidateAsync` blocks signals if the total portfolio risk would exceed the configured limit. Blocked signals are counted and reported in `HeatBlockedSignalCount` for post-backtest analysis. Mirrors live trading behaviour.
+
 **FIFO trade pairing**: The trade log pairs entries and exits in order:
 - `GridFill` entries → `TakeProfit` exits
 - `HedgeOpen` entries → `HedgeClose` exits
@@ -202,8 +204,19 @@ Without fees and slippage, results will look unrealistically strong.
 | `TotalFeesPaid` | `decimal` | Sum of all fees across all fills |
 | `GridCycles` | `int` | Number of completed grid lifecycle cycles (`Closed` state reached) |
 | `FinalEquity` | `decimal` | `InitialCapital + RealisedPnL + UnrealisedPnL` at last candle |
+| `HeatBlockedSignalCount` | `int` | Number of entry signals rejected due to portfolio heat limit during the backtest run |
 | `EquityTimeSeries` | `IReadOnlyList<EquitySnapshot>` | Equity value per candle (`record (long TimestampUtc, decimal Equity)`) |
 | `TradeLog` | `IReadOnlyList<BacktestTrade>` | Full per-trade record including entry/exit price, fees, TradeType |
+| `Expectancy` | `decimal?` | Mean R-multiple across all R-tracked trades (null if no R-tracked trades) |
+| `ProfitFactor` | `decimal?` | Sum of positive R / abs(sum of negative R) |
+| `Sqn` | `decimal?` | System Quality Number: `(Expectancy / StdDev(R)) × √N` |
+| `AvgWinR` | `decimal?` | Mean R-multiple of winning trades |
+| `AvgLossR` | `decimal?` | Mean R-multiple of losing trades |
+| `RWinRate` | `decimal?` | Win rate among R-tracked trades (%) |
+| `RDistribution` | `IReadOnlyList<decimal>?` | Raw R-multiple values for histogram rendering |
+| `KellyPercent` | `decimal?` | Kelly Criterion optimal allocation: `W - (1-W)/R` where W = win fraction, R = AvgWinR/|AvgLossR|. Null if < 2 R-tracked trades or no losers |
+| `HalfKellyPercent` | `decimal?` | Conservative half-Kelly allocation (KellyPercent / 2). Recommended for live use |
+| `WinLossRRatio` | `decimal?` | AvgWinR / |AvgLossR| — reward-risk asymmetry ratio |
 
 `TradeType` enum (`src/TradingApp.Application/Trading/Models/TradeType.cs`): `GridFill`, `TakeProfit`, `HedgeOpen`, `HedgeClose`.
 
@@ -217,12 +230,13 @@ Completed runs are persisted as `BacktestRun` domain entities immediately after 
 
 - Created via `BacktestRun.CreateQueued(...)` for the async background path (status: `Queued → Running → Completed/Failed`) or `BacktestRun.Create(...)` for direct creation with final metrics
 - Summary metrics (TotalTrades, WinRate, TotalPnl, MaxDrawdown, etc.) stored as scalar columns
+- R-multiple aggregate metrics (`Expectancy`, `ProfitFactor`, `Sqn`, `KellyPercent`, `HalfKellyPercent`, `WinLossRRatio`) stored as nullable float columns; derived metrics (`AvgWinR`, `AvgLossR`, `RWinRate`, `RDistribution`) are recomputed from `TradesJson` at read time by `BacktestRunResponseMapper`
 - JSON blob columns: `StrategyConfigJson`, `ExecutionConfigJson`, `TradesJson`, `IntervalsJson`, `EquityTimeSeriesJson`
 - Audit log blob columns (nullable): `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson` — populated only when `AuditLogEnabled = true`
 - `AuditLogEnabled` (bool) — records whether audit data was collected for this run; controls whether the debug endpoint returns data
 - **Not tenant-scoped** — runs are keyed by a generated Guid with no UserId
 
-**What is NOT persisted:** `FinalEquity`, `MaxDrawdownPercent`, and `GridCycles` from `BacktestResult` are not stored. Only `MaxDrawdown` (absolute) is stored. `EquityTimeSeriesJson` **is** persisted.
+**What is NOT persisted:** `FinalEquity`, `MaxDrawdownPercent`, and `GridCycles` from `BacktestResult` are not stored. Only `MaxDrawdown` (absolute) is stored. `EquityTimeSeriesJson` **is** persisted. Derived R-metrics (`AvgWinR`, `AvgLossR`, `RWinRate`, `RDistribution`) are not persisted — they are recomputed from trade data at query time.
 
 `IBacktestRunRepository` (`src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs`):
 
@@ -319,11 +333,12 @@ The backtesting UI lives at `/backtesting` and is implemented as a tabbed page s
 | `BacktestPageComponent` | Tab shell: Run / Past Results / Compare. Owns `latestResult`, `compareResultA/B`, and tab navigation | `backtest-page.component.ts` |
 | `BacktestFormComponent` | Reactive form for strategy config, symbol, date range, capital. Emits `(runBacktest)` and `(validateCoverage)` | `backtest-form/` |
 | `CoverageReportComponent` | Displays `CandleCoverageResponse` — per-interval candle count and date range | `coverage-report/` |
-| `BacktestResultComponent` | Metric cards: PnL, win rate, drawdown, trades, fees, hold time | `backtest-result/` |
+| `BacktestResultComponent` | Metric cards: PnL, win rate, drawdown, trades, fees, hold time; conditional R-metric KPI section (expectancy, profit factor, SQN, win rate, avg winner/loser) shown only when R-tracked trades exist | `backtest-result/` |
 | `EquityChartComponent` | Lightweight Charts area chart with trade markers and optional comparison overlay | `equity-chart/` |
-| `TradeLogTableComponent` | Sortable table of `BacktestTrade[]` entries; each row expands to a debug panel showing per-cycle candle evaluations (filterable by signal type / setup-detected), order events, and grid cycle summary; supports JSON and CSV export; data loaded on demand via `BacktestService.getDebugData` | `trade-log-table/` |
+| `TradeLogTableComponent` | Sortable table of `BacktestTrade[]` entries; conditionally displays InitialR, R-Multiple, MFE, MAE columns when R-tracked data exists; each row expands to a debug panel showing per-cycle candle evaluations (filterable by signal type / setup-detected), order events, and grid cycle summary; supports JSON and CSV export; data loaded on demand via `BacktestService.getDebugData` | `trade-log-table/` |
 | `BacktestListComponent` | Paginated past-results list with `mat-paginator`; emits IDs for comparison | `backtest-list/` |
 | `BacktestCompareComponent` | Side-by-side metric diff and overlaid equity curves for two runs | `backtest-compare/` |
+| `RDistributionChartComponent` | CSS bar-chart histogram bucketing realised R-multiples for visual distribution analysis; shown when `RDistribution` data exists | `r-distribution-chart/` |
 | `BacktestService` | API client: `runBacktest`, `getBacktest`, `validateCoverage`, `getBacktestList` | `src/app/core/services/backtest.service.ts` |
 
 Angular models mirror the API shapes and live in `frontend/trading-ui/src/app/core/models/backtest.model.ts`: `BacktestRequest`, `BacktestResult`, `BacktestSummary`, `BacktestTrade`, `EquitySnapshot`, `PagedResult<T>`, `CoverageReport`.

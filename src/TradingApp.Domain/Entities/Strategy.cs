@@ -10,6 +10,7 @@ public sealed class Strategy
     public int Version { get; private set; }
     public bool IsActive { get; private set; }
     public bool IsRunning { get; private set; }
+    public decimal? HighWaterMarkUsd { get; private set; }
     public long CreatedAtUtc { get; private set; }
     public long UpdatedAtUtc { get; private set; }
 
@@ -71,6 +72,12 @@ public sealed class Strategy
         }
 
         IsRunning = isRunning;
+        UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    public void UpdateHighWaterMark(decimal highWaterMark)
+    {
+        HighWaterMarkUsd = highWaterMark;
         UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 }

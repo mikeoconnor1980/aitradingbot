@@ -445,6 +445,79 @@ public sealed class BusinessRuleValidatorTests
         result.Errors.Should().NotContain(error => error.Code.StartsWith("MACD_", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    public void GivenAtrInitialStopLossWithNullMultiplier_WhenValidated_ThenReturnsError()
+    {
+        var config = new StrategyConfig
+        {
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = null,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().ContainSingle(error =>
+            error.Code == "SL_ATR_MULTIPLIER_REQUIRED"
+            && error.FieldPath == "exit.stopLoss.atrMultiplier");
+    }
+
+    [TestMethod]
+    public void GivenAtrInitialStopLossWithValidMultiplier_WhenValidated_ThenNoError()
+    {
+        var config = new StrategyConfig
+        {
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2.0m,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error =>
+            error.FieldPath == "exit.stopLoss.atrMultiplier"
+            && error.Code == "SL_ATR_MULTIPLIER_REQUIRED");
+    }
+
+    [TestMethod]
+    public void GivenAtrStopLossWithNegativePeriod_WhenValidated_ThenReturnsError()
+    {
+        var config = new StrategyConfig
+        {
+            Exit = new ExitConfig
+            {
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.AtrInitial,
+                    AtrMultiplier = 2.0m,
+                    AtrPeriod = -1,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().ContainSingle(error =>
+            error.Code == "SL_ATR_PERIOD_INVALID"
+            && error.FieldPath == "exit.stopLoss.atrPeriod");
+    }
+
     private static EntryConditionConfig CreateMacdCondition(
         int fastPeriod = 12,
         int slowPeriod = 26,

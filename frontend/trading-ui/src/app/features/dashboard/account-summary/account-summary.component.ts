@@ -5,8 +5,10 @@ import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { LayoutService } from "../../../core/services/layout.service";
 import { AccountSummary } from "../../../core/models/account-summary.model";
+import { DrawdownState } from "../../../core/models/drawdown-state.model";
 import { MarginRatioIndicatorComponent } from "./margin-ratio-indicator/margin-ratio-indicator.component";
 import { PortfolioHeat } from "../../../core/models/portfolio-heat.model";
+import { DrawdownIndicatorComponent } from "./drawdown-indicator/drawdown-indicator.component";
 import { PortfolioHeatIndicatorComponent } from "./portfolio-heat-indicator/portfolio-heat-indicator.component";
 
 @Component({
@@ -19,6 +21,7 @@ import { PortfolioHeatIndicatorComponent } from "./portfolio-heat-indicator/port
     MatCardModule,
     MatIconModule,
     MarginRatioIndicatorComponent,
+    DrawdownIndicatorComponent,
     PortfolioHeatIndicatorComponent
   ],
   templateUrl: "./account-summary.component.html",
@@ -35,6 +38,9 @@ export class AccountSummaryComponent {
 
   @Input()
   public portfolioHeat: PortfolioHeat | null = null;
+
+  @Input()
+  public drawdownState: DrawdownState | null = null;
 
   public get pnlClass(): string {
     return this.summary.unrealisedPnl >= 0 ? "pnl--profit" : "pnl--loss";

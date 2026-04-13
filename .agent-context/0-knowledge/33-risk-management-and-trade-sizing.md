@@ -588,6 +588,14 @@ By sweeping risk% alongside SL and TP parameters, the optimizer can find:
 | ATR trailing stop | Working for exits |
 | `maxOpenTrades` | Working |
 | Optimizer `RiskBased` sweep | Working — `PositionSizeMode.RiskBased` in `ParameterBounds`; sweeps `RiskPerTradePercentOptions`, optional `IncludeAutoLeverage`; `StrategyConfigGenerator` branches on mode; `RunOptimizationRequest` accepts `positionSizeMode`, `riskPerTradePercentOptions`, `includeAutoLeverage` |
+| `PortfolioHeatCalculator` | Working — computes total R across positions via `CalculateFromPositions()` and `CalculateFromTrackedRisks()` |
+| `LiveRiskEngine` portfolio heat check | Working — blocks entry signals when `currentHeat + estimatedRiskUsd > equity × maxHeatPercent / 100` |
+| `BacktestRiskEngine` heat enforcement | Working — enforces heat limits during replay with per-run `HeatBlockedSignalCount` reporting |
+| `DeployGrid` signal `estimatedRiskUsd` | Working — `GridController` adds `estimatedRiskUsd` to signal parameters for risk tracking |
+| `IRiskEngine.UpdatePortfolioState` | Working — called by `StrategyScheduler` each candle close to track account equity |
+| `IRiskEngine.RecordPositionClosed` | Working — called by `FillProcessor` when positions close to clear tracked risk |
+| `MaxPortfolioHeatPercent` config | Working — field in `RiskLimitsConfig` (default 6); 0 disables heat checks |
+| API `GET /api/risk/portfolio-heat` | Working — `RiskController` returns per-position heat breakdown and aggregate utilization |
 
 ### What's Missing
 
@@ -601,7 +609,7 @@ By sweeping risk% alongside SL and TP parameters, the optimizer can find:
 | ~~`notionalUsd`/`notionalPerLevel` key mismatch fix~~ | ~~P1 (bug)~~ Done |
 | `RecordLoss` wiring in LivePositionManager | P1 (bug) |
 | ~~Optimizer sweep of `riskPerTradePercent`~~ | ~~P1~~ Done |
-| Portfolio heat enforcement | P2 |
+| ~~Portfolio heat enforcement~~ | ~~P2~~ Done |
 | R-multiple exit types | P2 |
 | R-multiple trade tracking & expectancy | P2 |
 | Partial-close at R-levels | P3 |

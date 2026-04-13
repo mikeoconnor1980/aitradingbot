@@ -1,0 +1,125 @@
+@keyframes pulse-warning {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.drawdown-indicator {
+  display: grid;
+  gap: 0.5rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  &__title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  &__label {
+    color: var(--colour-label);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  &__value {
+    color: var(--colour-text-primary);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  &__warning-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: var(--colour-loss);
+    font-size: 1.125rem;
+  }
+
+  &__bar {
+    &--low {
+      --mdc-linear-progress-active-indicator-color: var(--colour-profit);
+    }
+
+    &--elevated {
+      --mdc-linear-progress-active-indicator-color: var(--colour-warning);
+    }
+
+    &--critical {
+      --mdc-linear-progress-active-indicator-color: #ff9f43;
+    }
+
+    &--halted {
+      --mdc-linear-progress-active-indicator-color: var(--colour-loss);
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  &__tier {
+    color: var(--colour-muted);
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--colour-border-subtle);
+    border-radius: 999px;
+    background: var(--colour-surface-strong);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  &__badge-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &__badge--active {
+    color: var(--colour-loss);
+    border-color: rgba(224, 122, 143, 0.24);
+    background: rgba(74, 30, 43, 0.24);
+  }
+
+  &__badge--inactive {
+    color: var(--colour-profit);
+    border-color: rgba(59, 201, 168, 0.22);
+    background: rgba(17, 58, 50, 0.3);
+  }
+
+  &--halted {
+    .drawdown-indicator__bar,
+    .drawdown-indicator__warning-icon,
+    .drawdown-indicator__badge {
+      animation: pulse-warning 1.5s ease-in-out infinite;
+    }
+  }
+}

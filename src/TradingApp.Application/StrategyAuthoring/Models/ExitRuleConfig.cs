@@ -7,5 +7,6 @@ public sealed record ExitRuleConfig
     public decimal? Value { get; init; }
     public int? Lookback { get; init; }
     public decimal? AtrMultiplier { get; init; }
+    public int? AtrPeriod { get; init; }
     public int? TrailingStopWarmup { get; init; }
 }
