@@ -41,6 +41,10 @@ export class StrategyListPageComponent implements OnInit {
     void this._router.navigate(["/strategies/new"]);
   }
 
+  public onGuidedSetup(): void {
+    void this._router.navigate(["/strategies/wizard"]);
+  }
+
   public onEdit(strategy: StrategySummaryDto): void {
     void this._router.navigate(["/strategies", strategy.id, "edit"]);
   }

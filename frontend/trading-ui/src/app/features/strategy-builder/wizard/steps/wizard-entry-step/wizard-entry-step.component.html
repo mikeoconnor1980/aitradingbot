@@ -1,0 +1,13 @@
+<div class="wizard-entry">
+  @if (isSignalMode) {
+    <app-entry-conditions-card [conditions]="conditionsArray" [entryLogicControl]="entryLogicControl"></app-entry-conditions-card>
+    @if (conditionsArray.length === 0) {
+      <div class="wizard-entry__hint">
+        <mat-icon class="wizard-entry__hint-icon">info</mat-icon>
+        <span>Add at least one entry condition to continue to the next step.</span>
+      </div>
+    }
+  } @else {
+    <app-grid-config-card [group]="gridGroup"></app-grid-config-card>
+  }
+</div>

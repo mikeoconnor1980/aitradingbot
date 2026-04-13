@@ -1,0 +1,32 @@
+.wizard-entry {
+  ::ng-deep .mat-mdc-card {
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+
+  ::ng-deep .mat-mdc-card-header {
+    display: none;
+  }
+
+  &__hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: var(--colour-surface-dark, #1a1a2e);
+    border: 1px solid var(--colour-warn, #ff9800);
+    color: var(--colour-warn, #ff9800);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+  }
+
+  &__hint-icon {
+    font-size: 1.25rem;
+    height: 1.25rem;
+    width: 1.25rem;
+    flex-shrink: 0;
+  }
+}

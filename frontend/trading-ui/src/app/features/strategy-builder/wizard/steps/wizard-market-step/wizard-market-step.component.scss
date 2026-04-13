@@ -1,0 +1,23 @@
+.wizard-market {
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  &__field {
+    width: 100%;
+
+    &--full {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .wizard-market {
+    &__fields {
+      grid-template-columns: 1fr;
+    }
+  }
+}

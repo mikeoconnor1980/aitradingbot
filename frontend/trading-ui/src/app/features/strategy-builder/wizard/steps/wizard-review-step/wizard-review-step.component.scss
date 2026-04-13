@@ -1,0 +1,23 @@
+.wizard-review {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  &__preview {
+    ::ng-deep .mat-mdc-card {
+      box-shadow: none;
+      border: 1px solid var(--colour-border-subtle, #333);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  &__switch-btn {
+    margin-right: auto;
+  }
+}

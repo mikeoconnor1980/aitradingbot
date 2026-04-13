@@ -11,6 +11,7 @@ public static class RevisionSourceMapper
         {
             null => RevisionSource.Ui,
             StrategyEntryPoint.UiBuilder => RevisionSource.Ui,
+            StrategyEntryPoint.UiWizard => RevisionSource.Ui,
             StrategyEntryPoint.NaturalLanguage => RevisionSource.Api,
             StrategyEntryPoint.PineImport => RevisionSource.Import,
             StrategyEntryPoint.Migration => RevisionSource.Import,

@@ -1,0 +1,27 @@
+<div class="wizard-goal">
+  <div class="wizard-goal__templates">
+    @for (template of templates; track template.id) {
+      <mat-card
+        class="wizard-goal__card"
+        [class.wizard-goal__card--selected]="template.id === selectedTemplateId"
+        [class.wizard-goal__card--disabled]="!template.available"
+        (click)="selectTemplate(template)"
+        (keydown.enter)="selectTemplate(template)"
+        tabindex="0"
+        [attr.aria-label]="template.label"
+        role="button">
+        <mat-card-content>
+          <mat-icon class="wizard-goal__icon">{{ template.icon }}</mat-icon>
+          <h3 class="wizard-goal__label">{{ template.label }}</h3>
+          <p class="wizard-goal__description">{{ template.description }}</p>
+          <span class="wizard-goal__best-for">
+            <strong>Best for:</strong> {{ template.bestFor }}
+          </span>
+          @if (!template.available) {
+            <span class="wizard-goal__coming-soon">Coming soon</span>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+</div>

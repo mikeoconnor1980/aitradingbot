@@ -23,7 +23,8 @@ export class SidebarNavComponent {
   public readonly navItems: NavItem[] = [
     { route: "/dashboard", icon: "dashboard", label: "Dashboard", exact: true },
     { route: "/market-data", icon: "show_chart", label: "Market Data" },
-    { route: "/strategies", icon: "tune", label: "Strategies" },
+    { route: "/strategies", icon: "tune", label: "Strategies", exact: true },
+    { route: "/strategies/wizard", icon: "auto_fix_high", label: "Strategy Wizard" },
     { route: "/backtesting", icon: "history", label: "Backtesting" },
     { route: "/candle-data", icon: "candlestick_chart", label: "Candle Data" },
     { route: "/optimizer", icon: "auto_graph", label: "Optimizer" },

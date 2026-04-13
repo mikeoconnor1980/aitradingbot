@@ -1,0 +1,32 @@
+<div class="wizard-review">
+  <div class="wizard-review__preview">
+    <app-preview-summary-card [formValue]="formValue"></app-preview-summary-card>
+  </div>
+
+  @if (errors.length > 0 || warnings.length > 0) {
+    <div class="wizard-review__validation">
+      <app-validation-card [errors]="errors" [warnings]="warnings"></app-validation-card>
+    </div>
+  }
+
+  <div class="wizard-review__actions">
+    <button
+      mat-stroked-button
+      type="button"
+      (click)="switchToBuilder.emit()"
+      class="wizard-review__switch-btn">
+      <mat-icon>tune</mat-icon>
+      <span>Switch to Full Builder</span>
+    </button>
+
+    <button
+      mat-raised-button
+      color="primary"
+      type="button"
+      [disabled]="!canSave"
+      (click)="save.emit()">
+      <mat-icon>save</mat-icon>
+      <span>{{ isSaving ? "Saving..." : "Create Strategy" }}</span>
+    </button>
+  </div>
+</div>

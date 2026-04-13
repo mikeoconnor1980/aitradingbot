@@ -1,0 +1,280 @@
+<section class="strategy-wizard">
+  <header class="strategy-wizard__header">
+    <div class="strategy-wizard__header-text">
+      <h2 class="strategy-wizard__title">Strategy Wizard</h2>
+      <p class="strategy-wizard__subtitle">{{ currentStepEducation.description }}</p>
+    </div>
+
+    <button mat-stroked-button type="button" (click)="onCancel()">
+      <mat-icon>arrow_back</mat-icon>
+      <span>Back to Strategies</span>
+    </button>
+  </header>
+
+  <div class="strategy-wizard__body">
+    <div class="strategy-wizard__main">
+      <mat-stepper
+      #stepper
+      [linear]="true"
+      [orientation]="'horizontal'"
+      (selectionChange)="onStepChange($event.selectedIndex)"
+      class="strategy-wizard__stepper">
+
+      <!-- Step 1: Trading Idea -->
+      <mat-step [editable]="true" label="Trading Idea">
+        <div class="strategy-wizard__step-content">
+          <h3 class="strategy-wizard__question">{{ _education.getStepEducation(0).question }}</h3>
+          <app-wizard-goal-step
+            [selectedTemplateId]="selectedTemplateId"
+            (templateSelected)="onTemplateSelected($event)">
+          </app-wizard-goal-step>
+          <div class="strategy-wizard__tips">
+            @for (tip of _education.getStepEducation(0).tips; track tip) {
+              <p class="strategy-wizard__tip">
+                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                {{ tip }}
+              </p>
+            }
+          </div>
+          <div class="strategy-wizard__nav">
+            <span></span>
+            <button mat-raised-button color="primary" matStepperNext type="button">
+              Next
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-step>
+
+      <!-- Step 2: Market & Timeframe -->
+      <mat-step [stepControl]="marketGroup" [editable]="true" label="Market">
+        <div class="strategy-wizard__step-content">
+          <h3 class="strategy-wizard__question">{{ _education.getStepEducation(1).question }}</h3>
+          <app-wizard-market-step [group]="marketGroup"></app-wizard-market-step>
+          <div class="strategy-wizard__tips">
+            @for (tip of _education.getStepEducation(1).tips; track tip) {
+              <p class="strategy-wizard__tip">
+                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                {{ tip }}
+              </p>
+            }
+          </div>
+          <div class="strategy-wizard__nav">
+            <button mat-stroked-button matStepperPrevious type="button">
+              <mat-icon>arrow_back</mat-icon>
+              Back
+            </button>
+            <button mat-raised-button color="primary" matStepperNext type="button">
+              Next
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-step>
+
+      <!-- Step 3: Entry Logic -->
+      <mat-step [stepControl]="entryStepForm" [editable]="true" [errorMessage]="entryStepErrorMessage" label="Entry">
+        <div class="strategy-wizard__step-content">
+          <h3 class="strategy-wizard__question">{{ _education.getStepEducation(2).question }}</h3>
+          <app-wizard-entry-step
+            [isSignalMode]="isSignalMode"
+            [gridGroup]="gridGroup"
+            [conditionsArray]="conditionsArray"
+            [entryLogicControl]="entryLogicControl">
+          </app-wizard-entry-step>
+          <div class="strategy-wizard__tips">
+            @for (tip of _education.getStepEducation(2).tips; track tip) {
+              <p class="strategy-wizard__tip">
+                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                {{ tip }}
+              </p>
+            }
+          </div>
+          <div class="strategy-wizard__nav">
+            <button mat-stroked-button matStepperPrevious type="button">
+              <mat-icon>arrow_back</mat-icon>
+              Back
+            </button>
+            <button mat-raised-button color="primary" matStepperNext type="button">
+              Next
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-step>
+
+      <!-- Step 4: Exit Rules -->
+      <mat-step [stepControl]="exitGroup" [editable]="true" label="Exits">
+        <div class="strategy-wizard__step-content">
+          <h3 class="strategy-wizard__question">{{ _education.getStepEducation(3).question }}</h3>
+          <app-wizard-exit-step [group]="exitGroup"></app-wizard-exit-step>
+          <div class="strategy-wizard__tips">
+            @for (tip of _education.getStepEducation(3).tips; track tip) {
+              <p class="strategy-wizard__tip">
+                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                {{ tip }}
+              </p>
+            }
+          </div>
+          <div class="strategy-wizard__nav">
+            <button mat-stroked-button matStepperPrevious type="button">
+              <mat-icon>arrow_back</mat-icon>
+              Back
+            </button>
+            <button mat-raised-button color="primary" matStepperNext type="button">
+              Next
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-step>
+
+      <!-- Step 5: Risk Management -->
+      <mat-step [stepControl]="riskGroup" [editable]="true" label="Risk">
+        <div class="strategy-wizard__step-content">
+          <h3 class="strategy-wizard__question">{{ _education.getStepEducation(4).question }}</h3>
+          <app-wizard-risk-step [group]="riskGroup"></app-wizard-risk-step>
+          <div class="strategy-wizard__tips">
+            @for (tip of _education.getStepEducation(4).tips; track tip) {
+              <p class="strategy-wizard__tip">
+                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                {{ tip }}
+              </p>
+            }
+          </div>
+          <div class="strategy-wizard__nav">
+            <button mat-stroked-button matStepperPrevious type="button">
+              <mat-icon>arrow_back</mat-icon>
+              Back
+            </button>
+            <button mat-raised-button color="primary" matStepperNext type="button">
+              Next
+              <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-step>
+
+      <!-- Optional Step: Trend Filter (signal mode only) -->
+      @if (showFilterStep) {
+        <mat-step [editable]="true" [optional]="true" label="Filter">
+          <div class="strategy-wizard__step-content">
+            <h3 class="strategy-wizard__question">{{ _education.getStepEducation(5).question }}</h3>
+            <app-wizard-filter-step [group]="trendFilterGroup"></app-wizard-filter-step>
+            <div class="strategy-wizard__tips">
+              @for (tip of _education.getStepEducation(5).tips; track tip) {
+                <p class="strategy-wizard__tip">
+                  <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                  {{ tip }}
+                </p>
+              }
+            </div>
+            <div class="strategy-wizard__nav">
+              <button mat-stroked-button matStepperPrevious type="button">
+                <mat-icon>arrow_back</mat-icon>
+                Back
+              </button>
+              <button mat-raised-button color="primary" matStepperNext type="button">
+                Next
+                <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+              </button>
+            </div>
+          </div>
+        </mat-step>
+      }
+
+      <!-- Step 6: Review -->
+      <mat-step [editable]="true" label="Review">
+        <div class="strategy-wizard__step-content">
+          <h3 class="strategy-wizard__question">{{ _education.getStepEducation(6).question }}</h3>
+          <app-wizard-review-step
+            [formValue]="form.getRawValue()"
+            [errors]="allErrors"
+            [warnings]="serverWarnings"
+            [isSaving]="isSaving"
+            (save)="onSave()"
+            (switchToBuilder)="onSwitchToBuilder()">
+          </app-wizard-review-step>
+          <div class="strategy-wizard__tips">
+            @for (tip of _education.getStepEducation(6).tips; track tip) {
+              <p class="strategy-wizard__tip">
+                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
+                {{ tip }}
+              </p>
+            }
+          </div>
+          <div class="strategy-wizard__nav">
+            <button mat-stroked-button matStepperPrevious type="button">
+              <mat-icon>arrow_back</mat-icon>
+              Back
+            </button>
+          </div>
+        </div>
+      </mat-step>
+    </mat-stepper>
+    </div>
+
+    @if (currentStepIndex > 0) {
+      <aside class="strategy-wizard__sidebar">
+        <h4 class="strategy-wizard__sidebar-title">
+          <mat-icon>summarize</mat-icon>
+          Configuration
+        </h4>
+        <dl class="strategy-wizard__summary">
+          <div class="strategy-wizard__summary-row">
+            <dt>Template</dt>
+            <dd>{{ selectedTemplateLabel }}</dd>
+          </div>
+          <div class="strategy-wizard__summary-row">
+            <dt>Market</dt>
+            <dd>{{ form.get("market")?.value }}</dd>
+          </div>
+          <div class="strategy-wizard__summary-row">
+            <dt>Timeframe</dt>
+            <dd>{{ form.get("timeframe")?.value }}</dd>
+          </div>
+          <div class="strategy-wizard__summary-row">
+            <dt>Direction</dt>
+            <dd>{{ form.get("direction")?.value }}</dd>
+          </div>
+          @if (isSignalMode && conditionsArray.length > 0) {
+            <div class="strategy-wizard__summary-row">
+              <dt>Conditions</dt>
+              <dd>{{ conditionsArray.length }}</dd>
+            </div>
+          }
+          @if (!isSignalMode) {
+            <div class="strategy-wizard__summary-row">
+              <dt>Grid Levels</dt>
+              <dd>{{ form.get("grid.levels")?.value }}</dd>
+            </div>
+            <div class="strategy-wizard__summary-row">
+              <dt>Spacing</dt>
+              <dd>{{ form.get("grid.spacing")?.value }}%</dd>
+            </div>
+          }
+          @if (form.get("exit.takeProfit.enabled")?.value) {
+            <div class="strategy-wizard__summary-row">
+              <dt>Take Profit</dt>
+              <dd>{{ form.get("exit.takeProfit.value")?.value }}%</dd>
+            </div>
+          }
+          @if (form.get("exit.stopLoss.enabled")?.value) {
+            <div class="strategy-wizard__summary-row">
+              <dt>Stop Loss</dt>
+              <dd>{{ form.get("exit.stopLoss.type")?.value === "fixed_percent" ? form.get("exit.stopLoss.value")?.value + "%" : form.get("exit.stopLoss.type")?.value }}</dd>
+            </div>
+          }
+          <div class="strategy-wizard__summary-row">
+            <dt>Position Size</dt>
+            <dd>{{ form.get("risk.positionSizeValue")?.value }}%</dd>
+          </div>
+          <div class="strategy-wizard__summary-row">
+            <dt>Leverage</dt>
+            <dd>{{ form.get("risk.leverage")?.value }}x</dd>
+          </div>
+        </dl>
+      </aside>
+    }
+  </div>
+</section>

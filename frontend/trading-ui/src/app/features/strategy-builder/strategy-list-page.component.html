@@ -5,10 +5,16 @@
       <p class="strategy-list__subtitle">Manage saved grid strategies, edit configurations, and remove inactive ideas.</p>
     </div>
 
-    <button mat-raised-button color="primary" type="button" (click)="onNewStrategy()">
-      <mat-icon>add</mat-icon>
-      <span>New Strategy</span>
-    </button>
+    <div class="strategy-list__header-actions">
+      <button mat-stroked-button type="button" (click)="onGuidedSetup()">
+        <mat-icon>auto_fix_high</mat-icon>
+        <span>Guided Setup</span>
+      </button>
+      <button mat-raised-button color="primary" type="button" (click)="onNewStrategy()">
+        <mat-icon>add</mat-icon>
+        <span>New Strategy</span>
+      </button>
+    </div>
   </header>
 
   @if (isLoading) {

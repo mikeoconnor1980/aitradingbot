@@ -1,0 +1,12 @@
+.wizard-risk {
+  ::ng-deep .mat-mdc-card {
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+
+  ::ng-deep .mat-mdc-card-header {
+    display: none;
+  }
+}

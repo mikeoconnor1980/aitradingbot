@@ -1,0 +1,51 @@
+<div class="wizard-market" [formGroup]="group">
+  <div class="wizard-market__fields">
+    <mat-form-field appearance="outline" class="wizard-market__field">
+      <mat-label>Exchange</mat-label>
+      <mat-select formControlName="exchange">
+        <mat-option value="Hyperliquid">Hyperliquid</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="wizard-market__field">
+      <mat-label>Market</mat-label>
+      <mat-select formControlName="market">
+        @for (market of markets; track market) {
+          <mat-option [value]="market">{{ market }}</mat-option>
+        }
+      </mat-select>
+      @if (hasError("market", "required")) {
+        <mat-error>Market is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="wizard-market__field">
+      <mat-label>Timeframe</mat-label>
+      <mat-select formControlName="timeframe">
+        @for (tf of timeframes; track tf) {
+          <mat-option [value]="tf">{{ tf }}</mat-option>
+        }
+      </mat-select>
+      @if (hasError("timeframe", "required")) {
+        <mat-error>Timeframe is required</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="wizard-market__field">
+      <mat-label>Direction</mat-label>
+      <mat-select formControlName="direction">
+        <mat-option value="long">Long only</mat-option>
+        <mat-option value="short">Short only</mat-option>
+        <mat-option value="both">Both (long &amp; short)</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="wizard-market__field wizard-market__field--full">
+      <mat-label>Strategy Name</mat-label>
+      <input matInput formControlName="strategyName" placeholder="e.g. BTC Grid 15m" maxlength="100" />
+      @if (hasError("strategyName", "required")) {
+        <mat-error>Strategy name is required</mat-error>
+      }
+    </mat-form-field>
+  </div>
+</div>

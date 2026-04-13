@@ -29,6 +29,12 @@ export const routes: Routes = [
     title: "New Strategy"
   },
   {
+    path: "strategies/wizard",
+    loadComponent: () => import("./features/strategy-builder/wizard/strategy-wizard-page.component").then((m) => m.StrategyWizardPageComponent),
+    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
+    title: "Strategy Wizard"
+  },
+  {
     path: "strategies/:id/edit",
     loadComponent: () => import("./features/strategy-builder/strategy-builder-page.component").then((m) => m.StrategyBuilderPageComponent),
     canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
