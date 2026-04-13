@@ -586,6 +586,7 @@ By sweeping risk% alongside SL and TP parameters, the optimizer can find:
 | `RiskConfig.Leverage` | Stored but never applied to sizing math |
 | `SetLeverage` agent command | Stub (not implemented) |
 | ATR trailing stop | Working for exits |
+| ATR initial stop (volatility-scaled entry lock) | Working — `ExitRuleType.AtrInitial` in `ExitRuleConfig`; ATR captured at entry via `GridState.AtrAtEntry`; fixed stop distance for lifecycle; `TriggerOrderManager` skips SL updates when locked |
 | `maxOpenTrades` | Working |
 | Optimizer `RiskBased` sweep | Working — `PositionSizeMode.RiskBased` in `ParameterBounds`; sweeps `RiskPerTradePercentOptions`, optional `IncludeAutoLeverage`; `StrategyConfigGenerator` branches on mode; `RunOptimizationRequest` accepts `positionSizeMode`, `riskPerTradePercentOptions`, `includeAutoLeverage` |
 | `PortfolioHeatCalculator` | Working — computes total R across positions via `CalculateFromPositions()` and `CalculateFromTrackedRisks()` |
@@ -614,7 +615,7 @@ By sweeping risk% alongside SL and TP parameters, the optimizer can find:
 | R-multiple trade tracking & expectancy | P2 |
 | Partial-close at R-levels | P3 |
 | Drawdown-adjusted risk | P3 |
-| Volatility-scaled initial SL | P3 |
+| ~~Volatility-scaled initial SL~~ | ~~P3~~ Done |
 | Kelly criterion suggestion in backtest results | P3 |
 | Periodic live equity refresh | P3 |
 

@@ -270,15 +270,25 @@ This allows comparison of configuration changes.
 
 # Parameter Sweeps
 
-The system can later support parameter sweeps.
+The system supports parameter sweeps for optimization. The optimizer
+generates multiple strategy configs by sweeping specified parameters,
+runs a backtest for each, and reports summary statistics.
 
-Examples:
+Sweepable parameters:
 
-- EMA lengths
-- grid spacing
-- take profit percent
-- hedge percent
-- max exposure
+- Grid spacing
+- Take profit percent
+- Stop-loss type and distance:
+  - `FixedPercent`: value range (e.g., 1%–5%)
+  - `AtrTrailing`: multiplier range (e.g., 2.0–4.0)
+  - `AtrInitial`: multiplier and period ranges (e.g., multiplier 2.0–4.0, period 10/14/21)
+- Risk per trade (`RiskBased` sizing): percent range
+- Hedge percent
+- Max exposure
+
+When sweeping ATR-based exits, `ParameterBounds` provides `StopLossTypes`,
+`AtrMultiplierOptions`, and `AtrPeriodOptions` fields. `StrategyConfigGenerator`
+cross-products these to generate all combinations.
 
 A sweep runs many backtests automatically and compares performance.
 

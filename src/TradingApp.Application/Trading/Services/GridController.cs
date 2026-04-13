@@ -247,14 +247,15 @@ public sealed class GridController : IGridController
         var gridCycleId = gridState.GridCycleId ?? "default";
         var stopLossConfig = config.Exit.StopLoss;
         var isAtrTrailing = stopLossConfig.Enabled && stopLossConfig.Type == ExitRuleType.AtrTrailing;
-        var isFixedStopLoss = stopLossConfig.Enabled
-            && stopLossConfig.Type != ExitRuleType.AtrTrailing
-            && stopLossConfig.Type != ExitRuleType.AtrInitial
-            && stopLossConfig.Value.HasValue;
         var isAtrInitial = stopLossConfig.Enabled
             && stopLossConfig.Type == ExitRuleType.AtrInitial
             && gridState.AtrAtEntry.HasValue
             && gridState.AtrAtEntry.Value > 0m;
+        var isFixedStopLoss = stopLossConfig.Enabled
+            && (stopLossConfig.Type != ExitRuleType.AtrTrailing
+                && stopLossConfig.Type != ExitRuleType.AtrInitial
+                || (stopLossConfig.Type == ExitRuleType.AtrInitial && !isAtrInitial))
+            && stopLossConfig.Value.HasValue;
 
         // Update trailing stop high watermark when position is open
         if (isAtrTrailing)
@@ -319,6 +320,7 @@ public sealed class GridController : IGridController
                 gridState.TrailingStopHighWatermark = null;
                 gridState.CandlesSinceEntry = 0;
                 gridState.InitialRDollars = null;
+                gridState.AtrAtEntry = null;
 
                 return new TradingSignal
                 {

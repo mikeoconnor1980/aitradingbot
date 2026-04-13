@@ -101,14 +101,15 @@ public sealed class SignalController : ISignalController
     {
         var stopLossConfig = config.Exit.StopLoss;
         var isAtrTrailing = stopLossConfig.Enabled && stopLossConfig.Type == ExitRuleType.AtrTrailing;
-        var isFixedStopLoss = stopLossConfig.Enabled
-            && stopLossConfig.Type != ExitRuleType.AtrTrailing
-            && stopLossConfig.Type != ExitRuleType.AtrInitial
-            && stopLossConfig.Value.HasValue;
         var isAtrInitial = stopLossConfig.Enabled
             && stopLossConfig.Type == ExitRuleType.AtrInitial
             && gridState.AtrAtEntry.HasValue
             && gridState.AtrAtEntry.Value > 0m;
+        var isFixedStopLoss = stopLossConfig.Enabled
+            && (stopLossConfig.Type != ExitRuleType.AtrTrailing
+                && stopLossConfig.Type != ExitRuleType.AtrInitial
+                || (stopLossConfig.Type == ExitRuleType.AtrInitial && !isAtrInitial))
+            && stopLossConfig.Value.HasValue;
 
         // ATR trailing stop
         if (isAtrTrailing)
@@ -168,6 +169,7 @@ public sealed class SignalController : ISignalController
             {
                 gridState.TrailingStopHighWatermark = null;
                 gridState.CandlesSinceEntry = 0;
+                gridState.AtrAtEntry = null;
 
                 return
                 [

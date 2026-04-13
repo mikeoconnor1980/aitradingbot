@@ -56,6 +56,8 @@ Key model files:
 
 `GridState` tracks `InitialRDollars` (nullable decimal) — the one-R dollar risk captured at grid deployment time when using `RiskBased` sizing. Cleared when grids enter `Closing` or `Closed` states to prevent stale values leaking into subsequent cycles.
 
+`GridState` also tracks `AtrAtEntry` (nullable decimal) — the ATR value captured at grid deployment time when using `AtrInitial` stop-loss type. Used to compute a fixed stop-loss distance anchored to entry price. Cleared when grids enter `Closing` or `Closed` states, following the same lifecycle as `InitialRDollars`.
+
 Note: Signals are currently emitted as `TradingSignal` with a `string SignalType` (e.g. `"DeployGrid"`).
 Typed signal classes are planned — see [Signal Contracts](16-signal-contracts.md).
 
@@ -140,8 +142,11 @@ When `StrategyConfig.Risk.PositionSizeType == RiskBased`, the controller resolve
 
 1. **Stop-Loss Distance Resolution** via `StopLossDistanceResolver.Resolve()`:
    - `FixedPercent` → uses `StopLoss.Value` directly
-   - `AtrTrailing` → computes `(ATR × multiplier) / anchorPrice × 100`
+   - `AtrTrailing` → computes `(ATR × multiplier) / anchorPrice × 100`; ATR is recalculated every candle (trailing stop)
+   - `AtrInitial` → captures ATR at entry time (`GridState.AtrAtEntry`) and computes `(lockedATR × multiplier) / entryPrice × 100` for the entire position lifecycle; does not trail. Falls back to `StopLoss.Value` (fixed percent) when ATR is unavailable at entry
    - Fallback → `GridConfig.BreakdownThreshold` (grid-only)
+
+   **Key difference:** `AtrInitial` locks the stop distance at entry time (fixed stop price). `AtrTrailing` adapts dynamically every candle close. See [31-atr-calculation.md](31-atr-calculation.md) for behavioral details and TriggerOrderManager implications.
 
 2. **Total Notional**: `R = equity × riskPerTradePercent / 100`; `notional = R / (SL% / 100)`
 

@@ -133,7 +133,27 @@ All enums serialize as `snake_case_lower` strings.
 
 `src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs`
 
-Contains `TakeProfit` and `StopLoss`, each an `ExitRuleConfig` with nullable `Value` and `Lookback` fields. `ExitRuleType` enum specifies rule type (e.g. `percent_from_entry`).
+Contains `TakeProfit` and `StopLoss`, each an `ExitRuleConfig`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Type` | `ExitRuleType` enum | Rule type discriminator |
+| `Value` | `decimal?` | Primary value (percentage, R-multiple, or fallback percent depending on type) |
+| `Enabled` | `bool` | Whether this exit rule is active |
+| `AtrMultiplier` | `decimal?` | ATR multiplier (required for `AtrTrailing` and `AtrInitial`) |
+| `AtrPeriod` | `int?` | ATR period override (default 14; currently reserved, ATR period is hardcoded in context builders) |
+| `Lookback` | `int?` | Lookback period (used by `SwingLow`) |
+| `TrailingStopWarmup` | `int?` | Candles to skip before trailing stop activates (`AtrTrailing` only) |
+
+`ExitRuleType` enum (`src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleType.cs`):
+
+| Value | Behaviour |
+|-------|----------|
+| `FixedPercent` | Static stop at `Value`% from entry |
+| `AtrTrailing` | Trailing stop: HWM − (ATR × multiplier), recalculated every candle |
+| `AtrInitial` | Locked stop: ATR captured at entry time, stop = entry ± (lockedATR × multiplier). Does not trail. Falls back to `Value`% if ATR unavailable at entry |
+| `SwingLow` | Stop at recent swing low (lookback-based) |
+| `RMultiple` | Take-profit at `Value` × R from entry |
 
 ### RiskConfig
 

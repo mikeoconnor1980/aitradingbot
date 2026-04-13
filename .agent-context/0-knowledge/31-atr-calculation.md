@@ -52,7 +52,7 @@ decaying older values slowly.
 | ATR period | No — hardcoded | 14 | `new IncrementalAtr(14)` in both context builders |
 | ATR multiplier | Yes | 3.0× | `ExitRuleConfig.AtrMultiplier` |
 | Trailing stop warmup | Yes | 0 candles | `ExitRuleConfig.TrailingStopWarmup` |
-| Exit rule type | Yes | — | `ExitRuleType.AtrTrailing` enum |
+| Exit rule type | Yes | — | `ExitRuleType.AtrTrailing` or `AtrInitial` enum |
 
 The ATR period (14) is fixed across all strategies. The multiplier and warmup
 are configurable per-strategy via `StrategyConfig.Exit.StopLoss`.
@@ -82,6 +82,17 @@ When placing the initial exchange-native SL trigger order:
 
 ATR feeds into the synthetic regime provider via `_syntheticRegimeProvider.Update(atr)`,
 contributing to volatility-based regime classification.
+
+### 4. Locked ATR Stop (AtrInitial)
+
+When `ExitRuleType = AtrInitial`, ATR is captured once at entry time and stored in `GridState.AtrAtEntry`. The stop-loss distance remains fixed for the life of the position:
+
+- **Capture**: At grid deployment or signal entry, `AtrAtEntry = context.Indicators.Atr`
+- **Stop price**: `entryPrice − (AtrAtEntry × multiplier)` (long) or `+ (AtrAtEntry × multiplier)` (short)
+- **No trailing**: Unlike `AtrTrailing`, the stop does not ratchet with price movement
+- **Fallback**: If ATR is null at entry (insufficient data), falls back to `StopLoss.Value` as a fixed percent stop
+- **Cleanup**: `AtrAtEntry` is cleared when the grid cycle closes, preventing stale values in subsequent cycles
+- **Trigger orders**: `TriggerOrderManager` anchors the exchange-native SL to entry price (not HWM) and skips subsequent SL updates since the stop is locked
 
 ## Why ATR Over Fixed Percentage
 
