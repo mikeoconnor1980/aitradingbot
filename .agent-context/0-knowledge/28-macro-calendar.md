@@ -42,8 +42,10 @@ Provider (Stub / Finnhub / etc.)
             → MacroCalendarQueryService (read)
               → API endpoints → Angular UI
             → MacroEventRiskCheck (read)
-              → Risk Engine integration
+              → Live-risk integration point for entry blocking
 ```
+
+`MacroEventRiskCheck` lives in `TradingApp.Persistence.Services` and is the macro-event gate used to determine whether a high-importance block window is active. In the checked-in code it is registered on the API side and exposed as the entry-blocking risk-check abstraction. The broader knowledge base should treat it as the live-trading macro gate, while noting that direct worker-side `LiveRiskEngine` consumption is not yet explicitly wired in the current implementation.
 
 ---
 
@@ -138,3 +140,9 @@ Two tables added via migration `AddMacroCalendarTables`:
 - **MacroSyncRuns** — audit trail of sync operations.
 
 All timestamps are stored as Unix milliseconds (`long`) consistent with the rest of the domain.
+
+## Future Recommendations
+
+- Wire `IMacroEventRiskCheck` directly into the worker live-execution risk path so macro-event entry blocking is enforced in the same process that places orders.
+- Replace the stub provider with a real macro-calendar provider and document fallback behaviour for provider outages.
+- Add audit visibility showing which macro event blocked a live entry and when the active block window expires.

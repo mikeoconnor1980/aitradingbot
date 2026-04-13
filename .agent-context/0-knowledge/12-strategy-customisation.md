@@ -1,100 +1,121 @@
 # Strategy Customisation
 
-Users can create their own strategy instances using the GridStrategy plugin — either via form-based configuration or by describing their intent in natural language (see [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md)).
+Users create and maintain strategy instances through the API and Angular builder flows. A strategy is stored as a `Strategy` domain entity plus versioned `ConfigJson`, with optional interpretation and review features layered on top.
 
-Each user strategy consists of:
+## Core Model
 
-Strategy record  
-StrategyConfig JSON (stored in `StrategyConfig.ConfigJson`; parsed as `TradingApp.Application.StrategyAuthoring.Models.StrategyConfig`)
+Each strategy consists of:
 
-Example configuration (grid mode):
+- A `Strategy` record in the domain model.
+- A JSON configuration stored in `Strategy.ConfigJson` and deserialized into `TradingApp.Application.StrategyAuthoring.Models.StrategyConfig`.
+- A revision history in `StrategyRevision`.
+- An optional AI review per revision in `StrategyReview`.
 
-```json
-{
-  "schemaVersion": 1,
-  "strategyMode": "grid",
-  "strategyName": "BTC Pullback Grid",
-  "market": "BTC",
-  "timeframe": "15m",
-  "direction": "long",
-  "grid": {
-    "levels": 4,
-    "spacing": 0.35,
-    "entryMode": "auto_from_signal_candle",
-    "breakdownThreshold": 0.02
-  },
-  "exit": {
-    "takeProfit": { "type": "percent_from_entry", "value": 0.8 },
-    "stopLoss": { "type": "percent_from_entry", "value": 2.0 }
-  },
-  "risk": {
-    "positionSizeType": "percent_of_equity",
-    "positionSizeValue": 10,
-    "leverage": 3
-  }
-}
-```
+The `Strategy` entity also stores `HighWaterMarkUsd`, which is updated during live or backtest execution and used by the drawdown system.
 
-See [Strategy Config Schema](13-strategy-config-schema.md) for full schema reference and validation rules.
+## Strategy Creation Paths
 
-Users may:
+`SourceMetadata.EntryPoint` uses `StrategyEntryPoint`, not the older `RevisionSource` naming used in early drafts.
 
-create strategy  
-name strategy  
-edit parameters  
-activate strategy
+| `StrategyEntryPoint` value | Meaning |
+|---------------------------|---------|
+| `UiBuilder` | Created or edited from the manual UI builder |
+| `UiWizard` | Created from the guided wizard flow |
+| `NaturalLanguage` | Created from natural-language interpretation |
+| `PineImport` | Imported from Pine Script translation flow |
+| `Migration` | Created by migration or system import logic |
+| `Optimizer` | Produced by the optimizer workflow |
 
-Multiple strategies may exist but typically only one runs at a time.
+`RevisionSourceMapper` then maps those entry points to persisted `RevisionSource` values on `StrategyRevision`.
 
-The worker loads the active strategy configuration at startup.
+## Runtime-Relevant Customisation Fields
 
-## API Endpoints
+The most important user-controlled knobs are:
 
-### Core Operations
+| Area | Key Fields |
+|------|------------|
+| Mode | `strategyMode` (`grid` or `signal`) |
+| Instrument | `market`, `timeframe`, `direction` |
+| Grid | `levels`, `spacing`, `entryMode`, `anchorPrice`, `breakdownThreshold` |
+| Signal | `entryLogic`, `entryConditions`, optional `trendFilter` |
+| Exit | `takeProfit`, `stopLoss`, `exitOnOppositeSignal` |
+| Risk | `positionSizeType`, `positionSizeValue`, `riskPerTradePercent`, `leverage`, `autoLeverage`, cooldown settings |
 
-| Method | Endpoint | Notes |
-|--------|----------|-------|
-| `GET` | `/api/strategies` | Returns `StrategySummaryDto[]` for authenticated user |
-| `GET` | `/api/strategies/{id}` | Returns `StrategyDto` with full `StrategyConfig` |
-| `POST` | `/api/strategies` | Validates config + name uniqueness, creates strategy |
-| `PUT` | `/api/strategies/{id}` | Validates config + name uniqueness (excluding self), updates |
-| `DELETE` | `/api/strategies/{id}` | Soft-deletes (`IsActive = false`) |
-| `POST` | `/api/strategies/validate` | Runs `CompositeStrategyValidator` without persisting |
+For the canonical schema, see [13-strategy-config-schema.md](13-strategy-config-schema.md).
 
-### Strategy Interpretation (F9)
+## Position Sizing Options
+
+`PositionSizeType` currently supports:
+
+| Enum value | Serialized value | Meaning |
+|------------|------------------|---------|
+| `PercentWallet` | `percent_wallet` | Size as a percent of account equity |
+| `FixedNotional` | `fixed_notional` | Fixed USD notional |
+| `RiskBased` | `risk_based` | Derived from account equity and stop-loss distance |
+
+The older `percent_of_equity` label is not the current serialized form.
+
+## API Surface
+
+### Core Strategy Endpoints
 
 | Method | Endpoint | Notes |
 |--------|----------|-------|
-| `POST` | `/api/strategies/interpret` | Interprets natural language input → `StrategyIntentDto` with config, confidence, assumptions; rate-limited 10 req/min/IP |
+| `GET` | `/api/strategies` | List active strategies for the current user |
+| `GET` | `/api/strategies/{id}` | Retrieve a single strategy with full config |
+| `POST` | `/api/strategies` | Create a strategy after validation |
+| `PUT` | `/api/strategies/{id}` | Update a strategy and create a new revision |
+| `DELETE` | `/api/strategies/{id}` | Soft-delete by setting `IsActive = false` |
+| `POST` | `/api/strategies/validate` | Run `CompositeStrategyValidator` without persisting |
+| `POST` | `/api/strategies/interpret` | Convert natural-language input into a proposed strategy config |
 
-Duplicate strategy names (per user) return HTTP 409.
+Duplicate strategy names are rejected per user with HTTP 409.
 
-### Revision History (F3)
+### Revision and Review Endpoints
 
 | Method | Endpoint | Notes |
 |--------|----------|-------|
-| `GET` | `/api/strategies/{id}/versions` | Returns `PagedResult<StrategyRevisionSummaryDto>` (paginated revision list); accepts `page` and `pageSize` query params |
-| `GET` | `/api/strategies/{id}/versions/{rev:int}` | Returns `StrategyRevisionDto` (single revision with full config); 404 if strategy or revision not found |
-| `GET` | `/api/strategies/{id}/diff` | Returns `StrategyDiffDto` (field-level diff); accepts `from` and `to` query params (revision numbers) |
-| `POST` | `/api/strategies/{id}/versions/{rev:int}/restore` | Restores a previous revision as a new revision with source=`Restore`; returns 204; 409 if strategy is running |
+| `GET` | `/api/strategies/{id}/versions` | Paginated revision history |
+| `GET` | `/api/strategies/{id}/versions/{rev:int}` | Retrieve a single revision |
+| `GET` | `/api/strategies/{id}/diff` | Field-level diff between revisions |
+| `POST` | `/api/strategies/{id}/versions/{rev:int}/restore` | Restore a past revision as a new revision |
+| `POST` | `/api/strategies/{id}/versions/{rev:int}/review` | Generate an AI review for a revision |
+| `GET` | `/api/strategies/{id}/versions/{rev:int}/review` | Retrieve the stored review for that revision |
 
-## Persistence and Versioning
+## Revisioning and Persistence
 
-`ConfigJson` is stored directly on the `Strategy` entity. Each `PUT` increments `Version` and creates a new `StrategyRevision` snapshot. Soft-delete via `Strategy.SoftDelete()` sets `IsActive = false`; listings only return active records.
+`ConfigJson` is stored directly on `Strategy`. Each create or update writes a new `StrategyRevision` snapshot and increments `Strategy.Version`.
 
-Every create, update, and restore operation automatically generates a `StrategyRevision` with:
-- Full JSON snapshot of the config at that point
-- Auto-generated change summary (field-level diff)
-- Source metadata (`Ui`, `Api`, `Import`, or `Restore`)
-- Original natural language input (`SourceMetadata.SourceText`) if created via `/api/strategies/interpret`
+Revision metadata includes:
 
-Repository: `IStrategyRepository` / `IStrategyRevisionRepository`
+- Full config snapshot.
+- Auto-generated change summary.
+- Persisted `RevisionSource` mapped from `StrategyEntryPoint`.
+- Optional original NL prompt in `SourceMetadata.SourceText`.
 
-Application services:
-- `ChangeSummaryGenerator` — computes field-level diff summary between JSON snapshots
-- `StrategyDiffService` — detailed field-level diff with JSON paths, old/new values
-- `RevisionSourceMapper` — maps `StrategyEntryPoint` to `RevisionSource` enum
+The docs previously referred to `StrategyRun` and `StrategyPerformance` as persisted records. Those entities do not exist in the current codebase.
 
-## Frontend
+## Strategy Review Feature
 
-See [UI Design — Strategy Builder](07-ui-design.md) for the full card-based builder component map and service list.
+Strategy review is a separate feature from strategy interpretation.
+
+| Component | Purpose |
+|-----------|---------|
+| `RequestStrategyReviewCommand` | Generates a review for a specific strategy revision |
+| `StrategyReviewDto` | API DTO returned to the frontend |
+| `StrategyReview` | Persisted domain entity storing markdown review output |
+| `IStrategyReviewer` | AI service abstraction used by the command handler |
+
+The review flow loads the selected revision, optionally enriches the prompt with the latest completed backtest and funding-rate range, generates markdown feedback, replaces any prior review for that revision, and stores the latest result.
+
+## Execution Notes
+
+- Multiple strategies can be stored per user, but the worker/session model typically runs one active strategy per user session.
+- `Strategy.IsRunning` exists and is enforced for some write operations, but the POC worker still treats it as a partial/stubbed runtime flag.
+- `Strategy.HighWaterMarkUsd` is updated by the scheduler so risk scaling survives restarts.
+
+## Future Recommendations
+
+- Add a dedicated live-session entity if detailed `StrategyRun` style observability becomes necessary.
+- Add per-revision performance snapshots if the product needs durable leaderboard or comparison views.
+- Add stronger UI surfacing for `StrategyReview` history and fallback-model diagnostics.

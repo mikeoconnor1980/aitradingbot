@@ -43,17 +43,17 @@ Hyperliquid WebSocket (userEvents) ──→ FillProcessor ──→ GridState u
 
 ## Background Services
 
-The Worker host runs four `BackgroundService` instances concurrently:
+The worker host always runs three hosted services, with two more added only when Azure SignalR publishing is configured:
 
-| Service | Purpose | Interval |
-|---------|---------|----------|
-| `AgentCheckInService` | Heartbeats to the API control plane, picks up dashboard commands, reports order results | 5 s (15 s on error) |
-| `TradingSession` | Manages dual WebSocket connections, wires candle pipeline and fill detection | Continuous |
-| `HealthMonitorService` | Watchdog that logs warnings when candles or trades go stale or WebSocket disconnects | Periodic |
-| `UpdateCheckerService` | Checks for agent updates via API heartbeat, applies silent upgrades when safe | Piggybacks on heartbeat |
+| Service | Registration | Purpose |
+|---|---|---|
+| `AgentCheckInService` | Always | Heartbeats to the API control plane, receives commands, and reports order results |
+| `HealthMonitorService` | Always | Watchdog for stale candles, stale trades, and connection-health signals |
+| `UpdateCheckerService` | Always | Receives version metadata from heartbeat responses and applies silent installer updates when safe |
+| `MarketDataStreamService` | Conditional | Publishes worker market updates through Azure SignalR when `Azure:SignalR:ConnectionString` is configured |
+| `UserEventStreamService` | Conditional | Publishes worker account and order events through Azure SignalR when `Azure:SignalR:ConnectionString` is configured |
 
-`TradingSession` is not registered as a hosted service — it is created on-demand by
-`AgentCheckInService` when the dashboard sends a **Start** command, and torn down on **Stop**.
+`TradingSession` is not a hosted service. It is created on demand by `AgentCheckInService` when a Start command arrives and disposed on Stop.
 
 ## Session Lifecycle
 
@@ -63,7 +63,7 @@ The Worker host runs four `BackgroundService` instances concurrently:
 2. API enqueues a `Start` command in `AgentCommandStore`
 3. Worker's `AgentCheckInService` picks it up on the next heartbeat (≤ 5 s)
 4. `HandleStartAsync` stops any existing session, then calls `CreateSession(config)`
-5. `CreateSession` manually wires all components with a shared `GridState` reference:
+5. `CreateSession` manually wires all components with a shared `GridState` reference and a scoped repository lifetime:
 
 ```
 GridState (new, shared by reference)
@@ -74,12 +74,15 @@ GridState (new, shared by reference)
 
 6. `session.Start()` fires a background task (`_runTask`) that enters the reconnect loop
 
+This means the worker does not resolve a ready-made `TradingSession` from DI. `AgentCheckInService` assembles it explicitly, while `TradingSession` still receives its dependencies through constructor parameters. `GridState` is optional on the constructor and defaults to `new GridState()` if omitted.
+
 ### Shutdown
 
 1. `StopAsync()` cancels the `CancellationTokenSource`
 2. Waits up to 30 s for `_runTask` to complete
-3. Calls `_executionEngine.CancelAllOrdersAsync(symbol)` with a 30 s timeout — ensures no orphaned orders remain on the exchange
-4. Disconnects both WebSocket clients
+3. If `GridState.ProtectionOrders.HasAny`, calls `ITriggerOrderManager.CancelProtectionOrdersAsync(...)` first so exchange-native protection orders are removed before the general cancellation pass
+4. Calls `_executionEngine.CancelAllOrdersAsync(symbol)` with a 30 s timeout — ensures no orphaned orders remain on the exchange
+5. Disconnects both WebSocket clients
 
 ## Dual WebSocket Architecture
 
@@ -180,10 +183,14 @@ Both produce `TradingSignal[]` — the contract boundary between strategy logic 
 `LiveRiskEngine.ValidateAsync` checks each signal against:
 
 | Check | Config Key | Applies To |
-|-------|-----------|-----------|| Portfolio heat | `MaxPortfolioHeatPercent` | Entry signals (`DeployGrid`, `OpenPosition`) only; blocks if `currentHeat + estimatedRiskUsd > equity × limit / 100` || Circuit breaker | `CircuitBreakerCooldownMinutes` | Entry signals only |
+|-------|-----------|-----------|
+| Portfolio heat | `MaxPortfolioHeatPercent` | Entry signals (`DeployGrid`, `OpenPosition`) only; blocks if `currentHeat + estimatedRiskUsd > equity × limit / 100` |
+| Circuit breaker | `CircuitBreakerCooldownMinutes` | Entry signals only |
 | Max daily loss | `MaxDailyLossUsd` | Rolling 24h window |
 | Max order size | `MaxOrderSizeUsd` | `DeployGrid` notional, `OpenPosition` size |
 | Max open orders | `MaxOpenOrders` | `DeployGrid` level count |
+
+The worker also passes configured `DrawdownTiers` from `IOptions<RiskLimitsConfig>` into `TradingSession`, which forwards them to `StrategyScheduler` for adaptive drawdown gating.
 
 **Risk-reducing signals bypass all checks:** `TakeProfit`, `CancelGrid`, `FlattenPosition`, `CloseHedge`.
 
@@ -202,6 +209,8 @@ Both produce `TradingSignal[]` — the contract boundary between strategy logic 
 | `FlattenPosition` | Market sell entire position |
 
 Each placed order is tracked via `IOrderTracker.TrackOrder(orderId, gridCycleId, level, ...)`.
+
+`ITriggerOrderManager` complements the position manager by placing, updating, and cancelling exchange-native stop-loss and take-profit protection orders. On session stop, it is invoked before `CancelAllOrdersAsync` so protection orders do not remain resting on the exchange.
 
 ## Order Signing and Submission
 
@@ -330,6 +339,15 @@ of the next. On BTC-PERP this is typically < 1 s; on low-liquidity pairs it can 
 | `LiveRiskEngine` | Singleton | Circuit breaker and loss queue persist across sessions |
 | Repositories (`ILiveOrderRepository`, etc.) | Scoped | Created per-session via `IServiceScope` |
 
+## Azure SignalR Publishing Distinction
+
+The worker-side `UserEventStreamService` is a browser-publishing service, not the same thing as `HyperliquidUserEventClient` inside `TradingSession`.
+
+- `HyperliquidUserEventClient` subscribes to exchange user events for the trading wallet and feeds the trading session.
+- `UserEventStreamService` runs only in Azure SignalR mode and republishes worker-side state to the Angular dashboard.
+
+The same distinction applies to `MarketDataStreamService`: it is a dashboard streaming service, not the trading-session market-data feed.
+
 ## Resilience
 
 | Scenario | Behaviour |
@@ -350,3 +368,9 @@ of the next. On BTC-PERP this is typically < 1 s; on low-liquidity pairs it can 
 - [19-scheduling-architecture.md](19-scheduling-architecture.md) — CandleClock/StrategyScheduler design goals
 - [29-control-plane-agent-architecture.md](29-control-plane-agent-architecture.md) — API ↔ Worker command flow
 - [02-hyperliquid-integration.md](02-hyperliquid-integration.md) — Exchange API details and authentication
+
+## Future Recommendations
+
+- Move the macro-event gate into the worker live-risk path so all entry blocking is enforced in-process with execution.
+- Add stuck-order timeout detection and remediation inside the session lifecycle.
+- Add durable session and command telemetry so operator diagnostics do not rely only on logs and heartbeat snapshots.

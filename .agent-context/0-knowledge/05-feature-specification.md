@@ -1,103 +1,94 @@
 # Feature Specification
 
-Core features include:
+This document describes the current product surface as implemented in the codebase. It distinguishes between features that are live in the API, worker, and Angular UI versus features that were originally planned but are not yet shipped.
 
-User Registration & Authentication  
-Subscription Management  
-Exchange Key Connection  
-Trading Engine  
-Risk Engine  
-Strategy Management  
-Dashboard UI  
-Admin Dashboard
+## Current Product Surface
 
----
+| Feature Area | Status | What Exists Today |
+|---|---|---|
+| Authentication | Implemented | Email/password registration and login, JWT access and refresh tokens, `GET /api/auth/me`, and Google SSO via `POST /api/auth/google` |
+| Subscription access | Implemented, limited | `POST /api/subscriptions/free` creates a 30-day free subscription; guards in the Angular app use subscription status to gate trading features |
+| Wallet connection | Implemented | Users store wallet addresses in the platform profile while private keys remain on the execution agent |
+| Strategy builder | Implemented | JSON-backed strategy authoring, validation, save/load, revision history, diff/restore, and strategy review retrieval |
+| Strategy wizard | Implemented | A guided 7-step creation flow at `/strategies/wizard` with educational prompts and a review step |
+| NLP strategy interpreter | Implemented | `POST /api/strategies/interpret` turns natural-language prompts into `StrategyConfig` output |
+| AI strategy review | Implemented | Revision-scoped AI review endpoints plus builder UI to request and display a persisted Markdown review |
+| Backtesting | Implemented | Historical replay, metrics, audit log, charting, trade log, and result exploration in the UI |
+| Strategy optimizer | Implemented | Sweep and evolutionary optimization, persisted runs/results, progress tracking, and optimizer UI |
+| Live trading control plane | Implemented | Dashboard, market data, position/order views, strategy activation through the agent, and risk-aware execution controls |
+| Agents page | Implemented | Agent listing, start/stop, pending command visibility, kill switch, reinstate, and update-state reporting |
+| Macro calendar | Implemented | Event browser, active block visibility, sync endpoint, and live entry blocking through `MacroEventRiskCheck` |
+| Help and tutorial system | Implemented | Global help panel, curated topics, and `POST /api/help/chat` assistant-style guidance |
 
-# User Onboarding
+## User Onboarding
 
-Users can:
+Current onboarding is:
 
-Register an account  
-Subscribe to a plan  
-Connect Hyperliquid wallet key  
-Verify connection (read-only check)  
-Activate trading
+1. Register or sign in with email/password or Google.
+2. Activate the free subscription tier.
+3. Configure a wallet address and any preferred network settings.
+4. Create a strategy through the builder, the wizard, or the NLP interpreter.
+5. Backtest or optimize the strategy.
+6. Start or stop execution through a connected agent.
 
----
+There is no paid-plan purchase, upgrade, downgrade, or billing-history flow in the current application.
 
-# Subscription Management
+## Subscription Model
 
-Managed via Stripe or similar provider.
+The shipped subscription model is intentionally narrow.
 
-Users can:
+| Capability | Current State |
+|---|---|
+| Free access | Implemented via `POST /api/subscriptions/free` |
+| Duration | 30 days |
+| Paid plans | NOT IMPLEMENTED |
+| Stripe integration | NOT IMPLEMENTED |
+| Upgrade or downgrade flows | NOT IMPLEMENTED |
+| Billing history | NOT IMPLEMENTED |
+| Self-service cancellation | NOT IMPLEMENTED |
 
-Choose a plan  
-Upgrade or downgrade  
-Cancel subscription  
-View billing history
+The knowledge base should treat the app as free-tier-only until a real billing system exists.
 
-Trading is paused if subscription expires.
+## Strategy Authoring and Review
 
----
+Strategy authoring is broader than the original plan now assumed.
 
-# Strategy Management
+Implemented capabilities include:
 
-Users can:
+- direct builder editing for strategy JSON-backed configuration
+- immutable `StrategyRevision` history with diff and restore support
+- natural-language interpretation into strategy configuration
+- AI review of saved revisions
+- strategy wizard guidance for new users
 
-Create strategy  
-Configure parameters  
-Save strategy configuration  
-Activate strategy
-View revision history
-Compare revisions
-Restore previous versions
+This means the strategy surface is no longer just CRUD. It is a mixed authoring workflow spanning manual editing, guided creation, AI generation, and AI review.
 
-Strategies are stored as JSON configuration.
-Each user's strategies are isolated from all other users.
+## Operations and Runtime Controls
 
-## Strategy Revision History (F3)
+Operational features available to end users today include:
 
-Every save creates an immutable `StrategyRevision` record:
+- dashboard views for market context, positions, orders, and subscription status
+- agent command routing for start, stop, order, cancellation, leverage, and trigger-order actions
+- kill-switch management from the Agents page
+- macro calendar visibility with active event blocking surfaced in the UI
+- help content and chat guidance inside the control plane
 
-- Automatic change summary (compares current vs. previous JSON)
-- Source tracking (UI, API, import, or restore)
-- Full JSON snapshot for deterministic restore
-- Revision number (1, 2, 3...) per strategy
+## NOT IMPLEMENTED
 
-Users can browse revision history, view diffs between any two revisions, and restore a previous version. Restoring creates a new revision with source = `Restore` and a generated label. See [Domain Model — StrategyRevision](04-domain-model.md) for entity details.
+The following features should not be described as shipped:
 
-## AI Strategy Review (F4)
+- admin dashboard for platform operators
+- per-user admin revenue metrics
+- admin error-monitoring UI
+- admin-visible global tenant operations panel
+- Stripe or any other payment integration
+- paid plan selection or billing lifecycle management
 
-Users can request an AI analysis of any saved strategy revision:
+There are agent operational controls, but there is no separate administrator product surface yet.
 
-- Click "AI Review" button in the strategy builder to analyze the currently loaded revision
-- Server generates a Markdown review covering entry logic quality, exit completeness, risk management, weaknesses, market regime fit, complexity, and execution realism
-- Review persists per revision; re-requesting overwrites the prior review for that revision
-- Rate limit: 1 request per minute per IP
-- Persisted review loads automatically when opening a strategy with saved review
+## Future Recommendations
 
-Review UI:
-
-- Collapsible summary card in the strategy builder showing first portion of markdown
-- Full-review modal with complete formatted markdown and review metadata (model name, timestamp)
-- Cooldown timer in UI enforces server-side rate limit display
-- Apply Suggestions button placeholder (not yet implemented; disabled)
-
-See [LLM Context & Sentiment Architecture](17-llm-context-sentiment-architecture.md) for endpoint details and review analysis scope.
-PnL  
-open orders (with cancel, cancel-all, and modify actions)  
-positions (with close action; SL/TP display, set dialog, inline edit, and removal)  
-signals  
-subscription status
-
----
-
-# Admin Dashboard
-
-Platform admin view:
-
-total active subscribers  
-system health  
-per-user bot status  
-revenue metrics  
-error monitoring
+- Add paid tiers and Stripe-backed billing only after entitlement and expiry policy are fully defined.
+- Add a real admin console for incident response, tenant diagnostics, and support operations.
+- Add explicit subscription lifecycle actions such as renewal, downgrade, cancellation, and billing history.
+- Add feature-flagged operator views for fleet health, update rollout status, and kill-switch audits.

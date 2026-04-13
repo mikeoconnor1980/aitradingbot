@@ -1,255 +1,125 @@
 # Azure Deployment Infrastructure
 
-This document describes the Azure cloud infrastructure, CI/CD pipelines, and local Execution Agent deployment that together form the TradingApp (TradePilot) production system.
-
----
+This document covers the current Azure deployment path for the control plane and the parallel installer-based distribution path for the client-side execution agent.
 
 ## Architecture Overview
 
-The platform follows a split-plane architecture:
+The system is deployed as two operational planes:
 
 | Plane | Hosting | Purpose |
-|-------|---------|---------|
-| **Control Plane** (API + UI) | Azure (cloud) | Dashboard, strategy management, analytics, real-time streaming |
-| **Execution Plane** (Worker) | Client machine (Windows Service) | Order signing and execution — private keys never leave the client |
+|---|---|---|
+| Control Plane | Azure Container Apps + Azure Static Web Apps + Azure SQL + Azure SignalR | API, UI, persistence, and browser-facing real-time features |
+| Execution Plane | Subscriber Windows machine | `TradingApp.ExecutionAgent` Windows Service for local signing and live execution |
 
-```
-Browser
-  ↓
-Azure Static Web App (Angular UI)
-  ↓  HTTPS
-Azure Container App (API)
-  ↓  SignalR (Azure SignalR Service)
-  ↓  SQL (Azure SQL)
-  ↓  Heartbeat / Commands
-Client Windows Service (Execution Agent)
-  ↓  Signed orders
-Hyperliquid DEX
-```
+## Azure Resource Inventory
 
----
+Infrastructure is provisioned from `infrastructure/main.bicep` and the modules under `infrastructure/modules/`.
 
-## Azure Resources
+| Resource | Module | Purpose |
+|---|---|---|
+| Log Analytics Workspace | `modules/log-analytics.bicep` | Container Apps logging |
+| Container Apps Environment | `modules/container-app-environment.bicep` | Shared host environment for the API |
+| Container App | `modules/container-app.bicep` | Hosts the API |
+| Azure SQL Server and Database | `modules/sql-server.bicep` | API persistence in Azure environments |
+| Azure SignalR Service | `modules/signalr.bicep` | Browser push in Azure mode |
+| Static Web App | `modules/static-web-app.bicep` | Angular UI deployment |
 
-All resources are provisioned via **Bicep** templates in `infrastructure/`. The naming convention is `{appName}-{env}-{resource}` (e.g. `tradepilot-dev-api`).
+## Runtime and Build Versions
 
-### Resource Inventory
+The current repo is on **.NET 10**, not .NET 8.
 
-| Resource | Bicep Module | SKU / Tier | Purpose |
-|----------|-------------|------------|---------|
-| Log Analytics Workspace | `modules/log-analytics.bicep` | PerGB2018, 30-day retention | Centralised logging for Container Apps |
-| Container Apps Environment | `modules/container-app-environment.bicep` | — | Hosting environment wired to Log Analytics |
-| Container App (API) | `modules/container-app.bicep` | 0.25 vCPU / 0.5 Gi RAM | .NET 8 API, scales 0–2 replicas |
-| Azure SQL Server + Database | `modules/sql-server.bicep` | GP_S_Gen5 (Serverless), 1 vCore, 2 GB | Persistence layer (auto-pause after 60s idle) |
-| Azure SignalR Service | `modules/signalr.bicep` | Free_F1, Serverless mode | Real-time streaming to UI and Execution Agent |
-| Static Web App | `modules/static-web-app.bicep` | Free | Angular frontend (deployed to `westeurope` — SWA not available in `uksouth`) |
+Evidence in the build chain includes:
 
-### Resource Group
+- `.github/workflows/deploy.yml` sets `DOTNET_VERSION: 10.0.x`
+- the worker and API projects build against .NET 10 packages
+- local and CI artifacts are emitted under `net10.0`
 
-Resources are grouped by environment: `rg-tradepilot-dev` / `rg-tradepilot-prod`.  
-Primary region: **UK South** (`uksouth`), except Static Web Apps which deploy to **West Europe**.
-
----
-
-## Bicep Template Structure
-
-```
-infrastructure/
-├── main.bicep            # Orchestrator — wires all modules together
-├── main.bicepparam       # Default parameter values
-└── modules/
-    ├── container-app.bicep
-    ├── container-app-environment.bicep
-    ├── log-analytics.bicep
-    ├── signalr.bicep
-    ├── sql-server.bicep
-    └── static-web-app.bicep
-```
-
-### Key Parameters (`main.bicep`)
-
-| Parameter | Description |
-|-----------|-------------|
-| `environmentName` | `dev` or `prod` |
-| `containerImage` | GHCR image ref (e.g. `ghcr.io/{owner}/tradepilot-api:latest`) |
-| `sqlAdminLogin` / `sqlAdminPassword` | Azure SQL credentials |
-| `jwtSecretKey` | JWT signing key for API authentication |
-| `llmApiKey` | Gemini API key for LLM context provider |
-| `corsAllowedOrigin` | Static Web App URL for CORS |
-| `registryUsername` / `registryPassword` | GHCR pull credentials |
-
-### Template Outputs
-
-| Output | Value |
-|--------|-------|
-| `apiUrl` | Container App FQDN |
-| `staticWebAppUrl` | SWA default hostname |
-| `signalRHostName` | SignalR service hostname |
-| `sqlServerFqdn` | SQL Server FQDN |
-
----
-
-## Container App Configuration
-
-The API Container App is configured with:
-
-- **Ingress**: External HTTP on port 8080
-- **CORS**: Allows the SWA origin + `http://localhost:4200` for local development
-- **Health probes**: Liveness (`/healthz`, 30s initial delay, 60s interval) and Readiness (`/healthz`, 10s initial delay, 15s interval)
-- **Scaling**: 0–2 replicas based on HTTP concurrency (10 concurrent requests threshold)
-- **Registry**: Pulls images from `ghcr.io` using a PAT stored as a secret
-
-### Secrets Injected
-
-| Environment Variable | Source |
-|---------------------|--------|
-| `ConnectionStrings__DefaultConnection` | Azure SQL connection string |
-| `Azure__SignalR__ConnectionString` | SignalR connection string |
-| `Jwt__SecretKey` | JWT signing key |
-| `LlmContext__ApiKey` | Gemini API key |
-| `LlmReview__ApiKey` | Gemini API key (shared) |
-| `Cors__AllowedOrigins__0` | SWA URL |
-
----
+Any older references to .NET 8 in deployment docs are stale.
 
 ## CI/CD Pipelines
 
-### `deploy.yml` — Build and Deploy (on push to `main`)
+### `deploy.yml`
 
-A multi-job pipeline triggered on every push to `main`:
+The main GitHub Actions workflow handles:
 
-```
-build-and-test
-  ├── .NET restore / build / test
-  ├── Snyk security scan (.NET + npm)
-  │
-  ├─→ build-api-image
-  │     └── Docker build → push to ghcr.io/{owner}/tradepilot-api:{sha}
-  │     └─→ deploy-api
-  │           └── az containerapp update (dev environment)
-  │
-  └─→ build-frontend
-        └── npm ci → ng build --production (with Azure env config)
-        └─→ deploy-frontend
-              └── Azure Static Web Apps deploy
-```
+1. restore, build, and test
+2. Snyk scanning
+3. API container build and push to GHCR
+4. frontend build and Azure Static Web Apps deployment
+5. API deployment to Azure Container Apps
 
-**Key details:**
-- Container image is tagged with the Git SHA and `latest`
-- Frontend build injects the API FQDN via environment file substitution
-- Azure login uses **federated identity** (OIDC) — no stored credentials
-- GHCR pull uses `GHCR_PAT` secret for Container App registry access
+### Registry Credential Distinction
 
-### `deploy-infra.yml` — Infrastructure Deployment (manual)
+Two different GitHub credentials are used for two different jobs:
 
-A `workflow_dispatch` pipeline for provisioning/updating Azure resources:
+| Secret | Used For |
+|---|---|
+| `GITHUB_TOKEN` | Logging in during the GitHub Actions image push step to GHCR |
+| `GHCR_PAT` | Configuring Azure Container Apps so Azure can pull the GHCR image at runtime |
 
-1. Creates the resource group (`rg-tradepilot-{env}`)
-2. Deploys `infrastructure/main.bicep` with secrets from GitHub environment
-3. Outputs resource FQDNs
+This distinction matters because the workflow push and the Azure runtime pull are separate authentication paths.
 
-Triggered manually via GitHub Actions UI with environment selection (`dev` / `prod`).
+## Bicep Inputs and Outputs
 
-### GitHub Secrets Required
+The Bicep entry point still provides the core deployment parameters for the Azure control plane:
 
-| Secret | Used By |
-|--------|---------|
-| `AZURE_CLIENT_ID` | Federated identity login |
-| `AZURE_TENANT_ID` | Federated identity login |
-| `AZURE_SUBSCRIPTION_ID` | Federated identity login |
-| `SQL_ADMIN_LOGIN` | Bicep deployment |
-| `SQL_ADMIN_PASSWORD` | Bicep deployment |
-| `JWT_SECRET_KEY` | Bicep deployment |
-| `LLM_API_KEY` | Bicep deployment |
-| `SWA_URL` | CORS origin for Bicep |
-| `SWA_DEPLOYMENT_TOKEN` | Static Web App deploy |
-| `GHCR_PAT` | Container App registry pull |
-| `API_FQDN` | Frontend environment config |
-| `SNYK_TOKEN` | Security scanning |
+- container image reference
+- SQL admin credentials
+- JWT signing secret
+- optional LLM API settings
+- CORS origin
+- registry credentials for image pull
 
----
+The output surface remains focused on operational endpoints such as the API URL, Static Web App hostname, SignalR hostname, and SQL server FQDN.
 
-## Docker Image
+## Control Plane Hosting Notes
 
-The API Dockerfile (`src/TradingApp.Api/Dockerfile`) uses a multi-stage build:
+The deployed Azure control plane uses:
 
-| Stage | Base Image | Purpose |
-|-------|-----------|---------|
-| `restore` | `mcr.microsoft.com/dotnet/sdk:8.0` | NuGet restore (cached layer) |
-| `publish` | (from restore) | Build and publish Release |
-| `final` | `mcr.microsoft.com/dotnet/aspnet:8.0` | Runtime — runs as non-root `appuser` on port 8080 |
+- Azure Container Apps for the API
+- Azure Static Web Apps for the Angular UI
+- Azure SQL for persistence
+- Azure SignalR for browser-facing real-time updates
 
----
+The worker is not hosted in Azure as a live execution service. Azure hosts the control plane only.
 
-## Execution Agent (Client-Side Worker)
+## Execution Agent Packaging and Distribution
 
-The Execution Agent runs on the client's Windows machine as a Windows Service. It communicates with the Control Plane API via heartbeats and receives commands (Start/Stop/PlaceOrder/Cancel).
+The worker distribution path is operational and should be treated as part of deployment architecture, not as an afterthought.
 
-### Deployment Options
+### Packaging Pipeline
 
-| Method | Tool | Use Case |
-|--------|------|----------|
-| **Inno Setup installer** | `deploy/worker/installer.iss` | Recommended for clients — GUI wizard |
-| **PowerShell scripts** | `deploy/worker/install.ps1` | Manual/automated installs |
-| **Silent install** | Inno Setup `/VERYSILENT` | Auto-update scenarios |
+`deploy/worker/build-installer.ps1` builds the execution-agent release package.
 
-### Build Process
+Artifacts include:
 
-```powershell
-.\deploy\worker\build-installer.ps1
-```
+- `TradingApp-ExecutionAgent-v{version}-Setup.exe`
+- `TradingApp-ExecutionAgent-v{version}-win-x64.zip`
+- SHA256 checksum files for validation and update verification
 
-Produces:
-- `artifacts/installer/TradingApp-ExecutionAgent-v{version}-Setup.exe` (Inno Setup installer)
-- `artifacts/installer/TradingApp-ExecutionAgent-v{version}-win-x64.zip` (fallback)
-- `.sha256` checksum file
+### Worker Build Shape
 
-The Worker is published as a **self-contained single-file** `win-x64` executable.
+`TradingApp.ExecutionAgent` is published as:
 
-### Installation Layout
+- self-contained
+- single-file in Release
+- `win-x64`
+- Windows Service-ready
 
-| Item | Path |
-|------|------|
-| Service executable | `C:\Program Files\TradingApp\ExecutionAgent\` |
-| Configuration | `...\appsettings.json` |
-| SQLite database | `...\data\` |
-| Logs | `...\logs\` |
+### Installation and Update Model
 
-### Environment Variables (Machine-Level)
+The execution agent is installed through Inno Setup or PowerShell helper scripts. Silent installer flags are also used by the auto-update path driven by `UpdateCheckerService`.
 
-| Variable | Purpose |
-|----------|---------|
-| `Hyperliquid__PrivateKey` | Private key for order signing (0x + 64 hex chars) |
-| `ControlPlane__BaseUrl` | API URL for heartbeat/command sync |
-| `Azure__SignalR__ConnectionString` | Real-time streaming to UI |
+## Security Notes
 
-### Service Configuration
+- The control plane does not hold customer private keys.
+- Azure login in CI uses federated identity rather than stored Azure credentials.
+- Container App pulls use configured secrets rather than public registry access.
+- Worker updates are SHA256-verified before installer launch.
 
-- **Service name**: `TradingApp.ExecutionAgent`
-- **Start type**: Delayed auto-start
-- **Recovery**: Restart on failure (30s → 60s → 120s backoff, resets after 24h)
-- **Uninstall**: Preserves `data/` directory by default (trade history); use `-RemoveData` to delete
+## Future Recommendations
 
----
-
-## Security Considerations
-
-- **Private keys never leave the client machine** — the Execution Agent signs orders locally
-- Azure login uses **OIDC federated identity** — no long-lived Azure credentials in CI
-- SQL Server enforces **TLS 1.2 minimum**
-- Container App runs as **non-root user** (`appuser`)
-- Secrets are stored in **Container App secrets** (not in environment variables or config files)
-- Snyk scans run on every PR for both .NET and npm dependencies
-- Execution Agent private key is stored as a **machine-level environment variable** (not in config files)
-
----
-
-## Cost Optimization
-
-The infrastructure is designed for minimal cost during early stages:
-
-- **Azure SQL**: Serverless Gen5 with auto-pause (60s idle) and 0.5 vCore minimum
-- **Container App**: Scales to 0 replicas when idle
-- **SignalR**: Free tier (F1)
-- **Static Web App**: Free tier
-- **Log Analytics**: Pay-per-GB with 30-day retention
+- Add Azure Key Vault integration so Bicep and runtime configuration stop relying on directly passed secrets.
+- Add a dedicated release workflow for worker installer publishing and version metadata management.
+- Add environment-specific deployment notes for production versus development resource sizing.
+- Add operational guidance for how agent update binaries are hosted and retained over time.

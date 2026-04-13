@@ -1,165 +1,122 @@
 # Signal Contracts
 
-This document defines the signal types emitted by the trading system.
+Signals are the boundary between strategy evaluation and execution. The current implementation uses one flexible `TradingSignal` class with string `SignalType` values and a parameter bag rather than a hierarchy of typed signal objects.
 
-Signals represent strategy intent. They do not execute trades directly.
-
-Signals pass through:
-
-StrategyEngine → RiskEngine → PositionManager → ExecutionEngine
-
----
-
-# TradingSignal Class
-
-The current implementation uses a single flexible model rather than typed signal classes:
+## Current Signal Model
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/TradingSignal.cs
 public sealed class TradingSignal
 {
-    public required string SignalType { get; init; }    // e.g. "DeployGrid", "TakeProfit"
+    public required string SignalType { get; init; }
     public required string Symbol { get; init; }
     public string? Reason { get; init; }
     public IReadOnlyDictionary<string, object>? Parameters { get; init; }
 }
 ```
 
-`SignalType` string values correspond to the signal types listed below (e.g. `"DeployGrid"`, `"OpenHedge"`). Typed C# signal classes with strongly-typed payloads are a planned future step.
+Signals flow through:
 
----
+`IStrategyEngine` -> controller (`IGridController` or `ISignalController`) -> `IRiskEngine` -> `IPositionManager` -> `IExecutionEngine`
 
-# Signal Categories
+## Implemented Signal Types
 
-Grid signals
-Position signals
-Hedge signals
-Risk signals
+### `DeployGrid`
 
----
+Emitted by `GridController` when a new grid should be opened.
 
-# Grid Signals
+Typical parameters:
 
-DeployGrid
+| Parameter | Type | Purpose |
+|-----------|------|---------|
+| `anchorPrice` | `decimal` | Price from which the ladder is built |
+| `gridLevels` | `int` | Number of levels to place |
+| `gridSpacingPercent` | `decimal` | Percent gap between ladder levels |
+| `notionalUsd` | `decimal` | Per-level notional |
+| `gridCycleId` | `string` | Correlation id for the cycle |
+| `entryMode` | `string` | Grid entry mode |
+| `leverage` | `int` | Resolved leverage |
+| `isIsolated` | `bool` | Isolation flag for live execution |
+| `estimatedRiskUsd` | `decimal` | Used for portfolio-heat validation |
 
-Entry signal to activate a grid strategy. Emitted once per grid lifecycle when setup is detected.
+### `OpenPosition`
 
-Payload:
+Emitted by `SignalController` for signal-mode entries.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `symbol` | string | Trading pair (e.g. `"BTC-PERP"`) |
-| `gridPlan` | object | Grid configuration (levels, spacing, notional, entryMode) |
-| `estimatedRiskUsd` | decimal | Estimated R (risk in USD) across all grid levels; used for portfolio heat validation and tracking |
-| `reason` | string | Human-readable setup reason |
-| `autoLeverage` (optional) | int | Derived leverage for `RiskBased` mode with `autoLeverage = true` |
+Typical parameters:
 
-Rejection: blocked if `currentPortfolioHeat + estimatedRiskUsd > equity × maxPortfolioHeatPercent / 100`.
+| Parameter | Type | Purpose |
+|-----------|------|---------|
+| `entryPrice` | `decimal` | Entry price, usually current close |
+| `size` | `decimal` | Position size |
+| `notionalUsd` | `decimal` | Entry notional |
+| `orderType` | `string` | Currently `Market` |
+| `gridCycleId` | `string` | Uses `signal` as the logical cycle id |
 
----
+### `TakeProfit`
 
-CancelGrid
+Used for both normal profit-taking and protective exits. Despite the name, it is also the signal emitted for stop-loss and trailing-stop exits.
 
-Payload:
+Current parameters:
 
-symbol
-reason
+| Parameter | Type | Purpose |
+|-----------|------|---------|
+| `targetPrice` | `decimal` | Trigger or order price; may be current close for market exits |
+| `size` | `decimal` | Exit size |
+| `orderType` | `string` | `Limit` or `Market` |
+| `gridCycleId` | `string` | Correlates the exit to a grid or signal cycle |
+| `cancellationReason` | `string` | Exit reason encoded from `CancellationReason` |
 
----
+Important nuance:
 
-# Position Signals
+Stop-loss exits do not use a separate stop-loss signal type. They emit `TakeProfit` with `cancellationReason = StopLossTriggered`.
 
-TakeProfit
+## `CancellationReason` Enum
 
-Payload:
+The current backtest/live execution flows use these close reasons:
 
-symbol
-targetPrice
-reason
+| Value | Meaning |
+|-------|---------|
+| `GridRedeployed` | Existing open grid orders cancelled before redeployment |
+| `TakeProfitTriggered` | Standard profit target hit |
+| `StopLossTriggered` | Stop-loss exit |
+| `LiquidationTriggered` | Simulated liquidation or forced close |
+| `TrailingStopTriggered` | ATR trailing stop fired |
+| `ManualCancel` | Explicit cancel flow |
 
----
+## Signals Referenced but Not Implemented
 
-FlattenPosition
+The following signal names appear in comments, risk-engine checks, or earlier docs, but no current controller emits them:
 
-Payload:
+| Signal | Status | Notes |
+|--------|--------|-------|
+| `OpenHedge` | NOT IMPLEMENTED | Mentioned as risk-reducing only |
+| `AdjustHedge` | NOT IMPLEMENTED | No emitter |
+| `CloseHedge` | NOT IMPLEMENTED | Referenced by risk engines, not emitted |
+| `PauseStrategy` | NOT IMPLEMENTED | No emitter |
+| `Cooldown` | NOT IMPLEMENTED | No emitter |
+| `FlattenPosition` | NOT IMPLEMENTED | Referenced by risk engines, not emitted |
 
-symbol
-reason
+### `CancelGrid`
 
----
+`CancelGrid` is handled by both position managers and appears in risk-engine logic, but it is not emitted by `GridController` today. It is effectively a reserved/secondary signal type used by execution flows rather than active strategy output.
 
-# Hedge Signals
+## Runtime Behavior Notes
 
-OpenHedge
+- Signals are currently in-memory objects only.
+- There is no implemented persisted signal table.
+- There is no implemented lifecycle store for `Generated -> Validated -> Approved -> Executed` states.
+- Audit-like behavior is handled elsewhere, such as backtest collectors and order persistence, not a dedicated signal ledger.
 
-Payload:
+## Extending Signal Contracts
 
-symbol
-percent
-reason
+1. Add the new signal emission point in the relevant controller.
+2. Update `IRiskEngine` implementations if the signal affects risk-reducing logic or portfolio heat.
+3. Update both `BacktestPositionManager` and `LivePositionManager` to execute the signal consistently.
+4. Update any backtest audit or persistence projections that depend on signal semantics.
 
----
+## Future Recommendations
 
-AdjustHedge
-
-Payload:
-
-symbol
-newPercent
-reason
-
----
-
-CloseHedge
-
-Payload:
-
-symbol
-reason
-
----
-
-# Risk Signals
-
-PauseStrategy
-
-Payload:
-
-symbol
-reason
-
----
-
-Cooldown
-
-Payload:
-
-symbol
-durationMinutes
-
----
-
-# Signal Lifecycle
-
-Signals move through several states:
-
-Generated
-Validated
-Approved
-Executed
-
-Signals should be persisted in the database for audit and analysis.
-
----
-
-# Signal Storage Example
-
-Signals table fields:
-
-Id
-StrategyId
-SignalType
-Symbol
-PayloadJson
-Status
-CreatedAt
+- Replace string `SignalType` values with typed contracts or discriminated payload models.
+- Add persistent signal audit storage if compliance or operator debugging requires it.
+- Implement hedge signal types only when there is an end-to-end controller, execution, and accounting story for them.
+- Add signal analytics and history views once persistence exists.

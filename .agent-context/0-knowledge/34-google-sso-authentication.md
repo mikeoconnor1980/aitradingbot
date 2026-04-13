@@ -48,6 +48,8 @@ Factory methods:
 - `User.CreateExternal(email, displayName, authProvider, externalProviderId)` — external provider registration
 - `User.LinkExternalProvider(authProvider, externalProviderId)` — links existing local account to external provider
 
+The repository surface also includes `IUserRepository.GetByExternalProviderAsync(provider, externalId)` so the backend can resolve returning Google users before falling back to email-based account linking.
+
 ## Authentication Flow
 
 ### Google Sign-In (new or returning user)
@@ -69,6 +71,17 @@ If a user registered via Google (no password) and tries `POST /api/auth/login` w
 ## Configuration
 
 ### Backend — `appsettings.json`
+
+`Program.cs` binds `GoogleAuthOptions` with:
+
+```csharp
+builder.Services.AddOptions<GoogleAuthOptions>()
+    .Bind(builder.Configuration.GetSection(GoogleAuthOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+```
+
+The checked-in option class binds the `Google` section and currently requires the Client ID. Any secret material should stay in environment configuration or a managed secret store, not in this document.
 
 ```json
 {
@@ -190,6 +203,24 @@ The `AuthProvider` + `ExternalProviderId` pattern supports additional providers 
 4. No database migration needed — reuses the same columns
 
 
+## Google User Info Shape
+
+`GoogleUserInfo` currently carries four fields:
+
+- `Subject`
+- `Email`
+- `Name`
+- `Picture`
+
+The `Picture` field is the Google profile-image URL returned by token validation.
+
+
 ### Credentials 
 - Client Id: 894614860421-8o8t4h5oc7baj3he9adtl4p5jroomho5.apps.googleusercontent.com
-- CLient Secret: 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
+- Client Secret: <stored in environment/secrets>
+
+## Future Recommendations
+
+- Move production Google configuration to managed secret storage alongside other deployment secrets.
+- Persist and surface Google profile-picture data in the UI if avatar support becomes part of the user profile experience.
+- Add provider-specific operational tests covering client-ID mismatch, external-auth-only login, and account-linking edge cases.

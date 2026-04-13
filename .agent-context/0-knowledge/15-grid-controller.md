@@ -1,217 +1,180 @@
 # Grid Controller
 
-The GridController orchestrates the lifecycle of a grid strategy.
+`GridController` owns the grid-mode lifecycle after `GridStrategyEngine` reports a valid setup. It converts a setup into `DeployGrid` or `TakeProfit` signals, maintains in-memory grid state, and applies candle-close exit logic for open positions.
 
-Instead of placing grid logic inside the trading strategy, the GridController manages:
+## Responsibilities
 
-- grid planning
-- lifecycle transitions
-- signal generation
-- hedge decisions
-- take‑profit logic
+The current controller is responsible for:
 
-The trading strategy only decides whether a valid grid setup exists.
+- validating whether a new grid can be deployed in the current lifecycle state;
+- calculating grid deployment parameters inline;
+- estimating signal risk for portfolio-heat enforcement;
+- evaluating take-profit and stop-loss conditions for open positions;
+- updating `GridState` as the cycle moves toward close.
 
-The GridController handles everything that happens afterwards.
+There is no separate `GridPlanner` class in the current implementation.
 
----
+## Interface
 
-# Responsibilities
+`IGridController.ProcessAsync(...)` receives:
 
-GridController is responsible for:
+| Parameter | Purpose |
+|-----------|---------|
+| `StrategyEvaluation evaluation` | Result from the strategy engine |
+| `MarketContext context` | Trigger candle, indicators, equity, and regime context |
+| `GridState gridState` | Shared in-memory lifecycle state |
+| `PositionState positionState` | Current open-position view |
+| `IStrategyConfig strategyConfig` | Typed strategy config |
 
-- creating grid plans using GridPlanner
-- managing GridLifecycle transitions
-- emitting trading signals
-- resetting grid after completion
+It returns `IReadOnlyList<TradingSignal>`.
 
-Execution fills update `GridState.FilledLevels` and move the runtime into
-`PartiallyFilled` or `FullyFilled`. The controller then decides whether the cycle
-stays active, transitions to `Closing`, or waits for the next candle.
+## Implemented Output Signals
 
-It acts as the central brain of the grid system.
+The controller currently emits only two signal types:
 
----
+| Signal | When emitted |
+|--------|--------------|
+| `DeployGrid` | When a new grid should be opened |
+| `TakeProfit` | For normal take-profit exits and stop-loss-triggered exits |
 
-# Interface
+The following are not emitted by `GridController`:
 
-`IGridController` (`src/TradingApp.Application/Abstractions/Services/IGridController.cs`):
+- `CancelGrid`
+- `OpenHedge`
+- `AdjustHedge`
+- `CloseHedge`
+- `FlattenPosition`
+- `Cooldown`
 
-```csharp
-Task<IReadOnlyList<TradingSignal>> ProcessAsync(
-    StrategyEvaluation evaluation,
-    MarketContext context,
-    GridState gridState,
-    PositionState positionState,
-    IStrategyConfig strategyConfig,
-    CancellationToken cancellationToken = default);
-```
+Some of those names still appear elsewhere as reserved or risk-reducing signal types, but they are not produced by this controller.
 
-Key model files:
+## Lifecycle Model
 
-| Model | File |
-|-------|------|
-| `GridLifecycle` (enum) | `src/TradingApp.Application/Trading/Models/GridLifecycle.cs` |
-| `GridState` | `src/TradingApp.Application/Trading/Models/GridState.cs` |
+`GridLifecycle` contains these states:
 
-`GridState` tracks `InitialRDollars` (nullable decimal) — the one-R dollar risk captured at grid deployment time when using `RiskBased` sizing. Cleared when grids enter `Closing` or `Closed` states to prevent stale values leaking into subsequent cycles.
+- `Inactive`
+- `Planning`
+- `Deploying`
+- `Active`
+- `PartiallyFilled`
+- `FullyFilled`
+- `Closing`
+- `Closed`
 
-`GridState` also tracks `AtrAtEntry` (nullable decimal) — the ATR value captured at grid deployment time when using `AtrInitial` stop-loss type. Used to compute a fixed stop-loss distance anchored to entry price. Cleared when grids enter `Closing` or `Closed` states, following the same lifecycle as `InitialRDollars`.
+### Actual Transition Pattern
 
-Note: Signals are currently emitted as `TradingSignal` with a `string SignalType` (e.g. `"DeployGrid"`).
-Typed signal classes are planned — see [Signal Contracts](16-signal-contracts.md).
+The important runtime nuance is that `Planning` exists in the enum but is currently unused. The controller transitions directly from `Inactive` or `Closed` to `Deploying` when it emits a fresh `DeployGrid` signal.
 
----
+Typical flow:
 
-# Architecture Position
+1. `Inactive` or `Closed` -> `Deploying` on a new setup.
+2. Execution/fill processing moves the grid toward `PartiallyFilled` or `FullyFilled`.
+3. Candle-close exit logic or final target placement moves the cycle to `Closing`.
+4. Fill handling or session recovery logic eventually returns the cycle to `Closed`.
 
-Pipeline:
+## Grid State Owned by the Controller
 
-MarketData
-→ Indicators
-→ Strategy
-→ GridController
-→ Signals
-→ RiskEngine
-→ PositionManager
-→ ExecutionEngine
-→ Exchange
+`GridState` contains more than lifecycle fields.
 
----
+| Field | Purpose |
+|-------|---------|
+| `GridCycleId` | Correlates orders and exits for the active grid |
+| `FilledLevels` / `TotalLevels` | Tracks ladder progress |
+| `InitialRDollars` | Stores 1R for risk-based sizing |
+| `AtrAtEntry` | Stores ATR captured at entry for `AtrInitial` stops |
+| `TrailingStopHighWatermark` | High watermark used by ATR-trailing exits |
+| `CandlesSinceEntry` | Warmup counter for ATR trailing stops |
+| `ProtectionOrders` | Exchange-native TP/SL trigger order state |
 
-# Lifecycle Ownership
+### Protection Orders State
 
-The GridController manages the grid lifecycle state machine:
+`GridState.ProtectionOrders` is a `ProtectionOrderState` object that tracks:
 
-Inactive
-Planning
-Deploying
-Active
-PartiallyFilled
-FullyFilled
-Closing
-Closed
+- stop-loss trigger order id and price;
+- take-profit trigger order id and price;
+- last update timestamp;
+- whether any protection orders are active.
 
-The controller determines which transitions are allowed.
+This is in-memory only and rebuilt from exchange state on worker recovery.
 
-Operational flow with the current backtest/live runtime:
+## Deployment Logic
 
-- `Inactive` or `Closed` -> `Deploying` when a fresh setup is detected
-- `Deploying` -> `PartiallyFilled` / `FullyFilled` when execution reports fills
-- `PartiallyFilled` -> stays active while remaining ladder levels are still working
-- `PartiallyFilled` -> `Closing` only when candle-close take profit or stop loss triggers
-- `FullyFilled` -> `Closing` when the controller places the full-position take-profit order
-- `Closing` -> `Closed` when the exit order fills
+When a new setup is detected and the lifecycle allows entry, the controller:
 
----
+1. Resolves the effective entry mode and anchor price.
+2. Computes stop-loss distance for risk-based sizing when needed.
+3. Resolves notional sizing and applies drawdown scaling.
+4. Computes leverage for risk-based auto-leverage flows.
+5. Generates a new `GridCycleId` and resets state.
+6. Emits one `DeployGrid` signal carrying the ladder metadata.
 
-# Inputs
+Important payload fields include:
 
-`IGridController.ProcessAsync` receives:
+- `anchorPrice`
+- `gridLevels`
+- `gridSpacingPercent`
+- `notionalUsd`
+- `gridCycleId`
+- `entryMode`
+- `leverage`
+- `isIsolated`
+- `estimatedRiskUsd`
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `evaluation` | `StrategyEvaluation` | Contains `SetupDetected` bool and optional `Reason` |
-| `context` | `MarketContext` | Trigger candle + HTF candles + `IndicatorSnapshot` |
-| `gridState` | `GridState` | Current lifecycle, cycle ID, fill counts |
-| `positionState` | `PositionState` | Symbol, size, entry price, unrealised PnL |
-| `strategyConfig` | `IStrategyConfig` | Typed strategy config forwarded from `StrategyScheduler` |
+## Risk-Based Sizing
 
----
+For `RiskBased` strategies, the controller resolves stop distance through `StopLossDistanceResolver` and then sizes notional through `PositionSizeResolver`.
 
-# Outputs
+Supported stop-distance inputs:
 
-The controller emits high‑level trading signals such as:
+| Stop type | Behaviour |
+|-----------|-----------|
+| `FixedPercent` | Uses configured percentage |
+| `AtrTrailing` | Uses current ATR and trailing multiplier |
+| `AtrInitial` | Uses ATR captured at entry; defaults to `2m` multiplier when not explicitly set |
+| Fallback | May use `GridConfig.BreakdownThreshold` |
 
-DeployGrid
-CancelGrid
-TakeProfit
-OpenHedge
-AdjustHedge
-CloseHedge
-FlattenPosition
-Cooldown
+The current default multipliers are:
 
-These signals are then validated by the RiskEngine.
+| Rule | Default multiplier |
+|------|--------------------|
+| `AtrInitial` | `2m` |
+| `AtrTrailing` | `3m` |
 
----
+Earlier documentation that claimed `AtrInitial` defaulted to `3m` is incorrect.
 
-# Position Sizing for RiskBased Mode
+### Estimated Signal Risk
 
-When `StrategyConfig.Risk.PositionSizeType == RiskBased`, the controller resolves stop-loss distance and computes R-based notional:
+`GridController` includes a private `EstimateSignalRisk(...)` helper that calculates `estimatedRiskUsd` for the emitted `DeployGrid` signal. The risk engine uses that value for portfolio-heat checks.
 
-1. **Stop-Loss Distance Resolution** via `StopLossDistanceResolver.Resolve()`:
-   - `FixedPercent` → uses `StopLoss.Value` directly
-   - `AtrTrailing` → computes `(ATR × multiplier) / anchorPrice × 100`; ATR is recalculated every candle (trailing stop)
-   - `AtrInitial` → captures ATR at entry time (`GridState.AtrAtEntry`) and computes `(lockedATR × multiplier) / entryPrice × 100` for the entire position lifecycle; does not trail. Falls back to `StopLoss.Value` (fixed percent) when ATR is unavailable at entry
-   - Fallback → `GridConfig.BreakdownThreshold` (grid-only)
+## Exit Logic
 
-   **Key difference:** `AtrInitial` locks the stop distance at entry time (fixed stop price). `AtrTrailing` adapts dynamically every candle close. See [31-atr-calculation.md](31-atr-calculation.md) for behavioral details and TriggerOrderManager implications.
+When a position is open, the controller does not emit a new grid deployment. It instead evaluates exits.
 
-2. **Total Notional**: `R = equity × riskPerTradePercent / 100`; `notional = R / (SL% / 100)`
+Implemented exit paths:
 
-3. **Per-Level Notional**: `notionalUsd = notional / gridLevels`
-   (For PercentWallet/FixedNotional, the resolver output is used directly as `notionalUsd`.)
-   This value is emitted in the `DeployGrid` signal under the key `"notionalUsd"`.
+| Exit path | Signal emitted | Cancellation reason |
+|-----------|----------------|---------------------|
+| Standard take profit | `TakeProfit` | `TakeProfitTriggered` |
+| ATR trailing stop | `TakeProfit` | `TrailingStopTriggered` |
+| Fixed stop loss | `TakeProfit` | `StopLossTriggered` |
+| ATR initial stop | `TakeProfit` | `StopLossTriggered` |
 
-4. **Safety**: If `notionalUsd ≤ 0` (unresolvable SL distance), no signal is emitted.
+For partially filled grids, the controller keeps remaining buy levels working and checks candle-close profit conditions against the latest average entry. Once fully filled, it can emit a limit-style full-position take-profit signal.
 
-Key files:
-- `src/TradingApp.Application/Trading/Services/StopLossDistanceResolver.cs`
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs`
+## Position Manager Interaction
 
-### Leverage Calculation in DeployGrid Signal
+The controller does not place or cancel exchange orders directly. It emits signals and leaves execution to the position manager.
 
-When `AutoLeverage = true` and mode = `RiskBased`, the controller computes leverage before emitting `DeployGrid`:
+In the current architecture:
 
-- Auto-leverage: `LeverageCalculator.CalculateLeverage(stopLossPercent, maxLeverage)`
-- Manual fallback: `Math.Max(1, (int)Math.Floor(config.Risk.Leverage))`
-- `isIsolated = true` for all RiskBased mode trades
+- `BacktestPositionManager` interprets `DeployGrid`, `TakeProfit`, and `CancelGrid`.
+- `LivePositionManager` interprets `DeployGrid`, `TakeProfit`, and `CancelGrid`, and may also coordinate trigger-order cleanup.
 
-The `DeployGrid` signal includes `["leverage"]` and `["isIsolated"]` parameters. `LivePositionManager` extracts these and calls `IExecutionEngine.SetLeverageAsync()` before placing grid orders.
+That said, sizing and grid-lifecycle decisions are owned by `GridController`, not by a separate position-sizing or planning component.
 
-File: `src/TradingApp.Application/Trading/Services/GridController.cs` → `DeployNewGridAsync`
+## Future Recommendations
 
----
-
-# Interaction with GridPlanner
-
-GridPlanner calculates:
-
-- grid levels
-- order sizes
-- projected average entry
-- take profit level
-
-The controller requests a plan when a valid setup is detected.
-
----
-
-# Interaction with PositionManager
-
-PositionManager ensures:
-
-- no duplicate grids
-- hedge consistency
-- correct position sizing
-- order reconciliation
-
-For partial fills, the controller does not immediately replace the ladder with a
-persistent sell order. Remaining buy levels stay open, average entry can continue to
-improve, and the controller checks candle close against the dynamic take-profit level
-computed from the latest average entry. Once the cycle is fully filled, the controller
-reverts to the standard closing flow and the PositionManager places a single limit
-take-profit order for the whole position.
-
-The controller does not directly manage orders.
-
----
-
-# Benefits
-
-Centralising grid logic in the GridController provides:
-
-- simpler strategy code
-- safer lifecycle transitions
-- easier debugging
-- improved restart recovery
+- Remove or activate the unused `Planning` lifecycle state.
+- Promote `DeployGrid` and `TakeProfit` payloads to typed signal contracts.
+- Add first-class hedge or flatten behavior only if those flows are actually implemented end to end.
+- Consider extracting a reusable planner if grid-shape calculation becomes more complex.

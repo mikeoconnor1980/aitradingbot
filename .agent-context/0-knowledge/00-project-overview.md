@@ -2,262 +2,126 @@
 
 ## Overview
 
-This project is a subscription-based, multi-tenant algorithmic trading platform
-for cryptocurrency markets. Subscribers connect their own Hyperliquid wallet API keys
-and the platform trades on their behalf.
+TradingApp is a multi-tenant algorithmic trading platform for Hyperliquid perpetuals. It combines a deterministic strategy engine, a browser-based control plane, a client-side execution agent, reusable indicator libraries, AI-assisted tooling, and a backtesting and optimization stack built around the same strategy primitives used in live trading.
 
-It combines deterministic trading strategies, modular architecture, AI-assisted market context,
-and a reproducible backtesting framework.
-
-The initial focus is on BTC perpetual markets using the Hyperliquid exchange,
-but the architecture is designed to support additional strategies and exchanges in the future.
-
----
+The current implementation is centered on BTC perpetual trading, but the project structure is intended to support additional strategies, indicators, assets, and deployment targets over time.
 
 ## Business Model
 
-The platform will be offered as a subscription service to paying users.
+The implemented model is Option C: Split Architecture.
 
-Two models are being evaluated (see 20-business-model-options.md):
+Under Option C:
 
-Option A — Self-Hosted: subscribers deploy the full bot on their own VPS and keep their own keys.  
-Option B — Platform-Hosted: subscribers connect their Hyperliquid keys and the platform trades on their behalf.  
-Option C — Split Architecture: platform runs strategy logic in the cloud, subscriber runs a lightweight execution agent on their VPS that holds keys and submits orders.
+- the API and Angular UI act as the control plane
+- the execution agent is the `TradingApp.ExecutionAgent` Windows Service built from `src/TradingApp.Worker`
+- wallet addresses are stored in the platform database, but private keys never touch the server
+- order signing happens locally on the execution agent through `MutableSignerProvider` and live execution services
 
-No decision has been made. The core trading engine is identical in all models.
-
----
+This model was chosen to preserve centralized strategy management and monitoring without storing customer private keys in the cloud.
 
 ## Core Priorities
 
-Unlike many retail trading bots, the primary focus of this system is:
-- deterministic strategy execution
-- strong architectural separation
-- reproducible backtesting
-- safe automation
-- secure multi-tenant key management
+The codebase is organized around a few non-negotiable priorities:
 
----
+- deterministic candle-close execution
+- shared trading logic across live trading and backtesting
+- strong separation between strategy, risk, position management, and execution
+- tenant-scoped data access by `UserId`
+- secure key handling through client-side execution
 
-# Core Strategy Concept
+## Core System Components
 
-The initial strategy implemented is a multi-timeframe pullback grid strategy.
+| Component | Purpose |
+|-----------|---------|
+| `TradingApp.Domain` | Core entities such as users, strategies, market data, runs, orders, and optimization records |
+| `TradingApp.Application` | CQRS handlers, trading pipeline abstractions, scheduling, macro calendar, subscriptions, and optimization orchestration |
+| `TradingApp.Infrastructure` | Hyperliquid, Binance, auth, SignalR, signing, and external service implementations |
+| `TradingApp.Persistence` | EF Core context, migrations, and repository implementations |
+| `TradingApp.Api` | ASP.NET Core control plane for auth, strategies, market data, backtesting, optimization, profile, and agent coordination |
+| `TradingApp.AI` | Strategy interpretation, AI review, and other OpenAI-compatible LLM integrations |
+| `TradingApp.Indicators` | Standalone technical indicator library with ATR, Bollinger, EMA, MACD, RSI, Support/Resistance, and incremental calculators |
+| `TradingApp.Worker` | Builds the `TradingApp.ExecutionAgent` Windows Service used for client-side execution |
+| `frontend/trading-ui` | Angular control plane UI for trading, strategy authoring, auth, optimizer, macro calendar, and agent management |
 
-Strategy structure:
+## Strategy and Execution Model
 
-4H trend filter  
-↓  
-1H directional bias  
-↓  
-15m pullback grid entries  
-↓  
-short hedge on confirmed breakdown
+The current live strategy stack is a grid-oriented trading pipeline driven by confirmed candle closes.
 
-This approach attempts to trade mean-reversion inside an existing trend while protecting downside risk.
+At a high level:
 
----
+Confirmed candles
+-> `CandleClock`
+-> `StrategyScheduler`
+-> `IStrategyEngine`
+-> `ISignalController`
+-> `IRiskEngine`
+-> `IPositionManager`
+-> `IExecutionEngine`
 
-# Key Design Principles
+The same core architecture is reused in backtesting so that the code path for signal generation, risk evaluation, and grid lifecycle handling stays aligned across simulation and live execution.
 
-## Deterministic Candle-Based Execution
+## AI, Context, and Risk Gating
 
-Strategies execute only when candles have fully closed.
+AI is used as a context provider and authoring aid, not as an autonomous trading engine.
 
-This avoids common trading bot problems such as:
-- trading on partially formed candles
-- inconsistent strategy signals
-- backtests behaving differently from live trading
+Implemented AI-adjacent capabilities include:
 
-Execution is triggered by a dedicated CandleClock scheduling system.
+- strategy interpretation from natural language into strategy configuration
+- AI review of strategy revisions
+- optional LLM market-context enrichment for live trading
+- synthetic fallback behavior when live LLM context is not configured
 
----
+Macro events are also part of the trading gate. The macro calendar subsystem syncs economic events and blocks trading during configurable pre-event and post-event windows for high-impact events.
 
-## Modular Trading Pipeline
+## Backtesting and Optimization
 
-Trading logic is separated into clear layers.
+Backtesting reuses the strategy pipeline and persists run metadata for later analysis.
 
-StrategyEngine  
-↓  
-Signal generation  
-↓  
-RiskEngine  
-↓  
-PositionManager  
-↓  
-ExecutionEngine
+The platform also includes a strategy optimizer with:
 
-This separation improves maintainability and allows risk rules to be applied consistently across strategies.
+- parameter sweep execution
+- evolutionary search
+- walk-forward out-of-sample validation
+- fitness scoring based on metrics such as Sharpe, Sortino, Calmar, Kelly, and profit factor
 
----
+This makes the platform more than a single trading bot. It is a research and execution environment for strategy design, validation, and controlled live rollout.
 
-## Strategy Configuration System
+## Authentication and User Model
 
-Strategies are defined using configuration rather than hardcoded logic.
+Authentication is fully implemented in the control plane.
 
-Parameters can include:
+Current auth capabilities include:
 
-- grid levels
-- grid spacing
-- take profit thresholds
-- hedge activation conditions
-- position sizing rules
+- email and password registration
+- JWT access and refresh tokens
+- Google OAuth sign-in
+- claim-based identity resolution through `HttpContext`
 
-Strategies are stored as JSON and can be versioned and backtested.
+The project does not currently use Azure AD B2C or Auth0.
 
----
+## Technology Stack
 
-## Grid Lifecycle State Model
+| Area | Current Choice |
+|------|----------------|
+| Backend | .NET 10 / C# |
+| Frontend | Angular standalone application |
+| Local data store | SQLite |
+| Production relational store | Azure SQL via Bicep infrastructure |
+| Exchange integration | Hyperliquid for live trading, Binance for historical data ingestion |
+| Real-time browser push | SignalR, with Azure SignalR in Azure deployments |
+| AI integration | OpenAI-compatible HTTP clients for interpretation, review, and market context |
 
-Grid strategies require careful management of multiple entries, fills and exits.
+## Project Status
 
-The system introduces a GridState model and lifecycle state machine.
+The project is beyond the original proof-of-concept stage in code shape, but it is still an actively evolving system. The implemented surface area now includes live trading control-plane features, a client-side execution agent, auth, strategy authoring, backtesting, optimization, macro calendar gating, and real-time browser updates.
 
-Example lifecycle:
+## Future Recommendations
 
-Idle  
-↓  
-GridPending  
-↓  
-GridActive  
-↓  
-TakeProfitPending  
-↓  
-Closed
-
-This dramatically reduces conditional logic within strategy implementations.
-
----
-
-# AI-Assisted Market Context
-
-The system optionally integrates LLM-generated sentiment and macro context.
-
-AI is used to provide contextual signals such as:
-
-MarketSentiment: Bullish | Neutral | Bearish  
-MacroRegime: RiskOn | Neutral | RiskOff  
-EventRisk: Low | Medium | High
-
-The LLM does not generate trades directly.
-
-Instead it influences risk behaviour such as position sizing or entry restrictions.
-
----
-
-# Backtesting Engine
-
-The system includes a historical replay engine that allows strategies to run on historical market data.
-
-Backtesting pipeline:
-
-Historical data  
-↓  
-ReplayEngine  
-↓  
-CandleClock  
-↓  
-StrategyScheduler  
-↓  
-StrategyEngine  
-↓  
-SimulatedExecutionEngine
-
-Because the same pipeline is used for live and historical execution, backtests are more reliable.
-
----
-
-# Market Data Storage
-
-Historical candles are stored locally using SQLite.
-
-Benefits include:
-
-- fast multi-year backtests
-- reproducible datasets
-- reduced exchange API usage
-
-Candles are indexed by:
-
-symbol  
-timeframe  
-timestamp
-
-Backtests load entire ranges into memory for replay.
-
----
-
-# Scheduling Architecture
-
-A dedicated CandleClock system detects when candles close and triggers strategy evaluation.
-
-Market Data  
-↓  
-CandleClock  
-↓  
-StrategyScheduler  
-↓  
-Strategy Pipeline
-
-This model ensures strategies run exactly once per candle.
-
----
-
-# Technology Stack
-
-Backend
-
-.NET / C#
-
-Frontend
-
-Angular
-
-Data storage
-
-SQLite
-
-Exchange integration
-
-Hyperliquid API
-
-Optional AI integration
-
-OpenAI or Anthropic
-
----
-
-# What Makes This Different
-
-Many retail trading bots suffer from:
-
-- tightly coupled strategy and execution logic
-- poor backtesting capability
-- strategies embedded directly in code
-- trading on partially formed candles
-- complex grid management
-
-This project addresses these issues by providing:
-
-- deterministic candle-based execution
-- modular trading architecture
-- configurable strategy definitions
-- explicit grid lifecycle management
-- unified backtest and live execution pipeline
-- optional AI-assisted market context
-
----
-
-# Project Status
-
-The project is currently experimental and under active development.
-
-Goals include:
-
-- validating the grid strategy framework
-- building robust backtesting infrastructure
-- exploring AI-assisted trading context
-
-Future work may include:
+- Add an admin dashboard for operational monitoring, tenant diagnostics, and support tooling.
+- Add Stripe or equivalent billing integration for paid subscription tiers.
+- Add additional strategy families such as TrendBreakout, MeanReversion, and FundingArbitrage.
+- Add strategy sharing or marketplace capabilities for reusable templates and revisions.
+- Add a dedicated mobile app once the web control plane stabilizes.
 
 - additional strategies
 - multi-exchange support

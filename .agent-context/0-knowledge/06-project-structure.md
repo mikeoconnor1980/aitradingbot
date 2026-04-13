@@ -1,262 +1,250 @@
 # Project Structure
 
-Solution file: `TradingApp.sln`
+## Solution Overview
+
+Solution entry point: `TradingApp.sln`
 
 | Project | Role |
 |---------|------|
-| `TradingApp.Domain` | Core domain entities; entities use a `static Create` factory with validation guards and private setters |
-| `TradingApp.Application` | CQRS commands/queries/handlers, DTOs, interfaces, config options |
-| `TradingApp.Infrastructure` | External service implementations (Hyperliquid client, signing) |
-| `TradingApp.Persistence` | EF Core context (`TradingAppDbContext`), repository implementations, and `PersistenceServiceExtensions` for DI and auto-migration |
-| `TradingApp.Api` | ASP.NET Core Web API host, controllers, DI composition root |
-| `TradingApp.AI` | LLM integration services (OpenAI-compatible client, strategy interpreter) |
-| `TradingApp.Worker` | .NET Worker Service host for background strategy execution |
+| `TradingApp.Domain` | Core entities and domain rules |
+| `TradingApp.Application` | CQRS handlers, strategy pipeline abstractions, scheduling, macro calendar, optimization, and feature contracts |
+| `TradingApp.Infrastructure` | Auth, Hyperliquid, Binance, signing, SignalR publishing, and external integration implementations |
+| `TradingApp.Persistence` | EF Core context, migrations, and repository implementations |
+| `TradingApp.Api` | ASP.NET Core control plane host |
+| `TradingApp.AI` | LLM interpretation and review services |
+| `TradingApp.Indicators` | Standalone indicator calculation library used by Application services |
+| `TradingApp.Worker` | Builds the `TradingApp.ExecutionAgent` Windows Service for client-side live execution |
 
-Domain, Application, and Persistence are tenant-aware. All data access is scoped by `UserId`.
+The tenant boundary is enforced in the Domain, Application, Persistence, and API layers through `UserId`-scoped entities and repository access.
 
----
+## Indicators Project
+
+`src/TradingApp.Indicators/` is now a first-class project in the solution.
+
+It contains reusable technical indicator implementations including:
+
+- `AtrCalculator`
+- `BollingerBandsCalculator`
+- `EmaCalculator`
+- `MacdCalculator`
+- `RsiCalculator`
+- `SupportResistanceCalculator`
+- incremental helpers in `Incremental/` such as `IncrementalAtr`, `IncrementalEma`, `IncrementalMacd`, `IncrementalRsi`, and `IncrementalSma`
+
+The project file currently has no external NuGet dependencies and is consumed as a lightweight shared library.
 
 ## Application Layer
 
-```
-src/TradingApp.Application/
-├── Abstractions/
-│   ├── Commands/          # Command, Command<T>, CreateCommand base records + handler bases
-│   ├── Queries/           # Query<T> base record + QueryHandler base class
-│   ├── Configuration/     # Typed options (e.g., HyperliquidOptions)
-│   ├── Exceptions/        # DomainException (→400), NotFoundException (→404), DuplicateStrategyNameException (→409); mapped by HttpGlobalExceptionFilter
-│   ├── Identity/          # AppIdentity (UserId, Email; static System identity)
-│   ├── Repositories/      # Repository interfaces (ICandleRepository, IFundingRateRepository, IBacktestRunRepository, IStrategyRepository)
-│   └── Services/          # Pipeline interfaces (IStrategyEngine, IGridController, IRiskEngine, IPositionManager,
-│                          #   IMarketContextBuilder, IExecutionEngine, IBacktestRunner, IStrategyInterpreter, IStrategyReviewer)
-│                          #   + infrastructure client contracts (ILlmClient, IReviewLlmClient)
-├── Backtesting/           # Backtest CQRS handlers + engine
-│   ├── Models/            # Engine models: BacktestConfig, BacktestResult, BacktestTrade, FeeModel, SimulatedFill/Order/Position, ReplayData
-│   │                      # Response DTOs: BacktestRunResponse, BacktestRunSummary, BacktestTradeResponse,
-│   │                      #   CandleCoverageResponse, IntervalCoverage
-│   ├── Services/          # BacktestRunner, CandleReplayEngine, SimulatedExecutionEngine, BacktestMetricsCalculator
-│   ├── RunBacktestCommand.cs        # CQRS command + handler
-│   ├── GetBacktestResultQuery.cs    # CQRS query + handler
-│   ├── GetBacktestListQuery.cs      # CQRS query + handler
-│   ├── GetCandleCoverageQuery.cs    # CQRS query + handler
-│   └── BacktestRunResponseMapper.cs # Internal: entity ↔ response DTO + JSON helpers
-├── Scheduling/            # Shared between live and backtest
-│   ├── CandleClock.cs              # Emits CandleClosedEvent once per closed candle
-│   ├── StrategyScheduler.cs        # Drives strategy pipeline on trigger timeframe
-│   └── Models/CandleClosedEvent.cs
-├── Trading/               # Trading pipeline models (no handlers — consumed by pipeline services)
-│   └── Models/            # MarketContext, StrategyEvaluation, IndicatorSnapshot,
-│                          #   GridState, GridLifecycle, PositionState, TradingSignal,
-│                          #   OrderRequest, OrderSide, OrderType, TradeType
-├── StrategyAuthoring/     # Strategy CRUD, schema, and AI review — models, CQRS, serialization, validation
-│   ├── Commands/          # CreateStrategyCommand, UpdateStrategyCommand, DeleteStrategyCommand, RequestStrategyReviewCommand (+ handlers)
-│   ├── Queries/           # GetStrategiesQuery (→ List<StrategySummaryDto>), GetStrategyByIdQuery (→ StrategyDto), GetStrategyReviewQuery
-│   ├── Models/            # StrategyConfig (implements IStrategyConfig), GridConfig, ExitConfig, RiskConfig,
-│   │                      #   TrendFilterConfig, EntryConditionConfig, typed params (RsiParams, PriceVsEmaParams,
-│   │                      #   MacdParams), enums (StrategyMode, EntryConditionType, Direction, EntryLogic, etc.)
-│   │                      #   DTOs: StrategyDto (full config + metadata), StrategySummaryDto (list view)
-│   ├── Serialization/     # StrategyJsonOptions (shared JsonSerializerOptions),
-│   │                      #   EntryConditionConfigConverter, EntryConditionParamsConverter (polymorphic)
-│   └── Validation/        # IStrategyValidator, CompositeStrategyValidator (chains 3 levels),
-│                          #   SchemaValidator, BusinessRuleValidator, CrossFieldValidator,
-│                          #   ValidationResult, ValidationError, ValidationSeverity
-└── {Feature}/             # CQRS feature folder, e.g. Health/, MarketData/
-    ├── Models/            # DTOs returned by queries
-    └── Queries/           # Query record + Handler in same file
-```
+`src/TradingApp.Application/` is organized by feature and by cross-cutting abstractions.
 
-MediatR is registered in the Api host to scan the Application assembly.
+### Core folders
 
----
+| Folder | Purpose |
+|--------|---------|
+| `Abstractions/Commands` | Base command records and handler patterns |
+| `Abstractions/Queries` | Base query records and handlers |
+| `Abstractions/Repositories` | Repository contracts owned by the Application layer |
+| `Abstractions/Services` | Trading, exchange, streaming, and orchestration interfaces |
+| `Abstractions/Auth` | JWT, Google auth, refresh token, and password hashing contracts and options |
+| `Abstractions/Configuration` | Typed options such as exchange configuration |
+
+### Feature folders
+
+| Folder | Purpose |
+|--------|---------|
+| `Agent/` | Agent command store, heartbeat models, update metadata, and control-plane coordination |
+| `Backtesting/` | Backtest commands, queries, models, metrics, and replay services |
+| `Candles/` | Candle ingestion commands, coverage queries, and response models |
+| `FundingRates/` | Funding rate ingestion commands and models |
+| `Health/` | Health queries and DTOs |
+| `Help/` | Help chat queries and models |
+| `LlmContextSnapshots/` | Queries and DTOs for market-context history and current snapshots |
+| `MacroCalendar/` | Macro event models, options, query services, ingestion contracts, and trade-gating services |
+| `MarketData/` | Market info and candle queries used by the UI |
+| `Optimization/` | Run and cancel commands, history queries, fitness models, job queues, sweep runner, evolutionary runner, and response mapping |
+| `Scheduling/` | `CandleClock`, `StrategyScheduler`, and candle-close event models |
+| `StrategyAuthoring/` | Strategy CRUD, AI review, validation, serialization, and typed strategy schema models |
+| `Subscriptions/` | Free-tier subscription command and status query |
+| `Trading/` | Trading models and runtime service contracts |
 
 ## AI Layer
 
-```
-src/TradingApp.AI/
-├── Models/                 # LLM request/response shapes (ChatMessage, ChatCompletionRequest/Response)
-├── Prompts/
-│   ├── StrategyInterpreterPrompt.cs  # System prompt template for NL→StrategyConfig interpretation
-│   └── StrategyReviewPrompt.cs       # System prompt template for strategy revision analysis
-├── Services/
-│   ├── OpenAiCompatibleLlmClient.cs  # ILlmClient implementation; works with Gemini, Ollama, or any OpenAI-compatible endpoint; bound to LlmOptions
-│   ├── ReviewLlmClient.cs            # IReviewLlmClient implementation; independent OpenAI-compatible client; bound to LlmReviewOptions
-│   ├── StrategyInterpreter.cs        # IStrategyInterpreter implementation; calls LLM, parses response, returns StrategyIntentDto
-│   └── StrategyReviewer.cs           # IStrategyReviewer implementation; calls review LLM, generates Markdown review, handles normalization
-└── AiServiceExtensions.cs            # DI registration (AddAI); binds LlmOptions + LlmReviewOptions, registers typed HttpClients and services
-```
+`src/TradingApp.AI/` contains the LLM-facing implementation used by the control plane.
 
-Registered via `AiServiceExtensions.AddAI()` in the Api host DI composition root.
-
----
-
-## Api Layer
-
-```
-src/TradingApp.Api/
-├── Controllers/           # Feature controllers (inherit ApiController for MediatR features; ControllerBase for direct-service features)
-│                          # StrategiesController: full CRUD (GET, POST, PUT, DELETE /api/strategies) via MediatR + POST /api/strategies/validate (direct IStrategyValidator)
-│                          # ReferenceDataController: GET /api/reference-data/markets — returns supported markets and timeframes from HyperliquidAssetMapper
-├── Hubs/
-│   └── MarketDataHub.cs          # SignalR hub for real-time market data relay; thin hub — all pushes come from IHubContext<MarketDataHub>
-├── Infrastructure/
-│   ├── ApiController.cs          # Base: protected Mediator + IdentityService
-│   ├── Envelope.cs               # Error response { ErrorMessage, Timestamp }
-│   ├── CreatedResultEnvelope.cs  # 201 response { Id (Guid) }
-│   ├── IdentityService.cs        # Dev stub returning hardcoded AppIdentity
-│   └── Filters/
-│       └── HttpGlobalExceptionFilter.cs  # Global IExceptionFilter: DomainException→400, NotFoundException→404, OperationCanceledException→408, HttpRequestException→503, unhandled→500
-├── Models/                # DTOs for responses served directly by the Api layer (no Application-layer handler)
-├── Services/              # Api-layer services; includes MarketDataStreamService (BackgroundService — WebSocket aggregation + SignalR broadcast),
-│                          #   UnavailableBacktestRunner (IBacktestRunner placeholder — throws until full pipeline is composed in API host)
-└── Program.cs             # DI composition root and startup configuration
-```
-
----
+| Area | Purpose |
+|------|---------|
+| `Models/` | OpenAI-compatible request and response models |
+| `Prompts/` | Prompt templates for strategy interpretation and review |
+| `Services/OpenAiCompatibleLlmClient.cs` | General strategy interpretation client |
+| `Services/ReviewLlmClient.cs` | Independent review client |
+| `Services/StrategyInterpreter.cs` | Natural-language to strategy intent translation |
+| `Services/StrategyReviewer.cs` | Markdown review generation for strategy revisions |
+| `AiServiceExtensions.cs` | DI composition for AI services |
 
 ## Infrastructure Layer
 
-```
-src/TradingApp.Infrastructure/
-├── Hyperliquid/
-│   ├── HyperliquidAssetMapper.cs  # Maps display names (BTC-PERP → BTC) and timeframes to interval ms; validates against supported assets/timeframes
-│   └── Models/                    # Hyperliquid API request/response shapes (HyperliquidMeta, HyperliquidAssetCtx, HyperliquidCandle, etc.)
-├── Binance/
-│   ├── BinanceAssetMapper.cs      # Maps display symbols (BTC → BTCUSDT) and intervals to ms; handles mark-price interval prefix (mark-15m)
-│   └── Models/                    # Binance API response shapes (BinanceKline, BinanceFundingRate)
-└── Services/
-    ├── HyperliquidSigner.cs            # Derives wallet address from private key (Nethereum)
-    ├── HyperliquidRestClient.cs        # Typed HttpClient targeting Hyperliquid REST API
-    ├── HyperliquidWebSocketClient.cs   # Persistent WebSocket client; implements IHyperliquidWebSocketClient (singleton)
-    ├── BinanceFuturesRestClient.cs     # Typed HttpClient targeting Binance USDⓈ-M Futures REST API (/fapi/v1)
-    ├── BinanceCandleIngestionService.cs  # Paginates kline + mark-price kline history; writes to ICandleRepository
-    ├── CandleIngestionService.cs       # Paginates Hyperliquid candleSnapshot history; writes to ICandleRepository
-    └── FundingRateIngestionService.cs  # Paginates Binance funding rate history; writes to IFundingRateRepository
-```
+`src/TradingApp.Infrastructure/` holds concrete implementations that integrate the system with external APIs and platform services.
 
----
+### Service implementations
+
+| File | Purpose |
+|------|---------|
+| `AspNetPasswordHasher.cs` | Password hashing implementation for auth flows |
+| `AzureSignalRPublisher.cs` | Production `ISignalRPublisher` using Azure SignalR management APIs |
+| `BinanceCandleIngestionService.cs` | Historical Binance candle ingestion |
+| `BinanceFuturesRestClient.cs` | Typed Binance REST client |
+| `CandleIngestionService.cs` | Hyperliquid candle ingestion |
+| `FundingRateIngestionService.cs` | Binance funding rate ingestion |
+| `GoogleTokenValidator.cs` | Google OAuth token validation |
+| `HyperliquidAccountService.cs` | Exchange account and position reads used by API and worker flows |
+| `HyperliquidRestClient.cs` | Typed Hyperliquid REST client |
+| `HyperliquidSigner.cs` | Wallet address derivation from private key material |
+| `HyperliquidUserEventClient.cs` | Hyperliquid user-event WebSocket client |
+| `HyperliquidWebSocketClient.cs` | Shared market-data WebSocket client |
+| `JwtTokenService.cs` | JWT access and refresh token generation and validation |
+| `LiveExecutionEngine.cs` | Live order execution engine used by the worker |
+| `MutableSignerProvider.cs` | Runtime-configurable signer and key holder on the execution agent |
+| `NonceProvider.cs` | Nonce generation for outbound order flows |
+
+### Other folders
+
+| Folder | Purpose |
+|--------|---------|
+| `Hyperliquid/` | Hyperliquid mappers and request/response models |
+| `Binance/` | Binance mappers and models |
+| `Providers/MacroCalendar/` | Macro calendar provider implementations such as `StubMacroCalendarProvider` |
+
+## API Layer
+
+`src/TradingApp.Api/` is the browser-facing control plane.
+
+### Controllers
+
+| Controller | Purpose |
+|-----------|---------|
+| `AccountController` | Account summary, positions, and order state |
+| `AgentController` | Agent heartbeat, command polling, and update metadata |
+| `AuthController` | Registration, login, refresh token, and Google sign-in |
+| `BacktestsController` | Backtest submission and result retrieval |
+| `CandlesController` | Candle ingestion and coverage endpoints |
+| `FundingRatesController` | Funding rate ingestion endpoints |
+| `HealthController` | API and dependency health checks |
+| `HelpController` | Help and assistant queries |
+| `LiveTradingController` | Live trading session control |
+| `MacroCalendarController` | Macro event query and sync endpoints |
+| `MarketContextController` | LLM context snapshot queries |
+| `MarketDataController` | Market info and candle data |
+| `OptimizationsController` | Optimization run, cancel, list, and detail endpoints |
+| `OrdersController` | Order placement and order management operations |
+| `ProfileController` | User profile management |
+| `ReferenceDataController` | Supported assets, timeframes, and reference metadata |
+| `RiskController` | Risk and protective order operations |
+| `StrategiesController` | Strategy CRUD, validation, and review flows |
+| `SubscriptionController` | Subscription activation and status |
+| `TradingController` | Agent-directed trading commands |
+| `WalletAddressController` | Wallet address persistence |
+| `WalletController` | Wallet-related endpoints |
+
+### API infrastructure
+
+| File | Purpose |
+|------|---------|
+| `Infrastructure/ApiController.cs` | Base controller for MediatR-backed endpoints |
+| `Infrastructure/CorrelationIdMiddleware.cs` | Request correlation middleware |
+| `Infrastructure/CreatedResultEnvelope.cs` | Standard created response envelope |
+| `Infrastructure/Envelope.cs` | Standard error envelope |
+| `Infrastructure/IdentityService.cs` | Resolves `AppIdentity` from JWT claims with a dev fallback |
+| `Infrastructure/NetworkRoutingHandler.cs` | Per-request Hyperliquid base URL rewriting |
+| `Infrastructure/UserNetworkProvider.cs` | Resolves the current user's preferred mainnet or testnet setting |
+| `Infrastructure/Filters/` | HTTP exception mapping and global filters |
+
+### API services
+
+| File | Purpose |
+|------|---------|
+| `BacktestProcessorService.cs` | Hosted service that processes queued backtests |
+| `HubContextSignalRPublisher.cs` | Local SignalR publisher implementation |
+| `HyperliquidAssetMetadataCache.cs` | Hyperliquid asset metadata caching |
+| `HyperliquidExecutionEngine.cs` | API-hosted execution adapter for live order flows |
+| `HyperliquidOrderService.cs` | Order placement, modification, and cancellation orchestration |
+| `MacroCalendarSyncWorker.cs` | Hosted macro calendar synchronization |
+| `MarketDataStreamService.cs` | Local market data streaming service when Azure SignalR is absent |
+| `OptimizationProcessorService.cs` | Hosted optimization job processor |
+| `UnavailableBacktestRunner.cs` | Placeholder `IBacktestRunner` for unsupported host compositions |
+| `UserEventStreamService.cs` | Local user-event streaming service when Azure SignalR is absent |
+
+## Worker Host
+
+`src/TradingApp.Worker/` is not a generic backend worker. It produces the subscriber-side execution agent.
+
+Important characteristics from `TradingApp.Worker.csproj`:
+
+- `AssemblyName` is `TradingApp.ExecutionAgent`
+- Release publishes are single-file, self-contained, and `win-x64`
+- the service is intended to run as a Windows Service and is distributed through the installer pipeline
+
+Key worker services live under `src/TradingApp.Worker/Services/` and include:
+
+- `AgentCheckInService`
+- `MarketDataStreamService`
+- `UserEventStreamService`
+- `HealthMonitorService`
+- `TradingSession`
+- `TradingHealthProvider`
+- `UpdateCheckerService`
 
 ## Persistence Layer
 
-```
-src/TradingApp.Persistence/
-├── Repositories/                   # EF Core repository implementations (interfaces in Application.Abstractions.Repositories)
-├── TradingAppDbContext.cs          # EF Core DbContext; one DbSet per persisted entity; configures column mappings and indexes
-├── PersistenceServiceExtensions.cs # AddPersistence() registers DbContext + all repositories; MigrateDatabaseAsync() runs EF migrations on startup
-├── DesignTimeDbContextFactory.cs   # Design-time factory for EF migration tooling
-└── Migrations/                     # EF Core auto-generated migration files
-```
+`src/TradingApp.Persistence/` contains:
 
-**Key conventions:**
-- Repository interfaces live in `src/TradingApp.Application/Abstractions/Repositories/` (Application layer owns the contract)
-- Repository implementations live in `src/TradingApp.Persistence/Repositories/`
-- Call `AddPersistence()` from both the API and Worker host `Program.cs`
-- Call `MigrateDatabaseAsync()` on startup in both hosts to auto-apply EF migrations
-- Connection string key: `ConnectionStrings:DefaultConnection` in `appsettings.json`
-- SQLite path convention: `Data Source=../../data/tradingapp.db` — shared database between API and Worker
+- `TradingAppDbContext`
+- repository implementations
+- EF Core migrations
+- `PersistenceServiceExtensions` for registration and startup migration
+- `DesignTimeDbContextFactory` for tooling
 
----
-
-## Test Projects
-
-```
-tests/
-├── TradingApp.Api.Tests/
-│   ├── Controllers/               # Controller integration tests
-│   └── Infrastructure/
-│       ├── BaseControllerTests.cs      # WebApplicationFactory<Program> base + HttpResponseExtensions
-│       └── FakeHttpMessageHandler.cs   # Configurable HttpMessageHandler stub
-├── TradingApp.Application.Tests/  # Handler unit tests
-├── TradingApp.Domain.Tests/       # Domain entity unit tests
-├── TradingApp.Infrastructure.Tests/
-│   └── Services/                  # Infrastructure unit tests
-└── TradingApp.Persistence.Tests/
-    └── Repositories/              # Persistence integration tests using in-memory SQLite
-```
-
-`BaseControllerTests` creates a `WebApplicationFactory<Program>` with web host configuration via `ConfigureWebHost()` and service replacement via `ConfigureTestServices()`. It defines `HttpResponseExtensions` (`ReadAndAssertSuccessAsync<T>`, `AssertStatusCode`).
-
-`TradingApp.Persistence.Tests` uses an in-memory SQLite connection (`SqliteConnection("Data Source=:memory:")`) kept open for the test lifetime. Each test creates its own `TradingAppDbContext` from shared `DbContextOptions`. The connection is disposed in `[TestCleanup]`. See `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` for the reference pattern.
-
-`FakeHttpMessageHandler` accepts a preset `HttpResponseMessage` or `Exception` and returns/throws it for every request.
-
----
-
-## Strategy Plugins
-
-Strategies are implemented as plugins in `src/TradingApp.Application/Strategies/`.
-Future strategies are added here without modifying the worker.
-
----
+Repository contracts remain in `src/TradingApp.Application/Abstractions/Repositories/`, while implementations live in `src/TradingApp.Persistence/Repositories/`.
 
 ## Frontend
 
-```
-frontend/trading-ui/           # Angular 19 standalone application
-└── src/app/
-    ├── core/
-    │   ├── models/             # TypeScript interfaces matching API response shapes
-    └── services/           # Root-scoped injectable services
-        #                   api-rest-client.service.ts — generic HTTP wrapper (get/post/put/delete) over Angular HttpClient
-        #                   {feature}.service.ts — domain-specific service using ApiRestClient (e.g., market-data.service.ts, health.service.ts)
-        #                   hyperliquid-api.service.ts — legacy direct-call service (Account/positions/orders; pre-ApiRestClient pattern)
-        #                   signalr.service.ts — SignalR hub connection; exposes priceUpdate$ and connectionStatus$; merges SignalR + backend connection states
-    ├── features/               # Feature components grouped by domain area
-    │   ├── dashboard/          # Main dashboard; contains sub-component folders (account-summary/, positions-table/, orders-table/)
-    │   ├── connection/         # Exchange connectivity / health check view
-    └── market-data/        # Market info (10s polling), candle table, live price ticker (SignalR), and 15-min rolling chart
-    │   ├── price-ticker/   # PriceTickerComponent — live BTC-PERP price fed from SignalRService.priceUpdate$
-    │   └── price-chart/    # PriceChartComponent — Lightweight Charts line series; rolling 15-min window; seeded from REST candles
-    ├── app.routes.ts           # Lazy-loaded routes (loadComponent)
-    └── app.config.ts           # Root providers (provideHttpClient, etc.)
-```
+`frontend/trading-ui/` is an Angular standalone application.
 
----
+### Core folders
 
-## Canonical Feature Example: Health
+| Folder | Purpose |
+|--------|---------|
+| `core/components/` | Shared UI building blocks |
+| `core/guards/` | Route guards such as auth, mobile redirect, and subscription gating |
+| `core/interceptors/` | HTTP interceptors for auth and request handling |
+| `core/models/` | Shared TypeScript models aligned with API responses |
+| `core/pipes/` | Shared formatting pipes |
+| `core/services/` | Root-scoped REST, SignalR, auth, and domain services |
+| `core/utils/` | Shared helper utilities |
 
-The Health feature is the reference implementation for adding new features end-to-end:
+### Feature folders
 
-| Layer | File |
-|-------|------|
-| DTO | `src/TradingApp.Application/Health/Models/HealthDto.cs` |
-| Query + Handler | `src/TradingApp.Application/Health/Queries/GetHealthQuery.cs` |
-| Controller | `src/TradingApp.Api/Controllers/HealthController.cs` |
-| Infrastructure | `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` |
-| Angular model | `frontend/trading-ui/src/app/core/models/health-response.model.ts` |
-| Angular service | `frontend/trading-ui/src/app/core/services/health.service.ts` |
-| Angular component | `frontend/trading-ui/src/app/features/connection/status-card.component.ts` |
-| API integration test | `tests/TradingApp.Api.Tests/Controllers/HealthControllerTests.cs` |
-| Infrastructure unit test | `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` |
+| Folder | Purpose |
+|--------|---------|
+| `features/agents/` | Agent health, update, and kill-switch UI |
+| `features/auth/` | Login and registration pages |
+| `features/backtesting/` | Backtest submission, result visualization, comparisons, and coverage views |
+| `features/candle-management/` | Candle ingestion and coverage management |
+| `features/connection/` | Connectivity and health status UI |
+| `features/dashboard/` | Live account overview, positions, orders, and related dialogs |
+| `features/macro-calendar/` | Economic event calendar and risk windows |
+| `features/market-data/` | Market info, live ticker, and charting |
+| `features/optimizer/` | Optimization setup, history, detail, and results views |
+| `features/order-entry/` | Manual order-entry workflows |
+| `features/profile/` | Profile and preference management |
+| `features/strategy-builder/` | Strategy list, builder, AI review, diff view, and multi-step wizard |
 
-## Canonical Feature Example: Account Dashboard
+The route map in `src/app/app.routes.ts` confirms that auth, strategy authoring, optimizer, macro calendar, agent management, profile, order entry, backtesting, and dashboard flows are all part of the current shipped UI.
 
-The Account Dashboard is the reference implementation for read-only exchange data features that bypass MediatR (see ADR 14):
+## Future Recommendations
 
-| Layer | File |
-|-------|------|
-| API-layer DTO | `src/TradingApp.Api/Models/AccountSummaryDto.cs` |
-| API-layer service interface | `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` |
-| API-layer service implementation | `src/TradingApp.Api/Services/HyperliquidAccountService.cs` |
-| Controller | `src/TradingApp.Api/Controllers/AccountController.cs` |
-| Angular models | `frontend/trading-ui/src/app/core/models/account-summary.model.ts` etc. |
-| Angular API service | `frontend/trading-ui/src/app/core/services/hyperliquid-api.service.ts` |
-| Angular feature | `frontend/trading-ui/src/app/features/dashboard/` |
-| API integration test | `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` |
-
-## Canonical Feature Example: Market Data
-
-The Market Data feature is the reference for Application-layer CQRS features that add typed methods to `IHyperliquidRestClient` (see [Hyperliquid Integration](02-hyperliquid-integration.md) — Extending, rule 2):
-
-| Layer | File |
-|-------|------|
-| Application DTOs | `src/TradingApp.Application/MarketData/Models/MarketInfoDto.cs`, `CandleDto.cs` |
-| Query + Handler | `src/TradingApp.Application/MarketData/Queries/GetMarketInfoQuery.cs` |
-| Query + Handler | `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` |
-| Rest client interface | `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` |
-| Rest client impl + asset mapper | `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` |
-| Asset/timeframe mapping | `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` |
-| Controller | `src/TradingApp.Api/Controllers/MarketDataController.cs` |
-| Angular models | `frontend/trading-ui/src/app/core/models/market-info.model.ts`, `candle.model.ts` |
-| Angular service | `frontend/trading-ui/src/app/core/services/market-data.service.ts` |
+- Add a short ownership map showing which layer owns each major business capability.
+- Add a repository-level note for generated artifacts and deployment output directories.
+- Add a dedicated section for cross-project conventions such as DI composition roots, options binding, and tenant scoping.
+- Add a small dependency diagram showing how `TradingApp.Indicators`, `TradingApp.AI`, and the worker relate to the core application layers.
 | Angular component | `frontend/trading-ui/src/app/features/market-data/market-data.component.ts` |
 | API integration test | `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` |

@@ -1,289 +1,167 @@
 # Scheduling Architecture (CandleClock + StrategyScheduler)
 
-This document describes the scheduling architecture used to trigger strategy evaluation.
-The goal is to ensure the trading system runs strategies exactly once per closed candle
-and works identically in both live trading and backtesting environments.
+The scheduler layer ensures strategies run on confirmed candle closes and that the same high-level pipeline can be used in both live trading and backtesting. The current implementation is centered on `CandleClock` producing `CandleClosedEvent` and `StrategyScheduler` orchestrating one user session at a time.
 
----
+## Design Goals
 
-# Design Goals
+The implemented design aims to:
 
-The scheduling system must:
+- run strategy logic only on closed candles;
+- keep candle detection separate from strategy logic;
+- share market-context construction between live and backtest paths;
+- support grid mode and signal mode from the same scheduler;
+- apply drawdown and equity state before risk validation.
 
-• Trigger strategies only on confirmed candle closes  
-• Avoid duplicate executions  
-• Work with both websocket market data and replayed historical data  
-• Separate time management from strategy logic  
-• Prevent timing bugs caused by partial candles  
+## Core Components
 
----
+| Component | Purpose |
+|-----------|---------|
+| `CandleClock` | Deduplicates candle closes and emits `CandleClosedEvent` |
+| `CandleClosedEvent` | Canonical scheduling trigger payload |
+| `StrategyScheduler` | Builds context, applies drawdown state, evaluates strategy, and dispatches signals |
 
-# Core Components
+## CandleClock
 
-The scheduling system consists of two main components:
+`CandleClock` tracks the latest closed candle per symbol and timeframe and emits `CandleClosedEvent` once per close.
 
-CandleClock  
-StrategyScheduler  
+Important model notes:
 
-These work together to trigger strategy execution safely.
+- `Candle.Interval` is the timeframe string.
+- `Candle.Timestamp` is the candle open time in Unix milliseconds.
+- `CloseTimeUtc` on the event is derived, not read directly from the candle entity.
 
----
+`CandleClock` is a concrete class. `ICandleClock` has not been introduced yet.
 
-# CandleClock
+## CandleClosedEvent
 
-The CandleClock detects when a candle has officially closed and emits an event.
+The event carries:
 
-Responsibilities:
+| Field | Meaning |
+|-------|---------|
+| `Symbol` | Instrument symbol |
+| `Timeframe` | Closed interval |
+| `OpenTimeUtc` | Candle open timestamp |
+| `CloseTimeUtc` | Derived close timestamp |
+| `Candle` | The closed candle payload |
 
-• track latest candles for each timeframe  
-• detect candle close transitions  
-• emit a CandleClosedEvent exactly once  
-• prevent duplicate emissions after reconnects or replay  
+## StrategyScheduler Responsibilities
 
-The CandleClock does not know about strategies or trading logic.
+`StrategyScheduler` listens to candle-close events and drives the rest of the trading pipeline.
 
----
+Current responsibilities:
 
-# CandleClosedEvent Model
+1. Filter events to the configured trigger timeframe.
+2. Derive required indicators for signal mode.
+3. Call `IMarketContextBuilder.BuildAsync(...)`.
+4. Resolve current account equity.
+5. Apply drawdown state and persist high-water mark updates.
+6. Call `IStrategyEngine.EvaluateAsync(...)`.
+7. Route to `IGridController` or `ISignalController`.
+8. Pass emitted signals through `IRiskEngine.ValidateAsync(...)`.
+9. Execute approved signals through `IPositionManager`.
 
-Example event structure:
+## Constructor Shape
 
-public class CandleClosedEvent
-{
-    public string Symbol { get; init; }
-    public string Timeframe { get; init; }
-    public long OpenTimeUtc { get; init; }
-    public long CloseTimeUtc { get; init; }
-    public Candle Candle { get; init; }
-}
+The scheduler constructor no longer takes raw JSON. It takes a pre-resolved `IStrategyConfig` plus pipeline services and optional runtime collaborators.
 
-This event becomes the canonical trigger for the system.
+Key constructor inputs include:
 
----
+- `IMarketContextBuilder`
+- `IStrategyEngine`
+- `IGridController`
+- `IRiskEngine`
+- `IPositionManager`
+- `IStrategyConfig`
+- optional `ISignalController`
+- `decimal initialCapital`
+- optional `BacktestExecutionContextAccessor`
+- optional `GridState`
+- optional drawdown tiers
+- optional `Strategy`
+- optional `IStrategyRepository`
 
-# StrategyScheduler
+This is effectively an 11-plus-parameter constructor depending on which optional runtime services are supplied.
 
-The StrategyScheduler subscribes to CandleClock events and determines
-whether strategies should run.
+## Trigger Timeframe
 
-Responsibilities:
+The trigger timeframe defaults to `15m`, but the scheduler only cares about the configured `triggerTimeframe` string. It filters on `evt.Timeframe` and returns early for all other candle closes.
 
-• listen for CandleClosedEvent  
-• filter for trigger timeframe (15m for the grid strategy)  
-• build MarketContext (shared across all subscribers)  
-• fan out execution to all active subscribers  
-• for each subscriber: invoke StrategyEngine → RiskEngine → PositionManager → ExecutionEngine  
+The higher timeframes are contextual inputs, not independent triggers.
 
-Market data and indicator calculation are shared.
-Strategy evaluation and order execution are per-subscriber.
+## Market Context Construction
 
----
+The runtime path uses `IMarketContextBuilder.BuildAsync(...)`, not the older synchronous-only `Build(...)` description.
 
-# Strategy Trigger Timeframe
+For signal mode, the scheduler extracts `IndicatorRequirement` objects from the strategy config before calling the context builder. That allows the context builder to compute only the indicators needed by the configured conditions.
 
-For the current trading strategy:
+## Drawdown State Management
 
-4H trend filter  
-1H bias  
-15m pullback entry  
+One of the major responsibilities now handled inside the scheduler is drawdown control.
 
-The strategy should execute on:
+### `ResolveAccountEquity()`
 
-15m candle close
+The scheduler resolves equity differently by execution mode:
 
-Higher timeframes are inputs to the strategy but do not trigger execution.
+| Mode | Equity source |
+|------|---------------|
+| Backtest | Simulated execution engine equity and PnL via `BacktestExecutionContextAccessor` |
+| Live | Initial capital plus current `PositionState.UnrealisedPnL` |
 
----
+### `ApplyDrawdownStateAsync()`
 
-# Live Trading Flow
+This method runs on every trigger candle and:
 
-Hyperliquid WebSocket  
-↓  
-MarketStateStore (shared)  
-↓  
-CandleBuilder  
-↓  
-CandleClock  
-↓  
-StrategyScheduler  
-↓  
-For each active subscriber:  
-  StrategyEngine  
-  ↓  
-  RiskEngine  
-  ↓  
-  PositionManager  
-  ↓  
-  ExecutionEngine (using subscriber's keys)  
+1. Loads the current or persisted high-water mark.
+2. Calls `DrawdownEvaluator.Evaluate(...)`.
+3. Writes `DrawdownScalingFactor` onto the market context.
+4. Calls `IRiskEngine.UpdateDrawdownState(...)`.
+5. Persists `Strategy.HighWaterMarkUsd` through `IStrategyRepository` when a new HWM is set.
 
-Websocket updates continuously update the MarketStateStore.
-Strategy evaluation occurs only when a candle closes.
-Market data is shared; execution is per-subscriber.
-
----
-
-# Backtesting Flow
-
-HistoricalDataProvider  
-↓  
-ReplayEngine  
-↓  
-CandleClock  
-↓  
-StrategyScheduler  
-↓  
-StrategyEngine  
-↓  
-RiskEngine  
-↓  
-PositionManager  
-↓  
-SimulatedExecutionEngine  
+## Mode Dispatch
 
-The replay engine feeds candles sequentially to the CandleClock,
-which emits the same CandleClosedEvent used in live trading.
-
-This ensures identical behaviour in both environments.
+The scheduler contains the runtime dispatch point between strategy modes.
 
----
-
-# Duplicate Execution Protection
+| Condition | Controller used |
+|-----------|-----------------|
+| `StrategyMode.Signal` and `ISignalController` supplied | `SignalController.ProcessAsync(...)` |
+| Otherwise | `GridController.ProcessAsync(...)` |
 
-The scheduler must ensure strategies run once per candle.
-
-Recommended approach:
+This means signal mode is a first-class scheduling path, not an external or future extension.
 
-Store a checkpoint of the last processed candle.
+## State Accessors
 
-Example model:
+The scheduler exposes:
 
-public class StrategyExecutionCheckpoint
-{
-    public string UserId { get; set; }
-    public string Symbol { get; set; }
-    public string Timeframe { get; set; }
-    public long LastProcessedCloseTimeUtc { get; set; }
-}
+| Member | Purpose |
+|--------|---------|
+| `UpdateState(GridState, PositionState)` | Refreshes scheduler-owned state before processing a candle |
+| `GetGridState()` | Returns the shared grid state |
+| `LastContext` | Exposes the most recent `MarketContext` built |
 
-This checkpoint prevents duplicate runs after restarts.
-Checkpoints are per-subscriber.
+`LastContext` is useful for diagnostics and downstream integrations that need the latest indicator snapshot.
 
----
+## Live and Backtest Flow
 
-# Continuous vs Scheduled Tasks
+### Live Trading
 
-The system should distinguish between:
+WebSocket updates feed candle construction and close detection. On each relevant close, the scheduler builds context, evaluates the active strategy for that user session, validates signals, and forwards them to the live position manager.
 
-Event-driven operations (continuous)
-• order updates
-• fills
-• position updates
+### Backtesting
 
-Scheduled operations (candle close)
-• strategy evaluation
-• indicator updates
-• risk checks
+Replay feeds historical candles into the same scheduling pattern. The key difference is that equity and execution state come from the simulated engine rather than a live account service.
 
-This separation prevents unnecessary strategy executions.
+## Duplicate Execution Protection
 
----
+`CandleClock` deduplication is implemented. However, some of the larger persistence ideas from the original design are still not in place:
 
-# Implementation Example
+- `StrategyExecutionCheckpoint` is not implemented.
+- `IStrategyScheduler` is not implemented.
 
-Simplified CandleClock logic:
+Those remain design ideas rather than shipped runtime components.
 
-public class CandleClock
-{
-    private readonly Dictionary<string,long> _lastClosed = new();
+## Future Recommendations
 
-    public event Func<CandleClosedEvent,Task>? CandleClosed;
-
-    public async Task ProcessCandleAsync(Candle candle)
-    {
-        // Candle domain entity uses Interval (not Timeframe) and Timestamp (open time, Unix ms)
-        // CloseTimeUtc is derived — it does not exist as a property on Candle
-        var key = $"{candle.Symbol}:{candle.Interval}";
-        var closeTimeUtc = candle.Timestamp + GetIntervalMs(candle.Interval);
-
-        if (_lastClosed.TryGetValue(key, out var last) && last >= closeTimeUtc)
-            return;
-
-        _lastClosed[key] = closeTimeUtc;
-
-        if (CandleClosed is not null)
-        {
-            await CandleClosed.Invoke(new CandleClosedEvent
-            {
-                Symbol = candle.Symbol,
-                Timeframe = candle.Interval,    // CandleClosedEvent.Timeframe ← Candle.Interval
-                OpenTimeUtc = candle.Timestamp,  // Candle.Timestamp is the open time
-                CloseTimeUtc = closeTimeUtc,
-                Candle = candle
-            });
-        }
-    }
-}
-
----
-
-# StrategyScheduler
-
-`src/TradingApp.Application/Scheduling/StrategyScheduler.cs`
-
-**Constructor** takes the five pipeline services plus `string strategyConfigJson` and optional `string triggerTimeframe` (default `"15m"`).
-
-**Key methods:**
-
-```csharp
-// Called by CandleClock; latestOneHourCandle and latestFourHourCandle are resolved
-// by the caller (BacktestRunner or live worker) before invoking
-public async Task HandleCandleClosedAsync(
-    CandleClosedEvent evt,
-    Candle? latestOneHourCandle,
-    Candle? latestFourHourCandle,
-    CancellationToken cancellationToken = default)
-
-// State management — caller updates position/grid state before each candle event
-public void UpdateState(GridState gridState, PositionState positionState)
-public GridState GetGridState()
-```
-
-The scheduler filters on `evt.Timeframe == triggerTimeframe`, then drives the pipeline:
-`IMarketContextBuilder.Build` → `IStrategyEngine.EvaluateAsync` → `IGridController.ProcessAsync` → `IRiskEngine.ValidateAsync` → `IPositionManager.ExecuteSignalsAsync`.
-
----
-
-# Benefits of this Architecture
-
-• consistent timing between live trading and backtesting  
-• eliminates double strategy execution  
-• avoids trading on partially formed candles  
-• clean separation between time management and trading logic  
-
----
-
-# Folder Structure
-
-```
-src/TradingApp.Application/
-└── Scheduling/
-    ├── CandleClock.cs          # Emits CandleClosedEvent; deduplicates per candle
-    ├── StrategyScheduler.cs    # Drives pipeline on trigger timeframe candle close
-    └── Models/
-        └── CandleClosedEvent.cs  # { Symbol, Timeframe, OpenTimeUtc, CloseTimeUtc, Candle }
-```
-
-Note: `ICandleClock`, `IStrategyScheduler`, and `StrategyExecutionCheckpoint` are not yet implemented.
-
----
-
-# Summary
-
-The CandleClock + StrategyScheduler pattern ensures reliable timing for the trading system.
-
-CandleClock handles candle close detection.
-
-StrategyScheduler decides when strategies should run.
-
-Together they create a deterministic scheduling system that works
-in both live trading and historical replay environments.
+- Add durable execution checkpoints if restart-safe once-per-candle guarantees become mandatory.
+- Introduce `ICandleClock` and `IStrategyScheduler` if multiple implementations or testing seams are needed.
+- Expand scheduler diagnostics around `LastContext`, equity changes, and drawdown transitions.
+- Consider a clearer separation between per-session orchestration and any future multi-session fan-out coordinator.

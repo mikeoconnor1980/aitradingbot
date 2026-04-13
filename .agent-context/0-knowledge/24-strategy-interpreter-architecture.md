@@ -1,93 +1,110 @@
 # Strategy Interpreter Architecture
 
-Natural language strategy interpretation allows users to describe trading intent in plain English. An OpenAI-compatible LLM converts it to a valid `StrategyConfig` with confidence scoring and assumption tracking.
-
----
+The strategy interpreter converts natural-language trading intent into a structured `StrategyConfig`. It is one of three AI features in the codebase and is intentionally separate from both the market-context provider and the strategy-review system.
 
 ## Pipeline
 
 ```
-User text → POST /api/strategies/interpret
-  → InterpretStrategyCommand (CQRS)
-  → StrategyInterpreter (IStrategyInterpreter)
-  → OpenAiCompatibleLlmClient (HTTP)
-  → LLM provider (Gemini / Ollama / OpenAI-compatible)
-  → Parse structured JSON response
-  → StrategyIntentDto (config + confidence + assumptions)
-  → User reviews in Strategy Builder UI
-  → Save → SourceMetadata.SourceText persisted
+User text -> POST /api/strategies/interpret
+  -> InterpretStrategyCommand
+  -> IStrategyInterpreter / StrategyInterpreter
+  -> ILlmClient / OpenAiCompatibleLlmClient
+  -> OpenAI-compatible provider
+  -> Structured JSON response
+  -> StrategyIntentDto
+  -> Strategy Builder UI review and save flow
 ```
 
----
+The interpreter is an authoring aid only. It does not place orders and it is not used during live trading.
 
 ## Key Components
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `ILlmClient` | `src/TradingApp.Application/Abstractions/Services/ILlmClient.cs` | Application-layer LLM client contract |
-| `OpenAiCompatibleLlmClient` | `src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs` | HTTP client for any OpenAI-compatible endpoint |
-| `IStrategyInterpreter` | `src/TradingApp.Application/Abstractions/Services/IStrategyInterpreter.cs` | Application-layer interpretation contract |
-| `StrategyInterpreter` | `src/TradingApp.AI/Services/StrategyInterpreter.cs` | Calls LLM, parses response, stamps source metadata |
-| `StrategyInterpreterPrompt` | `src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs` | System prompt with schema, constraints, and examples |
-| `InterpretStrategyCommand` | `src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` | CQRS command + handler |
-| `LlmOptions` | `src/TradingApp.Application/Abstractions/Configuration/LlmOptions.cs` | Configuration (provider, base URL, model, API key, timeout) |
-| `StrategyIntentDto` | `src/TradingApp.Application/StrategyAuthoring/Models/StrategyIntentDto.cs` | Response DTO: config, confidence, assumptions, clarification |
+| `ILlmClient` | `src/TradingApp.Application/Abstractions/Services/ILlmClient.cs` | LLM contract for interpretation |
+| `OpenAiCompatibleLlmClient` | `src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs` | OpenAI-compatible HTTP client |
+| `IStrategyInterpreter` | `src/TradingApp.Application/Abstractions/Services/IStrategyInterpreter.cs` | Interpretation abstraction |
+| `StrategyInterpreter` | `src/TradingApp.AI/Services/StrategyInterpreter.cs` | Prompt orchestration and response parsing |
+| `StrategyInterpreterPrompt` | `src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs` | Schema and behavior prompt |
+| `InterpretStrategyCommand` | `src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` | CQRS entry point |
+| `StrategyIntentDto` | `src/TradingApp.Application/StrategyAuthoring/Models/StrategyIntentDto.cs` | Parsed config, confidence, assumptions, clarification |
 
----
+## Default Provider Shape
+
+The default configuration shape comes from `LlmOptions` in `src/TradingApp.Application/Abstractions/Configuration/LlmOptions.cs`.
+
+| Field | Default |
+|------|---------|
+| `Provider` | `Gemini` |
+| `BaseUrl` | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| `ModelName` | `gemini-2.0-flash` |
+| `TimeoutSeconds` | `30` |
+
+Runtime configuration can override those defaults in `appsettings.json`, but the interpreter is built around an OpenAI-compatible provider contract rather than a provider-specific SDK. The option-class defaults are still the right baseline for planning because they describe the interpreter's fallback contract even when environments override the model name.
 
 ## API Contract
 
-**Endpoint:** `POST /api/strategies/interpret` (rate-limited: 10 req/min/IP)
+The interpreter endpoint is `POST /api/strategies/interpret`.
 
-**Request:** `{ "text": "Buy ETH when RSI drops below 30 with 2% take profit" }` (max 500 chars)
+It accepts a short natural-language description and returns a `StrategyIntentDto` containing:
 
-**Response (200):** `StrategyIntentDto` with populated `StrategyConfig`, confidence score (0–1), assumptions list, and optional clarification message.
+- populated `StrategyConfig`
+- confidence score
+- assumptions list
+- optional clarification guidance
 
-**Error Responses:** 400 (empty/whitespace/too long input), 429 (rate limit exceeded with `Retry-After` header)
+The UI can then patch those values into the strategy builder and let the user confirm or edit them before saving.
 
----
+## Persistence Boundary
 
-## LLM Configuration
+When an interpreted strategy is saved, the original text is preserved in `StrategyConfig.Source.SourceText`. This makes the interpretation flow auditable and allows users to reopen and re-interpret the strategy later.
 
-Configured via `appsettings.json` section `Llm` (bound to `LlmOptions`):
+## Relationship To Other AI Systems
 
-| Field | Description |
-|-------|-------------|
-| `Provider` | Label (e.g. `"Gemini"`, `"Ollama"`) |
-| `BaseUrl` | OpenAI-compatible endpoint URL |
-| `ModelName` | Model identifier |
-| `ApiKey` | API key (required) |
-| `TimeoutSeconds` | HTTP timeout (default 30) |
+The interpreter should be understood as only one AI subsystem.
 
----
+### Strategy Reviewer
 
-## SourceText Persistence
+The review feature is separate from interpretation.
 
-When a strategy is saved after interpretation:
-- `StrategyConfig.Source.SourceText` stores the original user input
-- Frontend pre-loads `sourceText` when opening the strategy editor for re-interpretation
-- Persisted in the strategy revision history for audit
+| Component | Role |
+|-----------|------|
+| `IStrategyReviewer` / `StrategyReviewer` | Reviews saved strategy revisions |
+| `IReviewLlmClient` / `ReviewLlmClient` | Dedicated review client |
+| `LlmReviewOptions` | Separate review configuration |
+| `StrategyReviewPrompt` | Review-specific prompt |
+| `RequestStrategyReviewCommand` | CQRS entry point for review generation |
 
----
+### Market Context Provider
 
-## Frontend Integration
+The live/backtest context system is also separate.
 
-| Component | Purpose |
-|-----------|---------|
-| `nl-input-card` | Textarea with character counter, generate button, loading state |
-| `assumptions-panel` | Displays LLM assumptions with edit links to relevant form fields |
-| `confidence-badge` | Colour-coded confidence indicator with clarification warnings |
+| Component | Role |
+|-----------|------|
+| `ILlmContextClient` / `LlmContextClient` | Market-context LLM client |
+| `ILlmContextProvider` / `LlmContextProvider` | Prompt building and context parsing |
+| `MarketContextPrompt` | Market regime and event-risk prompt |
 
-Form population uses `patchValue()` and `ConditionFactoryService` to map `StrategyIntentDto.Config` into the reactive form. Confirm-before-overwrite dialog shown when re-interpreting over existing form values.
+See [17-llm-context-sentiment-architecture.md](17-llm-context-sentiment-architecture.md) for the broader three-client AI split and the runtime context flow.
 
----
+## Extending The Interpreter
 
-## Extending Interpretation
+When adding new strategy schema features:
 
-To add a new entry condition type (e.g., Bollinger Bands):
+1. Update the relevant enum or config model.
+2. Update `StrategyInterpreterPrompt` so the model can emit the new shape.
+3. Update serialization or polymorphic converters if needed.
+4. Update the Angular form-mapping logic.
+5. Add tests that cover both parsing and UI hydration.
 
-1. Add type to `EntryConditionType` enum and create typed params record
-2. Update `StrategyInterpreterPrompt.SystemPrompt` to document the new condition
-3. Update `EntryConditionParamsConverter` for polymorphic serialization
-4. Add condition factory method in `ConditionFactoryService` (frontend)
-5. Test via `StrategyInterpreterTests`
+## Related Knowledge
+
+- [12-strategy-customisation.md](12-strategy-customisation.md)
+- [13-strategy-config-schema.md](13-strategy-config-schema.md)
+- [17-llm-context-sentiment-architecture.md](17-llm-context-sentiment-architecture.md)
+
+## Future Recommendations
+
+- Add provider-specific validation and health reporting so users can see when interpretation failures are caused by model configuration rather than prompt quality.
+- Expand prompt examples for newer condition types and signal-mode strategies.
+- Consider storing interpretation diagnostics for failed generations so prompt tuning is easier over time.

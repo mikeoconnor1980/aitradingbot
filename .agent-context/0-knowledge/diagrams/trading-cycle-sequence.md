@@ -1,84 +1,83 @@
-## `0 Knowledge/diagrams/trading-cycle-sequence.md`
-```md
-# AITradingBot - Trading Cycle Sequence
+# TradingApp - Trading Cycle Sequence
+
+This sequence reflects the current worker-driven live trading loop and the control path used by the API to start and stop that loop.
 
 ```mermaid
 sequenceDiagram
     autonumber
 
-    participant MDS as Market Data Service
+    participant UI as Browser UI
+    participant API as TradingApp.Api
+    participant ACI as AgentCheckInService
+    participant TS as TradingSession
+    participant WS as HyperliquidWebSocketClient
+    participant CB as CandleBuilder
     participant CC as CandleClock
     participant SS as StrategyScheduler
-    participant ORCH as Bot Orchestrator
-    participant SE as Strategy Engine
-    participant AI as AI/LLM Support (Optional)
-    participant RM as Risk Manager
-    participant PM as Portfolio/Position Manager
-    participant EXE as Execution Engine
-    participant EX as Exchange Connector
-    participant DB as State & Orders Store
-    participant LOG as Decision Log / Observability
+    participant GC as GridController
+    participant SC as SignalController
+    participant RM as LiveRiskEngine
+    participant PM as LivePositionManager
+    participant EXE as LiveExecutionEngine
+    participant EX as Hyperliquid
+    participant DB as TradingAppDbContext
+    participant AI as ILlmContextClient (Optional)
 
-    Note over MDS,LOG: One full cycle begins when a market candle is considered complete
+    UI->>API: Start trading command
 
-    MDS->>CC: New market data arrives
-    CC->>CC: Validate timeframe boundary\nand confirm candle is closed
-    CC-->>SS: CandleClosed(symbol, timeframe, closeTime)
-
-    SS->>SS: Resolve eligible strategies\nfor symbol/timeframe/tenant
-    SS-->>ORCH: RunStrategy(strategyId, marketContext)
-
-    ORCH->>DB: Load bot state / open positions / config
-    DB-->>ORCH: Current state snapshot
-
-    ORCH->>SE: Evaluate strategy with closed candle + context
-    SE->>SE: Calculate indicators / features
-
-    opt Optional AI enrichment
-        SE->>AI: Request contextual enrichment / scoring
-        AI-->>SE: AI signal context
+    loop Heartbeat every 5 seconds
+        ACI->>API: POST /api/agent/heartbeat
+        API-->>ACI: HeartbeatResponse(PendingCommands = Start/Stop/...)
     end
 
-    SE-->>ORCH: Proposed signal\n(Buy / Sell / Exit / Hold)
+    API-->>ACI: Start command delivered in heartbeat response
+    ACI->>TS: CreateSession(config) and start runtime
 
-    ORCH->>LOG: Record raw strategy decision
-    ORCH->>RM: Check risk on proposed signal
+    TS->>WS: Connect to Hyperliquid trades stream
+    WS-->>CB: Trade tick
+    CB->>CB: Bucket tick into 15m / 1h / 4h accumulators
 
-    RM->>DB: Read limits, exposure, cooldowns,\nopen orders, drawdown state
-    DB-->>RM: Risk context
-    RM->>PM: Check current portfolio / position exposure
-    PM-->>RM: Position summary
-
-    alt Signal blocked by risk
-        RM-->>ORCH: Rejected(reason)
-        ORCH->>LOG: Record rejection reason
-        ORCH-->>SS: Strategy cycle complete - no trade
-    else Signal approved
-        RM-->>ORCH: Approved(order intent)
-        ORCH->>PM: Build desired position transition
-        PM-->>ORCH: Execution plan\n(open / add / reduce / close)
-
-        ORCH->>EXE: Execute approved plan
-        EXE->>EXE: Normalize order sizes,\nprices, slippage, precision rules
-        EXE->>EX: Place / amend / cancel order(s)
-
-        EX-->>EXE: Order acknowledgement
-        EXE->>LOG: Record submitted order event
-        EXE->>DB: Persist order intent + ack
-
-        alt Immediate fill or partial fill received
-            EX-->>EXE: Fill / partial fill event
-            EXE->>PM: Apply fill to position state
-            PM->>DB: Persist updated position / PnL / exposure
-            EXE->>LOG: Record fill event
-        else Order remains working
-            EX-->>EXE: Working order status
-            EXE->>DB: Persist open order state
-            EXE->>LOG: Record working status
-        end
-
-        EXE-->>ORCH: Execution result
-        ORCH->>DB: Persist cycle outcome / heartbeat / timestamps
-        ORCH->>LOG: Record completed trading cycle
-        ORCH-->>SS: Strategy cycle complete
+    alt First tick of next bucket arrives
+        CB->>DB: Persist confirmed Candle
+        CB->>CC: ProcessCandleAsync(confirmed candle)
+        CC-->>SS: HandleCandleClosedAsync
     end
+
+    SS->>DB: Load GridCycle, LiveOrder, LiveFill state
+
+    opt Optional live context enrichment
+        SS->>AI: Request market-context overlay
+        AI-->>SS: Context snapshot / derived regime
+    end
+
+    alt StrategyMode = Grid
+        SS->>GC: ProcessAsync(evaluation, context, gridState)
+        GC-->>SC: TradingSignal[]
+    else StrategyMode = Signal
+        SS->>SC: ProcessAsync(evaluation, context, gridState, positionState)
+    end
+
+    Note over GC,SC: SignalController is the final signal boundary before risk and execution.
+
+    SC->>RM: ValidateAsync(signals, context)
+
+    alt Signals blocked
+        RM-->>SS: Rejected signals / reasons
+        SS->>DB: Persist state updates only
+    else Signals approved
+        RM-->>SC: Approved TradingSignal[]
+        SC->>PM: ExecuteSignalsAsync(approved signals)
+        PM->>EXE: Place / cancel / amend orders
+        EXE->>EX: Signed REST /exchange request
+        EX-->>EXE: Ack / fill / order status
+        EXE->>DB: Persist LiveOrder / LiveFill / GridCycle changes
+    end
+
+    EX-->>TS: userEvents stream updates
+    TS->>DB: Reconcile fills and position state
+```
+
+## Future Recommendations
+
+- Add a companion sequence for agent update rollout through `UpdateCheckerService`.
+- Add a separate failure-path diagram for reconnects, kill-switch shutdown, and command retry behavior.

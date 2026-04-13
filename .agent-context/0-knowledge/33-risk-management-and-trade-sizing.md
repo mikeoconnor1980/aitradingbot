@@ -1,3 +1,310 @@
+# Risk Management And Trade Sizing
+
+This document describes the current risk-management model as implemented in the strategy, live-trading, and backtesting pipelines. Several items that were previously described as proposed are now active in code, especially portfolio-heat enforcement and drawdown-tier scaling.
+
+## Core Concept: R
+
+R is the dollar amount risked on a trade.
+
+```
+R = AccountEquity * RiskPerTradePercent
+```
+
+When `PositionSizeType = RiskBased`, position sizing is derived from R and the stop-loss distance rather than from a fixed notional amount.
+
+## Position Sizing Modes
+
+`PositionSizeType` currently supports:
+
+| Mode | Behavior |
+|------|----------|
+| `PercentWallet` | Uses a percentage of equity as notional |
+| `FixedNotional` | Uses a fixed USD notional |
+| `RiskBased` | Uses stop-loss distance plus `RiskPerTradePercent` to derive notional |
+
+`PositionSizeResolver` in `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` is the shared helper for these calculations.
+
+### ResolveInitialR
+
+`PositionSizeResolver.ResolveInitialR(risk, accountEquity)` computes the initial dollar R for `RiskBased` strategies and returns `null` for other sizing modes.
+
+That value is captured by the trading pipeline so backtests and live trading can reason about the original risk taken on a position.
+
+## Risk Engine Roles
+
+The codebase now has three meaningful `IRiskEngine` implementations or modes.
+
+| Engine | Location | Purpose |
+|--------|----------|---------|
+| `LiveRiskEngine` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Production enforcement for live entries |
+| `BacktestRiskEngine` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Replay-time enforcement of heat and drawdown limits |
+| `PassThroughRiskEngine` | `src/TradingApp.Application/Trading/Services/PassThroughRiskEngine.cs` | No-op implementation for contexts that do not need enforcement |
+
+`PassThroughRiskEngine` is useful for non-live or simpler orchestration contexts, but the main live and backtest paths both use active enforcement engines.
+
+## Implemented IRiskEngine Surface
+
+`IRiskEngine` now exposes more than just `ValidateAsync`.
+
+| Member | Purpose |
+|--------|---------|
+| `ValidateAsync(...)` | Approves or blocks signals |
+| `RecordLoss(...)` | Updates rolling loss tracking |
+| `RecordOrdersPlaced(...)` | Tracks active open-order count |
+| `RecordOrdersClosed(...)` | Reduces tracked active-order count |
+| `UpdatePortfolioState(decimal equity)` | Refreshes current equity for heat and drawdown checks |
+| `UpdateDrawdownState(decimal scalingFactor, bool isHalted)` | Applies scheduler-computed drawdown state |
+| `DrawdownScalingFactor` | Current risk multiplier, default `1.0` |
+| `IsDrawdownCircuitBreakerTripped` | Whether drawdown has halted new entries |
+| `RecordPositionOpened(symbol, riskUsd)` | Tracks active symbol-level risk |
+| `RecordPositionClosed(symbol)` | Removes symbol-level risk tracking |
+
+## Portfolio Heat: Implemented
+
+Portfolio heat is no longer a proposed idea. It is implemented in both configuration and enforcement logic.
+
+| Element | Location | Purpose |
+|---------|----------|---------|
+| `RiskLimitsConfig.MaxPortfolioHeatPercent` | `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` | Configured maximum total open risk as a percent of equity |
+| `LiveRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Blocks new live entries that would exceed heat |
+| `BacktestRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Applies the same concept during replay |
+
+The default configuration in the application settings is 6 percent.
+
+## Drawdown Tiers: Implemented
+
+Drawdown-tier scaling is also implemented, not merely planned.
+
+`RiskLimitsConfig.DrawdownTiers` defines thresholds and scaling factors. The scheduler evaluates current equity against the strategy high-water mark, then updates the risk engine.
+
+Current live-engine state includes:
+
+- `DrawdownScalingFactor`
+- `IsDrawdownCircuitBreakerTripped`
+- internal drawdown-tracking state that reduces or halts new entries
+
+Backtests apply the same concept through `BacktestRiskEngine`, which means historical results now reflect drawdown-tier gating rather than ignoring it.
+
+## LiveRiskEngine Behavior
+
+`LiveRiskEngine` currently enforces:
+
+- max daily loss circuit breaker
+- max open orders
+- max order size
+- portfolio heat
+- drawdown-tier halts and scaling
+
+It also tracks live state through:
+
+- `RecordOrdersPlaced(int count)`
+- `RecordOrdersClosed(int count)`
+- `UpdatePortfolioState(decimal equity)`
+- `DrawdownScalingFactor`
+- `IsDrawdownCircuitBreakerTripped`
+
+The scheduler and fill-processing path call into these members so order count, equity, and drawdown state stay synchronized with trading activity.
+
+## How Drawdown Affects Position Sizing
+
+Drawdown scaling is not just informational. The strategy pipeline uses it when sizing new deployments.
+
+- `GridController` scales risk-based sizing and grid notional by `context.DrawdownScalingFactor`
+- `SignalController` scales signal-mode notional using the same factor
+- the risk engine can fully halt new entries when the drawdown circuit breaker trips
+
+This means a strategy can remain logically valid while still being prevented from adding new risk.
+
+## Leverage And R-Based Trading
+
+The leverage guidance remains aligned to the same R framework:
+
+- stop loss should be the primary exit
+- liquidation should be a backstop, not the intended loss-taking mechanism
+- isolated margin is required for proper risk containment in risk-based mode
+
+The execution side uses exchange leverage configuration before order placement, while the strategy side calculates the intended notional from risk and stop distance.
+
+## Backtesting And R Metrics
+
+Backtests now carry several R-oriented outputs in the result model, including:
+
+- `Expectancy`
+- `ProfitFactor`
+- `Sqn`
+- `KellyPercent`
+- `HalfKellyPercent`
+- `WinLossRRatio`
+
+Those metrics are review and optimization aids. They do not automatically reconfigure live risk settings.
+
+## Related Knowledge
+
+- [01-trading-strategy.md](01-trading-strategy.md)
+- [18-backtesting-architecture.md](18-backtesting-architecture.md)
+- [19-scheduling-architecture.md](19-scheduling-architecture.md)
+- [30-worker-execution-pipeline.md](30-worker-execution-pipeline.md)
+
+## Future Recommendations
+
+- Add Kelly Criterion guidance directly into operator workflows rather than exposing it only as a backtest metric.
+- Extend `PositionSizeResolver` to support volatility-scaled sizing where ATR contributes to initial stop distance and notional sizing.
+- Add partial-close logic at R milestones such as 1R, 2R, and 3R for strategies that want staged exits.
+- Persist richer R-multiple trade history such as `InitialR`, realized R, MFE, and MAE for every closed trade.
+- Add a System Quality Number workflow that helps compare strategies across different sample sizes and regimes.# Risk Management And Trade Sizing
+
+This document describes the current risk-management model as implemented in the strategy, live-trading, and backtesting pipelines. Several items that were previously described as proposed are now active in code, especially portfolio-heat enforcement and drawdown-tier scaling.
+
+## Core Concept: R
+
+R is the dollar amount risked on a trade.
+
+```
+R = AccountEquity * RiskPerTradePercent
+```
+
+When `PositionSizeType = RiskBased`, position sizing is derived from R and the stop-loss distance rather than from a fixed notional amount.
+
+## Position Sizing Modes
+
+`PositionSizeType` currently supports:
+
+| Mode | Behavior |
+|------|----------|
+| `PercentWallet` | Uses a percentage of equity as notional |
+| `FixedNotional` | Uses a fixed USD notional |
+| `RiskBased` | Uses stop-loss distance plus `RiskPerTradePercent` to derive notional |
+
+`PositionSizeResolver` in `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` is the shared helper for these calculations.
+
+### ResolveInitialR
+
+`PositionSizeResolver.ResolveInitialR(risk, accountEquity)` computes the initial dollar R for `RiskBased` strategies and returns `null` for other sizing modes.
+
+That value is captured by the trading pipeline so backtests and live trading can reason about the original risk taken on a position.
+
+## Risk Engine Roles
+
+The codebase now has three meaningful `IRiskEngine` implementations or modes.
+
+| Engine | Location | Purpose |
+|--------|----------|---------|
+| `LiveRiskEngine` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Production enforcement for live entries |
+| `BacktestRiskEngine` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Replay-time enforcement of heat and drawdown limits |
+| `PassThroughRiskEngine` | `src/TradingApp.Application/Trading/Services/PassThroughRiskEngine.cs` | No-op implementation for contexts that do not need enforcement |
+
+`PassThroughRiskEngine` is useful for non-live or simpler orchestration contexts, but the main live and backtest paths both use active enforcement engines.
+
+## Implemented IRiskEngine Surface
+
+`IRiskEngine` now exposes more than just `ValidateAsync`.
+
+| Member | Purpose |
+|--------|---------|
+| `ValidateAsync(...)` | Approves or blocks signals |
+| `RecordLoss(...)` | Updates rolling loss tracking |
+| `RecordOrdersPlaced(...)` | Tracks active open-order count |
+| `RecordOrdersClosed(...)` | Reduces tracked active-order count |
+| `UpdatePortfolioState(decimal equity)` | Refreshes current equity for heat and drawdown checks |
+| `UpdateDrawdownState(decimal scalingFactor, bool isHalted)` | Applies scheduler-computed drawdown state |
+| `DrawdownScalingFactor` | Current risk multiplier, default `1.0` |
+| `IsDrawdownCircuitBreakerTripped` | Whether drawdown has halted new entries |
+| `RecordPositionOpened(symbol, riskUsd)` | Tracks active symbol-level risk |
+| `RecordPositionClosed(symbol)` | Removes symbol-level risk tracking |
+
+## Portfolio Heat: Implemented
+
+Portfolio heat is no longer a proposed idea. It is implemented in both configuration and enforcement logic.
+
+| Element | Location | Purpose |
+|---------|----------|---------|
+| `RiskLimitsConfig.MaxPortfolioHeatPercent` | `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` | Configured maximum total open risk as a percent of equity |
+| `LiveRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Blocks new live entries that would exceed heat |
+| `BacktestRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Applies the same concept during replay |
+
+The default configuration in the application settings is 6 percent.
+
+## Drawdown Tiers: Implemented
+
+Drawdown-tier scaling is also implemented, not merely planned.
+
+`RiskLimitsConfig.DrawdownTiers` defines thresholds and scaling factors. The scheduler evaluates current equity against the strategy high-water mark, then updates the risk engine.
+
+Current live-engine state includes:
+
+- `DrawdownScalingFactor`
+- `IsDrawdownCircuitBreakerTripped`
+- internal drawdown-tracking state that reduces or halts new entries
+
+Backtests apply the same concept through `BacktestRiskEngine`, which means historical results now reflect drawdown-tier gating rather than ignoring it.
+
+## LiveRiskEngine Behavior
+
+`LiveRiskEngine` currently enforces:
+
+- max daily loss circuit breaker
+- max open orders
+- max order size
+- portfolio heat
+- drawdown-tier halts and scaling
+
+It also tracks live state through:
+
+- `RecordOrdersPlaced(int count)`
+- `RecordOrdersClosed(int count)`
+- `UpdatePortfolioState(decimal equity)`
+- `DrawdownScalingFactor`
+- `IsDrawdownCircuitBreakerTripped`
+
+The scheduler and fill-processing path call into these members so order count, equity, and drawdown state stay synchronized with trading activity.
+
+## How Drawdown Affects Position Sizing
+
+Drawdown scaling is not just informational. The strategy pipeline uses it when sizing new deployments.
+
+- `GridController` scales risk-based sizing and grid notional by `context.DrawdownScalingFactor`
+- `SignalController` scales signal-mode notional using the same factor
+- the risk engine can fully halt new entries when the drawdown circuit breaker trips
+
+This means a strategy can remain logically valid while still being prevented from adding new risk.
+
+## Leverage And R-Based Trading
+
+The leverage guidance remains aligned to the same R framework:
+
+- stop loss should be the primary exit
+- liquidation should be a backstop, not the intended loss-taking mechanism
+- isolated margin is required for proper risk containment in risk-based mode
+
+The execution side uses exchange leverage configuration before order placement, while the strategy side calculates the intended notional from risk and stop distance.
+
+## Backtesting And R Metrics
+
+Backtests now carry several R-oriented outputs in the result model, including:
+
+- `Expectancy`
+- `ProfitFactor`
+- `Sqn`
+- `KellyPercent`
+- `HalfKellyPercent`
+- `WinLossRRatio`
+
+Those metrics are review and optimization aids. They do not automatically reconfigure live risk settings.
+
+## Related Knowledge
+
+- [01-trading-strategy.md](01-trading-strategy.md)
+- [18-backtesting-architecture.md](18-backtesting-architecture.md)
+- [19-scheduling-architecture.md](19-scheduling-architecture.md)
+- [30-worker-execution-pipeline.md](30-worker-execution-pipeline.md)
+
+## Future Recommendations
+
+- Add Kelly Criterion guidance directly into operator workflows rather than exposing it only as a backtest metric.
+- Extend `PositionSizeResolver` to support volatility-scaled sizing where ATR contributes to initial stop distance and notional sizing.
+- Add partial-close logic at R milestones such as 1R, 2R, and 3R for strategies that want staged exits.
+- Persist richer R-multiple trade history such as `InitialR`, realized R, MFE, and MAE for every closed trade.
+- Add a System Quality Number workflow that helps compare strategies across different sample sizes and regimes.
 # Risk Management & Trade Sizing
 
 ## Overview

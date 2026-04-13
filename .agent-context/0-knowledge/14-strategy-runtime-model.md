@@ -1,223 +1,155 @@
 # Strategy Runtime Model
 
-This document defines how strategies run inside the trading system.
+This document describes the implemented runtime path from a persisted strategy record to candle-close execution. The current model is centered on a single user session running a pre-deserialized `IStrategyConfig` through a shared evaluation pipeline.
 
-The runtime model separates:
+## Runtime Layers
 
-Strategy definition  
-Strategy configuration  
-Strategy execution  
-Strategy performance tracking
-
----
-
-# Key Concepts
-
-Strategy Plugin
-
-Implemented in C# as a class that implements:
-
-ITradingStrategy
-
-Example:
-
-GridStrategy
-
-Future strategies may include:
-
-TrendBreakoutStrategy  
-MeanReversionStrategy
-
----
-
-# Strategy
-
-Represents a user-created strategy instance.
-
-Fields:
-
-Id  
-Name  
-StrategyType  
-CreatedAt  
-IsActive  
-IsRunning (tracks live execution state; default false; prevents destructive operations like restore while true)
-
-Example:
-
-BTC Pullback Grid
-
-Multiple strategies may exist but typically only one is active.
-
-`Strategy.SetRunningState(bool)` updates the running flag; throws if setting `true` on an inactive strategy. Restore operations throw `ConflictException` (HTTP 409) when `IsRunning` is true.
-
-Note: `IsRunning` is a stub in the POC phase — the worker does not yet update this property.
-
----
-
-# StrategyConfig
-
-JSON configuration stored in the database column `StrategyConfig.ConfigJson`.
-At runtime, the JSON is deserialized into `TradingApp.Application.StrategyAuthoring.Models.StrategyConfig`
-using `StrategyJsonOptions.Default` and passed through the pipeline as `IStrategyConfig`.
-
-Key top-level fields used at runtime:
-- `strategyMode` — discriminator (`grid` or `signal`)
-- `market` — trading symbol
-- `grid` — grid parameters (GridConfig)
-- `exit` — take profit and stop loss rules (ExitConfig)
-- `risk` — leverage, sizing, cooldown (RiskConfig)
-- `entryConditions` — typed entry conditions for signal mode
-
-See [Strategy Config Schema](13-strategy-config-schema.md) for full schema and sub-model reference.
-
----
-
-# ActiveStrategy
-
-At runtime the worker loads active strategies for all active subscribers.
-
-Execution flow:
-
-Worker Start  
-↓  
-Load all active subscribers  
-↓  
-For each subscriber:  
-  Load ActiveStrategy  
-  ↓  
-  Load StrategyConfig JSON  
-  ↓  
-  Instantiate Strategy Plugin  
-  ↓  
-  Execute Strategy (using subscriber's keys)
-
----
-
-# StrategyRun
-
-Represents one runtime execution period for a strategy.
-
-Fields:
-
-UserId  
-StrategyId  
-StartTime  
-EndTime  
-Status
-
-Example status:
-
-Running  
-Stopped  
-Error
-
----
-
-# StrategyPerformance
-
-Stores performance metrics for each strategy.
-
-Fields:
-
-UserId  
-StrategyId  
-TotalTrades  
-WinRate  
-TotalPnL  
-MaxDrawdown  
-AverageTrade
-
-These metrics allow comparison between strategy versions.
-
----
-
-# Strategy Versioning
-
-Users may create multiple versions of the same strategy.
-
-Example:
-
-BTC Pullback Grid v1  
-BTC Pullback Grid v2  
-BTC Pullback Grid v3
-
-Only one version is active at a time.
-
-This allows experimentation without losing historical results.
-
----
-
-# Runtime Execution Loop
-
-Worker execution loop (runs per subscriber on candle close):
-
-Update Market Data (shared)  
-↓  
-Calculate Indicators (shared)  
-↓  
-For each active subscriber:  
-  Load StrategyConfig  
-  ↓  
-  Execute Strategy Plugin  
-  ↓  
-  Generate Signals  
-  ↓  
-  Risk Engine Validation  
-  ↓  
-  Order Execution (using subscriber's keys)
-
----
-
-# Strategy Safety
-
-The strategy plugin never bypasses the risk engine.
-
-All orders must pass:
-
-Max exposure limits  
-Daily loss limits  
-Leverage limits
-
-Risk enforcement happens after signals are generated.
-
-Per-user risk limits are applied.
-Platform-level risk limits are applied on top of per-user limits.
-
----
-
-# Pipeline Interfaces
-
-The execution pipeline is defined by thin interfaces in `src/TradingApp.Application/Abstractions/Services/`.
-All of these are shared between live trading and backtesting:
-
-| Interface | Key Method(s) | Purpose |
-|-----------|--------------|----------|
-| `IStrategyEngine` | `EvaluateAsync(MarketContext, IStrategyConfig) → StrategyEvaluation` | Detects valid setups |
-| `IMarketContextBuilder` | `UpdateIndicators(Candle)` + `Build(trigger, 1h?, 4h?) → MarketContext` | Builds shared market context |
-| `IGridController` | `ProcessAsync(evaluation, context, gridState, positionState, IStrategyConfig) → IReadOnlyList<TradingSignal>` | Grid lifecycle + signal emission |
-| `IRiskEngine` | `ValidateAsync(signals)`; `UpdatePortfolioState(equity)`; `RecordPositionClosed(symbol)` | Filters signals against risk limits; tracks portfolio equity and per-symbol risk for portfolio heat enforcement |
-| `IPositionManager` | `ExecuteSignalsAsync(approvedSignals)` | Routes approved signals to `IExecutionEngine` |
-| `IExecutionEngine` | `PlaceOrderAsync`, `CancelOrderAsync`, `CancelAllOrdersAsync` | Execution boundary (live vs. simulated) |
-
-Key model types in `src/TradingApp.Application/Trading/Models/`:
-
-| Model | Key Properties |
+| Layer | Responsibility |
 |-------|----------------|
-| `MarketContext` | `Symbol`, `TimestampUtc`, `CurrentCandle`, `LatestOneHourCandle?`, `LatestFourHourCandle?`, `Indicators` |
-| `StrategyEvaluation` | `SetupDetected` (bool), `Reason` (string?) |
-| `IndicatorSnapshot` | `EmaFast`, `EmaSlow`, `EmaTrend`, `Rsi`, `Atr` |
-| `GridState` | `Lifecycle` (GridLifecycle), `GridCycleId?`, `FilledLevels`, `TotalLevels` |
-| `PositionState` | `Symbol`, `Size`, `AverageEntryPrice`, `UnrealisedPnL`, `IsOpen` |
-| `OrderRequest` | `Symbol`, `Side` (OrderSide), `OrderType`, `Price`, `Size`, `TradeType`, `ClientOrderId?` |
+| Domain | `Strategy` stores config JSON, active/running flags, and `HighWaterMarkUsd` |
+| Authoring | `StrategyConfig` is the concrete JSON model implementing `IStrategyConfig` |
+| Scheduling | `StrategyScheduler` builds context and orchestrates evaluation |
+| Strategy evaluation | `IStrategyEngine` decides whether a setup exists |
+| Signal emission | `IGridController` or `ISignalController` converts evaluation into `TradingSignal` payloads |
+| Risk | `IRiskEngine` validates signals and tracks portfolio state |
+| Execution | `IPositionManager` forwards approved signals to `IExecutionEngine` |
 
----
+## Strategy Entity Runtime State
 
-# Future Extensions
+The `Strategy` entity currently stores:
 
-Possible future improvements:
+| Field | Runtime Use |
+|-------|-------------|
+| `Id` | Identity for repositories and revisioning |
+| `UserId` | Tenant scope |
+| `Name` | Display name |
+| `StrategyType` | High-level category label |
+| `ConfigJson` | Serialized strategy configuration |
+| `Version` | Revision counter |
+| `IsActive` | Soft-delete and availability flag |
+| `IsRunning` | Write guard for some operations such as restore |
+| `HighWaterMarkUsd` | Persisted drawdown high-water mark |
 
-Multi-strategy execution  
-Strategy portfolio management  
-A/B strategy testing  
-Automated strategy optimisation
+`Strategy.UpdateHighWaterMark(decimal)` persists the latest high-water mark so drawdown scaling can survive worker restarts.
+
+The earlier `StrategyRun` and `StrategyPerformance` entities described in planning docs do not exist in the current codebase.
+
+## Strategy Config at Runtime
+
+The scheduler takes `IStrategyConfig` directly. It does not accept raw JSON in its constructor.
+
+Deserialization happens before scheduler creation, typically during session setup. The runtime then treats the config as a typed contract with mode-specific behavior.
+
+See [13-strategy-config-schema.md](13-strategy-config-schema.md) for the schema and [12-strategy-customisation.md](12-strategy-customisation.md) for persistence/versioning behavior.
+
+## Execution Flow
+
+The implemented runtime loop is:
+
+1. Candle close event reaches `StrategyScheduler`.
+2. `IMarketContextBuilder.BuildAsync(...)` builds `MarketContext`.
+3. Scheduler resolves account equity and applies drawdown state.
+4. `IStrategyEngine.EvaluateAsync(...)` returns `StrategyEvaluation`.
+5. Scheduler routes to `ISignalController` for signal mode or `IGridController` for grid mode.
+6. `IRiskEngine.ValidateAsync(...)` filters emitted signals.
+7. `IPositionManager.ExecuteSignalsAsync(...)` places orders through the execution engine.
+
+## Core Interfaces
+
+The runtime depends on these shared abstractions in `src/TradingApp.Application/Abstractions/Services/`.
+
+| Interface | Key Members | Purpose |
+|-----------|-------------|---------|
+| `IStrategyEngine` | `EvaluateAsync(MarketContext, IStrategyConfig, CancellationToken)` | Detect setup conditions |
+| `IMarketContextBuilder` | `UpdateIndicators(Candle)`, two `Build(...)` overloads, `BuildAsync(...)` | Produce market context and indicator state |
+| `IGridController` | `ProcessAsync(...)` | Grid-mode signal generation and lifecycle management |
+| `ISignalController` | `ProcessAsync(...)` | Signal-mode entry and exit signal generation |
+| `IRiskEngine` | `ValidateAsync(...)`, `UpdatePortfolioState(...)`, `UpdateDrawdownState(...)`, `RecordPositionOpened(...)`, `RecordPositionClosed(...)` | Enforce risk, circuit breakers, and portfolio heat |
+| `IPositionManager` | `ExecuteSignalsAsync(...)` | Convert approved signals into orders |
+| `IExecutionEngine` | Order placement and cancellation methods | Execution boundary for live and backtest |
+
+### `IMarketContextBuilder`
+
+The current interface has:
+
+- `Build(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle)`
+- `Build(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle, IReadOnlyList<IndicatorRequirement>? requiredIndicators)`
+- `BuildAsync(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle, IReadOnlyList<IndicatorRequirement>? requiredIndicators, CancellationToken cancellationToken = default)`
+
+`BuildAsync` is the important runtime entry point because it supports asynchronous enrichment such as LLM context.
+
+### `IRiskEngine`
+
+The drawdown-aware risk engine contract now includes more than simple validation:
+
+| Member | Purpose |
+|--------|---------|
+| `ValidateAsync(...)` | Approves or blocks signals |
+| `UpdatePortfolioState(decimal accountEquity)` | Keeps equity current |
+| `UpdateDrawdownState(decimal scalingFactor, bool isHalted)` | Applies scheduler-computed drawdown gating |
+| `DrawdownScalingFactor` | Exposes current scaling factor |
+| `IsDrawdownCircuitBreakerTripped` | Indicates drawdown halt state |
+| `RecordPositionOpened(string symbol, decimal riskUsd)` | Tracks portfolio heat |
+| `RecordPositionClosed(string symbol)` | Removes tracked heat on close |
+| `RecordLoss(decimal lossUsd)` | Rolling loss/circuit-breaker input |
+| `RecordOrdersPlaced(int count)` and `RecordOrdersClosed(int count)` | Open-order tracking |
+
+## Runtime Models
+
+Important runtime state models include:
+
+| Model | Key Runtime Fields |
+|-------|--------------------|
+| `MarketContext` | Trigger candle, optional 1h/4h candles, indicators, account equity, drawdown scaling, LLM context |
+| `StrategyEvaluation` | `SetupDetected`, `Reason`, optional regime/filter data |
+| `GridState` | Lifecycle, cycle id, fill counts, ATR-at-entry, trailing-stop state, protection-order state |
+| `PositionState` | Symbol, size, average entry, PnL, open/closed state |
+| `TradingSignal` | `SignalType`, `Symbol`, `Reason`, and parameter bag |
+
+## Strategy Scheduler Runtime Model
+
+`StrategyScheduler` is the concrete runtime coordinator. Its constructor currently accepts:
+
+- `IMarketContextBuilder`
+- `IStrategyEngine`
+- `IGridController`
+- `IRiskEngine`
+- `IPositionManager`
+- `IStrategyConfig`
+- optional trigger timeframe
+- optional audit collector
+- optional `ISignalController`
+- `initialCapital`
+- optional `BacktestExecutionContextAccessor`
+- optional shared `GridState`
+- optional drawdown tiers
+- optional `Strategy`
+- optional `IStrategyRepository`
+
+The important distinction is that it receives a resolved config object and optional supporting runtime state, not a raw config JSON string.
+
+## Drawdown and High-Water Mark Flow
+
+Drawdown handling now sits directly in the scheduler:
+
+1. Resolve account equity from live position state or simulated backtest equity.
+2. Compare it against the stored or inferred high-water mark.
+3. Call `DrawdownEvaluator.Evaluate(...)` with configured tiers.
+4. Write the resulting scaling factor onto `MarketContext`.
+5. Call `IRiskEngine.UpdateDrawdownState(...)`.
+6. Persist `Strategy.HighWaterMarkUsd` through `IStrategyRepository` when a new high-water mark is reached.
+
+This is one of the major differences from older docs that treated the risk layer as a passive validator.
+
+## Fan-Out Model
+
+The current worker is not a multi-subscriber fan-out engine in one scheduler instance. The runtime model is effectively one `StrategyScheduler` per user session in the worker/control-plane architecture.
+
+That matters for planning because shared state such as `GridState`, `PositionState`, and `HighWaterMarkUsd` is session-local, not globally multiplexed inside a single scheduler.
+
+## Future Recommendations
+
+- Add explicit runtime session persistence if the product needs durable execution-session history.
+- Introduce stronger typed signal contracts instead of string `SignalType` values.
+- Add first-class interfaces for scheduler orchestration if external implementations are needed.
+- Expand scheduler telemetry around high-water mark updates and drawdown transitions.

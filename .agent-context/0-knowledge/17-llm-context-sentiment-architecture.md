@@ -1,200 +1,169 @@
-# LLM Context & Sentiment Architecture
+# LLM Context And Sentiment Architecture
 
-The system supports three complementary LLM integration patterns:
+The platform uses three separate LLM integrations, each with a different interface, configuration section, and runtime responsibility. This document covers the market-context path, where AI augments regime classification and narrative context but never places trades or bypasses the risk pipeline.
 
-1. **LLM as Context Provider** (this document) — Generates qualitative market signals (sentiment, macro regime, event risk); influences risk behaviour
-2. **LLM as Strategy Interpreter** (see [Strategy Interpreter Architecture](24-strategy-interpreter-architecture.md)) — Converts natural language strategy descriptions to executable `StrategyConfig`; runs on-demand during strategy authoring
-3. **LLM as Strategy Reviewer** — Provides critical feedback on saved strategy revisions; independent LLM configuration; on-demand per-revision analysis
+## LLM Integration Modes
 
-All three patterns use OpenAI-compatible HTTP clients (in `TradingApp.AI`) to support multiple LLM providers (Gemini, Ollama, OpenAI, etc.).
+| Capability | Interface | Primary implementation | Config section | Purpose |
+|------------|-----------|------------------------|----------------|---------|
+| Strategy interpretation | `ILlmClient` | `OpenAiCompatibleLlmClient` | `Llm` | Convert natural language into `StrategyConfig` |
+| Strategy review | `IReviewLlmClient` | `ReviewLlmClient` | `LlmReview` | Critique saved strategy revisions |
+| Market context | `ILlmContextClient` | `LlmContextClient` | `LlmContext` | Produce qualitative market context and regime guidance |
 
----
+All three use the OpenAI-compatible HTTP protocol implemented in `src/TradingApp.AI`, but they are configured and registered independently so one feature can be enabled without forcing the others to share a model or runtime profile.
 
-This document describes how an LLM can be integrated into the trading system as a contextual signal provider.
+The important runtime rule is that the live trading path does not depend on an external LLM being available. `SyntheticRegimeProvider` remains the always-on classifier, and the market-context LLM is an optional overlay.
 
-The LLM is used to generate qualitative market context such as sentiment, macro regime classification, and event risk levels.
+## Purpose
 
-It should never be responsible for placing trades directly.
+The market-context pipeline enriches `MarketContext` with:
 
-Instead, it augments the MarketContext used by the strategy engine.
+- market sentiment
+- macro regime narrative
+- event-risk classification
+- derived trading regime
+- human-readable summary text
 
----
+The trading system still enters and exits only through `IStrategyEngine`, `IGridController`, `ISignalController`, `IRiskEngine`, and `IPositionManager`.
 
-# Purpose
+## Context Model
 
-The goal of LLM integration is to provide:
+`LlmContext` lives in `src/TradingApp.Application/Trading/Models/LlmContext.cs`.
 
-• Market sentiment classification  
-• Macro regime detection  
-• Event risk identification  
-• Human-readable explanations for strategy decisions  
+| Field | Type | Notes |
+|------|------|-------|
+| `MarketSentiment` | `string` | Qualitative market tone such as Bullish, Bearish, or Neutral |
+| `MacroRegime` | `string` | Narrative regime string. Current prompt constrains this to `Bullish`, `Bearish`, or `Neutral` |
+| `EventRisk` | `string` | Qualitative event-risk label such as Low, Medium, or High |
+| `Confidence` | `decimal` | Model confidence score |
+| `DerivedRegime` | `MarketRegime` | Primary regime used by strategy gating: `Aggressive`, `Normal`, `Defensive`, `RiskOff` |
+| `Summary` | `string` | Free-text explanation |
+| `GeneratedAtUtc` | `long` | Unix milliseconds, not `DateTime` |
 
-This information can influence strategy behaviour and risk management.
+`DerivedRegime` is the important field for execution. `GridStrategyEngine` uses `context.LlmContext?.DerivedRegime ?? MarketRegime.Normal` when deciding whether setups are tradable.
 
----
+## Runtime Flow
 
-# Architecture Position
+```
+Indicators -> SyntheticRegimeProvider -> optional ILlmContextProvider -> MarketContext
+          -> StrategyEngine -> GridController / SignalController -> RiskEngine
+```
 
-Pipeline:
+In practice the flow works like this:
 
-MarketData
-→ Indicators
-→ MarketContextBuilder
-→ LlmContextProvider
-→ StrategyEngine
-→ Signals
-→ RiskEngine
-→ PositionManager
-→ ExecutionEngine
+1. `LiveMarketContextBuilder` and `BacktestMarketContextBuilder` compute indicator state.
+2. `SyntheticRegimeProvider` always evaluates a baseline `LlmContext`.
+3. If an `ILlmContextProvider` is available, live mode can ask it for richer context and optional macro-event interpretation.
+4. If the LLM call fails or no provider is registered, the synthetic result remains authoritative.
+5. The final `LlmContext` is attached to `MarketContext` and consumed by the strategy pipeline.
 
-The LLM provides context, not trading instructions.
+## SyntheticRegimeProvider Is The Primary Classifier
 
----
+`SyntheticRegimeProvider` in `src/TradingApp.Application/Trading/Services/SyntheticRegimeProvider.cs` is the always-available regime classifier.
 
-# LLM Context Model
+It is rule-based and derives regime from the indicator snapshot, including:
 
-Example data model:
+- EMA stack alignment
+- ATR percentile and volatility state
+- RSI context
 
-public class LlmContext
-{
-    public string MarketSentiment { get; set; } = "Neutral";
-    public string MacroRegime { get; set; } = "Neutral";
-    public string EventRisk { get; set; } = "Low";
-    public decimal Confidence { get; set; }
-    public string Summary { get; set; } = "";
-    public DateTime GeneratedAtUtc { get; set; }
-}
+This means the system does not depend on an external LLM to classify markets. The synthetic provider is the default runtime path in both backtest and live execution, with the LLM acting as an optional overlay.
 
----
+## LLM Context Client Architecture
 
-# Example Output
+| Client | Location | Request characteristics |
+|--------|----------|-------------------------|
+| `OpenAiCompatibleLlmClient` | `src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs` | Strategy interpretation, OpenAI-compatible chat completions |
+| `ReviewLlmClient` | `src/TradingApp.AI/Services/ReviewLlmClient.cs` | Uses `LlmReviewOptions`, `Temperature = 0.4`, text response |
+| `LlmContextClient` | `src/TradingApp.AI/Services/LlmContextClient.cs` | Uses `LlmContextOptions`, `Temperature = 0.2`, JSON response |
 
-{
-  "marketSentiment": "Bearish",
-  "macroRegime": "RiskOff",
-  "eventRisk": "High",
-  "confidence": 0.81,
-  "summary": "Risk sentiment is weak due to macro uncertainty and elevated event risk."
-}
+The context-specific provider stack is:
 
----
+| Component | Purpose |
+|-----------|---------|
+| `ILlmContextClient` / `LlmContextClient` | Raw OpenAI-compatible market-context HTTP client |
+| `ILlmContextProvider` / `LlmContextProvider` | Builds prompts, sends requests, parses JSON, normalizes output |
+| `MarketContextPrompt` | Constrains the expected JSON schema and allowed values |
+| `MacroEventListItemDto` | Optional upcoming macro-event context passed into the prompt |
 
-# How Strategies Use It
+`LlmContextProvider.GetContextAsync` accepts optional `IReadOnlyCollection<MacroEventListItemDto>` so upcoming calendar events can be embedded in the context request.
 
-Strategies should treat the LLM output as a modifier rather than a signal.
+## Data Sources: Implemented Vs Aspirational
 
-Examples:
+The current implementation primarily sends indicator-derived inputs and optional macro-calendar events.
 
-If EventRisk == High:
-    Disable new entries
+### Implemented Inputs
 
-If MacroRegime == RiskOff:
-    Reduce position size
+- `EmaFast`
+- `EmaSlow`
+- `EmaTrend`
+- `Rsi`
+- `Atr`
+- optional macro-calendar events from the macro calendar services
 
-If MarketSentiment == Bullish:
-    Allow full position size
+### Not Yet Wired
 
----
+- crypto news feeds
+- social sentiment feeds
+- curated commentary pipelines
+- external multi-source market intelligence aggregation
 
-# Strategy Modes
+Those remain future work and should not be treated as live dependencies of the current system.
 
-LLM context can map to strategy modes:
+## Registration Patterns
 
-Aggressive  
-Normal  
-Defensive  
-RiskOff
+There are two registration patterns in the codebase today.
 
-Example mapping:
+### API Host
 
-Bullish sentiment + low event risk → Aggressive  
-Neutral sentiment → Normal  
-Bearish sentiment → Defensive  
-High event risk → RiskOff  
+`TradingApp.Api` calls `builder.Services.AddAI(builder.Configuration)`, which wires all three AI clients and registers `ILlmContextProvider` through the shared AI extension.
 
-These modes influence parameters such as:
+### Worker Host
 
-• position size multiplier  
-• grid spacing  
-• hedge sensitivity  
+`TradingApp.Worker` uses conditional registration for the market-context provider. It only wires `ILlmContextClient` and `ILlmContextProvider` when the `LlmContext:ApiKey` setting is present. Otherwise:
 
----
+- no LLM context provider is registered
+- `LiveMarketContextBuilder` receives `null` for `ILlmContextProvider`
+- `SyntheticRegimeProvider` remains the active classifier
 
-# Data Sources
+That is the important runtime fallback behavior for live execution. The API host can still register the broader AI stack for control-plane features, but the Worker is where conditional registration matters for trading safety.
 
-Potential sources used by the LLM analysis service:
+## Persistence And Audit
 
-• crypto news feeds  
-• macroeconomic calendars  
-• social sentiment summaries  
-• curated market commentary  
+Live market-context snapshots are persisted through `LlmContextSnapshot` with the current fields:
 
-The system should preprocess inputs before sending them to the LLM.
+- `Symbol`
+- `MarketSentiment`
+- `MacroRegime`
+- `EventRisk`
+- `Confidence`
+- `Summary`
+- `DerivedRegime`
+- `GeneratedAtUtc`
 
----
+These snapshots support API queries, historical review, and operator visibility without giving the model any direct execution authority.
 
-# Update Frequency
+## Safety Rules
 
-LLM analysis should run periodically rather than continuously.
+The market-context LLM must not:
 
-Recommended cadence:
+- place trades
+- emit exchange actions
+- bypass `IRiskEngine`
+- override `SyntheticRegimeProvider` availability guarantees
 
-• every 15 minutes  
-• hourly  
-• on major news events  
+Its role is advisory context that influences regime-aware strategy behavior.
 
-The latest result is cached and injected into MarketContext.
+## Related Knowledge
 
----
+- [01-trading-strategy.md](01-trading-strategy.md)
+- [14-strategy-runtime-model.md](14-strategy-runtime-model.md)
+- [24-strategy-interpreter-architecture.md](24-strategy-interpreter-architecture.md)
+- [28-macro-calendar.md](28-macro-calendar.md)
 
-# Storage
+## Future Recommendations
 
-LLM outputs should be stored for audit and analysis.
-
-Example table:
-
-LlmSnapshots
-
-Fields:
-
-Id  
-MarketSentiment  
-MacroRegime  
-EventRisk  
-Confidence  
-Summary  
-GeneratedAtUtc  
-
----
-
-# UI Usage
-
-The dashboard can display the LLM summary to help explain system behaviour.
-
-Example:
-
-"Market sentiment is currently bearish due to macro uncertainty and elevated event risk."
-
----
-
-# Safety Guidelines
-
-The LLM should never:
-
-• place trades  
-• bypass risk checks  
-• override the risk engine  
-• generate direct exchange orders  
-
-It should only provide contextual signals that influence strategy behaviour.
-
----
-
-# Future Enhancements
-
-Possible future improvements:
-
-• sentiment trend detection  
-• multi-source sentiment aggregation  
-• AI-assisted grid optimisation  
-• macro regime forecasting
+- Add real crypto-news and social-sentiment inputs before describing the system as multi-source sentiment analysis.
+- Add multi-provider aggregation and confidence blending so the LLM context path is not tied to a single model response.
+- Track sentiment trend deltas over time instead of only storing point-in-time snapshots.
+- Add richer prompt inputs for volatility regimes, funding trends, and market breadth once those datasets are persisted.

@@ -111,3 +111,8 @@ stop-outs in volatile markets and tightening protection in calm markets.
 |---|---|
 | `tests/TradingApp.Indicators.Tests/IncrementalAtrTests.cs` | Matches batch calculator, null for insufficient data, step-by-step verification |
 | `tests/TradingApp.Indicators.Tests/AtrCalculatorTests.cs` | Known value checks, edge cases (empty bars, minimal data), series consistency |
+
+## Future Recommendations
+
+- Make the ATR period configurable per strategy once parameter-validation and migration implications are clearly defined.
+- Add explicit documentation for any future short-side trailing-stop behaviour once short execution is broadened beyond the current primary flow.

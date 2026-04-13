@@ -1,254 +1,195 @@
 # Strategy Configuration Schema
 
-The strategy configuration schema is defined by `StrategyConfig` in `src/TradingApp.Application/StrategyAuthoring/Models/StrategyConfig.cs`.
-It implements `IStrategyConfig` (Domain marker) and is the concrete representation stored as JSON in the `StrategyConfig.ConfigJson` database column.
-The schema is versioned (`SchemaVersion`) and extensible via the `StrategyMode` discriminator.
-
----
+`StrategyConfig` is the concrete JSON model stored in `Strategy.ConfigJson`. It implements `IStrategyConfig` and supports both grid-mode and signal-mode strategies through the `strategyMode` discriminator.
 
 ## Top-Level Structure
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `schemaVersion` | `int` | yes | Always `1` for v1 schemas |
-| `strategyMode` | `StrategyMode` enum | yes | Discriminator: `grid` or `signal` |
-| `strategyName` | `string` | yes | Human-readable name |
-| `exchange` | `string` | yes | Default `"Hyperliquid"` |
-| `market` | `string` | yes | Symbol (e.g. `"BTC"`) |
-| `timeframe` | `string` | yes | Trigger timeframe (default `"15m"`) |
-| `direction` | `Direction` enum | yes | `long` or `short` |
-| `enabled` | `bool` | yes | Whether strategy is active |
-| `templateId` | `string?` | no | Optional template link |
-| `grid` | `GridConfig?` | mode-dependent | Required when `strategyMode = grid` |
-| `trendFilter` | `TrendFilterConfig?` | no | Optional macro filter (not evaluated in v1) |
-| `entryLogic` | `EntryLogic` enum | no | `all` or `any` — applied to entry conditions |
-| `entryConditions` | `EntryConditionConfig[]?` | mode-dependent | Required when `strategyMode = signal` |
-| `exit` | `ExitConfig` | yes | Take profit and stop loss rules |
-| `risk` | `RiskConfig` | yes | Leverage, sizing, cooldown |
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `schemaVersion` | `int` | yes | Currently `1` |
+| `strategyMode` | `StrategyMode` | yes | `grid` or `signal` |
+| `strategyName` | `string` | yes | Display name |
+| `exchange` | `string` | yes | Default is Hyperliquid |
+| `market` | `string` | yes | Symbol code such as `BTC` |
+| `timeframe` | `string` | yes | Trigger timeframe, typically `15m` |
+| `direction` | `Direction` | yes | `long`, `short`, or `both` where applicable |
+| `enabled` | `bool` | yes | Active flag |
+| `templateId` | `string?` | no | Optional template reference |
+| `grid` | `GridConfig?` | mode-dependent | Required for grid mode |
+| `trendFilter` | `TrendFilterConfig?` | no | Used in signal mode when enabled |
+| `entryLogic` | `EntryLogic` | signal mode | `all` or `any` |
+| `entryConditions` | `EntryConditionConfig[]?` | signal mode | Required for signal mode |
+| `exit` | `ExitConfig` | yes | Take-profit and stop-loss configuration |
+| `risk` | `RiskConfig` | yes | Sizing, leverage, and cooldown |
 | `metadata` | `StrategyMetadata?` | no | Authoring metadata |
-| `source` | `SourceMetadata?` | no | Import/template provenance; includes original NL input if created via interpretation |
+| `source` | `SourceMetadata?` | no | Provenance including `StrategyEntryPoint` |
 
-All enums serialize as `snake_case_lower` strings.
+All strategy JSON uses `StrategyJsonOptions.Default`: camelCase property names and snake_case enum values.
 
----
+## Grid Mode Notes
 
-## Grid Mode Example
-
-```json
-{
-  "schemaVersion": 1,
-  "strategyMode": "grid",
-  "strategyName": "BTC Pullback Grid",
-  "exchange": "Hyperliquid",
-  "market": "BTC",
-  "timeframe": "15m",
-  "direction": "long",
-  "enabled": true,
-  "grid": {
-    "levels": 4,
-    "spacing": 0.35,
-    "entryMode": "auto_from_signal_candle",
-    "anchorPrice": null,
-    "breakdownThreshold": 0.02
-  },
-  "exit": {
-    "takeProfit": { "type": "percent_from_entry", "value": 0.8 },
-    "stopLoss": { "type": "percent_from_entry", "value": 2.0 },
-    "exitOnOppositeSignal": false
-  },
-  "risk": {
-    "positionSizeType": "percent_of_equity",
-    "positionSizeValue": 10,
-    "leverage": 3,
-    "maxOpenTrades": 1,
-    "cooldownValue": 30,
-    "cooldownUnit": "minutes",
-    "allowSameCandleReentry": false
-  }
-}
-```
-
----
-
-## Signal Mode Example
-
-```json
-{
-  "schemaVersion": 1,
-  "strategyMode": "signal",
-  "strategyName": "BTC RSI Signal",
-  "exchange": "Hyperliquid",
-  "market": "BTC",
-  "timeframe": "15m",
-  "direction": "long",
-  "enabled": true,
-  "entryLogic": "all",
-  "entryConditions": [
-    {
-      "id": "cond-1",
-      "enabled": true,
-      "type": "rsi",
-      "label": "RSI Oversold",
-      "params": {
-        "period": 14,
-        "operator": "lt",
-        "value": 40
-      }
-    }
-  ],
-  "exit": {
-    "takeProfit": { "type": "percent_from_entry", "value": 0.8 },
-    "stopLoss": { "type": "percent_from_entry", "value": 2.0 },
-    "exitOnOppositeSignal": false
-  },
-  "risk": {
-    "positionSizeType": "percent_of_equity",
-    "positionSizeValue": 10,
-    "leverage": 3,
-    "maxOpenTrades": 1,
-    "cooldownValue": 30,
-    "cooldownUnit": "minutes",
-    "allowSameCandleReentry": false
-  }
-}
-```
-
----
-
-## Sub-Model Reference
-
-### GridConfig
-
-`src/TradingApp.Application/StrategyAuthoring/Models/GridConfig.cs`
+`GridConfig` contains:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `levels` | `int` | Number of grid levels (≥ 1) |
+| `levels` | `int` | Number of ladder levels |
 | `spacing` | `decimal` | Percent spacing between levels |
-| `entryMode` | `string` | Schema value (e.g. `"auto_from_signal_candle"`); normalized to domain `EntryModes` at API boundary |
-| `anchorPrice` | `decimal?` | Used when `entryMode = "wait_for_limit_price"` |
-| `breakdownThreshold` | `decimal` | Price drop that triggers hedge |
+| `entryMode` | `string` | Authoring value stored in config |
+| `anchorPrice` | `decimal?` | Used for wait-for-limit flows |
+| `breakdownThreshold` | `decimal` | Fallback stop-loss distance input for some sizing flows |
 
-### ExitConfig / ExitRuleConfig
+### Entry Mode Casing
 
-`src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs`
+`EntryModes` in the domain uses PascalCase constants:
 
-Contains `TakeProfit` and `StopLoss`, each an `ExitRuleConfig`:
+- `AutoFromSignalCandle`
+- `WaitForLimitPrice`
+- `InitialMarketThenGrid`
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `Type` | `ExitRuleType` enum | Rule type discriminator |
-| `Value` | `decimal?` | Primary value (percentage, R-multiple, or fallback percent depending on type) |
-| `Enabled` | `bool` | Whether this exit rule is active |
-| `AtrMultiplier` | `decimal?` | ATR multiplier (required for `AtrTrailing` and `AtrInitial`) |
-| `AtrPeriod` | `int?` | ATR period override (default 14; currently reserved, ATR period is hardcoded in context builders) |
-| `Lookback` | `int?` | Lookback period (used by `SwingLow`) |
-| `TrailingStopWarmup` | `int?` | Candles to skip before trailing stop activates (`AtrTrailing` only) |
+The JSON schema and frontend examples typically use snake_case values such as `auto_from_signal_candle`.
 
-`ExitRuleType` enum (`src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleType.cs`):
+Warning: known bug
 
-| Value | Behaviour |
-|-------|----------|
-| `FixedPercent` | Static stop at `Value`% from entry |
-| `AtrTrailing` | Trailing stop: HWM − (ATR × multiplier), recalculated every candle |
-| `AtrInitial` | Locked stop: ATR captured at entry time, stop = entry ± (lockedATR × multiplier). Does not trail. Falls back to `Value`% if ATR unavailable at entry |
-| `SwingLow` | Stop at recent swing low (lookback-based) |
-| `RMultiple` | Take-profit at `Value` × R from entry |
+`GridController` compares directly against PascalCase `EntryModes.WaitForLimitPrice`, while config defaults are typically authored in snake_case. The API normalizes some request paths, but a raw config payload using snake_case can still be a runtime mismatch risk if it bypasses normalization.
 
-### RiskConfig
+## Exit Configuration
 
-`src/TradingApp.Application/StrategyAuthoring/Models/RiskConfig.cs`
+`ExitConfig` contains `takeProfit`, `stopLoss`, and `exitOnOppositeSignal`.
+
+`ExitRuleConfig` fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `positionSizeType` | `PositionSizeType` enum | How size is calculated: `percent_wallet`, `fixed_notional`, or `risk_based` |
-| `positionSizeValue` | `decimal` | Size value (e.g. 10 = 10% of equity); unused for `risk_based` |
-| `riskPerTradePercent` | `decimal?` | Percent of equity to risk per trade (required for `risk_based`; e.g. 1.0 = 1%) |
-| `leverage` | `decimal` | Leverage multiplier (≥ 1, default 1); ignored when `autoLeverage = true` |
-| `autoLeverage` | `bool` | When true, leverage auto-derived from SL distance; only effective with `risk_based` |
-| `maxOpenTrades` | `int` | Max concurrent positions |
-| `cooldownValue` / `cooldownUnit` | `int` / `CooldownUnit` enum | Post-trade cooldown |
-| `allowSameCandleReentry` | `bool` | Whether same-candle re-entry is permitted |
+| `type` | `ExitRuleType` | Exit rule discriminator |
+| `value` | `decimal?` | Primary percentage or R-multiple value |
+| `enabled` | `bool` | Whether the rule is active |
+| `atrMultiplier` | `decimal?` | Used by `AtrTrailing` and `AtrInitial` |
+| `atrPeriod` | `int?` | Present in schema; ATR period is not yet dynamically applied in runtime builders |
+| `lookback` | `int?` | Used by `SwingLow` |
+| `trailingStopWarmup` | `int?` | Candle warmup before ATR trailing activates |
 
-`RiskBased` sizing: `R = equity × riskPerTradePercent / 100`; `notional = R / (stopLossPercent / 100)`. For grids, total notional is divided by grid levels. Requires stop-loss to be configured. See [33-risk-management-and-trade-sizing.md](33-risk-management-and-trade-sizing.md) for full details.
+`ExitRuleType` values:
 
-### TrendFilterConfig
+| Value | Runtime Behaviour |
+|-------|-------------------|
+| `FixedPercent` | Static stop or TP based on percentage |
+| `AtrTrailing` | Uses moving ATR-based trailing stop |
+| `AtrInitial` | Locks ATR at entry and keeps a fixed volatility-based stop |
+| `SwingLow` | Enum exists, but there is no dedicated evaluator logic yet |
+| `RMultiple` | Uses stop distance multiplied by `value` |
 
-`src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterConfig.cs`
+`SwingLow` is currently an enum-level option without dedicated exit evaluation logic. In practice the runtime falls back to other supported stop-loss handling.
 
-Optional macro trend filter. In v1, populated but **not evaluated** (info message emitted by validator). Fields: `enabled`, `type` (`TrendFilterType` enum), `fastPeriod`, `slowPeriod`, `operator` (`TrendOperator` enum), `appliesTo` (`Direction` enum).
+## Risk Configuration
 
-### EntryConditionConfig (Signal Mode)
+`RiskConfig` fields include:
 
-`src/TradingApp.Application/StrategyAuthoring/Models/EntryConditionConfig.cs`
+| Field | Type | Notes |
+|-------|------|-------|
+| `positionSizeType` | `PositionSizeType` | `percent_wallet`, `fixed_notional`, or `risk_based` |
+| `positionSizeValue` | `decimal` | Primary value for non-risk-based sizing |
+| `riskPerTradePercent` | `decimal?` | Required for `risk_based` sizing |
+| `leverage` | `decimal` | Manual leverage when auto-leverage is off |
+| `autoLeverage` | `bool` | Derives leverage from stop distance in risk-based mode |
+| `maxOpenTrades` | `int` | Max simultaneous positions |
+| `cooldownValue` | `int` | Cooldown amount |
+| `cooldownUnit` | `CooldownUnit` | Minutes, candles, and related units |
+| `allowSameCandleReentry` | `bool` | Re-entry guard |
 
-Each condition has: `id`, `enabled`, `type` (`EntryConditionType` enum), `label`, and a polymorphic `params` object.
+## Trend Filter Configuration
 
-Supported param types:
+`TrendFilterConfig` fields are:
 
-| `type` | Params class | Key fields |
-|--------|-------------|------------|
-| `rsi` | `RsiParams` | `period` (2–200), `operator` (`lt`, `lte`, `gt`, `gte`, `cross_above`, `cross_below`), `value` |
-| `price_vs_ema` | `PriceVsEmaParams` | `emaPeriod`, `operator` (`above`, `below`, `cross_above`, `cross_below`, `near`, `touch`) |
-| `macd` | `MacdParams` | `fastPeriod` (2–50), `slowPeriod` (5–200), `signalPeriod` (2–50), `operator` (see below); max 1 per strategy |
+| Field | Type |
+|-------|------|
+| `enabled` | `bool` |
+| `type` | `TrendFilterType` |
+| `period` | `int?` |
+| `fastPeriod` | `int` |
+| `slowPeriod` | `int` |
+| `operator` | `TrendOperator` |
+| `appliesTo` | `Direction` |
 
-MACD operators:
+Unlike earlier docs, `period` is part of the current model.
 
-| Operator | Condition |
-|----------|-----------|
-| `cross_above_signal` | MACD line crossed above signal line on this candle |
-| `cross_below_signal` | MACD line crossed below signal line on this candle |
-| `above_zero` | MACD line is above zero |
-| `below_zero` | MACD line is below zero |
-| `histogram_rising` | Histogram is rising vs. previous candle |
-| `histogram_falling` | Histogram is falling vs. previous candle |
+## Signal Entry Conditions
 
-`BusinessRuleValidator` enforces: `fastPeriod < slowPeriod`; all periods within their ranges; at most one `macd` condition per strategy config.
+Each `EntryConditionConfig` has `id`, `enabled`, `type`, `label`, and polymorphic `params`.
 
-Custom `EntryConditionConfigConverter` + `EntryConditionParamsConverter` handle polymorphic JSON deserialization using the `type` field as discriminator. Files: `src/TradingApp.Application/StrategyAuthoring/Serialization/`.
+Supported `EntryConditionType` values:
 
----
+| Type | Params model | Key fields |
+|------|--------------|------------|
+| `rsi` | `RsiParams` | `period`, `operator`, `value` |
+| `price_vs_ema` | `PriceVsEmaParams` | `period`, `operator`, `distanceType`, `distanceValue` |
+| `macd` | `MacdParams` | `fastPeriod`, `slowPeriod`, `signalPeriod`, `operator` |
+| `support_resistance` | `SupportResistanceParams` | `lookback`, `strength`, `operator`, `tolerance` |
 
-## JSON Serialization
+### `PriceVsEmaParams`
 
-All strategy JSON must be serialized/deserialized using `StrategyJsonOptions.Default` (`src/TradingApp.Application/StrategyAuthoring/Serialization/StrategyJsonOptions.cs`):
-- `camelCase` property names
-- Enums as `snake_case_lower` strings
-- Polymorphic entry condition params via custom converters
+The current model uses:
 
----
+| Field | Type |
+|-------|------|
+| `period` | `int` |
+| `operator` | `string` |
+| `distanceType` | `string` |
+| `distanceValue` | `decimal?` |
+
+The older `emaPeriod` field name is stale.
+
+### `SupportResistanceParams`
+
+Implemented by `SupportResistanceConditionHandler`.
+
+Supported operators:
+
+- `near_support`
+- `near_resistance`
+- `above_support`
+- `below_resistance`
+- `bounce_support`
+- `bounce_resistance`
+
+## Indicator Requirements
+
+Signal mode uses `IndicatorExtractor` to produce `IndicatorRequirement` records for the scheduler and context builder.
+
+| Field | Type |
+|-------|------|
+| `type` | `string` |
+| `period` | `int` |
+| `fastPeriod` | `int?` |
+| `slowPeriod` | `int?` |
+| `signalPeriod` | `int?` |
+| `lookback` | `int?` |
+| `strength` | `int?` |
+
+This model determines which indicators the scheduler must compute before evaluating signal-mode conditions.
 
 ## Validation Pipeline
 
-`POST /api/strategies/validate` runs `CompositeStrategyValidator` which chains three levels:
+`POST /api/strategies/validate` runs `CompositeStrategyValidator`:
 
-| Level | Class | Checks |
-|-------|-------|--------|
-| 1 — Schema | `SchemaValidator` | Required fields present (e.g. `strategyName`, `market`) |
-| 2 — Business Rules | `BusinessRuleValidator` | Range constraints (e.g. `grid.levels ≥ 1`, `risk.leverage ≥ 1`) |
-| 3 — Cross-Field | `CrossFieldValidator` | Mode consistency (e.g. `grid` required for `strategyMode = grid`; at least one entry condition for `signal` mode) |
+| Layer | Class | Purpose |
+|-------|-------|---------|
+| Schema | `SchemaValidator` | Required fields and basic presence checks |
+| Business rules | `BusinessRuleValidator` | Ranges, operator constraints, and per-type validation |
+| Cross-field | `CrossFieldValidator` | Mode consistency and related-field validation |
 
-`ValidationResult` includes errors, warnings, and info messages grouped by severity (`ValidationSeverity` enum). Info-level messages are non-blocking (e.g. trend filter not yet evaluated).
+Validation returns errors, warnings, and info messages. Trend-filter behavior and other partial implementations are surfaced as non-blocking messages rather than silently ignored.
 
-Files: `src/TradingApp.Application/StrategyAuthoring/Validation/`
+## Extending the Schema
 
----
+1. Add or update the model under `StrategyAuthoring/Models`.
+2. Update polymorphic serialization converters if the change affects entry-condition params.
+3. Extend `BusinessRuleValidator` and `CrossFieldValidator`.
+4. Add or update runtime consumers such as `IndicatorExtractor`, `CompositeStrategyEngine`, and the relevant condition handler.
+5. Update the frontend form factories and template helpers.
 
-## Adding New Entry Condition Types
+## Future Recommendations
 
-**Backend**
-1. Add enum value to `EntryConditionType` (`src/TradingApp.Application/StrategyAuthoring/Models/`)
-2. Create `{Name}Params` record implementing `IEntryConditionParams`
-3. Register type in `EntryConditionParamsConverter` switch
-4. Add `BusinessRuleValidator` checks (range constraints, cross-field rules)
-5. Create `{Name}ConditionHandler : IConditionHandler` in `src/TradingApp.Application/StrategyAuthoring/Services/`
-6. Register handler in `Program.cs` (`builder.Services.AddScoped<IConditionHandler, {Name}ConditionHandler>()`)
-7. Update `StrategyInterpreterPrompt.cs` with correct operator strings for the new type
-
-**Frontend**
-8. Add `{name}-condition-item` component under `strategy-builder/components/`
-9. Register the type in `ConditionFactoryService` to create its typed `FormGroup`
-10. Add the condition item to `EntryConditionsCardComponent` switch/dispatch
-11. Add a `STRATEGY_TEMPLATES` entry (if applicable) and update `_isSignalTemplate()` in all 4 locations
-
-The schema should remain backward compatible.
+- Fix the entry-mode casing mismatch so config values and runtime comparisons use one canonical form.
+- Either implement `SwingLow` evaluation or remove it from the public schema.
+- Add stricter typing for `distanceType` and other string-based operator fields.
+- Consider schema version `2` when adding any breaking changes to serialized strategy configs.

@@ -1,5 +1,121 @@
 # Backtesting Grid Engine — Explained
 
+This document explains how the implemented grid-engine backtest works in plain English. It focuses on the current replay pipeline, the real decision points in the strategy/controller/risk flow, and the simplifications that still exist.
+
+## Summary
+
+The backtest replays historical trigger candles through the same scheduler, strategy engine, controller, signal controller, and risk engine used by the application runtime. On each candle close it asks three questions:
+
+1. Does the strategy have a valid setup?
+2. Is the current regime safe enough to allow new entries?
+3. Will the risk engine allow the signal after portfolio-heat and drawdown checks?
+
+If the answers remain favorable and no cycle is already active, a grid is deployed. `SimulatedExecutionEngine` then fills those orders against candle OHLC data. At the end of the replay, metrics are calculated from the trade log, equity curve, and blocked-signal counters.
+
+## Component Glossary
+
+| Component | Role |
+|---|---|
+| `BacktestRunner` | Top-level orchestrator for loading data, replaying candles, and returning results |
+| `CandleReplayEngine` | Loads trigger candles and higher-timeframe context from persistence |
+| `CandleClock` + `StrategyScheduler` | Fires strategy evaluation on each trigger candle close |
+| `GridStrategyEngine` | Determines whether a setup exists; blocks new entries when `DerivedRegime` is `RiskOff` |
+| `GridController` | Emits `DeployGrid` and `TakeProfit`-style signals based on grid lifecycle |
+| `ISignalController` | Supports signal-mode strategies in the same replay pipeline even though this document centers on grids |
+| `BacktestRiskEngine` | Enforces portfolio heat and drawdown-tier gating before signals execute |
+| `BacktestPositionManager` | Converts approved signals into simulated orders |
+| `SimulatedExecutionEngine` | Fills orders against candle OHLC, tracks position state, and calculates PnL |
+| `BacktestMetricsCalculator` | Computes final metrics including blocked-signal counts |
+
+## What Happens On Each Candle
+
+For each trigger candle after warmup:
+
+1. `SimulatedExecutionEngine.ProcessCandle(...)` checks open orders against candle OHLC and records fills.
+2. `IMarketContextBuilder.UpdateIndicators(...)` advances EMA, RSI, ATR, and related state.
+3. The latest closed 1h and 4h candles are resolved for higher-timeframe context.
+4. `StrategyScheduler.HandleCandleClosedAsync(...)` runs:
+   - `Build(...)` to create `MarketContext`
+   - `GridStrategyEngine.EvaluateAsync(...)` to determine setup validity
+   - `GridController.ProcessAsync(...)` or `ISignalController` work depending on strategy mode
+   - `BacktestRiskEngine.ValidateAsync(...)` to filter blocked signals
+   - `BacktestPositionManager.ExecuteSignalsAsync(...)` to place simulated orders
+5. Equity and audit state are updated.
+
+## Regime Gating
+
+The earlier knowledge-base description that implied the grid strategy always returned `SetupDetected = true` is no longer correct.
+
+`GridStrategyEngine` now checks:
+
+- grid config validity
+- the presence of 1h and 4h context candles
+- `MarketContext.LlmContext.DerivedRegime`
+
+If the derived regime is `RiskOff`, the evaluation returns `SetupDetected = false` and no new grid is deployed. In practice this regime usually comes from `SyntheticRegimeProvider`, with the optional LLM context provider acting only as an overlay.
+
+## Risk Enforcement
+
+Backtest risk handling is not passthrough.
+
+`BacktestRiskEngine` actively enforces:
+
+- portfolio heat via `MaxPortfolioHeatPercent`
+- drawdown-tier scaling and hard halts via `DrawdownTiers`
+
+That means a setup can be logically valid but still be blocked before orders are created. The replay keeps two separate counters:
+
+- `HeatBlockedSignalCount`
+- `DrawdownBlockedSignalCount`
+
+Those counters are surfaced in `BacktestResult` for post-run analysis.
+
+## Grid Lifecycle In Plain Terms
+
+The implemented lifecycle is:
+
+1. No active cycle and setup allowed: emit `DeployGrid`.
+2. One or more buy levels fill: cycle becomes partially filled.
+3. If all levels fill: the position is fully filled and waits for normal exit behavior.
+4. If stop-loss or take-profit conditions trigger: the controller transitions the cycle toward closing.
+5. When the exit fills: the cycle closes and the scheduler can start a new one on a later setup.
+
+The replay records `GridCycleId` values so each cycle can be debugged independently.
+
+## Important Simplifications
+
+The current replay still uses several deliberate simplifications:
+
+| Simplification | Current impact | Future direction |
+|---|---|---|
+| Candle-based fills | No intrabar book simulation | Add higher-fidelity fill models if needed |
+| Exact limit-price fills | Slightly optimistic fills on volatile candles | Add slippage/book-depth estimation |
+| Buy-before-sell ordering within a candle | Improves determinism but loses some intrabar nuance | Acceptable for current timeframe granularity |
+| Whole-position exits remain dominant | No staged partial-close system | Add tranche-based exits later |
+
+## How To Verify A Replay
+
+Useful manual checks:
+
+1. Run the same backtest twice and confirm deterministic results.
+2. Pick a short window and manually compute the first deployed grid prices.
+3. Confirm that a `RiskOff` regime prevents new grid deployment.
+4. Confirm that extreme portfolio heat or drawdown halts increment the matching blocked-signal counter.
+5. Trace a single `GridCycleId` through debug data and verify its fills, exit, and final PnL.
+
+## Related Knowledge
+
+- [01-trading-strategy.md](01-trading-strategy.md)
+- [15-grid-controller.md](15-grid-controller.md)
+- [18-backtesting-architecture.md](18-backtesting-architecture.md)
+- [33-risk-management-and-trade-sizing.md](33-risk-management-and-trade-sizing.md)
+
+## Future Recommendations
+
+- Add richer entry filters to `GridStrategyEngine` so replay setups are driven by more than config validity plus regime gating.
+- Surface `DrawdownBlockedSignalCount` more prominently in the UI and operator diagnostics.
+- Add optional intrabar take-profit handling for partially filled grids if candle-close exits become too coarse.# Backtesting Grid Engine — Explained
+
 This document provides a plain-English summary, a detailed walkthrough, pseudo-code for
 the grid engine, and manual testing steps so that the algorithm can be understood and
 verified by a human.

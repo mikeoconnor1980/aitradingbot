@@ -1,243 +1,188 @@
 # Hyperliquid Integration
 
-The platform interacts with Hyperliquid using:
+This document describes the implemented Hyperliquid integration across the control-plane API and the execution-agent Worker. The platform uses shared REST and market-data clients, per-user wallet routing, and runtime-configurable signing so that the server can manage user wallet addresses without taking custody of trading keys.
 
-- REST API
-- WebSocket streams
+## Overview
 
-Capabilities:
+The integration is split across two runtime contexts:
 
-- order placement (per-user)
-- order cancellation (per-user)
-- position monitoring (per-user)
-- market data streaming (shared)
+| Host | Role |
+|------|------|
+| `src/TradingApp.Api` | Control plane for account inspection, order endpoints, asset metadata, and user-profile driven network routing |
+| `src/TradingApp.Worker` | Execution agent that owns private-key signing, live strategy execution, and per-wallet user event streams |
 
----
+Core capabilities:
 
-# Authentication
+- Shared REST reads through `IHyperliquidRestClient`
+- Shared public WebSocket market data through `IHyperliquidWebSocketClient`
+- Per-user wallet event streams through `IHyperliquidUserEventClient`
+- Per-user mainnet/testnet routing through `INetworkProvider` and `NetworkRoutingHandler`
+- Runtime-swappable signing through `ISignerProvider` and `MutableSignerProvider`
+- Separate execution engines for API-hosted direct actions and Worker-hosted live trading
 
-Hyperliquid uses wallet-based signing.
+## Authentication And Key Custody
 
-Each request includes:
+Hyperliquid uses wallet-based signing for exchange actions. The implemented system does not store private keys in the control plane.
 
-action  
-nonce  
-signature
+| Concern | Implemented behavior |
+|---------|----------------------|
+| Wallet identity | The server stores wallet addresses per user via the user profile and `UserWalletAddress` records |
+| Private key custody | Private keys are expected to live on the Worker or be supplied via environment/runtime configuration |
+| Signing contract | `IHyperliquidSigner` exposes only `WalletAddress` and `SignHash(byte[])`; typed-data signing is only available on the concrete signer implementation |
+| Runtime key management | `ISignerProvider` extends the signer with `IsConfigured`, `Configure(key)`, and `Clear()` |
 
-Since the platform is multi-tenant, each subscriber provides their own wallet private key.
+`MutableSignerProvider` in `src/TradingApp.Infrastructure/Services/MutableSignerProvider.cs` is the key runtime pattern. It is thread-safe, can be reconfigured without restart, and is registered as both `ISignerProvider` and `IHyperliquidSigner`.
 
-Private keys are encrypted at rest and stored per-user in the database.
-In the Azure phase, keys are stored in Azure Key Vault.
+The API host creates the signer provider without a key at startup and logs a warning if no runtime key is configured. The Worker follows the same provider pattern and can optionally bootstrap from `Hyperliquid__PrivateKey`, but the provider remains mutable so the key can be swapped later.
 
-The platform signs trading actions on behalf of each subscriber using their key.
+## Network Routing
 
----
+Hyperliquid reads and writes are routed per user rather than through a single global network setting.
 
-# Multi-Tenant Connection Model
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `INetworkProvider` | `src/TradingApp.Application/Abstractions/Services/INetworkProvider.cs` | Abstraction for resolving the effective network |
+| `UserNetworkProvider` | `src/TradingApp.Api/Infrastructure/UserNetworkProvider.cs` | Resolves mainnet vs testnet from the current request context |
+| `NetworkRoutingHandler` | `src/TradingApp.Api/Infrastructure/NetworkRoutingHandler.cs` | `DelegatingHandler` that rewrites outgoing requests to the user-specific base URL |
 
-Market data streams (trades, candles, orderbook) are shared across all users.
-These do not require per-user authentication.
-
-User-specific streams (fills, order updates, position changes) require
-per-user WebSocket subscriptions or polling.
-
-The worker must manage connections for all active subscribers.
-
----
-
-# WebSocket Streams
-
-Shared streams:
-
-- trades
-- candles
-- orderbook
-
-Per-user streams:
-
-- fills
-- order updates
-- position changes
-
----
-
-# Reconnection
-
-The worker must support:
-
-automatic reconnect  
-state recovery
-
-After reconnect:
-
-sync open orders (per-user)  
-sync positions (per-user)
-
----
-
-# Rate Limiting
-
-With multiple subscribers, the platform must respect Hyperliquid API rate limits.
-
-Order submissions should be queued and throttled to stay within limits.
-Market data streams are shared and do not multiply with user count.
-
----
-
-# Current Implementation
+This lets the API expose account and order features for users on different Hyperliquid networks without duplicating service registrations.
 
 ## Key Components
 
-| Component | Location |
-|-----------|----------|
-| `HyperliquidOptions` | `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` |
-| `IHyperliquidSigner` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidSigner.cs` |
-| `IHyperliquidRestClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` |
-| `HyperliquidSigner` | `src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs` |
-| `HyperliquidRestClient` | `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` |
-| `HyperliquidAssetMapper` | `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` |
-| `IHyperliquidAccountService` | `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` |
-| `HyperliquidAccountService` | `src/TradingApp.Api/Services/HyperliquidAccountService.cs` |
-| `IHyperliquidOrderService` | `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` |
-| `HyperliquidOrderService` | `src/TradingApp.Api/Services/HyperliquidOrderService.cs` |
-| `IHyperliquidWebSocketClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` |
-| `HyperliquidWebSocketClient` | `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` |
-| `WebSocketConnectionState` | `src/TradingApp.Application/Abstractions/Services/WebSocketConnectionState.cs` |
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `HyperliquidOptions` | `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` | Base REST/WS configuration |
+| `IHyperliquidSigner` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidSigner.cs` | Minimal signing interface: wallet address plus hash signing |
+| `ISignerProvider` | `src/TradingApp.Application/Abstractions/Services/ISignerProvider.cs` | Runtime-configurable signer abstraction |
+| `MutableSignerProvider` | `src/TradingApp.Infrastructure/Services/MutableSignerProvider.cs` | Thread-safe runtime-swappable signer implementation |
+| `IHyperliquidRestClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` | Typed Hyperliquid REST boundary |
+| `HyperliquidRestClient` | `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` | Handles `/info` and `/exchange` calls, typed parsing, and API error translation |
+| `IHyperliquidAccountService` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidAccountService.cs` | Account/position abstraction used by API and Worker |
+| `HyperliquidAccountService` | `src/TradingApp.Infrastructure/Services/HyperliquidAccountService.cs` | Account-state implementation backed by REST calls |
+| `IHyperliquidOrderService` | `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` | API surface for direct order actions |
+| `HyperliquidOrderService` | `src/TradingApp.Api/Services/HyperliquidOrderService.cs` | Builds signed exchange actions and companion trigger orders |
+| `IHyperliquidWebSocketClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` | Shared public market-data WebSocket client |
+| `HyperliquidWebSocketClient` | `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` | Public WebSocket implementation |
+| `IHyperliquidUserEventClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidUserEventClient.cs` | Per-wallet user event stream abstraction |
+| `HyperliquidUserEventClient` | `src/TradingApp.Infrastructure/Services/HyperliquidUserEventClient.cs` | User WebSocket for fills and order updates |
+| `IHyperliquidAssetMetadataCache` | `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` | Lazy-loaded exchange metadata cache |
+| `HyperliquidAssetMetadataCache` | `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` | 30-minute TTL cache of asset index, size decimals, and leverage |
+| `HyperliquidExecutionEngine` | `src/TradingApp.Api/Services/HyperliquidExecutionEngine.cs` | API-side `IExecutionEngine` wrapper over the order service |
+| `LiveExecutionEngine` | `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs` | Worker-side execution engine that signs and submits live orders |
 
-`HyperliquidAssetMapper` is a static helper that maps display asset names (e.g., `BTC-PERP`) to Hyperliquid coin symbols (`BTC`) and resolves timeframe strings (e.g., `15m`, `1h`, `4h`) to interval milliseconds. It throws `NotFoundException` for unknown assets and `DomainException` for invalid timeframes.
+## REST Client Behavior
 
-Hyperliquid API request/response shapes live in `src/TradingApp.Infrastructure/Hyperliquid/Models/`.
+`HyperliquidRestClient` is the shared boundary for Hyperliquid HTTP operations.
 
-## REST Info API
+Implemented request types include:
 
-Hyperliquid read operations use a single POST `/info` endpoint with a `type` field discriminator.
-`IHyperliquidRestClient.PostInfoAsync<TResponse>(request)` handles all typed info reads.
+| Method | Purpose |
+|--------|---------|
+| `PostInfoAsync<T>` | Generic typed `/info` reads |
+| `PostExchangeAsync<T>` | Signed `/exchange` writes |
+| `GetMarketInfoAsync` | `metaAndAssetCtxs` mapping to market info |
+| `GetCandlesAsync` | Last 500 candles for a timeframe |
+| `GetCandleSnapshotsAsync` | Range-based candle snapshots returning `List<CandleSnapshotDto>` including `NumTrades` |
+| `GetUserFillsAsync` | User fill history via `userFills` or `userFillsByTime` |
 
-## WebSocket Client
+### Retry And Timeout Policy
 
-`IHyperliquidWebSocketClient` manages a persistent WebSocket connection to Hyperliquid. Key operations:
+The current registration uses:
 
-| Method | Description |
-|--------|-------------|
-| `ConnectAsync` | Opens the `ClientWebSocket` and notifies state callbacks |
-| `SubscribeToTradesAsync(coin)` | Sends the Hyperliquid trades subscription JSON frame |
-| `ReceiveLoopAsync` | Reads messages in a loop and dispatches to the registered trade handler |
-| `OnTradeReceived(handler)` | Registers a callback invoked per trade tick |
-| `OnConnectionStateChanged(handler)` | Registers a callback invoked on state transitions |
+- `HttpClient.Timeout = 30s` as the outer cap for the overall request lifecycle
+- Polly-based resilience with up to 5 exponential-backoff retries
+- Initial retry delay of 1 second, max delay 60 seconds, jitter enabled
+- Per-attempt timeout of 5 seconds
+- Retry handling for HTTP 429 and 5xx responses
 
-`WebSocketConnectionState` enum: `Disconnected` → `Connecting` → `Connected` → `Reconnecting`
+This is registered in both API and Worker hosts. The retry pipeline is attached when `IHyperliquidRestClient` is registered.
 
-Registered as a **singleton** — one shared connection for all market data streams, since streams are not per-user authenticated.
+## Asset Mapping And Metadata
 
-Reconnection with exponential backoff (1 s–60 s, 20 retries max) is managed by the consuming `BackgroundService`, not the client itself.
+`HyperliquidAssetMapper` in `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` is intentionally lenient.
 
-Established request types:
+| Method | Implemented behavior |
+|--------|----------------------|
+| `ToCoin` | Strips `-PERP` or `-USD` suffixes when present, otherwise returns the input unchanged |
+| `ToDisplayName` | Maps known coins back to `*-PERP`, otherwise formats `COIN-PERP` |
+| `GetIntervalMs` | Converts supported timeframe strings to milliseconds and throws only for invalid timeframes |
+| `IsValidTimeframe` | Checks supported timeframe set |
+| `IsValidCoin` | Checks known display-mapped coin set |
+| `GetSupportedCoins` | Returns supported mapped coin list |
+| `GetSupportedTimeframes` | Returns supported timeframe list |
 
-| Request Type | Description | Auth Required |
-|---|---|---|
-| `clearinghouseState` | Account equity, margin, positions | Yes (wallet address) |
-| `openOrders` | Active open orders | Yes (wallet address) |
-| `meta` | Exchange metadata (used for connectivity check) | No |
-| `metaAndAssetCtxs` | Full universe metadata + per-asset market context (price, funding rate, OI, 24h volume) | No |
-| `candleSnapshot` | OHLCV candle data for a given coin, interval, and time range | No |
+Unknown coin failures are not raised by `ToCoin`. The lookup that can throw `NotFoundException` is `HyperliquidAssetMetadataCache.GetAsync`, because that is where exchange metadata is validated against the current universe.
 
-Requests requiring user identity include `"user": signerWalletAddress` in the body.
+`HyperliquidAssetMetadataCache` is API-hosted and lazy-loads `meta` into a 30-minute cache of:
 
-## Configuration
+- `Index`
+- `SzDecimals`
+- `MaxLeverage`
 
-Config section: `Hyperliquid`
+## WebSocket Model
 
-| Key | Description |
-|-----|-------------|
-| `Hyperliquid:BaseUrl` | REST API base URL (default: `https://api.hyperliquid-testnet.xyz`) |
-| `Hyperliquid:WsBaseUrl` | WebSocket endpoint (default: `wss://api.hyperliquid-testnet.xyz/ws`) |
-| `Hyperliquid:Network` | Network label — `"testnet"` or `"mainnet"` |
-| `Hyperliquid:PrivateKey` | Wallet private key — set via `appsettings.Development.json` or env var `Hyperliquid__PrivateKey` |
+The implemented WebSocket model separates shared market data from authenticated user events.
 
-`HyperliquidOptions` uses `[Required]` + `ValidateOnStart()`. `PrivateKey` is read directly from `IConfiguration` at startup and is NOT stored in `HyperliquidOptions` to avoid holding it in DI.
+### Shared Market Data
 
-## DI Registration Pattern
+`IHyperliquidWebSocketClient` is registered as a singleton and is used for public streams such as:
 
-`HyperliquidSigner` is constructed via its static factory (`HyperliquidSigner.Create(privateKey)`) at startup and registered as `IHyperliquidSigner` singleton. The raw private key is not retained in the DI container.
+- trades
+- candles
+- order book updates
 
-`HyperliquidRestClient` is registered as a typed `HttpClient<IHyperliquidRestClient, HyperliquidRestClient>` with 5-second timeout and `BaseUrl` from config.
+Reconnection behavior is handled by the consuming hosted services rather than by the client owning its own infinite retry loop.
 
-## Extending
+### Per-User Event Streams
 
-To add a new Hyperliquid read:
-1. **Simple raw reads with no domain logic** (e.g., POC account state) — use `PostInfoAsync<TResponse>` directly inside an Api-layer service (see `IHyperliquidAccountService` and ADR 14). No new `IHyperliquidRestClient` method needed.
-2. **Application-layer features with mapping/transformation** (e.g., asset name resolution, response parsing, candle batching) — add a typed method to `IHyperliquidRestClient` (e.g., `GetMarketInfoAsync`, `GetCandlesAsync`) and implement it in `HyperliquidRestClient` using `PostInfoAsync` internally. Consume via a MediatR query handler in `TradingApp.Application/{Feature}/Queries/`.
-3. **New non-info endpoints** (e.g., WebSocket subscriptions, exchange order actions) — add a method to `IHyperliquidRestClient` and implement in `HyperliquidRestClient`.
-4. **New order/exchange actions** (e.g., a new order type) — follow the trigger order pattern: build the action dict, sign via `HyperliquidEip712`, submit via `SubmitExchangeActionAsync` in `HyperliquidOrderService`. Add a new method to `IHyperliquidOrderService` if the action has a direct UI-callable surface.
+`IHyperliquidUserEventClient` supports wallet-scoped user events, including:
 
----
+- fill updates
+- order updates
 
-## Trigger Orders (Stop Loss / Take Profit)
+The current consumer pattern lives in the API and Worker `UserEventStreamService` and `TradingSession` services. This is a one-client-per-session model rather than a centralized multi-tenant socket manager.
 
-Trigger orders are exchange-native SL/TP orders. They are `reduceOnly`, fire as market orders when price crosses the trigger level, and are **not persisted in the database** — they are read live from the exchange.
+## Execution Engines
 
-### Wire Format
+Two concrete `IExecutionEngine` implementations exist today:
 
-`HyperliquidEip712.BuildTriggerOrderAction` constructs the `type=order` payload with a `trigger` sub-object:
+| Engine | Host | Purpose |
+|--------|------|---------|
+| `HyperliquidExecutionEngine` | API | Uses API services for direct order placement flows initiated through the control plane |
+| `LiveExecutionEngine` | Worker | Owns direct live execution during strategy sessions, including leverage updates and exchange submission |
 
-| Field | Value |
-|-------|-------|
-| `t.trigger.tpsl` | `"sl"` or `"tp"` |
-| `t.trigger.isMarket` | `true` |
-| `t.trigger.triggerPx` | Wire-formatted trigger price |
-| `r` (reduceOnly) | `true` |
+This split keeps API-hosted direct operations separate from the Worker's always-on trading loop.
 
-File: `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` → `BuildTriggerOrderAction`
+## Trigger Orders And Account Enrichment
 
-### API Endpoints
+The API order flow supports exchange-native trigger orders for stop loss and take profit.
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `POST` | `/api/orders/trigger` | Place a standalone SL or TP trigger order |
-| `PUT` | `/api/orders/trigger/{orderId}` | Modify an existing trigger order (new trigger price) |
-| `DELETE` | `/api/orders/trigger/{orderId}` | Cancel a trigger order |
+- Trigger orders are reduce-only and market-triggered on activation
+- Companion triggers can be placed after a successful entry order
+- Trigger order failures are treated as warnings, not as hard failures for the parent order
+- Account position reads enrich position DTOs by correlating live reduce-only trigger orders back onto positions
 
-Request model: `PlaceTriggerOrderRequest` (`Asset`, `Side`, `Size`, `TriggerPrice`, `TpslType: "sl"|"tp"`)  
-File: `src/TradingApp.Api/Models/PlaceTriggerOrderRequest.cs`
+This enrichment logic is implemented in `HyperliquidAccountService`, which now lives in Infrastructure rather than Api.
 
-### Companion Trigger Placement
+## Extending The Integration
 
-When `PlaceOrderRequest.StopLossPrice` or `.TakeProfitPrice` are set, `PlaceCompanionTriggerOrdersAsync` fires after the main order succeeds. Companion trigger failures are **non-fatal** — appended to `PlaceOrderResponse.Detail` as warnings.
+Use these rules when adding functionality:
 
-File: `src/TradingApp.Api/Services/HyperliquidOrderService.cs` → `PlaceCompanionTriggerOrdersAsync`
+1. New `/info` reads with lightweight mapping belong on `IHyperliquidRestClient` when they are reused across layers.
+2. Account- or order-specific orchestration belongs in the API or Worker service layer, not inside the raw REST client.
+3. New exchange actions should build payloads through the existing signing flow and reuse `PostExchangeAsync`.
+4. Network-aware calls in the API should flow through `INetworkProvider` so per-user routing is preserved.
+5. New authenticated stream consumers should use `IHyperliquidUserEventClient` rather than overloading the shared public WebSocket client.
 
-### Position Enrichment
+## Related Knowledge
 
-`GetPositionsAsync` fetches `clearinghouseState`, `metaAndAssetCtxs`, and `openOrders` in parallel. After mapping, `EnrichPositionsWithTriggerOrders` correlates reduce-only trigger orders to positions by normalised asset name and populates `PositionDto.StopLossPrice/OrderId` and `TakeProfitPrice/OrderId`.
+- [03-infrastructure-architecture.md](03-infrastructure-architecture.md)
+- [19-scheduling-architecture.md](19-scheduling-architecture.md)
+- [30-worker-execution-pipeline.md](30-worker-execution-pipeline.md)
+- [33-risk-management-and-trade-sizing.md](33-risk-management-and-trade-sizing.md)
 
-File: `src/TradingApp.Api/Services/HyperliquidAccountService.cs` → `EnrichPositionsWithTriggerOrders`
+## Future Recommendations
 
----
-
-## Leverage and Margin Mode
-
-Hyperliquid supports per-asset leverage and isolated vs. cross margin modes via the `updateLeverage` exchange action.
-
-### Wire Format
-
-The `type=updateLeverage` action payload:
-
-| Field | Value |
-|-------|-------|
-| `asset` | Asset index from exchange metadata |
-| `leverage` | Leverage multiplier (1–maxLeverage) |
-| `isCross` | `false` for isolated, `true` for cross margin |
-
-File: `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs` → `SetLeverageAsync`
-
-### Isolated Margin for RiskBased Trading
-
-For RiskBased position sizing (see [33-risk-management-and-trade-sizing.md](33-risk-management-and-trade-sizing.md)), **isolated margin is mandatory** — `isCross = false`. This ensures each position's margin is independently contained.
-
-The platform automatically sets `isCross = false` when `StrategyConfig.Risk.PositionSizeType == RiskBased` in the GridController.
-
-### MarketContext MaxLeverage
-
-`MarketContext.MaxLeverage` (nullable `int?`) is populated from exchange metadata. Represents the exchange-imposed maximum leverage for an asset (e.g., 50x for BTC). Used by `LeverageCalculator` as a constraint ceiling.
-
-File: `src/TradingApp.Application/Trading/Models/MarketContext.cs`
+- Add a true multi-tenant user-event WebSocket connection manager so the platform can multiplex many wallet streams more efficiently.
+- Extend `HyperliquidAssetMapper` for HIP-3 and other non-standard symbol families instead of relying only on simple suffix stripping.
+- Move reconnection backoff, replay, and resubscription policy into a reusable consumer layer shared by API and Worker user-event services.

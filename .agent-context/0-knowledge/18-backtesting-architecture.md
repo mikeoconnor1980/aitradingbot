@@ -1,5 +1,212 @@
 # Backtesting Architecture
 
+Backtesting reuses the same strategy, scheduling, controller, and risk pipeline used in trading, but swaps live exchange execution for historical candle replay plus an in-memory execution engine. The current implementation is asynchronous: the API persists a queued `BacktestRun`, enqueues work, processes it in a hosted service, and streams progress back to the UI.
+
+## Overview
+
+The implemented backtest path shares these components with the live pipeline:
+
+- `IMarketContextBuilder`
+- `IStrategyEngine`
+- `IGridController`
+- `ISignalController`
+- `StrategyScheduler`
+- `IRiskEngine`
+- `IPositionManager`
+- trading signal contracts and most strategy-domain models
+
+The main differences are execution and orchestration.
+
+| Concern | Live mode | Backtest mode |
+|---|---|---|
+| Market data | Hyperliquid streams and live context builders | Historical candles loaded from persistence |
+| Execution | `LiveExecutionEngine` and exchange services | `SimulatedExecutionEngine` |
+| Risk engine | `LiveRiskEngine` | `BacktestRiskEngine` |
+| Run lifecycle | Long-lived trading session | Queued API job processed by `BacktestProcessorService` |
+
+`GridPlanner` is not part of the current runtime path.
+
+## Async Job Architecture
+
+Backtests are queued and processed in the API host rather than executed inline in the controller action.
+
+| Component | Location | Purpose |
+|---|---|---|
+| `RunBacktestCommand` | `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` | Creates a queued `BacktestRun`, persists it, and enqueues a `BacktestJob` |
+| `BacktestJobQueue` | `src/TradingApp.Application/Backtesting/BacktestJobQueue.cs` | Bounded channel used for queued replay work |
+| `BacktestCancellationManager` | `src/TradingApp.Application/Backtesting/BacktestCancellationManager.cs` | Registers per-job cancellation tokens and powers `/cancel` |
+| `BacktestProcessorService` | `src/TradingApp.Api/Services/BacktestProcessorService.cs` | Hosted service that dequeues jobs, runs `IBacktestRunner`, updates persistence, and broadcasts progress |
+| `BacktestRun` | `src/TradingApp.Domain/Entities/BacktestRun.cs` | Persistent status + metrics record for `Queued`, `Running`, `Completed`, `Failed`, and `Cancelled` states |
+
+The API returns `202 Accepted` for new runs. Progress is pushed through SignalR using the `ReceiveBacktestProgress` event.
+
+## Practical Runtime Flow
+
+`BacktestRunner` performs the replay after a queued job is dequeued:
+
+1. `ValidateConfig` checks symbol, date range, capital, intervals, warmup, and execution settings.
+2. `CandleReplayEngine.LoadAsync` loads the required candles and returns `ReplayData`.
+3. Warmup candles seed indicator state through `IMarketContextBuilder.UpdateIndicators(...)`.
+4. For each trigger candle after warmup:
+   - `SimulatedExecutionEngine.ProcessCandle(...)` fills open orders and updates position state.
+   - `IMarketContextBuilder.UpdateIndicators(...)` advances indicators.
+   - the latest closed 1h and 4h candles are resolved for higher-timeframe context.
+   - `StrategyScheduler` executes `Build -> EvaluateAsync -> GridController/SignalController -> IRiskEngine.ValidateAsync -> IPositionManager.ExecuteSignalsAsync`.
+   - equity snapshots and optional audit events are recorded.
+   - an `onProgress(candlesProcessed, totalCandles, timestamp)` callback is invoked periodically.
+5. `BacktestMetricsCalculator` computes summary metrics.
+6. `BacktestProcessorService` maps the result into `BacktestRun.MarkCompleted(...)`, persists it, and broadcasts completion.
+
+The `CandleClock` and `StrategyScheduler` are the same core orchestration types used elsewhere in the application.
+
+## Historical Inputs
+
+The current implementation consumes persisted candle data via `ICandleRepository`.
+
+| Input | Status | Notes |
+|---|---|---|
+| OHLCV candles | Implemented | Required for every run |
+| Funding-rate enrichment for review summaries | Implemented outside the replay loop | Used by `BacktestSummaryForReview`, not the candle loop itself |
+| Order-book replay | Not implemented | Future work |
+| Sentiment snapshot replay | Not implemented | Regime is derived synthetically during replay |
+
+The replay engine still loads `15m`, `1h`, and `4h` candles for context even when the trigger timeframe is configurable.
+
+## Replay Model
+
+Backtesting processes candles sequentially and preserves time order. The replay loop is deterministic: given the same `BacktestConfig`, same candle set, and same persisted strategy config, the engine should produce the same result.
+
+## BacktestConfig
+
+`BacktestConfig` lives in `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs`.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `Symbol` | `string` | — | Trading symbol |
+| `Intervals` | `IReadOnlyList<string>` | — | Context intervals loaded for the replay |
+| `StartDateUtc` | `long` | — | Unix ms start of the evaluation window |
+| `EndDateUtc` | `long` | — | Unix ms end of the evaluation window |
+| `InitialCapital` | `decimal` | — | Starting equity |
+| `Strategy` | `IStrategyConfig` | — | Typed strategy configuration |
+| `Execution` | `ExecutionConfig` | — | Fee and slippage model |
+| `TriggerTimeframe` | `string` | `15m` | Trigger candle stream used to drive the scheduler |
+| `WarmupPeriod` | `int` | `200` | Warmup candles used to seed indicators |
+| `EnableAuditLog` | `bool` | `true` | Enables candle, order-event, and grid-cycle audit capture |
+
+## Execution Simulation
+
+Backtesting never places real exchange orders. `SimulatedExecutionEngine` lives in the Application layer and is instantiated per run so each replay gets a fresh in-memory order book.
+
+The engine is responsible for:
+
+- placing in-memory orders from strategy signals
+- simulating fills from candle OHLC data
+- applying maker/taker fees and optional slippage
+- calculating realized and unrealized PnL
+- simulating liquidation fallback behavior when protection orders fail first
+
+## Execution Behavior
+
+Important implemented behaviors:
+
+- **Fill priority**: buys are processed before sells within a candle.
+- **Portfolio heat enforcement**: `BacktestRiskEngine` blocks new entries when total estimated risk would exceed `MaxPortfolioHeatPercent` and counts them in `HeatBlockedSignalCount`.
+- **Drawdown-tier gating**: `BacktestRiskEngine` also applies drawdown scaling and hard halts. Signals blocked by drawdown halting are counted in `DrawdownBlockedSignalCount`.
+- **Audit null-object pattern**: `NullBacktestAuditCollector.Instance` is used when `EnableAuditLog = false`.
+- **Execution context bridge**: `BacktestExecutionContextAccessor` uses `AsyncLocal` to expose the current `SimulatedExecutionEngine` and `CurrentTimestampUtc` to shared services during replay.
+
+## BacktestResult
+
+`BacktestResult` lives in `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs`.
+
+Key fields include:
+
+| Field | Type | Description |
+|---|---|---|
+| `TotalTrades` | `int` | Completed trade count |
+| `WinningTrades` / `LosingTrades` | `int` | Win/loss counts |
+| `WinRate` | `decimal` | Win percentage |
+| `TotalPnL` | `decimal` | Realized PnL |
+| `MaxDrawdownAbsolute` / `MaxDrawdownPercent` | `decimal` | Worst drawdown in absolute and percent terms |
+| `AverageTradePnL` | `decimal` | Mean trade PnL |
+| `AverageHoldTime` | `TimeSpan` | Mean trade duration |
+| `HedgesOpened` | `int` | Hedge open count |
+| `TotalFeesPaid` | `decimal` | Total fees across all fills |
+| `GridCycles` | `int` | Completed grid cycles |
+| `CandlesReplayed` | `int` | Trigger candles processed after warmup |
+| `FinalEquity` | `decimal` | Final simulated equity |
+| `HeatBlockedSignalCount` | `int` | Signals blocked by portfolio heat |
+| `DrawdownBlockedSignalCount` | `int` | Signals blocked by drawdown halts |
+| `EquityTimeSeries` | `IReadOnlyList<EquitySnapshot>` | Equity curve |
+| `TradeLog` | `IReadOnlyList<BacktestTrade>` | Full trade log |
+
+The result model also carries audit logs and R-oriented review metrics such as `Expectancy`, `ProfitFactor`, `Sqn`, `KellyPercent`, `HalfKellyPercent`, and `WinLossRRatio`.
+
+## BacktestRun Persistence
+
+`BacktestRun` in `src/TradingApp.Domain/Entities/BacktestRun.cs` is the persisted representation of a queued or completed run.
+
+Important entity fields include:
+
+- queue/status fields: `Status`, `Progress`, `TotalCandles`, `CandlesReplayed`, `ElapsedMs`, `ErrorMessage`
+- summary metrics: `TotalTrades`, `WinRate`, `TotalPnl`, `MaxDrawdown`, `AverageTradePnl`, `TotalFeesPaid`
+- JSON payloads: `TradesJson`, `EquityTimeSeriesJson`, `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson`
+- review-oriented metrics: `Expectancy`, `ProfitFactor`, `Sqn`, `KellyPercent`, `HalfKellyPercent`, `WinLossRRatio`
+
+Runs are created through `BacktestRun.CreateQueued(...)` for the async path and updated to completed or failed states by `BacktestProcessorService`.
+
+## Review-Oriented Summary Models
+
+The strategy-review system consumes backtest summaries through dedicated projection models rather than the raw replay result.
+
+| Model | Location | Purpose |
+|---|---|---|
+| `BacktestSummaryForReview` | `src/TradingApp.Application/Backtesting/Models/BacktestSummaryForReview.cs` | Converts `BacktestRun` persistence data into a review-friendly summary |
+| `RegimeSegmentationSummary` | `src/TradingApp.Application/Backtesting/Models/RegimeSegmentationSummary.cs` | Segments completed cycles by trend, volatility, funding, and session buckets |
+
+These models are used by `StrategyReviewer` to add historical performance context to AI-generated reviews.
+
+## Key Components
+
+| Component | Purpose | File |
+|---|---|---|
+| `BacktestRunner` | Orchestrates validation, replay, and metric calculation | `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` |
+| `CandleReplayEngine` | Loads and aligns historical candles | `src/TradingApp.Application/Backtesting/Services/CandleReplayEngine.cs` |
+| `SimulatedExecutionEngine` | In-memory execution engine for replay | `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
+| `BacktestExecutionContextAccessor` | Async-local bridge exposing current execution engine and timestamp | `src/TradingApp.Application/Backtesting/BacktestExecutionContextAccessor.cs` |
+| `BacktestMetricsCalculator` | Computes summary statistics | `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
+| `BacktestJobQueue` | Queued work channel | `src/TradingApp.Application/Backtesting/BacktestJobQueue.cs` |
+| `BacktestCancellationManager` | Per-run cancellation registry | `src/TradingApp.Application/Backtesting/BacktestCancellationManager.cs` |
+| `BacktestProcessorService` | Hosted service executing queued runs | `src/TradingApp.Api/Services/BacktestProcessorService.cs` |
+| `IBacktestAuditCollector` / `NullBacktestAuditCollector` | Audit collection boundary and no-op fallback | `src/TradingApp.Application/Backtesting/Services/` |
+
+## API And UI
+
+Implemented API endpoints in `src/TradingApp.Api/Controllers/BacktestsController.cs`:
+
+| Method | Route | Description |
+|---|---|---|
+| `POST` | `/api/backtests` | Queue a backtest and return `202 Accepted` |
+| `GET` | `/api/backtests/{id}` | Retrieve a persisted result |
+| `GET` | `/api/backtests` | List backtest summaries |
+| `GET` | `/api/backtests/validate` | Validate candle coverage |
+| `GET` | `/api/backtests/{id}/debug` | Load per-cycle debug data |
+| `POST` | `/api/backtests/{id}/cancel` | Cancel a queued or running backtest |
+
+The Angular UI in `frontend/trading-ui/src/app/features/backtesting/` renders the run form, results, debug views, comparisons, and progress updates. `BacktestService` also exposes `cancelBacktest(id)`.
+
+## Safety Principle
+
+Backtesting must never call live exchange execution code. The separate `SimulatedExecutionEngine` implementation is the isolation boundary that prevents accidental live order placement during replay.
+
+## Future Recommendations
+
+- Add tick-level or intrabar replay when candle-level fills become too optimistic for newer strategies.
+- Add order-book and latency simulation instead of exact-limit-price fills.
+- Surface blocked-signal diagnostics such as `DrawdownBlockedSignalCount` more prominently in the UI.
+- Expand `ReplayData` reuse patterns for optimizer batches and walk-forward validation.
+- Add richer funding-aware and session-aware attribution alongside the existing reviewer summaries.# Backtesting Architecture
+
 This document describes how backtesting works for the trading platform.
 
 The purpose of backtesting is to run the same strategy logic used in live trading

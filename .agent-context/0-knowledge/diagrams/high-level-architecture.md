@@ -1,103 +1,79 @@
-# AITradingBot - High-Level Architecture
+# TradingApp - High-Level Architecture
+
+The deployed system is no longer a single bot host. It is a split architecture with an API control plane, a browser UI, and a client-side Windows execution agent that holds the private key and talks to Hyperliquid directly.
 
 ```mermaid
 flowchart LR
-
-    subgraph Users["Users / Operators"]
-        U1["Trader / Admin"]
+    subgraph Users["Users"]
+        Browser["Browser / Angular UI"]
+        Operator["Trader / Operator"]
     end
 
-    subgraph Config["Configuration & Control"]
-        CFG["Bot Config
-        - tenant settings
-        - strategy params
-        - risk limits
-        - exchange credentials refs"]
-        FEAT["Feature Flags / Kill Switches"]
+    subgraph ControlPlane["Cloud Control Plane"]
+        API["TradingApp.Api\nREST API + MarketDataHub"]
+        APIJobs["BacktestProcessorService\nOptimizationProcessorService\nMacroCalendarSyncWorker"]
+        SignalR["SignalR / Azure SignalR"]
     end
 
-    subgraph App["AITradingBot Application"]
-        API["Control API / Admin UI"]
-        ORCH["Bot Orchestrator"]
-        CC["CandleClock"]
-        SS["StrategyScheduler"]
-        SE["Strategy Engine"]
-        RM["Risk Manager"]
-        PM["Portfolio / Position Manager"]
-        EXE["Execution Engine"]
-        EVT["Event Bus / Internal Messages"]
+    subgraph Agent["Client Execution Agent"]
+        Worker["TradingApp.Worker\nTradingApp.ExecutionAgent"]
+        CheckIn["AgentCheckInService\nheartbeat every 5s"]
+        Session["TradingSession\nCandleClock\nStrategyScheduler\nGridController / SignalController\nLiveRiskEngine\nLivePositionManager\nLiveExecutionEngine"]
     end
 
-    subgraph Data["Market & External Services"]
-        MDS["Market Data Service
-        - candles
-        - trades
-        - order book"]
-        AI["AI / LLM Decision Support
-        optional"]
-        EX["Exchange Connector
-        - Hyperliquid / other venues"]
+    subgraph External["External Services"]
+        Hyperliquid["Hyperliquid\nWebSocket + REST"]
+        Llm["AI / LLM Services\noptional"]
+        Binance["Binance Historical Data"]
     end
 
     subgraph Persistence["Persistence"]
-        STATE["Bot State Store"]
-        ORD["Orders / Fills Store"]
-        MDH["Market Data Cache / History"]
-        DEC["Strategy Decision Log"]
+        GridCycleStore["GridCycle"]
+        OrderStore["LiveOrder / LiveFill"]
+        MarketStore["Candle / FundingRate"]
+        RunStore["BacktestRun / OptimizationRun"]
     end
 
-    subgraph Ops["Observability & Safety"]
-        LOG["Structured Logging"]
-        MET["Metrics / Monitoring"]
-        ALT["Alerts / Notifications"]
-        AUD["Audit Trail"]
-    end
+    Operator --> Browser
+    Browser -->|REST| API
+    Browser <-->|SignalR| SignalR
+    API --> SignalR
 
-    subgraph Test["Simulation / Research"]
-        BT["Backtest Runner"]
-        REPLAY["Historical Replay Engine"]
-    end
+    Worker --> CheckIn
+    CheckIn -->|POST /api/agent/heartbeat| API
+    API -->|HeartbeatResponse\nPendingCommands / MustShutdown / Update metadata| CheckIn
+    CheckIn --> Session
 
-    U1 --> API
-    API --> CFG
-    API --> FEAT
-    API --> ORCH
+    Session -->|REST /exchange| Hyperliquid
+    Hyperliquid -->|trades / userEvents WebSocket| Session
+    Session -->|real-time updates when configured| SignalR
 
-    CFG --> ORCH
-    FEAT --> ORCH
+    API --> GridCycleStore
+    API --> OrderStore
+    API --> MarketStore
+    API --> RunStore
+    Session --> GridCycleStore
+    Session --> OrderStore
+    Session --> MarketStore
 
-    ORCH --> CC
-    CC --> SS
-    SS --> EVT
+    Binance --> MarketStore
+    APIJobs --> RunStore
+    MarketStore --> APIJobs
+    APIJobs --> SignalR
 
-    MDS --> EVT
-    EVT --> SE
-    SE --> RM
-    RM --> PM
-    PM --> EXE
-    EXE --> EX
-    EX --> ORD
-    EX --> PM
+    Llm -. interpretation / review / market context .-> API
+    Llm -. optional live context overlay .-> Session
+```
 
-    SE --> DEC
-    RM --> DEC
-    PM --> STATE
-    EXE --> AUD
+## Notes
 
-    ORCH --> LOG
-    ORCH --> MET
-    ORCH --> ALT
-    EXE --> LOG
-    RM --> LOG
-    SE --> LOG
+- Browser traffic is split between REST calls to `TradingApp.Api` and SignalR subscriptions through `MarketDataHub` or Azure SignalR.
+- Worker-to-API control is poll-based: the worker heartbeats every five seconds and receives queued commands in the heartbeat response.
+- The worker, not the API, owns live exchange connectivity, order signing, and direct Hyperliquid order placement.
+- Persistence names align to the current domain model: `GridCycle`, `LiveOrder`, `LiveFill`, `Candle`, `FundingRate`, `BacktestRun`, and `OptimizationRun`.
+- AI integrations remain optional overlays rather than autonomous trade execution.
 
-    MDS --> MDH
+## Future Recommendations
 
-    REPLAY --> BT
-    MDH --> REPLAY
-    BT --> SE
-    BT --> RM
-    BT --> PM
-    BT --> DEC
-
-    AI -. optional signal enrichment .-> SE
+- Add a companion deployment diagram that distinguishes local SignalR hosting from Azure SignalR publishing.
+- Add a separate control-plane sequence diagram for agent update rollout and kill-switch flows.
