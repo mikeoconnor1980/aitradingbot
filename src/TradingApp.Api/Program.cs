@@ -252,6 +252,7 @@ builder.Services.AddScoped<IMacroCalendarIngestionService, TradingApp.Persistenc
 builder.Services.AddScoped<IMacroCalendarQueryService, MacroCalendarQueryService>();
 builder.Services.AddScoped<IMacroEventRiskCheck, MacroEventRiskCheck>();
 builder.Services.AddHostedService<MacroCalendarSyncWorker>();
+builder.Services.AddHostedService<ExecutionLogCleanupService>();
 
 builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);

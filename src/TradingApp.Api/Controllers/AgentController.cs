@@ -1,8 +1,14 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using TradingApp.Application.Abstractions.Configuration;
+using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Agent.Services;
+using TradingApp.Domain.Entities;
+using TradingApp.Persistence;
 
 namespace TradingApp.Api.Controllers;
 
@@ -16,13 +22,29 @@ namespace TradingApp.Api.Controllers;
 [AllowAnonymous]
 public sealed class AgentController : ControllerBase
 {
+    private static readonly JsonSerializerOptions DataJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     private readonly AgentCommandStore _store;
     private readonly AgentUpdateOptions _updateOptions;
+    private readonly HyperliquidOptions _hyperliquidOptions;
+    private readonly TradingAppDbContext _db;
+    private readonly ISignalRPublisher _signalRPublisher;
 
-    public AgentController(AgentCommandStore store, IOptions<AgentUpdateOptions> updateOptions)
+    public AgentController(
+        AgentCommandStore store,
+        IOptions<AgentUpdateOptions> updateOptions,
+        IOptions<HyperliquidOptions> hyperliquidOptions,
+        TradingAppDbContext db,
+        ISignalRPublisher signalRPublisher)
     {
         _store = store;
         _updateOptions = updateOptions.Value;
+        _hyperliquidOptions = hyperliquidOptions.Value;
+        _db = db;
+        _signalRPublisher = signalRPublisher;
     }
 
     /// <summary>
@@ -31,7 +53,7 @@ public sealed class AgentController : ControllerBase
     [HttpPost("heartbeat")]
     [ProducesResponseType(typeof(HeartbeatResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public IActionResult Heartbeat([FromBody] AgentHeartbeat heartbeat)
+    public async Task<IActionResult> Heartbeat([FromBody] AgentHeartbeat heartbeat)
     {
         if (string.IsNullOrWhiteSpace(heartbeat.AgentId))
         {
@@ -44,6 +66,38 @@ public sealed class AgentController : ControllerBase
 
         _store.ProcessHeartbeat(heartbeat);
 
+        // Persist and broadcast execution logs
+        if (heartbeat.ExecutionLogs is { Count: > 0 })
+        {
+            var now = DateTimeOffset.UtcNow;
+            foreach (var entry in heartbeat.ExecutionLogs)
+            {
+                _db.ExecutionLogs.Add(new ExecutionLog
+                {
+                    Id = Guid.NewGuid(),
+                    AgentId = heartbeat.AgentId,
+                    TimestampUtc = entry.TimestampUtc,
+                    Category = entry.Category.ToString(),
+                    Level = entry.Level.ToString(),
+                    Message = entry.Message,
+                    Data = entry.Data is not null ? JsonSerializer.Serialize(entry.Data, DataJsonOptions) : null,
+                    ReceivedAtUtc = now,
+                });
+
+                await _signalRPublisher.BroadcastExecutionLogAsync(new ExecutionLogDto
+                {
+                    AgentId = heartbeat.AgentId,
+                    TimestampUtc = entry.TimestampUtc,
+                    Category = entry.Category.ToString(),
+                    Level = entry.Level.ToString(),
+                    Message = entry.Message,
+                    Data = entry.Data,
+                });
+            }
+
+            await _db.SaveChangesAsync();
+        }
+
         // Check kill switch — if killed, tell the agent to shut down
         var killReason = _store.GetKillReason(heartbeat.AgentId);
         if (killReason is not null)
@@ -53,6 +107,7 @@ public sealed class AgentController : ControllerBase
                 PendingCommands = [],
                 MustShutdown = true,
                 ShutdownReason = killReason,
+                NetworkConfig = BuildNetworkConfig(),
             });
         }
 
@@ -69,6 +124,7 @@ public sealed class AgentController : ControllerBase
             LatestVersion = updateAvailable ? _updateOptions.LatestVersion : null,
             UpdateDownloadUrl = updateAvailable ? _updateOptions.DownloadUrl : null,
             UpdateSha256Hash = updateAvailable ? _updateOptions.Sha256Hash : null,
+            NetworkConfig = BuildNetworkConfig(),
         });
     }
 
@@ -123,6 +179,52 @@ public sealed class AgentController : ControllerBase
             .ToList();
 
         return Ok(commands);
+    }
+
+    /// <summary>
+    /// Get execution log entries for a specific agent.
+    /// </summary>
+    [HttpGet("{agentId}/execution-logs")]
+    [ProducesResponseType(typeof(IReadOnlyList<ExecutionLogDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetExecutionLogs(
+        string agentId,
+        [FromQuery] DateTimeOffset? since = null,
+        [FromQuery] int limit = 200,
+        [FromQuery] string? level = null)
+    {
+        limit = Math.Clamp(limit, 1, 1000);
+
+        var query = _db.ExecutionLogs
+            .Where(e => e.AgentId == agentId)
+            .AsNoTracking();
+
+        if (since.HasValue)
+        {
+            query = query.Where(e => e.TimestampUtc >= since.Value);
+        }
+
+        if (!string.IsNullOrEmpty(level))
+        {
+            query = query.Where(e => e.Level == level);
+        }
+
+        var rows = await query
+            .OrderByDescending(e => e.TimestampUtc)
+            .Take(limit)
+            .Select(e => new { e.AgentId, e.TimestampUtc, e.Category, e.Level, e.Message, e.Data })
+            .ToListAsync();
+
+        var logs = rows.Select(e => new ExecutionLogDto
+        {
+            AgentId = e.AgentId,
+            TimestampUtc = e.TimestampUtc,
+            Category = e.Category,
+            Level = e.Level,
+            Message = e.Message,
+            Data = e.Data != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(e.Data, DataJsonOptions) : null,
+        }).ToList();
+
+        return Ok(logs);
     }
 
     /// <summary>
@@ -197,6 +299,13 @@ public sealed class AgentController : ControllerBase
 
         return false;
     }
+
+    private NetworkConfig BuildNetworkConfig() => new()
+    {
+        BaseUrl = _hyperliquidOptions.BaseUrl,
+        WsBaseUrl = _hyperliquidOptions.WsBaseUrl,
+        Network = _hyperliquidOptions.Network,
+    };
 }
 
 public sealed class PendingCommandDto

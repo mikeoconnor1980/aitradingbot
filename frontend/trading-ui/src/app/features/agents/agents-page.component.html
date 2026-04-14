@@ -157,9 +157,16 @@
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            class="agents-page__selectable-row"
+            [class.agents-page__selected-row]="selectedAgentId() === row.agentId"
+            (click)="onSelectAgent(row)"></tr>
         </table>
       }
     </mat-card-content>
   </mat-card>
+
+  @if (agents().length > 0) {
+    <app-execution-console [agentId]="selectedAgentId() ?? agents()[0]?.agentId ?? null"></app-execution-console>
+  }
 </div>

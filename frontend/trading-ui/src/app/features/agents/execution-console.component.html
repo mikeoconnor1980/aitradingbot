@@ -1,0 +1,56 @@
+<div class="exec-console" [class.exec-console--expanded]="expanded()">
+  <div class="exec-console__toolbar">
+    <div class="exec-console__title">
+      <mat-icon class="exec-console__title-icon">terminal</mat-icon>
+      <span>Execution Console</span>
+    </div>
+
+    <div class="exec-console__controls">
+      <mat-button-toggle-group
+        [value]="level()"
+        (change)="onToggleLevel($event.value)"
+        hideSingleSelectionIndicator>
+        <mat-button-toggle value="Summary">Summary</mat-button-toggle>
+        <mat-button-toggle value="Detail">Detail</mat-button-toggle>
+      </mat-button-toggle-group>
+
+      <button mat-icon-button
+        [matTooltip]="paused() ? 'Resume' : 'Pause'"
+        (click)="onTogglePause()">
+        <mat-icon>{{ paused() ? 'play_arrow' : 'pause' }}</mat-icon>
+      </button>
+
+      <button mat-icon-button matTooltip="Clear" (click)="onClear()">
+        <mat-icon>delete_sweep</mat-icon>
+      </button>
+
+      <button mat-icon-button
+        [matTooltip]="expanded() ? 'Collapse' : 'Expand'"
+        (click)="onToggleExpand()">
+        <mat-icon>{{ expanded() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="exec-console__body" #scrollContainer>
+    @if (entries().length === 0) {
+      <div class="exec-console__empty">
+        <mat-icon>hourglass_empty</mat-icon>
+        <span>Waiting for execution logs&hellip;</span>
+      </div>
+    } @else {
+      @for (entry of entries(); track $index) {
+        <div class="exec-console__line" [class]="'exec-console__line--' + getCategoryClass(entry.category)">
+          <span class="exec-console__time">{{ formatTimestamp(entry.timestampUtc) }}</span>
+          <mat-icon class="exec-console__cat-icon" [matTooltip]="entry.category">
+            {{ getCategoryIcon(entry.category) }}
+          </mat-icon>
+          <span class="exec-console__msg">{{ entry.message }}</span>
+          @if (entry.data) {
+            <span class="exec-console__data">{{ formatData(entry.data) }}</span>
+          }
+        </div>
+      }
+    }
+  </div>
+</div>

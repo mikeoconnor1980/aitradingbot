@@ -90,4 +90,21 @@
     width: 20px;
     height: 20px;
   }
+
+  &__selectable-row {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--mat-sys-surface-container-high);
+    }
+  }
+
+  &__selected-row {
+    background-color: var(--mat-sys-surface-container-highest) !important;
+  }
+
+  app-execution-console {
+    display: block;
+    margin-top: 16px;
+  }
 }

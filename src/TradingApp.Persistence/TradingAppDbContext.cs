@@ -28,6 +28,7 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<ExecutionLog> ExecutionLogs => Set<ExecutionLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -818,6 +819,47 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(e => e.UserId)
                 .HasDatabaseName("IX_Subscriptions_UserId");
+        });
+
+        modelBuilder.Entity<ExecutionLog>(entity =>
+        {
+            entity.ToTable("ExecutionLogs");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.AgentId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.TimestampUtc)
+                .IsRequired();
+
+            entity.Property(e => e.Category)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.Property(e => e.Level)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(e => e.Message)
+                .HasMaxLength(1000)
+                .IsRequired();
+
+            entity.Property(e => e.Data)
+                .HasMaxLength(4000);
+
+            entity.Property(e => e.ReceivedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(e => new { e.AgentId, e.TimestampUtc })
+                .HasDatabaseName("IX_ExecutionLogs_AgentId_TimestampUtc");
+
+            entity.HasIndex(e => e.ReceivedAtUtc)
+                .HasDatabaseName("IX_ExecutionLogs_ReceivedAtUtc");
         });
     }
 }

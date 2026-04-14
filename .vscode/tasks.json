@@ -47,8 +47,35 @@
       }
     },
     {
+      "label": "Start Worker",
+      "type": "shell",
+      "command": "dotnet run",
+      "options": {
+        "cwd": "${workspaceFolder}/src/TradingApp.Worker"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "dotnet",
+        "pattern": [
+          {
+            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+            "file": 1,
+            "line": 2,
+            "column": 3,
+            "severity": 4,
+            "message": 5
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building\\.\\.\\.",
+          "endsPattern": "AgentCheckInService started"
+        }
+      }
+    },
+    {
       "label": "Start Dev",
-      "dependsOn": ["Start API", "Start UI"],
+      "dependsOn": ["Start API", "Start UI", "Start Worker"],
       "dependsOrder": "parallel",
       "group": {
         "kind": "build",

@@ -1,7 +1,8 @@
-import { HttpClient } from "@angular/common/http";
+import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { BehaviorSubject, Observable, catchError, map, of, tap } from "rxjs";
 import { environment } from "../../../environments/environment";
+import { ExecutionLogEntry } from "../models/execution-log.model";
 import { PlaceOrderRequest, PlaceOrderResponse } from "../models/place-order.model";
 import { PlaceTriggerOrderRequest, PlaceTriggerOrderResponse } from "../models/trigger-order.model";
 
@@ -194,5 +195,16 @@ export class AgentService {
     return this._http
       .post(`${this._baseUrl}/agent/${agentId}/reinstate`, {})
       .pipe(tap(() => setTimeout(() => this.refreshAgents(), 500)));
+  }
+
+  public getExecutionLogs(agentId: string, since?: string, limit?: number, level?: string): Observable<ExecutionLogEntry[]> {
+    let params = new HttpParams();
+    if (since) params = params.set("since", since);
+    if (limit) params = params.set("limit", limit.toString());
+    if (level) params = params.set("level", level);
+
+    return this._http
+      .get<ExecutionLogEntry[]>(`${this._baseUrl}/agent/${agentId}/execution-logs`, { params })
+      .pipe(catchError(() => of<ExecutionLogEntry[]>([])));
   }
 }

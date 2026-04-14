@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TradingApp.Application.Abstractions.Configuration;
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Scheduling;
@@ -42,6 +43,8 @@ public sealed class AgentCheckInService : BackgroundService
     private readonly ISignerProvider _signerProvider;
     private readonly ITradingHealthProvider _healthProvider;
     private readonly IUpdateNotifier _updateNotifier;
+    private readonly IExecutionLogger _executionLogger;
+    private readonly HyperliquidOptions _hyperliquidOptions;
     private readonly AgentOptions _agentOptions;
     private readonly ILogger<AgentCheckInService> _logger;
 
@@ -62,6 +65,8 @@ public sealed class AgentCheckInService : BackgroundService
         ISignerProvider signerProvider,
         ITradingHealthProvider healthProvider,
         IUpdateNotifier updateNotifier,
+        IExecutionLogger executionLogger,
+        IOptions<HyperliquidOptions> hyperliquidOptions,
         IOptions<AgentOptions> agentOptions,
         ILogger<AgentCheckInService> logger)
     {
@@ -70,6 +75,8 @@ public sealed class AgentCheckInService : BackgroundService
         _signerProvider = signerProvider;
         _healthProvider = healthProvider;
         _updateNotifier = updateNotifier;
+        _executionLogger = executionLogger;
+        _hyperliquidOptions = hyperliquidOptions.Value;
         _agentOptions = agentOptions.Value;
         _logger = logger;
     }
@@ -79,6 +86,20 @@ public sealed class AgentCheckInService : BackgroundService
         _logger.LogInformation(
             "AgentCheckInService started. AgentId={AgentId}, ControlPlane={Url}",
             _agentOptions.AgentId, _agentOptions.ControlPlaneUrl);
+
+        _executionLogger.Log(new ExecutionLogEntry
+        {
+            TimestampUtc = DateTimeOffset.UtcNow,
+            Category = ExecutionLogCategory.CandleClose,
+            Level = ExecutionLogLevel.Summary,
+            Message = $"Agent started — {Environment.MachineName} v{AgentVersion}",
+            Data = new Dictionary<string, object>
+            {
+                ["agentId"] = _agentOptions.AgentId,
+                ["machine"] = Environment.MachineName,
+                ["version"] = AgentVersion,
+            },
+        });
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -133,9 +154,23 @@ public sealed class AgentCheckInService : BackgroundService
 
         if (result is null) return;
 
+        // Apply network config from control plane
+        if (result.NetworkConfig is { } netCfg)
+        {
+            ApplyNetworkConfig(netCfg);
+        }
+
         // Kill switch — stop everything and halt the heartbeat loop
         if (result.MustShutdown)
         {
+            _executionLogger.Log(new ExecutionLogEntry
+            {
+                TimestampUtc = DateTimeOffset.UtcNow,
+                Category = ExecutionLogCategory.Signal,
+                Level = ExecutionLogLevel.Summary,
+                Message = $"Kill switch activated — {result.ShutdownReason ?? "No reason given"}",
+            });
+
             _logger.LogCritical(
                 "Kill switch activated by control plane: {Reason}. Shutting down.",
                 result.ShutdownReason ?? "No reason given.");
@@ -182,12 +217,12 @@ public sealed class AgentCheckInService : BackgroundService
     {
         ActiveStrategyInfo? activeStrategy = null;
         AgentState state;
+        string? lastError = null;
 
         lock (_sessionLock)
         {
-            if (_activeSession is { IsRunning: true })
+            if (_activeSession is not null)
             {
-                state = AgentState.Running;
                 activeStrategy = new ActiveStrategyInfo
                 {
                     StrategyName = _activeSession.StrategyConfig.StrategyName,
@@ -195,6 +230,17 @@ public sealed class AgentCheckInService : BackgroundService
                     Timeframe = _activeSession.StrategyConfig.Timeframe,
                     StartedAtUtc = _activeSession.StartedAtUtc,
                 };
+
+                if (_activeSession.IsRunning)
+                {
+                    state = AgentState.Running;
+                }
+                else
+                {
+                    // Session was assigned but the run task completed (crash/disconnect)
+                    state = AgentState.Error;
+                    lastError = "Trading session stopped unexpectedly";
+                }
             }
             else
             {
@@ -209,6 +255,9 @@ public sealed class AgentCheckInService : BackgroundService
             orderResults.Add(r);
         }
 
+        // Drain execution log entries from the strategy evaluation pipeline
+        var executionLogs = _executionLogger.Drain();
+
         // Get update state from UpdateCheckerService
         var updateChecker = _updateNotifier as UpdateCheckerService;
 
@@ -219,8 +268,10 @@ public sealed class AgentCheckInService : BackgroundService
             MachineName = Environment.MachineName,
             WalletAddress = _signerProvider.IsConfigured ? _signerProvider.WalletAddress : null,
             ActiveStrategy = activeStrategy,
+            LastError = lastError,
             TimestampUtc = DateTimeOffset.UtcNow,
             OrderResults = orderResults,
+            ExecutionLogs = executionLogs,
             AgentVersion = AgentVersion,
             UpdateState = updateChecker?.CurrentState ?? UpdateState.None,
             UpdateDeferredReason = updateChecker?.DeferredReason,
@@ -308,6 +359,21 @@ public sealed class AgentCheckInService : BackgroundService
 
         session.Start();
 
+        _executionLogger.Log(new ExecutionLogEntry
+        {
+            TimestampUtc = DateTimeOffset.UtcNow,
+            Category = ExecutionLogCategory.Signal,
+            Level = ExecutionLogLevel.Summary,
+            Message = $"Trading started — {command.StrategyConfig.StrategyName} on {command.StrategyConfig.Market} ({command.StrategyConfig.Timeframe}) [{_hyperliquidOptions.Network}]",
+            Data = new Dictionary<string, object>
+            {
+                ["strategy"] = command.StrategyConfig.StrategyName,
+                ["market"] = command.StrategyConfig.Market,
+                ["timeframe"] = command.StrategyConfig.Timeframe,
+                ["network"] = _hyperliquidOptions.Network,
+            },
+        });
+
         _logger.LogInformation(
             "Trading session started: Strategy={Strategy}, Market={Market}",
             command.StrategyConfig.StrategyName, command.StrategyConfig.Market);
@@ -330,6 +396,14 @@ public sealed class AgentCheckInService : BackgroundService
 
         await session.StopAsync();
         await session.DisposeAsync();
+
+        _executionLogger.Log(new ExecutionLogEntry
+        {
+            TimestampUtc = DateTimeOffset.UtcNow,
+            Category = ExecutionLogCategory.Signal,
+            Level = ExecutionLogLevel.Summary,
+            Message = "Trading stopped by dashboard command",
+        });
 
         _logger.LogInformation("Trading session stopped by dashboard command.");
     }
@@ -643,6 +717,29 @@ public sealed class AgentCheckInService : BackgroundService
         }
     }
 
+    /// <summary>
+    /// Mutates the singleton HyperliquidOptions in-place so all consumers
+    /// (REST client, WebSocket clients) pick up the control-plane endpoints.
+    /// Only logs on first receipt or when the value actually changes.
+    /// </summary>
+    private void ApplyNetworkConfig(NetworkConfig config)
+    {
+        if (_hyperliquidOptions.BaseUrl == config.BaseUrl &&
+            _hyperliquidOptions.WsBaseUrl == config.WsBaseUrl &&
+            _hyperliquidOptions.Network == config.Network)
+        {
+            return; // no change
+        }
+
+        _logger.LogInformation(
+            "Network config updated from control plane: {Network} (REST={BaseUrl}, WS={WsBaseUrl})",
+            config.Network, config.BaseUrl, config.WsBaseUrl);
+
+        _hyperliquidOptions.BaseUrl = config.BaseUrl;
+        _hyperliquidOptions.WsBaseUrl = config.WsBaseUrl;
+        _hyperliquidOptions.Network = config.Network;
+    }
+
     private TradingSession CreateSession(StrategyConfig strategyConfig)
     {
         var gridState = new GridState();
@@ -699,7 +796,8 @@ public sealed class AgentCheckInService : BackgroundService
             orderTracker,
             scope,
             triggerOrderManager,
-            _serviceProvider.GetRequiredService<IOptions<RiskLimitsConfig>>());
+            _serviceProvider.GetRequiredService<IOptions<RiskLimitsConfig>>(),
+            _executionLogger);
     }
 
     private static string GetAgentVersion()

@@ -11,6 +11,7 @@ import { interval, forkJoin, of, switchMap } from "rxjs";
 import { AgentInfo, AgentService, AgentState, PendingCommand } from "../../core/services/agent.service";
 import { StartTradingDialogComponent, StartTradingDialogResult } from "./start-trading-dialog.component";
 import { KillSwitchDialogComponent, KillSwitchDialogResult } from "./kill-switch-dialog.component";
+import { ExecutionConsoleComponent } from "./execution-console.component";
 
 @Component({
   selector: "app-agents-page",
@@ -22,6 +23,7 @@ import { KillSwitchDialogComponent, KillSwitchDialogResult } from "./kill-switch
     MatChipsModule,
     MatTooltipModule,
     MatDialogModule,
+    ExecutionConsoleComponent,
   ],
   templateUrl: "./agents-page.component.html",
   styleUrl: "./agents-page.component.scss"
@@ -33,6 +35,7 @@ export class AgentsPageComponent implements OnInit {
 
   public readonly agents = signal<AgentInfo[]>([]);
   public readonly pendingCommands = signal<Record<string, PendingCommand[]>>({});
+  public readonly selectedAgentId = signal<string | null>(null);
   public readonly displayedColumns = ["status", "agentId", "machineName", "wallet", "strategy", "lastHeartbeat", "queue", "actions"];
 
   public ngOnInit(): void {
@@ -177,5 +180,9 @@ export class AgentsPageComponent implements OnInit {
 
   public formatCommandType(type: string): string {
     return type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  public onSelectAgent(agent: AgentInfo): void {
+    this.selectedAgentId.set(agent.agentId);
   }
 }

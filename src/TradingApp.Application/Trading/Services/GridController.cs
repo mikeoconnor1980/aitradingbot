@@ -1,5 +1,6 @@
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Agent.Models;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 using TradingApp.Domain.Trading;
@@ -8,6 +9,13 @@ namespace TradingApp.Application.Trading.Services;
 
 public sealed class GridController : IGridController
 {
+    private readonly IExecutionLogger _executionLogger;
+
+    public GridController(IExecutionLogger? executionLogger = null)
+    {
+        _executionLogger = executionLogger ?? NullExecutionLogger.Instance;
+    }
+
     public Task<IReadOnlyList<TradingSignal>> ProcessAsync(
         StrategyEvaluation evaluation,
         MarketContext context,
@@ -32,9 +40,16 @@ public sealed class GridController : IGridController
 
         if (positionState.IsOpen)
         {
+            _executionLogger.LogDetail(
+                ExecutionLogCategory.ExitCheck,
+                $"Position open ({positionState.Size:F4} @ {positionState.AverageEntryPrice:F2}). Checking exit conditions...");
+
             var exitSignal = EvaluateExitConditions(context, gridState, positionState, config);
             if (exitSignal is not null)
             {
+                _executionLogger.LogSummary(
+                    ExecutionLogCategory.ExitCheck,
+                    $"Exit signal triggered: {exitSignal.Reason}");
                 return Task.FromResult<IReadOnlyList<TradingSignal>>([exitSignal]);
             }
 
@@ -119,11 +134,17 @@ public sealed class GridController : IGridController
 
         if (!evaluation.SetupDetected)
         {
+            _executionLogger.LogDetail(
+                ExecutionLogCategory.EntryGate,
+                "Grid deployment skipped: no setup detected.");
             return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
         if (gridState.Lifecycle is not (GridLifecycle.Inactive or GridLifecycle.Closed))
         {
+            _executionLogger.LogDetail(
+                ExecutionLogCategory.GridState,
+                $"Grid deployment blocked: lifecycle is {gridState.Lifecycle} (must be Inactive or Closed).");
             return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
@@ -175,6 +196,9 @@ public sealed class GridController : IGridController
 
         if (notionalPerLevel <= 0m)
         {
+            _executionLogger.LogDetail(
+                ExecutionLogCategory.EntryGate,
+                "Grid deployment blocked: position sizing returned zero notional.");
             return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
@@ -186,6 +210,19 @@ public sealed class GridController : IGridController
         gridState.AtrAtEntry = config.Exit.StopLoss.Type == ExitRuleType.AtrInitial
             ? context.Indicators?.Atr
             : null;
+
+        _executionLogger.LogSummary(
+            ExecutionLogCategory.GridState,
+            $"Deploying grid: {gridLevels} levels, ${notionalPerLevel:F2}/level, anchor={anchorPrice:F2}, leverage={leverage}x",
+            new Dictionary<string, object>
+            {
+                ["gridCycleId"] = gridState.GridCycleId,
+                ["levels"] = gridLevels,
+                ["notionalPerLevel"] = notionalPerLevel,
+                ["anchorPrice"] = anchorPrice,
+                ["leverage"] = leverage,
+                ["estimatedRiskUsd"] = estimatedRiskUsd,
+            });
 
         return Task.FromResult<IReadOnlyList<TradingSignal>>(
         [

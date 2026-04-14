@@ -43,6 +43,7 @@ public sealed class TradingSession : IAsyncDisposable
     private readonly IServiceScope? _serviceScope;
     private readonly ITradingHealthProvider _healthProvider;
     private readonly ITriggerOrderManager? _triggerOrderManager;
+    private readonly IExecutionLogger _executionLogger;
     private readonly ILogger _logger;
     private readonly IReadOnlyList<DrawdownTier> _drawdownTiers;
 
@@ -78,7 +79,8 @@ public sealed class TradingSession : IAsyncDisposable
         IOrderTracker? orderTracker = null,
         IServiceScope? serviceScope = null,
         ITriggerOrderManager? triggerOrderManager = null,
-        IOptions<RiskLimitsConfig>? riskLimits = null)
+        IOptions<RiskLimitsConfig>? riskLimits = null,
+        IExecutionLogger? executionLogger = null)
     {
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
@@ -99,6 +101,7 @@ public sealed class TradingSession : IAsyncDisposable
         _serviceScope = serviceScope;
         _healthProvider = healthProvider;
         _triggerOrderManager = triggerOrderManager;
+        _executionLogger = executionLogger ?? NullExecutionLogger.Instance;
         _logger = logger;
         GridState = gridState ?? new GridState();
         _drawdownTiers = riskLimits?.Value.DrawdownTiers ?? [];
@@ -250,6 +253,7 @@ public sealed class TradingSession : IAsyncDisposable
             StrategyConfig,
             triggerTimeframe,
             signalController: _signalController,
+            executionLogger: _executionLogger,
             initialCapital: initialCapital,
             gridState: GridState,
             drawdownTiers: _drawdownTiers);

@@ -38,4 +38,7 @@ public sealed class HubContextSignalRPublisher : ISignalRPublisher
 
     public Task BroadcastPositionsResyncAsync(IReadOnlyList<PositionDto> positions, CancellationToken cancellationToken = default)
         => _hubContext.Clients.All.SendAsync("ReceivePositionsResync", positions, cancellationToken);
+
+    public Task BroadcastExecutionLogAsync(ExecutionLogDto log, CancellationToken cancellationToken = default)
+        => _hubContext.Clients.All.SendAsync("ReceiveExecutionLog", log, cancellationToken);
 }

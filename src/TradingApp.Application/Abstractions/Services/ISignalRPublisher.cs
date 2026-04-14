@@ -1,3 +1,4 @@
+using TradingApp.Application.Agent.Models;
 using TradingApp.Application.MarketData.Models;
 
 namespace TradingApp.Application.Abstractions.Services;
@@ -21,4 +22,19 @@ public interface ISignalRPublisher
     Task BroadcastOrdersResyncAsync(IReadOnlyList<OpenOrderDto> orders, CancellationToken cancellationToken = default);
 
     Task BroadcastPositionsResyncAsync(IReadOnlyList<PositionDto> positions, CancellationToken cancellationToken = default);
+
+    Task BroadcastExecutionLogAsync(ExecutionLogDto log, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// DTO for broadcasting execution log entries via SignalR.
+/// </summary>
+public sealed class ExecutionLogDto
+{
+    public required string AgentId { get; init; }
+    public required DateTimeOffset TimestampUtc { get; init; }
+    public required string Category { get; init; }
+    public required string Level { get; init; }
+    public required string Message { get; init; }
+    public Dictionary<string, object>? Data { get; init; }
 }

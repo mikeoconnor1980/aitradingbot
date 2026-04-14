@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradingApp.Application.Abstractions.Services;
+using TradingApp.Application.Agent.Models;
 using TradingApp.Application.StrategyAuthoring.Models;
 using TradingApp.Application.Trading.Models;
 
@@ -16,6 +17,7 @@ public sealed class LiveRiskEngine : IRiskEngine
 {
     private readonly RiskLimitsConfig _limits;
     private readonly ILogger<LiveRiskEngine> _logger;
+    private readonly IExecutionLogger _executionLogger;
 
     private readonly ConcurrentQueue<LossRecord> _recentLosses = new();
     private readonly ConcurrentDictionary<string, decimal> _positionRisks = new(StringComparer.OrdinalIgnoreCase);
@@ -29,10 +31,12 @@ public sealed class LiveRiskEngine : IRiskEngine
 
     public LiveRiskEngine(
         IOptions<RiskLimitsConfig> limits,
-        ILogger<LiveRiskEngine> logger)
+        ILogger<LiveRiskEngine> logger,
+        IExecutionLogger? executionLogger = null)
     {
         _limits = limits?.Value ?? throw new ArgumentNullException(nameof(limits));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _executionLogger = executionLogger ?? NullExecutionLogger.Instance;
     }
 
     /// <summary>Current active order count tracked by the engine.</summary>
@@ -96,6 +100,9 @@ public sealed class LiveRiskEngine : IRiskEngine
                 _logger.LogWarning(
                     "RISK: Signal BLOCKED by circuit breaker — Type={SignalType}, Symbol={Symbol}",
                     signal.SignalType, signal.Symbol);
+                _executionLogger.LogDetail(
+                    ExecutionLogCategory.RiskEngine,
+                    $"Signal BLOCKED by circuit breaker: {signal.SignalType} {signal.Symbol}");
                 continue;
             }
 
@@ -104,23 +111,35 @@ public sealed class LiveRiskEngine : IRiskEngine
                 _logger.LogWarning(
                     "RISK: Signal BLOCKED by drawdown circuit breaker — Type={SignalType}, Symbol={Symbol}",
                     signal.SignalType, signal.Symbol);
+                _executionLogger.LogDetail(
+                    ExecutionLogCategory.RiskEngine,
+                    $"Signal BLOCKED by drawdown circuit breaker: {signal.SignalType} {signal.Symbol}");
                 continue;
             }
 
             // Check max order size
             if (!CheckOrderSize(signal))
             {
+                _executionLogger.LogDetail(
+                    ExecutionLogCategory.RiskEngine,
+                    $"Signal BLOCKED by max order size: {signal.SignalType} {signal.Symbol}");
                 continue;
             }
 
             // Check max open orders
             if (!CheckOpenOrderLimit(signal))
             {
+                _executionLogger.LogDetail(
+                    ExecutionLogCategory.RiskEngine,
+                    $"Signal BLOCKED by max open orders: {signal.SignalType} {signal.Symbol}");
                 continue;
             }
 
             if (!CheckPortfolioHeat(signal))
             {
+                _executionLogger.LogDetail(
+                    ExecutionLogCategory.RiskEngine,
+                    $"Signal BLOCKED by portfolio heat: {signal.SignalType} {signal.Symbol}");
                 continue;
             }
 

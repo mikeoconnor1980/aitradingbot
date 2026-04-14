@@ -85,6 +85,12 @@ public sealed class AzureSignalRPublisher : ISignalRPublisher, IAsyncDisposable
         await hub.Clients.All.SendCoreAsync("ReceivePositionsResync", [positions], cancellationToken);
     }
 
+    public async Task BroadcastExecutionLogAsync(ExecutionLogDto log, CancellationToken cancellationToken = default)
+    {
+        var hub = await GetHubContextAsync(cancellationToken);
+        await hub.Clients.All.SendCoreAsync("ReceiveExecutionLog", [log], cancellationToken);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_hubContext is not null)

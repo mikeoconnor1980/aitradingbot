@@ -136,6 +136,8 @@ builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
 builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
 builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();
 builder.Services.AddSingleton<IPositionManager, LivePositionManager>();
+builder.Services.AddSingleton<LiveExecutionLogger>();
+builder.Services.AddSingleton<IExecutionLogger>(sp => sp.GetRequiredService<LiveExecutionLogger>());
 builder.Services.AddSingleton<GridStrategyEngine>();
 builder.Services.AddSingleton<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddSingleton<ITrendFilterEvaluator, TrendFilterEvaluator>();

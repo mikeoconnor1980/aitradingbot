@@ -1,5 +1,6 @@
 using TradingApp.Application.Abstractions.Services;
 using TradingApp.Application.Abstractions.Repositories;
+using TradingApp.Application.Agent.Models;
 using TradingApp.Application.Backtesting;
 using TradingApp.Application.Backtesting.Models;
 using TradingApp.Application.Backtesting.Services;
@@ -26,6 +27,7 @@ public sealed class StrategyScheduler
     private readonly IPositionManager _positionManager;
     private readonly ISignalController? _signalController;
     private readonly IBacktestAuditCollector _auditCollector;
+    private readonly IExecutionLogger _executionLogger;
     private readonly IStrategyConfig _strategyConfig;
     private readonly string _triggerTimeframe;
     private readonly decimal _initialCapital;
@@ -48,6 +50,7 @@ public sealed class StrategyScheduler
         IStrategyConfig strategyConfig,
         string triggerTimeframe = "15m",
         IBacktestAuditCollector? auditCollector = null,
+        IExecutionLogger? executionLogger = null,
         ISignalController? signalController = null,
         decimal initialCapital = 0m,
         BacktestExecutionContextAccessor? executionContextAccessor = null,
@@ -65,6 +68,7 @@ public sealed class StrategyScheduler
         ArgumentException.ThrowIfNullOrWhiteSpace(triggerTimeframe);
 
         _auditCollector = auditCollector ?? NullBacktestAuditCollector.Instance;
+        _executionLogger = executionLogger ?? NullExecutionLogger.Instance;
         _signalController = signalController;
         _strategyConfig = strategyConfig;
         _triggerTimeframe = triggerTimeframe;
@@ -108,10 +112,47 @@ public sealed class StrategyScheduler
         await ApplyDrawdownStateAsync(context, cancellationToken);
         _lastContext = context;
 
+        _executionLogger.LogSummary(
+            ExecutionLogCategory.CandleClose,
+            $"Candle closed: {context.Symbol} {_triggerTimeframe} O={evt.Candle.Open:F2} H={evt.Candle.High:F2} L={evt.Candle.Low:F2} C={evt.Candle.Close:F2} V={evt.Candle.Volume:F0}");
+
+        _executionLogger.LogDetail(
+            ExecutionLogCategory.Indicator,
+            $"Indicators: EMA9={context.Indicators?.EmaFast:F2} EMA21={context.Indicators?.EmaSlow:F2} EMATrend={context.Indicators?.EmaTrend:F2} RSI={context.Indicators?.Rsi:F2} ATR={context.Indicators?.Atr:F4}",
+            new Dictionary<string, object>
+            {
+                ["emaFast"] = context.Indicators?.EmaFast ?? 0m,
+                ["emaSlow"] = context.Indicators?.EmaSlow ?? 0m,
+                ["emaTrend"] = context.Indicators?.EmaTrend ?? 0m,
+                ["rsi"] = context.Indicators?.Rsi ?? 0m,
+                ["atr"] = context.Indicators?.Atr ?? 0m,
+            });
+
+        _executionLogger.LogDetail(
+            ExecutionLogCategory.Drawdown,
+            $"Drawdown: Equity={context.AccountEquity:F2} ScalingFactor={context.DrawdownScalingFactor:F2}",
+            new Dictionary<string, object>
+            {
+                ["equity"] = context.AccountEquity,
+                ["scalingFactor"] = context.DrawdownScalingFactor,
+                ["hwm"] = _highWaterMarkUsd ?? 0m,
+            });
+
         var evaluation = await _strategyEngine.EvaluateAsync(
             context,
             _strategyConfig,
             cancellationToken);
+
+        _executionLogger.LogSummary(
+            ExecutionLogCategory.EntryGate,
+            evaluation.SetupDetected
+                ? $"Setup detected: {evaluation.Reason}"
+                : $"No setup: {evaluation.Reason}",
+            new Dictionary<string, object>
+            {
+                ["setupDetected"] = evaluation.SetupDetected,
+                ["regime"] = evaluation.Regime?.ToString() ?? "Unknown",
+            });
 
         var signals = await ProcessEvaluationAsync(
             evaluation,
@@ -143,16 +184,34 @@ public sealed class StrategyScheduler
 
         if (signals.Count == 0)
         {
+            _executionLogger.LogSummary(
+                ExecutionLogCategory.Signal,
+                $"No signals emitted. Grid={_gridState.Lifecycle}, Position={(_positionState.IsOpen ? $"open ({_positionState.Size:F4})" : "flat")}");
             return;
         }
+
+        _executionLogger.LogSummary(
+            ExecutionLogCategory.Signal,
+            $"{signals.Count} signal(s) emitted: {string.Join(", ", signals.Select(s => s.SignalType))}");
 
         var approvedSignals = await _riskEngine.ValidateAsync(signals, cancellationToken);
         if (approvedSignals.Count == 0)
         {
+            _executionLogger.LogSummary(
+                ExecutionLogCategory.RiskEngine,
+                "All signals REJECTED by risk engine.");
             return;
         }
 
+        _executionLogger.LogSummary(
+            ExecutionLogCategory.RiskEngine,
+            $"Risk engine approved {approvedSignals.Count}/{signals.Count} signal(s).");
+
         await _positionManager.ExecuteSignalsAsync(approvedSignals, cancellationToken);
+
+        _executionLogger.LogSummary(
+            ExecutionLogCategory.Signal,
+            $"Execution complete: {approvedSignals.Count} signal(s) sent to position manager.");
     }
 
     public void UpdateState(GridState gridState, PositionState positionState)

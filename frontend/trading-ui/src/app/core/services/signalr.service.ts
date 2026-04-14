@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, Subject } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { BacktestProgress } from "../models/backtest.model";
 import { ConnectionStatus } from "../models/connection-status.model";
+import { ExecutionLogEntry } from "../models/execution-log.model";
 import { OptimizationProgress } from "../models/optimizer.model";
 import { PriceUpdate } from "../models/price-update.model";
 import { AccountStateService } from "./account-state.service";
@@ -25,6 +26,7 @@ export class SignalRService implements OnDestroy {
   private readonly _fillEvent$ = new Subject<FillEvent>();
   private readonly _backtestProgress$ = new Subject<BacktestProgress>();
   private readonly _optimizationProgress$ = new Subject<OptimizationProgress>();
+  private readonly _executionLog$ = new Subject<ExecutionLogEntry>();
   private readonly _connectionStatus$ = new BehaviorSubject<ConnectionStatus>(SignalRService.DISCONNECTED_STATUS);
   private readonly _transportConnectionStatus$ = new BehaviorSubject<ConnectionStatus>(SignalRService.DISCONNECTED_STATUS);
   private readonly _statusBySource = new Map<string, ConnectionStatus>([["SignalR", SignalRService.DISCONNECTED_STATUS]]);
@@ -37,6 +39,7 @@ export class SignalRService implements OnDestroy {
   public readonly fillEvent$: Observable<FillEvent> = this._fillEvent$.asObservable();
   public readonly backtestProgress$: Observable<BacktestProgress> = this._backtestProgress$.asObservable();
   public readonly optimizationProgress$: Observable<OptimizationProgress> = this._optimizationProgress$.asObservable();
+  public readonly executionLog$: Observable<ExecutionLogEntry> = this._executionLog$.asObservable();
   public readonly connectionStatus$: Observable<ConnectionStatus> = this._connectionStatus$.asObservable();
   public readonly transportConnectionStatus$: Observable<ConnectionStatus> = this._transportConnectionStatus$.asObservable();
 
@@ -57,6 +60,7 @@ export class SignalRService implements OnDestroy {
     this._fillEvent$.complete();
     this._backtestProgress$.complete();
     this._optimizationProgress$.complete();
+    this._executionLog$.complete();
     this._connectionStatus$.complete();
     this._transportConnectionStatus$.complete();
   }
@@ -89,6 +93,10 @@ export class SignalRService implements OnDestroy {
 
     this._hubConnection.on("ReceiveUserConnectionStatus", (status: ConnectionStatus) => {
       this._setSourceStatus(status);
+    });
+
+    this._hubConnection.on("ReceiveExecutionLog", (entry: ExecutionLogEntry) => {
+      this._executionLog$.next(entry);
     });
 
     this._hubConnection.onreconnecting((error?: Error) => {
