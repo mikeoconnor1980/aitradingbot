@@ -13,5 +13,6 @@ public interface ILlmContextProvider
         string symbol,
         IndicatorSnapshot indicators,
         IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null,
+        FearGreedSnapshot? fearGreed = null,
         CancellationToken cancellationToken = default);
 }

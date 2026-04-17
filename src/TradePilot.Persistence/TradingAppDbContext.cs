@@ -25,6 +25,7 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<LiveFill> LiveFills => Set<LiveFill>();
     public DbSet<GridCycle> GridCycles => Set<GridCycle>();
     public DbSet<LlmContextSnapshot> LlmContextSnapshots => Set<LlmContextSnapshot>();
+    public DbSet<FearGreedReading> FearGreedReadings => Set<FearGreedReading>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -902,6 +903,24 @@ public sealed class TradePilotDbContext : DbContext
 
             entity.HasIndex(e => e.UserId)
                 .HasDatabaseName("IX_TelegramLinkCodes_UserId");
+        });
+
+        modelBuilder.Entity<FearGreedReading>(entity =>
+        {
+            entity.ToTable("FearGreedReadings");
+
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+
+            entity.Property(e => e.Value).IsRequired();
+
+            entity.Property(e => e.Classification)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasIndex(e => e.Timestamp)
+                .IsUnique()
+                .HasDatabaseName("IX_FearGreedReadings_Timestamp");
         });
     }
 }

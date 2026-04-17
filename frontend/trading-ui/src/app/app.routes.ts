@@ -71,9 +71,9 @@ export const routes: Routes = [
   },
   {
     path: "candle-data",
-    loadComponent: () => import("./features/candle-management/candle-management.component").then((m) => m.CandleManagementComponent),
+    loadComponent: () => import("./features/data-management/data-management.component").then((m) => m.DataManagementComponent),
     canActivate: [authGuard, mobileRedirectGuard],
-    title: "Candle Data"
+    title: "Data Management"
   },
   {
     path: "optimizer",

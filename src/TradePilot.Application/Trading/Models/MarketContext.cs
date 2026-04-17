@@ -17,6 +17,7 @@ public sealed class MarketContext
     public required IndicatorSnapshot Indicators { get; init; }
     public IndicatorContext? IndicatorContext { get; init; }
     public LlmContext? LlmContext { get; init; }
+    public FearGreedSnapshot? FearGreed { get; init; }
     public decimal AccountEquity { get; set; }
     public decimal DrawdownScalingFactor { get; set; } = 1.0m;
     public int? MaxLeverage { get; init; }

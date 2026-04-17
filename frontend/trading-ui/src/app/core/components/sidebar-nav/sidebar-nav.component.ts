@@ -26,7 +26,7 @@ export class SidebarNavComponent {
     { route: "/strategies", icon: "tune", label: "Strategies", exact: true },
     { route: "/strategies/wizard", icon: "auto_fix_high", label: "Strategy Wizard" },
     { route: "/backtesting", icon: "history", label: "Backtesting" },
-    { route: "/candle-data", icon: "candlestick_chart", label: "Candle Data" },
+    { route: "/candle-data", icon: "candlestick_chart", label: "Data Management" },
     { route: "/optimizer", icon: "auto_graph", label: "Optimizer" },
     { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar" },
     { route: "/agents", icon: "devices", label: "Agents" },

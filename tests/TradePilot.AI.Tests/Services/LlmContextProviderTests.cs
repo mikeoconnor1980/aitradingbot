@@ -470,7 +470,7 @@ public sealed class LlmContextProviderTests
             }
         };
 
-        var result = await _sut.GetContextAsync("BTC-USD", CreateIndicators(), events, CancellationToken.None);
+        var result = await _sut.GetContextAsync("BTC-USD", CreateIndicators(), events, fearGreed: null, CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.EventRisk.Should().Be("High");

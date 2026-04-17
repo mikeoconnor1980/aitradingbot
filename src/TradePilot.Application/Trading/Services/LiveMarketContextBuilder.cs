@@ -50,6 +50,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
     private readonly ILlmContextProvider? _llmContextProvider;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
     private readonly IHyperliquidRestClient? _restClient;
+    private readonly IFearGreedReadingRepository? _fearGreedRepository;
     private readonly ILogger<LiveMarketContextBuilder>? _logger;
     private readonly ConcurrentDictionary<string, int> _maxLeverageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _metadataLock = new(1, 1);
@@ -64,12 +65,14 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         ILlmContextProvider? llmContextProvider,
         IServiceScopeFactory? serviceScopeFactory,
         IHyperliquidRestClient? restClient,
-        ILogger<LiveMarketContextBuilder>? logger = null)
+        ILogger<LiveMarketContextBuilder>? logger = null,
+        IFearGreedReadingRepository? fearGreedRepository = null)
     {
         _llmContextProvider = llmContextProvider;
         _serviceScopeFactory = serviceScopeFactory;
         _restClient = restClient;
         _logger = logger;
+        _fearGreedRepository = fearGreedRepository;
     }
 
     public void UpdateIndicators(Candle candle)
@@ -155,6 +158,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         };
 
         LlmContext? llmContext = null;
+        var fearGreed = await ResolveFearGreedAsync(cancellationToken);
 
         if (_llmContextProvider is not null)
         {
@@ -166,6 +170,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
                     triggerCandle.Symbol,
                     indicators,
                     upcomingEvents,
+                    fearGreed,
                     cancellationToken);
 
                 if (llmContext is not null)
@@ -179,7 +184,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             }
         }
 
-        llmContext ??= _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp);
+        llmContext ??= _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp, fearGreed);
         var maxLeverage = await ResolveMaxLeverageAsync(triggerCandle.Symbol, cancellationToken);
 
         return new MarketContext
@@ -193,8 +198,52 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             Indicators = indicators,
             IndicatorContext = indicatorContext,
             LlmContext = llmContext,
+            FearGreed = fearGreed,
             MaxLeverage = maxLeverage
         };
+    }
+
+    private async Task<FearGreedSnapshot?> ResolveFearGreedAsync(CancellationToken cancellationToken)
+    {
+        var repo = _fearGreedRepository ?? ResolveFromScope<IFearGreedReadingRepository>();
+        if (repo is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var latest = await repo.GetLatestAsync(cancellationToken);
+            if (latest is null)
+            {
+                return null;
+            }
+
+            var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(latest.Timestamp);
+            if (age.TotalHours > 48)
+            {
+                _logger?.LogDebug("Fear & Greed reading is stale ({AgeHours:F1}h), skipping.", age.TotalHours);
+                return null;
+            }
+
+            return new FearGreedSnapshot(latest.Value, FearGreedSnapshot.Classify(latest.Value), latest.Timestamp);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger?.LogWarning(ex, "Failed to resolve Fear & Greed reading.");
+            return null;
+        }
+    }
+
+    private T? ResolveFromScope<T>() where T : class
+    {
+        if (_serviceScopeFactory is null)
+        {
+            return null;
+        }
+
+        using var scope = _serviceScopeFactory.CreateScope();
+        return scope.ServiceProvider.GetService<T>();
     }
 
     private int? ResolveMaxLeverage(string symbol)

@@ -41,12 +41,18 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
     // Synthetic regime provider for LLM context in backtest mode
     private readonly SyntheticRegimeProvider _syntheticRegimeProvider = new();
     private readonly int _maxLeverage;
+    private IReadOnlyList<FearGreedReading>? _fearGreedReadings;
 
     private bool _dynamicInitialized;
 
     public BacktestMarketContextBuilder(int? maxLeverage = null)
     {
         _maxLeverage = maxLeverage is > 0 ? maxLeverage.Value : LeverageCalculator.FallbackMaxLeverage;
+    }
+
+    public void SetFearGreedReadings(IReadOnlyList<FearGreedReading> readings)
+    {
+        _fearGreedReadings = readings;
     }
 
     public void UpdateIndicators(Candle candle)
@@ -93,7 +99,7 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             Atr = _atr14.Current ?? 0m
         };
 
-        var llmContext = _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp);
+        var llmContext = _syntheticRegimeProvider.Evaluate(indicators, triggerCandle.Timestamp, ResolveFearGreed(triggerCandle.Timestamp));
 
         return new MarketContext
         {
@@ -106,8 +112,44 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             Indicators = indicators,
             IndicatorContext = indicatorContext,
             LlmContext = llmContext,
+            FearGreed = ResolveFearGreed(triggerCandle.Timestamp),
             MaxLeverage = _maxLeverage
         };
+    }
+
+    private FearGreedSnapshot? ResolveFearGreed(long timestampUtc)
+    {
+        if (_fearGreedReadings is null || _fearGreedReadings.Count == 0)
+        {
+            return null;
+        }
+
+        // Find the most recent reading at or before the trigger candle timestamp
+        FearGreedReading? best = null;
+        foreach (var reading in _fearGreedReadings)
+        {
+            if (reading.Timestamp <= timestampUtc)
+            {
+                if (best is null || reading.Timestamp > best.Timestamp)
+                {
+                    best = reading;
+                }
+            }
+        }
+
+        if (best is null)
+        {
+            return null;
+        }
+
+        // 48h staleness check
+        var ageSeconds = timestampUtc - best.Timestamp;
+        if (ageSeconds > 48 * 3600)
+        {
+            return null;
+        }
+
+        return new FearGreedSnapshot(best.Value, FearGreedSnapshot.Classify(best.Value), best.Timestamp);
     }
 
     private IndicatorContext? BuildIndicatorContext(IReadOnlyList<IndicatorRequirement>? requirements)

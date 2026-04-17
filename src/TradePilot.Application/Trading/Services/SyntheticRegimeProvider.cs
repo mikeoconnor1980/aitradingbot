@@ -18,10 +18,25 @@ public sealed class SyntheticRegimeProvider
 
     public LlmContext Evaluate(IndicatorSnapshot indicators, long timestampUtc)
     {
+        return Evaluate(indicators, timestampUtc, fearGreed: null);
+    }
+
+    public LlmContext Evaluate(IndicatorSnapshot indicators, long timestampUtc, FearGreedSnapshot? fearGreed)
+    {
         var trend = ClassifyTrend(indicators);
         var volatility = ClassifyVolatility();
         var sentiment = DeriveSentiment(trend, indicators.Rsi);
         var regime = DeriveRegime(trend, volatility);
+
+        // One-level regime shift on Extreme Fear / Extreme Greed
+        if (fearGreed is not null)
+        {
+            regime = ApplyFearGreedShift(regime, fearGreed);
+        }
+
+        var fearGreedNote = fearGreed is not null
+            ? $", F&G={fearGreed.Value} ({fearGreed.Classification})"
+            : string.Empty;
 
         return new LlmContext
         {
@@ -30,7 +45,7 @@ public sealed class SyntheticRegimeProvider
             EventRisk = volatility == "High" ? "High" : "Low",
             Confidence = _atrPercentile.IsMature ? 0.75m : 0.5m,
             DerivedRegime = regime,
-            Summary = $"Synthetic: trend={trend}, volatility={volatility}, RSI={indicators.Rsi:F1}",
+            Summary = $"Synthetic: trend={trend}, volatility={volatility}, RSI={indicators.Rsi:F1}{fearGreedNote}",
             GeneratedAtUtc = timestampUtc
         };
     }
@@ -97,6 +112,37 @@ public sealed class SyntheticRegimeProvider
             ("Bearish", "High") => MarketRegime.RiskOff,
             _ => MarketRegime.Normal
         };
+    }
+
+    /// <summary>
+    /// Shifts regime one level toward Defensive on Extreme Fear (≤24),
+    /// or one level toward Aggressive on Extreme Greed (≥75).
+    /// </summary>
+    private static MarketRegime ApplyFearGreedShift(MarketRegime regime, FearGreedSnapshot fearGreed)
+    {
+        if (fearGreed.Classification == FearGreedClassification.ExtremeFear)
+        {
+            return regime switch
+            {
+                MarketRegime.Aggressive => MarketRegime.Normal,
+                MarketRegime.Normal => MarketRegime.Defensive,
+                MarketRegime.Defensive => MarketRegime.RiskOff,
+                _ => regime
+            };
+        }
+
+        if (fearGreed.Classification == FearGreedClassification.ExtremeGreed)
+        {
+            return regime switch
+            {
+                MarketRegime.RiskOff => MarketRegime.Defensive,
+                MarketRegime.Defensive => MarketRegime.Normal,
+                MarketRegime.Normal => MarketRegime.Aggressive,
+                _ => regime
+            };
+        }
+
+        return regime;
     }
 }
 

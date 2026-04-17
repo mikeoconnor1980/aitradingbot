@@ -33,6 +33,7 @@ public sealed class BacktestRunner : IBacktestRunner
     private readonly BacktestExecutionContextAccessor _executionContextAccessor;
     private readonly ISignalController _signalController;
     private readonly RiskLimitsConfig _riskLimits;
+    private readonly IFearGreedReadingRepository? _fearGreedRepository;
 
     public BacktestRunner(
         ICandleRepository candleRepository,
@@ -43,7 +44,8 @@ public sealed class BacktestRunner : IBacktestRunner
         IPositionManager positionManager,
         BacktestExecutionContextAccessor executionContextAccessor,
         ISignalController signalController,
-        IOptions<RiskLimitsConfig>? riskLimits = null)
+        IOptions<RiskLimitsConfig>? riskLimits = null,
+        IFearGreedReadingRepository? fearGreedRepository = null)
     {
         _candleRepository = candleRepository ?? throw new ArgumentNullException(nameof(candleRepository));
         _marketContextBuilder = marketContextBuilder ?? throw new ArgumentNullException(nameof(marketContextBuilder));
@@ -54,6 +56,7 @@ public sealed class BacktestRunner : IBacktestRunner
         _executionContextAccessor = executionContextAccessor ?? throw new ArgumentNullException(nameof(executionContextAccessor));
         _signalController = signalController ?? throw new ArgumentNullException(nameof(signalController));
         _riskLimits = riskLimits?.Value ?? new RiskLimitsConfig { DrawdownTiers = RiskLimitsConfig.DefaultDrawdownTiers.ToArray() };
+        _fearGreedRepository = fearGreedRepository;
     }
 
     public Task<BacktestResult> RunAsync(BacktestConfig config, CancellationToken cancellationToken = default)
@@ -114,6 +117,21 @@ public sealed class BacktestRunner : IBacktestRunner
         try
         {
             var replayData = preloadedData ?? await replayEngine.LoadAsync(config, cancellationToken);
+
+            // Load Fear & Greed readings for the backtest period
+            if (_fearGreedRepository is not null && _marketContextBuilder is BacktestMarketContextBuilder backtestBuilder)
+            {
+                var fearGreedReadings = await _fearGreedRepository.GetRangeAsync(
+                    config.StartDateUtc,
+                    config.EndDateUtc,
+                    cancellationToken);
+
+                if (fearGreedReadings.Count > 0)
+                {
+                    backtestBuilder.SetFearGreedReadings(fearGreedReadings);
+                }
+            }
+
             var triggerCandles = replayData.TriggerCandles;
             var totalCandles = Math.Max(0, triggerCandles.Count - replayData.WarmupEndIndex);
             onProgress?.Invoke(0, totalCandles, config.StartDateUtc);

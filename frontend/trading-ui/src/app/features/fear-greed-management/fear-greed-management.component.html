@@ -1,0 +1,72 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Crypto Fear &amp; Greed Index</mat-card-title>
+    <mat-card-subtitle>
+      Source: alternative.me — updated daily
+    </mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <mat-progress-bar
+      *ngIf="isLoading || isBackfilling"
+      mode="indeterminate"
+    ></mat-progress-bar>
+
+    <div class="fear-greed__status" *ngIf="status && !isLoading">
+      <div class="fear-greed__gauge">
+        <div
+          class="fear-greed__value"
+          [style.color]="getClassificationColor(status.latestClassification)"
+        >
+          {{ status.latestValue ?? "—" }}
+        </div>
+        <div class="fear-greed__label">/ 100</div>
+      </div>
+
+      <div class="fear-greed__classification"
+           [style.color]="getClassificationColor(status.latestClassification)">
+        {{ status.latestClassification ?? "No data" }}
+      </div>
+
+      <div class="fear-greed__details">
+        <div class="fear-greed__detail-row">
+          <span class="fear-greed__detail-label">Latest reading:</span>
+          <span>{{ status.latestTimestamp ? (status.latestTimestamp | date:'medium') : 'N/A' }}</span>
+        </div>
+        <div class="fear-greed__detail-row">
+          <span class="fear-greed__detail-label">Total readings:</span>
+          <span>{{ status.totalReadings | number }}</span>
+        </div>
+        <div class="fear-greed__detail-row">
+          <span class="fear-greed__detail-label">Earliest reading:</span>
+          <span>{{ status.earliestTimestamp ? (status.earliestTimestamp | date:'mediumDate') : 'N/A' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fear-greed__no-data" *ngIf="status && status.totalReadings === 0 && !isLoading">
+      <mat-icon>info</mat-icon>
+      <span>No Fear &amp; Greed data available. Run a backfill to fetch historical data.</span>
+    </div>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button
+      mat-raised-button
+      color="primary"
+      [disabled]="isBackfilling || isLoading"
+      (click)="backfill()"
+    >
+      <mat-icon>cloud_download</mat-icon>
+      {{ status?.totalReadings === 0 ? 'Backfill All History' : 'Refresh & Backfill' }}
+    </button>
+    <button
+      mat-button
+      [disabled]="isLoading"
+      (click)="loadStatus()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </mat-card-actions>
+</mat-card>

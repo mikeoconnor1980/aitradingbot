@@ -47,6 +47,7 @@ public sealed class LlmContextProvider : ILlmContextProvider
         string symbol,
         IndicatorSnapshot indicators,
         IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null,
+        FearGreedSnapshot? fearGreed = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
@@ -65,7 +66,7 @@ public sealed class LlmContextProvider : ILlmContextProvider
 
         try
         {
-            var userMessage = BuildUserMessage(symbol, indicators, upcomingEvents);
+            var userMessage = BuildUserMessage(symbol, indicators, upcomingEvents, fearGreed);
 
             var rawResponse = await _llmClient.CompleteAsync(
                 MarketContextPrompt.SystemPrompt,
@@ -104,7 +105,8 @@ public sealed class LlmContextProvider : ILlmContextProvider
     public static string BuildUserMessage(
         string symbol,
         IndicatorSnapshot indicators,
-        IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null)
+        IReadOnlyCollection<MacroEventListItemDto>? upcomingEvents = null,
+        FearGreedSnapshot? fearGreed = null)
     {
         var builder = new StringBuilder();
         builder.AppendLine($"Analyse the current market context for {symbol}.");
@@ -129,6 +131,12 @@ public sealed class LlmContextProvider : ILlmContextProvider
         builder.AppendLine();
 
         AppendMacroEvents(builder, upcomingEvents);
+
+        if (fearGreed is not null)
+        {
+            builder.AppendLine($"Crypto Fear & Greed Index: {fearGreed.Value}/100 ({fearGreed.Classification})");
+            builder.AppendLine();
+        }
 
         return builder.ToString();
     }

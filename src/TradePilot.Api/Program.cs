@@ -117,6 +117,12 @@ builder.Services.AddOptions<MacroCalendarOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Bind FearGreed configuration
+builder.Services.AddOptions<FearGreedOptions>()
+    .Bind(builder.Configuration.GetSection(FearGreedOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 builder.Services.AddOptions<RiskLimitsConfig>()
     .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName))
     .ValidateDataAnnotations()
@@ -255,6 +261,28 @@ builder.Services.AddScoped<IMacroCalendarQueryService, MacroCalendarQueryService
 builder.Services.AddScoped<IMacroEventRiskCheck, MacroEventRiskCheck>();
 builder.Services.AddHostedService<MacroCalendarSyncWorker>();
 builder.Services.AddHostedService<ExecutionLogCleanupService>();
+
+// Fear & Greed Index services
+builder.Services.AddHttpClient<IFearGreedClient, FearGreedClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<FearGreedOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddResilienceHandler("fear-greed-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        Delay = TimeSpan.FromSeconds(2),
+        MaxDelay = TimeSpan.FromSeconds(30),
+        UseJitter = true,
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(15));
+});
+builder.Services.AddHostedService<FearGreedSyncWorker>();
 
 // ---------- Telegram bot notifications ----------
 builder.Services.AddOptions<TelegramOptions>()
