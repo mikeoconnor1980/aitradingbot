@@ -53,14 +53,14 @@ Enforce a maximum portfolio-wide risk exposure (portfolio heat) to prevent catas
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` — Risk enforcement pattern (checks + state tracking)
-- `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — Configuration class to extend
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` — R calculation logic
-- `src/TradingApp.Application/Trading/Models/TradingSignal.cs` — Signal parameter structure
-- `src/TradingApp.Api/Controllers/AccountController.cs` — Direct service injection controller pattern
-- `src/TradingApp.Application/MarketData/Models/PositionDto.cs` — Exchange position fields (SL, margin, entry)
-- `tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — Risk engine test pattern
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Controller test with WebApplicationFactory
+- `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` — Risk enforcement pattern (checks + state tracking)
+- `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — Configuration class to extend
+- `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` — R calculation logic
+- `src/TradePilot.Application/Trading/Models/TradingSignal.cs` — Signal parameter structure
+- `src/TradePilot.Api/Controllers/AccountController.cs` — Direct service injection controller pattern
+- `src/TradePilot.Application/MarketData/Models/PositionDto.cs` — Exchange position fields (SL, margin, entry)
+- `tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — Risk engine test pattern
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Controller test with WebApplicationFactory
 - `frontend/trading-ui/src/app/features/dashboard/account-summary/margin-ratio-indicator/` — Threshold indicator pattern (TS + HTML + SCSS)
 - `frontend/trading-ui/src/app/core/services/hyperliquid-api.service.ts` — API service GET pattern
 

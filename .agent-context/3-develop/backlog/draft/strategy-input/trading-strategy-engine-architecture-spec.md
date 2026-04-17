@@ -111,7 +111,7 @@ Every layer should be unit-testable independently:
 
 ```text
 src/
-  TradingApp.Domain/
+  TradePilot.Domain/
     Market/
     Indicators/
     Signals/
@@ -119,13 +119,13 @@ src/
     Backtesting/
     Execution/
 
-  TradingApp.Application/
+  TradePilot.Application/
     StrategyCompilation/
     StrategyValidation/
     BacktestRunner/
     LiveTrading/
 
-  TradingApp.Infrastructure/
+  TradePilot.Infrastructure/
     Json/
     Persistence/
     Exchanges/
@@ -133,11 +133,11 @@ src/
     NaturalLanguage/
     PineImport/
 
-  TradingApp.Api/
+  TradePilot.Api/
     Controllers/
     Contracts/
 
-  TradingApp.Ui/
+  TradePilot.Ui/
     Angular app / strategy builder UI
 ```
 
@@ -172,7 +172,7 @@ Contains live order intent and execution abstraction.
 ## Candle
 
 ```csharp
-namespace TradingApp.Domain.Market;
+namespace TradePilot.Domain.Market;
 
 public sealed class Candle
 {
@@ -188,7 +188,7 @@ public sealed class Candle
 ## PriceSourceType
 
 ```csharp
-namespace TradingApp.Domain.Market;
+namespace TradePilot.Domain.Market;
 
 public enum PriceSourceType
 {
@@ -230,7 +230,7 @@ Examples:
 ## IndicatorType
 
 ```csharp
-namespace TradingApp.Domain.Indicators;
+namespace TradePilot.Domain.Indicators;
 
 public enum IndicatorType
 {
@@ -245,9 +245,9 @@ public enum IndicatorType
 ## IndicatorDefinition
 
 ```csharp
-namespace TradingApp.Domain.Indicators;
+namespace TradePilot.Domain.Indicators;
 
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Market;
 
 public sealed class IndicatorDefinition
 {
@@ -262,7 +262,7 @@ public sealed class IndicatorDefinition
 ## IndicatorSeries
 
 ```csharp
-namespace TradingApp.Domain.Indicators;
+namespace TradePilot.Domain.Indicators;
 
 public sealed class IndicatorSeries
 {
@@ -275,9 +275,9 @@ public sealed class IndicatorSeries
 ## IndicatorCalculationContext
 
 ```csharp
-namespace TradingApp.Domain.Indicators;
+namespace TradePilot.Domain.Indicators;
 
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Market;
 
 public sealed class IndicatorCalculationContext
 {
@@ -289,7 +289,7 @@ public sealed class IndicatorCalculationContext
 ## IIndicatorCalculator
 
 ```csharp
-namespace TradingApp.Domain.Indicators;
+namespace TradePilot.Domain.Indicators;
 
 public interface IIndicatorCalculator
 {
@@ -302,7 +302,7 @@ public interface IIndicatorCalculator
 ## IIndicatorCalculatorRegistry
 
 ```csharp
-namespace TradingApp.Domain.Indicators;
+namespace TradePilot.Domain.Indicators;
 
 public interface IIndicatorCalculatorRegistry
 {
@@ -347,9 +347,9 @@ ema = ((price - previousEma) * multiplier) + previousEma
 ## EmaCalculator
 
 ```csharp
-namespace TradingApp.Domain.Indicators.Calculators;
+namespace TradePilot.Domain.Indicators.Calculators;
 
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Market;
 
 public sealed class EmaCalculator : IIndicatorCalculator
 {
@@ -450,9 +450,9 @@ RSI = 100 - (100 / (1 + RS))
 ## RsiCalculator
 
 ```csharp
-namespace TradingApp.Domain.Indicators.Calculators;
+namespace TradePilot.Domain.Indicators.Calculators;
 
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Market;
 
 public sealed class RsiCalculator : IIndicatorCalculator
 {
@@ -553,7 +553,7 @@ public sealed class RsiCalculator : IIndicatorCalculator
 # 9. Indicator registry
 
 ```csharp
-namespace TradingApp.Domain.Indicators.Registry;
+namespace TradePilot.Domain.Indicators.Registry;
 
 public sealed class IndicatorCalculatorRegistry : IIndicatorCalculatorRegistry
 {
@@ -594,7 +594,7 @@ This layer should not calculate indicators. It only uses already-calculated valu
 ## SignalOperator
 
 ```csharp
-namespace TradingApp.Domain.Signals;
+namespace TradePilot.Domain.Signals;
 
 public enum SignalOperator
 {
@@ -609,7 +609,7 @@ public enum SignalOperator
 ## CrossRuleType
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
 public enum CrossRuleType
 {
@@ -625,7 +625,7 @@ public enum CrossRuleType
 ## Base value reference
 
 ```csharp
-namespace TradingApp.Domain.Signals.Values;
+namespace TradePilot.Domain.Signals.Values;
 
 public abstract record SignalValueReference;
 ```
@@ -633,9 +633,9 @@ public abstract record SignalValueReference;
 ## Price value reference
 
 ```csharp
-namespace TradingApp.Domain.Signals.Values;
+namespace TradePilot.Domain.Signals.Values;
 
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Market;
 
 public sealed record PriceValueReference(PriceSourceType Source) : SignalValueReference;
 ```
@@ -643,7 +643,7 @@ public sealed record PriceValueReference(PriceSourceType Source) : SignalValueRe
 ## Indicator value reference
 
 ```csharp
-namespace TradingApp.Domain.Signals.Values;
+namespace TradePilot.Domain.Signals.Values;
 
 public sealed record IndicatorValueReference(string IndicatorId) : SignalValueReference;
 ```
@@ -651,7 +651,7 @@ public sealed record IndicatorValueReference(string IndicatorId) : SignalValueRe
 ## Constant value reference
 
 ```csharp
-namespace TradingApp.Domain.Signals.Values;
+namespace TradePilot.Domain.Signals.Values;
 
 public sealed record ConstantValueReference(decimal Value) : SignalValueReference;
 ```
@@ -663,7 +663,7 @@ public sealed record ConstantValueReference(decimal Value) : SignalValueReferenc
 ## Marker interface
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
 public interface ISignalRuleDefinition
 {
@@ -673,9 +673,9 @@ public interface ISignalRuleDefinition
 ## ComparisonRule
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
-using TradingApp.Domain.Signals.Values;
+using TradePilot.Domain.Signals.Values;
 
 public sealed class ComparisonRule
 {
@@ -688,7 +688,7 @@ public sealed class ComparisonRule
 ## ComparisonRuleDefinition
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
 public sealed class ComparisonRuleDefinition : ISignalRuleDefinition
 {
@@ -699,9 +699,9 @@ public sealed class ComparisonRuleDefinition : ISignalRuleDefinition
 ## CrossRule
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
-using TradingApp.Domain.Signals.Values;
+using TradePilot.Domain.Signals.Values;
 
 public sealed class CrossRule
 {
@@ -714,7 +714,7 @@ public sealed class CrossRule
 ## CrossRuleDefinition
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
 public sealed class CrossRuleDefinition : ISignalRuleDefinition
 {
@@ -725,7 +725,7 @@ public sealed class CrossRuleDefinition : ISignalRuleDefinition
 ## Logical operator
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
 public enum LogicalOperator
 {
@@ -737,7 +737,7 @@ public enum LogicalOperator
 ## LogicalRuleGroup
 
 ```csharp
-namespace TradingApp.Domain.Signals.Rules;
+namespace TradePilot.Domain.Signals.Rules;
 
 public sealed class LogicalRuleGroup : ISignalRuleDefinition
 {
@@ -753,10 +753,10 @@ public sealed class LogicalRuleGroup : ISignalRuleDefinition
 ## SignalEvaluationContext
 
 ```csharp
-namespace TradingApp.Domain.Signals;
+namespace TradePilot.Domain.Signals;
 
-using TradingApp.Domain.Indicators;
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Indicators;
+using TradePilot.Domain.Market;
 
 public sealed class SignalEvaluationContext
 {
@@ -769,7 +769,7 @@ public sealed class SignalEvaluationContext
 ## SignalEvaluationResult
 
 ```csharp
-namespace TradingApp.Domain.Signals;
+namespace TradePilot.Domain.Signals;
 
 public sealed class SignalEvaluationResult
 {
@@ -788,9 +788,9 @@ public sealed class SignalEvaluationResult
 ## Interface
 
 ```csharp
-namespace TradingApp.Domain.Signals;
+namespace TradePilot.Domain.Signals;
 
-using TradingApp.Domain.Signals.Values;
+using TradePilot.Domain.Signals.Values;
 
 public interface ISignalValueResolver
 {
@@ -802,10 +802,10 @@ public interface ISignalValueResolver
 ## Implementation
 
 ```csharp
-namespace TradingApp.Domain.Signals.Evaluators;
+namespace TradePilot.Domain.Signals.Evaluators;
 
-using TradingApp.Domain.Signals.Values;
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Signals.Values;
+using TradePilot.Domain.Market;
 
 public sealed class SignalValueResolver : ISignalValueResolver
 {
@@ -861,7 +861,7 @@ public sealed class SignalValueResolver : ISignalValueResolver
 ## ISignalRuleEvaluator
 
 ```csharp
-namespace TradingApp.Domain.Signals;
+namespace TradePilot.Domain.Signals;
 
 public interface ISignalRuleEvaluator<in TRule>
 {
@@ -872,9 +872,9 @@ public interface ISignalRuleEvaluator<in TRule>
 ## ComparisonRuleEvaluator
 
 ```csharp
-namespace TradingApp.Domain.Signals.Evaluators;
+namespace TradePilot.Domain.Signals.Evaluators;
 
-using TradingApp.Domain.Signals.Rules;
+using TradePilot.Domain.Signals.Rules;
 
 public sealed class ComparisonRuleEvaluator : ISignalRuleEvaluator<ComparisonRule>
 {
@@ -911,9 +911,9 @@ public sealed class ComparisonRuleEvaluator : ISignalRuleEvaluator<ComparisonRul
 ## CrossRuleEvaluator
 
 ```csharp
-namespace TradingApp.Domain.Signals.Evaluators;
+namespace TradePilot.Domain.Signals.Evaluators;
 
-using TradingApp.Domain.Signals.Rules;
+using TradePilot.Domain.Signals.Rules;
 
 public sealed class CrossRuleEvaluator : ISignalRuleEvaluator<CrossRule>
 {
@@ -949,9 +949,9 @@ public sealed class CrossRuleEvaluator : ISignalRuleEvaluator<CrossRule>
 ## LogicalRuleGroupEvaluator
 
 ```csharp
-namespace TradingApp.Domain.Signals.Evaluators;
+namespace TradePilot.Domain.Signals.Evaluators;
 
-using TradingApp.Domain.Signals.Rules;
+using TradePilot.Domain.Signals.Rules;
 
 public sealed class LogicalRuleGroupEvaluator
 {
@@ -1016,10 +1016,10 @@ The strategy layer combines:
 ## StrategyDefinition
 
 ```csharp
-namespace TradingApp.Domain.Strategies;
+namespace TradePilot.Domain.Strategies;
 
-using TradingApp.Domain.Indicators;
-using TradingApp.Domain.Signals.Rules;
+using TradePilot.Domain.Indicators;
+using TradePilot.Domain.Signals.Rules;
 
 public sealed class StrategyDefinition
 {
@@ -1038,7 +1038,7 @@ public sealed class StrategyDefinition
 ## StrategyAction
 
 ```csharp
-namespace TradingApp.Domain.Strategies;
+namespace TradePilot.Domain.Strategies;
 
 public enum StrategyAction
 {
@@ -1053,7 +1053,7 @@ public enum StrategyAction
 ## StrategyExecutionDecision
 
 ```csharp
-namespace TradingApp.Domain.Strategies;
+namespace TradePilot.Domain.Strategies;
 
 public sealed class StrategyExecutionDecision
 {
@@ -1065,7 +1065,7 @@ public sealed class StrategyExecutionDecision
 ## StrategyEvaluationResult
 
 ```csharp
-namespace TradingApp.Domain.Strategies;
+namespace TradePilot.Domain.Strategies;
 
 public sealed class StrategyEvaluationResult
 {
@@ -1078,9 +1078,9 @@ public sealed class StrategyEvaluationResult
 ## IStrategyEngine
 
 ```csharp
-namespace TradingApp.Domain.Strategies;
+namespace TradePilot.Domain.Strategies;
 
-using TradingApp.Domain.Market;
+using TradePilot.Domain.Market;
 
 public interface IStrategyEngine
 {
@@ -1095,11 +1095,11 @@ public interface IStrategyEngine
 ## StrategyEngine
 
 ```csharp
-namespace TradingApp.Domain.Strategies;
+namespace TradePilot.Domain.Strategies;
 
-using TradingApp.Domain.Indicators;
-using TradingApp.Domain.Signals;
-using TradingApp.Domain.Signals.Evaluators;
+using TradePilot.Domain.Indicators;
+using TradePilot.Domain.Signals;
+using TradePilot.Domain.Signals.Evaluators;
 
 public sealed class StrategyEngine : IStrategyEngine
 {
@@ -1191,10 +1191,10 @@ Important:
 ## BacktestRequest
 
 ```csharp
-namespace TradingApp.Domain.Backtesting;
+namespace TradePilot.Domain.Backtesting;
 
-using TradingApp.Domain.Market;
-using TradingApp.Domain.Strategies;
+using TradePilot.Domain.Market;
+using TradePilot.Domain.Strategies;
 
 public sealed class BacktestRequest
 {
@@ -1207,7 +1207,7 @@ public sealed class BacktestRequest
 ## BacktestTrade
 
 ```csharp
-namespace TradingApp.Domain.Backtesting;
+namespace TradePilot.Domain.Backtesting;
 
 public sealed class BacktestTrade
 {
@@ -1222,7 +1222,7 @@ public sealed class BacktestTrade
 ## BacktestResult
 
 ```csharp
-namespace TradingApp.Domain.Backtesting;
+namespace TradePilot.Domain.Backtesting;
 
 public sealed class BacktestResult
 {
@@ -1234,7 +1234,7 @@ public sealed class BacktestResult
 ## IBacktestEngine
 
 ```csharp
-namespace TradingApp.Domain.Backtesting;
+namespace TradePilot.Domain.Backtesting;
 
 public interface IBacktestEngine
 {
@@ -1245,9 +1245,9 @@ public interface IBacktestEngine
 ## BacktestEngine
 
 ```csharp
-namespace TradingApp.Domain.Backtesting;
+namespace TradePilot.Domain.Backtesting;
 
-using TradingApp.Domain.Strategies;
+using TradePilot.Domain.Strategies;
 
 public sealed class BacktestEngine : IBacktestEngine
 {

@@ -49,14 +49,14 @@ The current optimizer sweeps `PositionSizeOptions` (percent of wallet) and `Leve
 
 ### Project Patterns
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/PositionSizeType.cs` — existing 2-value enum, add `RiskBased`
-- `src/TradingApp.Application/StrategyAuthoring/Models/RiskConfig.cs` — sealed record, add `RiskPerTradePercent` and `AutoLeverage`
-- `src/TradingApp.Application/Optimization/Models/ParameterBounds.cs` — sealed record with init properties and default values
-- `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` — `GenerateRiskConfig` (L260), `ValidateBounds` (L399), `BuildDescription` (L316)
-- `src/TradingApp.Api/Models/RunOptimizationRequest.cs` — API contract with nullable override fields
-- `src/TradingApp.Api/Controllers/OptimizationsController.cs` — `BuildBounds` (L130) maps request → `ParameterBounds`
-- `tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — MSTest + FluentAssertions, direct instantiation, seed-based determinism
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Models/StrategyConfigSerializationTests.cs` — serialization round-trip and snake_case enum tests
+- `src/TradePilot.Application/StrategyAuthoring/Models/PositionSizeType.cs` — existing 2-value enum, add `RiskBased`
+- `src/TradePilot.Application/StrategyAuthoring/Models/RiskConfig.cs` — sealed record, add `RiskPerTradePercent` and `AutoLeverage`
+- `src/TradePilot.Application/Optimization/Models/ParameterBounds.cs` — sealed record with init properties and default values
+- `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` — `GenerateRiskConfig` (L260), `ValidateBounds` (L399), `BuildDescription` (L316)
+- `src/TradePilot.Api/Models/RunOptimizationRequest.cs` — API contract with nullable override fields
+- `src/TradePilot.Api/Controllers/OptimizationsController.cs` — `BuildBounds` (L130) maps request → `ParameterBounds`
+- `tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — MSTest + FluentAssertions, direct instantiation, seed-based determinism
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Models/StrategyConfigSerializationTests.cs` — serialization round-trip and snake_case enum tests
 
 ### [x] Phase 1: Domain & Optimizer Model Extensions
 

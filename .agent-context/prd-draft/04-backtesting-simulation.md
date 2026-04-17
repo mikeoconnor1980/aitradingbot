@@ -161,7 +161,7 @@ Paper trading is essentially "backtesting on live data." Separating them would c
 
 #### Worker Service
 
-- `TradingApp.Worker` background service orchestrates strategy execution
+- `TradePilot.Worker` background service orchestrates strategy execution
 - Restart recovery: checkpoint persistence ensures no duplicate signal generation
 - Paper mode flag: provably distinct from live — no accidental real orders
 

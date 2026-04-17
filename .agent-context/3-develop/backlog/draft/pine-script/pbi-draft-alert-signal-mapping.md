@@ -105,7 +105,7 @@ This PBI bridges indicator analysis and automated execution. Without it, custom 
 
 ### Bounded Context
 
-**Context:** Domain entity in `TradingApp.Domain`, evaluation in `TradingApp.Application/PineScript`, signal emission integrates with `TradingApp.Application/Trading`.
+**Context:** Domain entity in `TradePilot.Domain`, evaluation in `TradePilot.Application/PineScript`, signal emission integrates with `TradePilot.Application/Trading`.
 
 ### New/Modified Components
 
@@ -122,7 +122,7 @@ This PBI bridges indicator analysis and automated execution. Without it, custom 
 | `AlertHistoryEntry` | Domain/Entities | **New** — Alert trigger log entry |
 | `IndicatorController` | Api/Controllers | **Modified** — Add mapping endpoints |
 | `CustomIndicatorComputeService` | Application/PineScript/Services | **Modified** — Call `AlertEvaluationService` during computation, return triggered alerts in result |
-| `TradingAppDbContext` | Persistence | **Modified** — Add `DbSet<AlertSignalMapping>`, `DbSet<AlertHistoryEntry>` |
+| `TradePilotDbContext` | Persistence | **Modified** — Add `DbSet<AlertSignalMapping>`, `DbSet<AlertHistoryEntry>` |
 | EF Migration | Persistence/Migrations | **New** — Add mapping and alert history tables |
 
 #### Frontend

@@ -26,8 +26,8 @@ Add a new overload to `IHyperliquidRestClient` that accepts explicit `startTime`
 - **Complexity**: Low
 - **Risk Factors**: None — additive interface change
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Add new overload signature
-  - `src/TradingApp.Application/MarketData/Models/CandleSnapshotDto.cs` — New DTO with NumTrades
+  - `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Add new overload signature
+  - `src/TradePilot.Application/MarketData/Models/CandleSnapshotDto.cs` — New DTO with NumTrades
 - **Success**:
   - Interface compiles with both the existing and new `GetCandlesAsync` signatures
   - `CandleSnapshotDto` includes all fields from `CandleDto` plus `NumTrades`
@@ -36,8 +36,8 @@ Add a new overload to `IHyperliquidRestClient` that accepts explicit `startTime`
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/MarketData/Models/CandleSnapshotDto.cs — new file
-namespace TradingApp.Application.MarketData.Models;
+// src/TradePilot.Application/MarketData/Models/CandleSnapshotDto.cs — new file
+namespace TradePilot.Application.MarketData.Models;
 
 public sealed class CandleSnapshotDto
 {
@@ -52,7 +52,7 @@ public sealed class CandleSnapshotDto
 ```
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs — modification
+// src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs — modification
 // ... existing code ...
 
     Task<List<CandleDto>> GetCandlesAsync(
@@ -73,8 +73,8 @@ public sealed class CandleSnapshotDto
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — existing interface pattern
-- `src/TradingApp.Application/MarketData/Models/CandleDto.cs` — existing DTO pattern with `{ get; init; }` properties
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — existing interface pattern
+- `src/TradePilot.Application/MarketData/Models/CandleDto.cs` — existing DTO pattern with `{ get; init; }` properties
 
 ---
 
@@ -85,7 +85,7 @@ Implement the new `GetCandleSnapshotsAsync` method in `HyperliquidRestClient`. T
 - **Complexity**: Medium
 - **Risk Factors**: Must not break the existing `GetCandlesAsync` method; must return all candles from the API response
 - **Files**:
-  - `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Add new method implementation
+  - `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Add new method implementation
 - **Success**:
   - Method packages `startTime`/`endTime` directly into `CandleSnapshotPayload`
   - Returns all candles from the response without filtering or reordering
@@ -95,7 +95,7 @@ Implement the new `GetCandleSnapshotsAsync` method in `HyperliquidRestClient`. T
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs — modification
+// src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs — modification
 // Add after the existing GetCandlesAsync method
 
     public async Task<List<CandleSnapshotDto>> GetCandleSnapshotsAsync(
@@ -140,9 +140,9 @@ Implement the new `GetCandleSnapshotsAsync` method in `HyperliquidRestClient`. T
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — existing `GetCandlesAsync` implementation pattern (lines ~228-262)
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — wire model with `NumTrades` field
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/CandleSnapshotPayload.cs` — already has `StartTime`/`EndTime`
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — existing `GetCandlesAsync` implementation pattern (lines ~228-262)
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — wire model with `NumTrades` field
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/CandleSnapshotPayload.cs` — already has `StartTime`/`EndTime`
 
 ---
 
@@ -153,7 +153,7 @@ Create the configuration options class following the established `HyperliquidOpt
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Configuration/CandleIngestionOptions.cs` — New options class
+  - `src/TradePilot.Application/Abstractions/Configuration/CandleIngestionOptions.cs` — New options class
 - **Success**:
   - Options class has `SectionName = "CandleIngestion"`
   - All properties have sensible defaults matching the PBI spec
@@ -163,10 +163,10 @@ Create the configuration options class following the established `HyperliquidOpt
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Configuration/CandleIngestionOptions.cs — new file
+// src/TradePilot.Application/Abstractions/Configuration/CandleIngestionOptions.cs — new file
 using System.ComponentModel.DataAnnotations;
 
-namespace TradingApp.Application.Abstractions.Configuration;
+namespace TradePilot.Application.Abstractions.Configuration;
 
 public sealed class CandleIngestionOptions
 {
@@ -188,7 +188,7 @@ public sealed class CandleIngestionOptions
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — `SectionName` constant, `[Required]`/data annotation pattern
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — `SectionName` constant, `[Required]`/data annotation pattern
 
 ---
 
@@ -199,7 +199,7 @@ Add the `CandleIngestion` section to `appsettings.json` with default values matc
 - **Complexity**: Low
 - **Risk Factors**: None — additive JSON change
 - **Files**:
-  - `src/TradingApp.Api/appsettings.json` — Add `CandleIngestion` section
+  - `src/TradePilot.Api/appsettings.json` — Add `CandleIngestion` section
 - **Success**:
   - `CandleIngestion` section exists with `BatchDelayMs`, `MaxRetries`, `MaxIngestionTimeoutMs`, `DefaultStartDate`
 - **Dependencies**: None
@@ -208,12 +208,12 @@ Add the `CandleIngestion` section to `appsettings.json` with default values matc
 
 ### Task 1.5: Write unit tests for the new `GetCandlesAsync` overload {#task-15-write-unit-tests-for-overload}
 
-Add tests for `GetCandleSnapshotsAsync` in the Infrastructure test project. Since the existing `HyperliquidRestClient` tests live in `TradingApp.Api.Tests` (using `FakeHttpMessageHandler`), place these tests there for consistency.
+Add tests for `GetCandleSnapshotsAsync` in the Infrastructure test project. Since the existing `HyperliquidRestClient` tests live in `TradePilot.Api.Tests` (using `FakeHttpMessageHandler`), place these tests there for consistency.
 
 - **Complexity**: Medium
 - **Risk Factors**: Need to mock `PostInfoAsync` or use `FakeHttpMessageHandler`; must verify no `.Take()` or `.OrderByDescending()` is applied
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/HyperliquidRestClientCandleSnapshotTests.cs` — New test class
+  - `tests/TradePilot.Api.Tests/Services/HyperliquidRestClientCandleSnapshotTests.cs` — New test class
 - **Success**:
   - Tests verify: correct `startTime`/`endTime` in request payload, all candles returned without filtering, `NumTrades` mapped correctly, `DomainException` thrown for invalid timeframe
 - **Dependencies**: Tasks 1.1, 1.2
@@ -221,18 +221,18 @@ Add tests for `GetCandleSnapshotsAsync` in the Infrastructure test project. Sinc
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/HyperliquidRestClientCandleSnapshotTests.cs — new file
+// tests/TradePilot.Api.Tests/Services/HyperliquidRestClientCandleSnapshotTests.cs — new file
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TradingApp.Api.Tests.Infrastructure;
-using TradingApp.Application.Abstractions.Configuration;
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.MarketData.Models;
-using TradingApp.Infrastructure.Hyperliquid.Models;
-using TradingApp.Infrastructure.Services;
+using TradePilot.Api.Tests.Infrastructure;
+using TradePilot.Application.Abstractions.Configuration;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.MarketData.Models;
+using TradePilot.Infrastructure.Hyperliquid.Models;
+using TradePilot.Infrastructure.Services;
 
-namespace TradingApp.Api.Tests.Services;
+namespace TradePilot.Api.Tests.Services;
 
 [TestClass]
 public sealed class HyperliquidRestClientCandleSnapshotTests
@@ -296,8 +296,8 @@ public sealed class HyperliquidRestClientCandleSnapshotTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP response faking
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — service test structure with `Options.Create`
+- `tests/TradePilot.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP response faking
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — service test structure with `Options.Create`
 
 ---
 

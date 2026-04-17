@@ -68,15 +68,15 @@ Build the backtest replay engine that reads historical candle data from the loca
 
 ### Project Patterns
 
-- `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` — Canonical query + handler co-location pattern
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Application-layer service interface pattern (model for `IExecutionEngine`)
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — `IOptions<T>` configuration pattern
-- `src/TradingApp.Application/MarketData/Models/CandleDto.cs` — Existing `CandleDto` with `Timestamp` (unix ms), OHLCV decimals
-- `src/TradingApp.Application/Abstractions/Commands/Command.cs` — CQRS base types
-- `src/TradingApp.Application/Abstractions/Exceptions/DomainException.cs` — Domain exception pattern (maps to HTTP 400)
-- `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — Canonical unit test: sealed class, Given_When_Then naming, FluentAssertions
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Service unit test with `[TestInitialize]`, Moq mocks
-- `tests/TradingApp.Application.Tests/Usings.cs` — Global usings: FluentAssertions, MSTest, Moq
+- `src/TradePilot.Application/MarketData/Queries/GetCandlesQuery.cs` — Canonical query + handler co-location pattern
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Application-layer service interface pattern (model for `IExecutionEngine`)
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — `IOptions<T>` configuration pattern
+- `src/TradePilot.Application/MarketData/Models/CandleDto.cs` — Existing `CandleDto` with `Timestamp` (unix ms), OHLCV decimals
+- `src/TradePilot.Application/Abstractions/Commands/Command.cs` — CQRS base types
+- `src/TradePilot.Application/Abstractions/Exceptions/DomainException.cs` — Domain exception pattern (maps to HTTP 400)
+- `tests/TradePilot.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — Canonical unit test: sealed class, Given_When_Then naming, FluentAssertions
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Service unit test with `[TestInitialize]`, Moq mocks
+- `tests/TradePilot.Application.Tests/Usings.cs` — Global usings: FluentAssertions, MSTest, Moq
 
 ### [x] Phase 1: Foundation — Models, Interfaces, and Scheduling
 
@@ -178,13 +178,13 @@ Build the backtest replay engine that reads historical candle data from the loca
 - LLM context is not included in v1 backtest (out of scope per PBI)
 - Backtest result persistence to database is out of scope (handled by F4)
 - No API endpoints are created (handled by F4)
-- All backtest components live in `TradingApp.Application` — no Infrastructure layer changes needed
+- All backtest components live in `TradePilot.Application` — no Infrastructure layer changes needed
 - The `SimulatedExecutionEngine` is an Application-layer component (pure in-memory logic, no external I/O)
 - StrategyExecutionCheckpoint is not used in backtest mode (sequential replay has no restart concern)
 
 ## Dependencies
 
-- F1 — Candle Data Persistence (`Candle` entity, `ICandleRepository`, `TradingAppDbContext`)
+- F1 — Candle Data Persistence (`Candle` entity, `ICandleRepository`, `TradePilotDbContext`)
 - .NET 9 / C# 13 (current project target)
 - MediatR (existing — for future F4 command handler integration)
 - MSTest + Moq + FluentAssertions v6 (existing test stack)

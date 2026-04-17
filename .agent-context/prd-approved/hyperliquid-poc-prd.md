@@ -235,7 +235,7 @@ Hyperliquid requires typed data signatures for all write operations (place, modi
 
 ```
 src/
-  TradingApp.HyperliquidPoc.Api/        # .NET Web API + SignalR hub
+  TradePilot.HyperliquidPoc.Api/        # .NET Web API + SignalR hub
     Controllers/
       AccountController.cs               # GET account, positions, orders
       MarketDataController.cs            # GET markets, candles, prices

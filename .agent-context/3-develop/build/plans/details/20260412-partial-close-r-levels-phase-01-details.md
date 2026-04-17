@@ -25,8 +25,8 @@ Create a new `PartialCloseLevel` record to represent a single R-level tranche, a
 - **Complexity**: Medium
 - **Risk Factors**: Must maintain backward compatibility with existing serialized strategies
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/PartialCloseLevel.cs` — New file
-  - `src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs` — Add `PartialCloses` property
+  - `src/TradePilot.Application/StrategyAuthoring/Models/PartialCloseLevel.cs` — New file
+  - `src/TradePilot.Application/StrategyAuthoring/Models/ExitConfig.cs` — Add `PartialCloses` property
 - **Success**:
   - `PartialCloseLevel` record exists with `AtRMultiple` and `ClosePercent` properties
   - `ExitConfig.PartialCloses` is an optional `IReadOnlyList<PartialCloseLevel>?` defaulting to `null`
@@ -35,8 +35,8 @@ Create a new `PartialCloseLevel` record to represent a single R-level tranche, a
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/PartialCloseLevel.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/PartialCloseLevel.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public sealed record PartialCloseLevel
 {
@@ -46,7 +46,7 @@ public sealed record PartialCloseLevel
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs — modification
+// src/TradePilot.Application/StrategyAuthoring/Models/ExitConfig.cs — modification
 public sealed record ExitConfig
 {
     public ExitRuleConfig TakeProfit { get; init; } = new();
@@ -58,8 +58,8 @@ public sealed record ExitConfig
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs` — existing record structure
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — sealed record pattern with init properties
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitConfig.cs` — existing record structure
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — sealed record pattern with init properties
 
 ### Task 1.2: Add validation rules for partial close configuration {#task-12-add-validation-rules-for-partial-close-configuration}
 
@@ -68,7 +68,7 @@ Extend `BusinessRuleValidator` (or the relevant validation service) to validate 
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly handle edge cases (empty list vs null, zero values, negatives)
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — Add partial close validation rules
+  - `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — Add partial close validation rules
 - **Success**:
   - Validation error if `ClosePercent` values sum > 100
   - Validation error if any `AtRMultiple` ≤ 0
@@ -124,7 +124,7 @@ if (config.Exit.PartialCloses is { Count: > 0 } partialCloses)
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — existing TP_R_MULTIPLE_NEGATIVE / TP_R_MULTIPLE_SUB_ONE validation pattern
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — existing TP_R_MULTIPLE_NEGATIVE / TP_R_MULTIPLE_SUB_ONE validation pattern
 
 ### Task 1.3: Add unit tests for partial close validation {#task-13-add-unit-tests-for-partial-close-validation}
 
@@ -133,7 +133,7 @@ Add tests to `BusinessRuleValidatorTests` for all partial close validation rules
 - **Complexity**: Medium
 - **Risk Factors**: None — straightforward test additions
 - **Files**:
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — Add test methods
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — Add test methods
 - **Success**:
   - Tests cover: sum > 100, negative R, zero R, percent < 1, percent > 100, duplicate R-levels, non-RiskBased sizing, null/empty passes, warning for no trailing stop
   - All tests pass
@@ -244,7 +244,7 @@ public void GivenDuplicateRLevels_WhenValidated_ThenError()
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — existing `GivenNegativeRMultipleTakeProfit_WhenValidated_ThenError` pattern
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — existing `GivenNegativeRMultipleTakeProfit_WhenValidated_ThenError` pattern
 
 ### Task 1.4: Verify JSON serialization backward compatibility {#task-14-verify-json-serialization-backward-compatibility}
 
@@ -253,7 +253,7 @@ Add a test to verify that existing `ExitConfig` JSON without `partialCloses` des
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Serialization/` — New or existing test file for serialization round-trip
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Serialization/` — New or existing test file for serialization round-trip
 - **Success**:
   - JSON without `partialCloses` key deserializes to `ExitConfig` with `PartialCloses = null`
   - JSON with `partialCloses` array round-trips correctly

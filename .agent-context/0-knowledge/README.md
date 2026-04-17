@@ -1,6 +1,6 @@
 # 0-knowledge - Table of Contents
 
-Project knowledge files for TradingApp. These documents are the source of truth for the implemented architecture, domain model, strategy runtime, control plane, and research tooling.
+Project knowledge files for TradePilot. These documents are the source of truth for the implemented architecture, domain model, strategy runtime, control plane, and research tooling.
 
 ---
 

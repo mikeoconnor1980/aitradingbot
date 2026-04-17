@@ -52,20 +52,20 @@ All key source files were read in full during discovery. The existing `BacktestM
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — Indicator calculation with parameterized CalculateRsi/CalculateEma methods
-- `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs` — Current IStrategyEngine impl, grid-only evaluation
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — Pipeline orchestrator calling contextBuilder → strategyEngine → gridController
-- `src/TradingApp.Application/Trading/Models/MarketContext.cs` — Context with IndicatorSnapshot
-- `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` — Fixed 5-field indicator model
-- `src/TradingApp.Application/Trading/Models/StrategyEvaluation.cs` — SetupDetected + Reason result
-- `src/TradingApp.Application/StrategyAuthoring/Models/StrategyConfig.cs` — Full config with StrategyMode, EntryConditions, EntryLogic
-- `src/TradingApp.Application/StrategyAuthoring/Models/RsiParams.cs` — Period, Operator, Value
-- `src/TradingApp.Application/StrategyAuthoring/Models/EntryConditionType.cs` — Unknown/Rsi/PriceVsEma/Macd
-- `src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — SIGNAL_MODE_NOT_SUPPORTED info
-- `src/TradingApp.Api/Program.cs` — Flat DI registrations
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — GridController tests with private static Create* helpers
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — StrategyScheduler tests with mocked IStrategyEngine
-- `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Integration tests using real GridStrategyEngine
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — Indicator calculation with parameterized CalculateRsi/CalculateEma methods
+- `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs` — Current IStrategyEngine impl, grid-only evaluation
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — Pipeline orchestrator calling contextBuilder → strategyEngine → gridController
+- `src/TradePilot.Application/Trading/Models/MarketContext.cs` — Context with IndicatorSnapshot
+- `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` — Fixed 5-field indicator model
+- `src/TradePilot.Application/Trading/Models/StrategyEvaluation.cs` — SetupDetected + Reason result
+- `src/TradePilot.Application/StrategyAuthoring/Models/StrategyConfig.cs` — Full config with StrategyMode, EntryConditions, EntryLogic
+- `src/TradePilot.Application/StrategyAuthoring/Models/RsiParams.cs` — Period, Operator, Value
+- `src/TradePilot.Application/StrategyAuthoring/Models/EntryConditionType.cs` — Unknown/Rsi/PriceVsEma/Macd
+- `src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — SIGNAL_MODE_NOT_SUPPORTED info
+- `src/TradePilot.Api/Program.cs` — Flat DI registrations
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — GridController tests with private static Create* helpers
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — StrategyScheduler tests with mocked IStrategyEngine
+- `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Integration tests using real GridStrategyEngine
 
 ### [x] Phase 1: Indicator Infrastructure
 

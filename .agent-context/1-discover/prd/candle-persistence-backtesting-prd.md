@@ -34,8 +34,8 @@ The platform currently fetches candle data from Hyperliquid's REST API on demand
 | Infrastructure models (`HyperliquidCandle`, `HyperliquidCandleSnapshotRequest`, `CandleSnapshotPayload`) | Implemented |
 | Application DTO (`CandleDto` — Timestamp, OHLCV) | Implemented |
 | `HyperliquidAssetMapper` (asset name mapping, timeframe → interval ms) | Implemented |
-| Persistence layer (`TradingApp.Persistence`) | Empty shell — no DbContext, no entities, no migrations |
-| Domain layer (`TradingApp.Domain`) | Empty shell — no entities |
+| Persistence layer (`TradePilot.Persistence`) | Empty shell — no DbContext, no entities, no migrations |
+| Domain layer (`TradePilot.Domain`) | Empty shell — no entities |
 | Backtesting engine | Not started |
 | StrategyEngine, GridController, RiskEngine, PositionManager | Not yet implemented (defined in architecture docs) |
 | Signal contracts (DeployGrid, TakeProfit, OpenHedge, etc.) | Defined in architecture — not yet implemented |
@@ -98,8 +98,8 @@ This is trivially small for SQLite. No partitioning, sharding, or archival strat
 
 | Area | Details |
 |---|---|
-| Domain entity | `Candle` entity in `TradingApp.Domain` |
-| Database setup | EF Core DbContext with SQLite provider in `TradingApp.Persistence` |
+| Domain entity | `Candle` entity in `TradePilot.Domain` |
+| Database setup | EF Core DbContext with SQLite provider in `TradePilot.Persistence` |
 | Candle ingestion | Batch fetch service with pagination, upsert, rate-limit handling |
 | Backtest engine | `CandleReplayEngine`, `SimulatedExecutionEngine`, `BacktestRunner`, `BacktestMetricsCalculator` |
 | Backtest API | `POST /api/backtests` endpoint with result model |
@@ -133,19 +133,19 @@ This is trivially small for SQLite. No partitioning, sharding, or archival strat
 
 | ID | Requirement | Priority |
 |---|---|---|
-| F1-01 | A `Candle` domain entity exists in `TradingApp.Domain` with properties: `Id` (long, auto-increment), `Symbol` (string), `Interval` (string), `Timestamp` (long, unix ms — candle open time), `Open` (decimal), `High` (decimal), `Low` (decimal), `Close` (decimal), `Volume` (decimal), `NumTrades` (int) | Must |
-| F1-02 | A `TradingAppDbContext` exists in `TradingApp.Persistence` using the `Microsoft.EntityFrameworkCore.Sqlite` provider | Must |
+| F1-01 | A `Candle` domain entity exists in `TradePilot.Domain` with properties: `Id` (long, auto-increment), `Symbol` (string), `Interval` (string), `Timestamp` (long, unix ms — candle open time), `Open` (decimal), `High` (decimal), `Low` (decimal), `Close` (decimal), `Volume` (decimal), `NumTrades` (int) | Must |
+| F1-02 | A `TradePilotDbContext` exists in `TradePilot.Persistence` using the `Microsoft.EntityFrameworkCore.Sqlite` provider | Must |
 | F1-03 | A composite unique index exists on (`Symbol`, `Interval`, `Timestamp`) to prevent duplicate candle entries | Must |
 | F1-04 | EF Core migrations are used to create and evolve the database schema | Must |
-| F1-05 | The SQLite database file path is configurable via `appsettings.json` (default: `Data/tradingapp.db`) | Must |
-| F1-06 | An `ICandleRepository` interface is defined in `TradingApp.Application` with methods for querying and bulk-inserting candles | Must |
-| F1-07 | A `CandleRepository` implementation exists in `TradingApp.Persistence` | Must |
+| F1-05 | The SQLite database file path is configurable via `appsettings.json` (default: `Data/TradePilot.db`) | Must |
+| F1-06 | An `ICandleRepository` interface is defined in `TradePilot.Application` with methods for querying and bulk-inserting candles | Must |
+| F1-07 | A `CandleRepository` implementation exists in `TradePilot.Persistence` | Must |
 
 #### Feature 2: Candle Ingestion Service
 
 | ID | Requirement | Priority |
 |---|---|---|
-| F2-01 | An `ICandleIngestionService` interface is defined in `TradingApp.Application` | Must |
+| F2-01 | An `ICandleIngestionService` interface is defined in `TradePilot.Application` | Must |
 | F2-02 | The service fetches candles from Hyperliquid in batches (up to 500 candles per request, paginating forward by time) | Must |
 | F2-03 | The service supports ingestion for BTC across 15m, 1h, and 4h intervals | Must |
 | F2-04 | Duplicate candles are skipped (upsert semantics using the composite unique index) | Must |
@@ -204,11 +204,11 @@ The implementation follows the existing clean architecture:
 
 | Layer | Additions |
 |---|---|
-| `TradingApp.Domain` | `Candle` entity |
-| `TradingApp.Application` | `ICandleRepository`, `ICandleIngestionService`, `IBacktestRunner`, query/command handlers, DTOs (`BacktestRequest`, `BacktestResult`, `BacktestTrade`, `IngestionResult`) |
-| `TradingApp.Infrastructure` | `CandleIngestionService` (uses existing `IHyperliquidRestClient`) |
-| `TradingApp.Persistence` | `TradingAppDbContext`, `CandleRepository`, EF Core migrations |
-| `TradingApp.Api` | `CandleIngestionController`, `BacktestController` |
+| `TradePilot.Domain` | `Candle` entity |
+| `TradePilot.Application` | `ICandleRepository`, `ICandleIngestionService`, `IBacktestRunner`, query/command handlers, DTOs (`BacktestRequest`, `BacktestResult`, `BacktestTrade`, `IngestionResult`) |
+| `TradePilot.Infrastructure` | `CandleIngestionService` (uses existing `IHyperliquidRestClient`) |
+| `TradePilot.Persistence` | `TradePilotDbContext`, `CandleRepository`, EF Core migrations |
+| `TradePilot.Api` | `CandleIngestionController`, `BacktestController` |
 
 ### Database
 

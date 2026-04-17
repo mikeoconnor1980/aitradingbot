@@ -67,7 +67,7 @@ Traders currently have no way to get an objective, automated review of their str
 
 ### LLM Integration
 
-- Reuse the existing `OpenAiCompatibleLlmClient` infrastructure from `TradingApp.AI`
+- Reuse the existing `OpenAiCompatibleLlmClient` infrastructure from `TradePilot.AI`
 - Register a second `ILlmClient` instance (keyed/named) for review specifically
 - System prompt stored server-side as a constant or resource — not configurable by the client
 - User message is the serialized strategy JSON

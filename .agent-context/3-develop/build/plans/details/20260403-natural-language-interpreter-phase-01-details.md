@@ -10,16 +10,16 @@
 - **dotnet-architecture.instructions.md**: Infrastructure services have interface in `Application/Abstractions/Services/`, implementation in infrastructure project; Options in `Application/Abstractions/Configuration/`; DI extension methods per project
 - **testing.instructions.md**: MSTest, Moq, FluentAssertions v6, `Given_When_Then` naming, tests within the phase
 
-### Task 1.1: Create TradingApp.AI project and add to solution {#task-11-create-tradingapp-ai-project}
+### Task 1.1: Create TradePilot.AI project and add to solution {#task-11-create-TradePilot-ai-project}
 
-Create a new class library project `TradingApp.AI` under `src/` and add it to the solution.
+Create a new class library project `TradePilot.AI` under `src/` and add it to the solution.
 
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward project scaffolding
 - **Files**:
-  - `src/TradingApp.AI/TradingApp.AI.csproj` — new project file
-  - `TradingApp.sln` — add project reference
-  - `tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj` — new test project
+  - `src/TradePilot.AI/TradePilot.AI.csproj` — new project file
+  - `TradePilot.sln` — add project reference
+  - `tests/TradePilot.AI.Tests/TradePilot.AI.Tests.csproj` — new test project
 - **Success**:
   - `dotnet build` succeeds with new project
   - Project appears in solution explorer under `src/` folder
@@ -29,14 +29,14 @@ Create a new class library project `TradingApp.AI` under `src/` and add it to th
 
 ```bash
 # Commands to execute:
-dotnet new classlib -n TradingApp.AI -o src/TradingApp.AI --framework net8.0
-dotnet sln add src/TradingApp.AI/TradingApp.AI.csproj --solution-folder src
-dotnet new mstest -n TradingApp.AI.Tests -o tests/TradingApp.AI.Tests --framework net8.0
-dotnet sln add tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj --solution-folder tests
+dotnet new classlib -n TradePilot.AI -o src/TradePilot.AI --framework net8.0
+dotnet sln add src/TradePilot.AI/TradePilot.AI.csproj --solution-folder src
+dotnet new mstest -n TradePilot.AI.Tests -o tests/TradePilot.AI.Tests --framework net8.0
+dotnet sln add tests/TradePilot.AI.Tests/TradePilot.AI.Tests.csproj --solution-folder tests
 ```
 
 ```xml
-<!-- src/TradingApp.AI/TradingApp.AI.csproj -->
+<!-- src/TradePilot.AI/TradePilot.AI.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -44,7 +44,7 @@ dotnet sln add tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj --solution-f
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TradingApp.Application\TradingApp.Application.csproj" />
+    <ProjectReference Include="..\TradePilot.Application\TradePilot.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
@@ -54,7 +54,7 @@ dotnet sln add tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj --solution-f
 ```
 
 ```xml
-<!-- tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj -->
+<!-- tests/TradePilot.AI.Tests/TradePilot.AI.Tests.csproj -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -63,7 +63,7 @@ dotnet sln add tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj --solution-f
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TradingApp.AI\TradingApp.AI.csproj" />
+    <ProjectReference Include="..\..\src\TradePilot.AI\TradePilot.AI.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
@@ -75,17 +75,17 @@ dotnet sln add tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj --solution-f
 </Project>
 ```
 
-Also add project reference from `TradingApp.Api` to `TradingApp.AI`:
+Also add project reference from `TradePilot.Api` to `TradePilot.AI`:
 
 ```xml
-<!-- src/TradingApp.Api/TradingApp.Api.csproj — add to existing ItemGroup -->
-<ProjectReference Include="..\TradingApp.AI\TradingApp.AI.csproj" />
+<!-- src/TradePilot.Api/TradePilot.Api.csproj — add to existing ItemGroup -->
+<ProjectReference Include="..\TradePilot.AI\TradePilot.AI.csproj" />
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/TradingApp.Application.csproj` — representative library project structure
-- `tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj` — test project structure with MSTest + Moq + FluentAssertions
+- `src/TradePilot.Application/TradePilot.Application.csproj` — representative library project structure
+- `tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj` — test project structure with MSTest + Moq + FluentAssertions
 
 ### Task 1.2: Create LlmOptions configuration class {#task-12-create-llmoptions-configuration}
 
@@ -94,7 +94,7 @@ Create the options class for LLM provider configuration following `HyperliquidOp
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Configuration/LlmOptions.cs` — new options class
+  - `src/TradePilot.Application/Abstractions/Configuration/LlmOptions.cs` — new options class
 - **Success**:
   - Options class validated on startup with `ValidateDataAnnotations`
   - Supports Gemini and Ollama provider configuration
@@ -103,10 +103,10 @@ Create the options class for LLM provider configuration following `HyperliquidOp
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Configuration/LlmOptions.cs — new file
+// src/TradePilot.Application/Abstractions/Configuration/LlmOptions.cs — new file
 using System.ComponentModel.DataAnnotations;
 
-namespace TradingApp.Application.Abstractions.Configuration;
+namespace TradePilot.Application.Abstractions.Configuration;
 
 public sealed class LlmOptions
 {
@@ -131,7 +131,7 @@ public sealed class LlmOptions
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — IOptions with DataAnnotations and `SectionName` constant
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — IOptions with DataAnnotations and `SectionName` constant
 
 ### Task 1.3: Create ILlmClient interface and OpenAI-compatible implementation {#task-13-create-illmclient-and-implementation}
 
@@ -140,10 +140,10 @@ Create the LLM client abstraction in Application and the OpenAI-compatible imple
 - **Complexity**: Medium
 - **Risk Factors**: OpenAI-compatible API response shape must be correct; timeout handling
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/ILlmClient.cs` — interface
-  - `src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs` — implementation
-  - `src/TradingApp.AI/Models/ChatCompletionRequest.cs` — request model
-  - `src/TradingApp.AI/Models/ChatCompletionResponse.cs` — response model
+  - `src/TradePilot.Application/Abstractions/Services/ILlmClient.cs` — interface
+  - `src/TradePilot.AI/Services/OpenAiCompatibleLlmClient.cs` — implementation
+  - `src/TradePilot.AI/Models/ChatCompletionRequest.cs` — request model
+  - `src/TradePilot.AI/Models/ChatCompletionResponse.cs` — response model
 - **Success**:
   - `CompleteAsync` sends system + user messages and returns content string
   - HTTP errors are caught and wrapped in a meaningful exception
@@ -153,8 +153,8 @@ Create the LLM client abstraction in Application and the OpenAI-compatible imple
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/ILlmClient.cs — new file
-namespace TradingApp.Application.Abstractions.Services;
+// src/TradePilot.Application/Abstractions/Services/ILlmClient.cs — new file
+namespace TradePilot.Application.Abstractions.Services;
 
 public interface ILlmClient
 {
@@ -163,10 +163,10 @@ public interface ILlmClient
 ```
 
 ```csharp
-// src/TradingApp.AI/Models/ChatCompletionRequest.cs — new file
+// src/TradePilot.AI/Models/ChatCompletionRequest.cs — new file
 using System.Text.Json.Serialization;
 
-namespace TradingApp.AI.Models;
+namespace TradePilot.AI.Models;
 
 internal sealed class ChatCompletionRequest
 {
@@ -200,10 +200,10 @@ internal sealed class ResponseFormat
 ```
 
 ```csharp
-// src/TradingApp.AI/Models/ChatCompletionResponse.cs — new file
+// src/TradePilot.AI/Models/ChatCompletionResponse.cs — new file
 using System.Text.Json.Serialization;
 
-namespace TradingApp.AI.Models;
+namespace TradePilot.AI.Models;
 
 internal sealed class ChatCompletionResponse
 {
@@ -225,16 +225,16 @@ internal sealed class ChatChoiceMessage
 ```
 
 ```csharp
-// src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs — new file
+// src/TradePilot.AI/Services/OpenAiCompatibleLlmClient.cs — new file
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TradingApp.AI.Models;
-using TradingApp.Application.Abstractions.Configuration;
-using TradingApp.Application.Abstractions.Services;
+using TradePilot.AI.Models;
+using TradePilot.Application.Abstractions.Configuration;
+using TradePilot.Application.Abstractions.Services;
 
-namespace TradingApp.AI.Services;
+namespace TradePilot.AI.Services;
 
 internal sealed class OpenAiCompatibleLlmClient : ILlmClient
 {
@@ -293,8 +293,8 @@ internal sealed class OpenAiCompatibleLlmClient : ILlmClient
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — typed HTTP client interface
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — HTTP client with IOptions, ILogger, response parsing
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — typed HTTP client interface
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — HTTP client with IOptions, ILogger, response parsing
 
 ### Task 1.4: Create AiServiceExtensions for DI registration {#task-14-create-aiserviceextensions}
 
@@ -303,7 +303,7 @@ Create the DI extension method for the AI project following the Persistence patt
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.AI/AiServiceExtensions.cs` — DI registration extension
+  - `src/TradePilot.AI/AiServiceExtensions.cs` — DI registration extension
 - **Success**:
   - `AddAI(configuration)` registers all AI services
   - HttpClient configured with base URL from options
@@ -313,15 +313,15 @@ Create the DI extension method for the AI project following the Persistence patt
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.AI/AiServiceExtensions.cs — new file
+// src/TradePilot.AI/AiServiceExtensions.cs — new file
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using TradingApp.AI.Services;
-using TradingApp.Application.Abstractions.Configuration;
-using TradingApp.Application.Abstractions.Services;
+using TradePilot.AI.Services;
+using TradePilot.Application.Abstractions.Configuration;
+using TradePilot.Application.Abstractions.Services;
 
-namespace TradingApp.AI;
+namespace TradePilot.AI;
 
 public static class AiServiceExtensions
 {
@@ -354,8 +354,8 @@ public static class AiServiceExtensions
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` — DI extension method pattern
-- `src/TradingApp.Api/Program.cs` — HttpClient registration with `AddHttpClient<I, C>` + IOptions resolution
+- `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` — DI extension method pattern
+- `src/TradePilot.Api/Program.cs` — HttpClient registration with `AddHttpClient<I, C>` + IOptions resolution
 
 ### Task 1.5: Add LLM configuration to appsettings.json and wire in Program.cs {#task-15-add-configuration-and-wire-programcs}
 
@@ -364,8 +364,8 @@ Add the Llm configuration section and wire `AddAI` in the API startup.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/appsettings.json` — add Llm section
-  - `src/TradingApp.Api/Program.cs` — call `AddAI()`
+  - `src/TradePilot.Api/appsettings.json` — add Llm section
+  - `src/TradePilot.Api/Program.cs` — call `AddAI()`
 - **Success**:
   - Application starts with Llm configuration section
   - No startup validation errors
@@ -374,7 +374,7 @@ Add the Llm configuration section and wire `AddAI` in the API startup.
 #### Implementation Details
 
 ```json
-// src/TradingApp.Api/appsettings.json — add new section after "BinanceIngestion"
+// src/TradePilot.Api/appsettings.json — add new section after "BinanceIngestion"
 "Llm": {
   "Provider": "Gemini",
   "BaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -384,7 +384,7 @@ Add the Llm configuration section and wire `AddAI` in the API startup.
 ```
 
 ```csharp
-// src/TradingApp.Api/Program.cs — add after existing service registrations
+// src/TradePilot.Api/Program.cs — add after existing service registrations
 // ... existing code ...
 builder.Services.AddAI(builder.Configuration);
 // ... existing code ...
@@ -392,8 +392,8 @@ builder.Services.AddAI(builder.Configuration);
 
 ##### Pattern References
 
-- `src/TradingApp.Api/appsettings.json` — existing configuration sections (Hyperliquid, CandleIngestion, BinanceIngestion)
-- `src/TradingApp.Api/Program.cs` — service registration pattern with `AddPersistence(builder.Configuration)`
+- `src/TradePilot.Api/appsettings.json` — existing configuration sections (Hyperliquid, CandleIngestion, BinanceIngestion)
+- `src/TradePilot.Api/Program.cs` — service registration pattern with `AddPersistence(builder.Configuration)`
 
 ### Task 1.6: Add unit tests for LLM client {#task-16-add-unit-tests}
 
@@ -402,7 +402,7 @@ Add unit tests for `OpenAiCompatibleLlmClient` verifying request construction, r
 - **Complexity**: Medium
 - **Risk Factors**: HTTP mocking setup
 - **Files**:
-  - `tests/TradingApp.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs` — new test class
+  - `tests/TradePilot.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs` — new test class
 - **Success**:
   - Tests verify correct request shape sent to API
   - Tests verify response parsing returns content
@@ -414,17 +414,17 @@ Add unit tests for `OpenAiCompatibleLlmClient` verifying request construction, r
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs — new file
+// tests/TradePilot.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs — new file
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using TradingApp.AI.Services;
-using TradingApp.Application.Abstractions.Configuration;
+using TradePilot.AI.Services;
+using TradePilot.Application.Abstractions.Configuration;
 
-namespace TradingApp.AI.Tests.Services;
+namespace TradePilot.AI.Tests.Services;
 
 [TestClass]
 public sealed class OpenAiCompatibleLlmClientTests
@@ -526,8 +526,8 @@ public sealed class OpenAiCompatibleLlmClientTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — MSTest, FluentAssertions, Given_When_Then naming convention
-- `tests/TradingApp.Api.Tests/TradingApp.Api.Tests.csproj` — test project with Moq + FluentAssertions
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — MSTest, FluentAssertions, Given_When_Then naming convention
+- `tests/TradePilot.Api.Tests/TradePilot.Api.Tests.csproj` — test project with Moq + FluentAssertions
 
 ### Task 1.7: Build verification and architecture tests {#task-17-build-verification}
 
@@ -537,14 +537,14 @@ Verify the solution builds and run existing architecture tests to ensure no viol
 - **Risk Factors**: None
 - **Files**: No files to create
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
+  - `dotnet build TradePilot.sln` succeeds
   - `dotnet test` passes for new test project
   - Existing architecture tests still pass
 - **Dependencies**: All previous tasks in phase
 
 ## Phase Success Criteria
 
-- TradingApp.AI project exists and builds as part of the solution
+- TradePilot.AI project exists and builds as part of the solution
 - ILlmClient abstraction and OpenAI-compatible implementation are registered
 - LLM configuration section exists in appsettings.json
 - Unit tests for LLM client pass

@@ -10,7 +10,7 @@ param(
 
     [switch]$SkipDatabaseChecks,
 
-    [string]$DatabasePath = 'data/tradingapp.db'
+    [string]$DatabasePath = 'data/TradePilot.db'
 )
 
 $ErrorActionPreference = 'Stop'

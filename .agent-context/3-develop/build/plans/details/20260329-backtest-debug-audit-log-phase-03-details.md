@@ -25,7 +25,7 @@ Add `IBacktestAuditCollector` as an optional constructor parameter (defaulting t
 - **Complexity**: High
 - **Risk Factors**: Modifying the shared scheduler — must not break live trading path; default null collector ensures backward compatibility
 - **Files**:
-  - `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — modification
+  - `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — modification
 - **Success**:
   - Constructor accepts optional `IBacktestAuditCollector` parameter
   - After evaluation, `LogCandleEvaluation` is called with candle data, indicator snapshot, SetupDetected, grid state, position state, and signals emitted
@@ -36,7 +36,7 @@ Add `IBacktestAuditCollector` as an optional constructor parameter (defaulting t
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Scheduling/StrategyScheduler.cs — modification
+// src/TradePilot.Application/Scheduling/StrategyScheduler.cs — modification
 
 // Add to field declarations:
     private readonly IBacktestAuditCollector _auditCollector;
@@ -62,7 +62,7 @@ Update `HandleCandleClosedAsync` — add audit logging after evaluation and sign
 **Note**: The code below shows the FULL method body for context, but this is a MODIFICATION to the existing method. Only add the `_auditCollector` field, update the constructor with the optional parameter, and insert the `LogCandleEvaluation` call between grid processing and the `signals.Count == 0` check. Do not replace the entire method.
 
 ```csharp
-// src/TradingApp.Application/Scheduling/StrategyScheduler.cs — modification to HandleCandleClosedAsync
+// src/TradePilot.Application/Scheduling/StrategyScheduler.cs — modification to HandleCandleClosedAsync
     public async Task HandleCandleClosedAsync(
         CandleClosedEvent evt,
         Candle? latestOneHourCandle,
@@ -135,14 +135,14 @@ Update `HandleCandleClosedAsync` — add audit logging after evaluation and sign
 Add the required using:
 
 ```csharp
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Application.Backtesting.Services;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Application.Backtesting.Services;
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — existing constructor pattern with optional `triggerTimeframe` parameter
-- `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` — indicator fields mapped to CandleEvaluationEntry
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — existing constructor pattern with optional `triggerTimeframe` parameter
+- `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` — indicator fields mapped to CandleEvaluationEntry
 
 ---
 
@@ -153,8 +153,8 @@ Inject `IBacktestAuditCollector` into `BacktestPositionManager`. Log `Placed` ev
 - **Complexity**: High
 - **Risk Factors**: Must correctly infer cancellation reasons from signal context (DeployGrid → GridRedeployed, TakeProfit with reason "stop_loss" → StopLossTriggered)
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — modification
-  - `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — modification (add GetOpenOrders)
+  - `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — modification
+  - `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — modification (add GetOpenOrders)
 - **Success**:
   - Order `Placed` events logged for every `PlaceOrderAsync` call
   - Order `Cancelled` events logged before every `CancelAllOrdersAsync` with correct reason codes
@@ -167,7 +167,7 @@ Inject `IBacktestAuditCollector` into `BacktestPositionManager`. Log `Placed` ev
 Add `GetOpenOrders` to `SimulatedExecutionEngine`:
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs — modification
+// src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs — modification
 // Add new public method:
 
     public IReadOnlyList<SimulatedOrder> GetOpenOrders() => _openOrders.ToList();
@@ -178,7 +178,7 @@ Update `BacktestPositionManager` — inject audit collector:
 **Important prerequisite**: Add a `CurrentTimestampUtc` property to `BacktestExecutionContextAccessor` (currently only has `CurrentExecutionEngine`). The `BacktestRunner` must set this to the current candle's `Timestamp` before each candle iteration. This ensures order events use simulated time instead of wall-clock time.
 
 ```csharp
-// src/TradingApp.Application/Backtesting/BacktestExecutionContextAccessor.cs — modification
+// src/TradePilot.Application/Backtesting/BacktestExecutionContextAccessor.cs — modification
 // Add property:
     private readonly AsyncLocal<long> _currentTimestampUtc = new();
 
@@ -190,7 +190,7 @@ Update `BacktestPositionManager` — inject audit collector:
 ```
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs — modification
+// src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs — modification
 
 public sealed class BacktestPositionManager : IPositionManager
 {
@@ -210,7 +210,7 @@ public sealed class BacktestPositionManager : IPositionManager
 Update `DeployGridAsync` to log cancellations and placements:
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs — modification to DeployGridAsync
+// src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs — modification to DeployGridAsync
 
     private async Task DeployGridAsync(
         Backtesting.Services.SimulatedExecutionEngine executionEngine,
@@ -294,8 +294,8 @@ Also need to pass the `GridCycleId` through the signal parameters. The `GridCont
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — existing signal routing pattern
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — `_openOrders` list access
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — existing signal routing pattern
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — `_openOrders` list access
 
 ---
 
@@ -312,9 +312,9 @@ Update `BacktestRunner.RunAsync` to:
 - **Complexity**: High
 - **Risk Factors**: Multiple integration points in the main loop; must track accumulated grid cycle data (deploy time, anchor price, levels) to build entries at cycle close
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — modification
-  - `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — modification (add audit data)
-  - `src/TradingApp.Application/Backtesting/Services/IBacktestRunner.cs` — check if interface needs updating
+  - `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — modification
+  - `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — modification (add audit data)
+  - `src/TradePilot.Application/Backtesting/Services/IBacktestRunner.cs` — check if interface needs updating
 - **Success**:
   - Audit collector is created/wired correctly based on `EnableAuditLog`
   - Warmup candles produce `IsWarmup = true` entries with indicator values
@@ -328,7 +328,7 @@ Update `BacktestRunner.RunAsync` to:
 Update `BacktestResult` to carry audit data:
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestResult.cs — modification
+// src/TradePilot.Application/Backtesting/Models/BacktestResult.cs — modification
 // Add nullable properties for audit data (non-required, defaulting to null):
 
     public IReadOnlyList<CandleEvaluationEntry>? CandleEvaluationLog { get; init; }
@@ -341,7 +341,7 @@ Update `BacktestResult` to carry audit data:
 Update `BacktestRunner.RunAsync` — collector creation and wiring:
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs — modification
+// src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs — modification
 
     // At the start of RunAsync, after validation:
     var auditCollector = config.EnableAuditLog
@@ -510,8 +510,8 @@ Alternatively, add `CandleEvaluationLog`, `OrderEventLog`, `GridCycleLog` parame
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — existing main loop, `RecordFill` pattern, `TryCountClosedGridCycle`
-- `src/TradingApp.Application/Trading/Models/GridState.cs` — `GridCycleId`, `FilledLevels`, `Lifecycle`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — existing main loop, `RecordFill` pattern, `TryCountClosedGridCycle`
+- `src/TradePilot.Application/Trading/Models/GridState.cs` — `GridCycleId`, `FilledLevels`, `Lifecycle`
 
 ---
 
@@ -522,7 +522,7 @@ Update `BacktestProcessorService.ProcessJobAsync` to serialize and pass debug da
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly pass `EnableAuditLog` from entity to config and audit data from result to entity
 - **Files**:
-  - `src/TradingApp.Api/Services/BacktestProcessorService.cs` — modification
+  - `src/TradePilot.Api/Services/BacktestProcessorService.cs` — modification
 - **Success**:
   - `BuildConfig` includes `EnableAuditLog = run.AuditLogEnabled`
   - `MarkCompleted` call includes serialized debug JSON (or null when disabled)
@@ -532,7 +532,7 @@ Update `BacktestProcessorService.ProcessJobAsync` to serialize and pass debug da
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/BacktestProcessorService.cs — modification to ProcessJobAsync
+// src/TradePilot.Api/Services/BacktestProcessorService.cs — modification to ProcessJobAsync
 
     // After: var result = await runner.RunAsync(config, OnProgress, stoppingToken);
 
@@ -552,7 +552,7 @@ Update `BacktestProcessorService.ProcessJobAsync` to serialize and pass debug da
 ```
 
 ```csharp
-// src/TradingApp.Api/Services/BacktestProcessorService.cs — modification to BuildConfig
+// src/TradePilot.Api/Services/BacktestProcessorService.cs — modification to BuildConfig
 
     private static BacktestConfig BuildConfig(BacktestRun run)
     {
@@ -568,7 +568,7 @@ Update `BacktestProcessorService.ProcessJobAsync` to serialize and pass debug da
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/BacktestProcessorService.cs` — existing `MarkCompleted` call with `BacktestRunResponseMapper.SerializeTrades`
+- `src/TradePilot.Api/Services/BacktestProcessorService.cs` — existing `MarkCompleted` call with `BacktestRunResponseMapper.SerializeTrades`
 
 ---
 
@@ -579,9 +579,9 @@ Add `GridCycleId` to `BacktestTradeResponse` (prerequisite for UI). Add `HasAudi
 - **Complexity**: Low
 - **Risk Factors**: None — additive changes to DTOs
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/BacktestTradeResponse.cs` — modification
-  - `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — modification
-  - `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — modification
+  - `src/TradePilot.Application/Backtesting/Models/BacktestTradeResponse.cs` — modification
+  - `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — modification
+  - `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — modification
 - **Success**:
   - `BacktestTradeResponse.GridCycleId` populated from `BacktestTrade.GridCycleId`
   - `BacktestRunResponse.HasAuditLog` true when entity has non-null debug data
@@ -591,21 +591,21 @@ Add `GridCycleId` to `BacktestTradeResponse` (prerequisite for UI). Add `HasAudi
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestTradeResponse.cs — modification
+// src/TradePilot.Application/Backtesting/Models/BacktestTradeResponse.cs — modification
 // Add after existing TradeType property:
 
     public required string GridCycleId { get; init; }
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs — modification
+// src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs — modification
 // Add after existing CreatedAt property:
 
     public required bool HasAuditLog { get; init; }
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs — modification to MapTrades
+// src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs — modification to MapTrades
 
     private static IReadOnlyList<BacktestTradeResponse> MapTrades(IReadOnlyList<BacktestTrade> trades)
     {
@@ -621,7 +621,7 @@ Add `GridCycleId` to `BacktestTradeResponse` (prerequisite for UI). Add `HasAudi
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs — modification to ToResponse
+// src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs — modification to ToResponse
 
     return new BacktestRunResponse
     {
@@ -633,7 +633,7 @@ Add `GridCycleId` to `BacktestTradeResponse` (prerequisite for UI). Add `HasAudi
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — existing `MapTrades` and `ToResponse` patterns
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — existing `MapTrades` and `ToResponse` patterns
 
 ---
 
@@ -644,19 +644,19 @@ Extend `RealBacktestRunnerTests` to verify that audit data is captured during a 
 - **Complexity**: Medium
 - **Risk Factors**: Integration test requires a run that produces at least one grid cycle
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — modification
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — modification
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — modification
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — modification
 - **Success**:
   - Integration test verifies: audit-enabled run produces non-empty candle evaluations, order events, and grid cycle entries
   - Integration test verifies: warmup entries have `IsWarmup = true`
   - Unit test verifies: audit-disabled run returns null audit data
-  - All tests pass: `dotnet test tests/TradingApp.Application.Tests --filter "FullyQualifiedName~BacktestRunnerTests"`
+  - All tests pass: `dotnet test tests/TradePilot.Application.Tests --filter "FullyQualifiedName~BacktestRunnerTests"`
 - **Dependencies**: Tasks 3.1–3.5
 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs — modification
+// tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs — modification
 // Add new test method:
 
     [TestMethod]
@@ -677,7 +677,7 @@ Extend `RealBacktestRunnerTests` to verify that audit data is captured during a 
 ```
 
 ```csharp
-// tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs — modification
+// tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs — modification
 // Add new test method:
 
     [TestMethod]
@@ -699,8 +699,8 @@ Note: The `CreateConfig()` helper may need updating to support `EnableAuditLog`.
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — integration test pattern with real GridController and strategy engine
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — unit test pattern with mocked collaborators
+- `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — integration test pattern with real GridController and strategy engine
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — unit test pattern with mocked collaborators
 
 ## Phase Success Criteria
 
@@ -710,5 +710,5 @@ Note: The `CreateConfig()` helper may need updating to support `EnableAuditLog`.
 - `BacktestProcessorService` serializes and persists debug data
 - `GridCycleId` appears in API trade responses
 - `HasAuditLog` flag in backtest result response
-- All existing tests pass: `dotnet test tests/TradingApp.Application.Tests` and `dotnet test tests/TradingApp.Api.Tests`
+- All existing tests pass: `dotnet test tests/TradePilot.Application.Tests` and `dotnet test tests/TradePilot.Api.Tests`
 - New integration test verifies end-to-end audit capture

@@ -90,14 +90,14 @@ Deliver trend filter evaluation (ema_cross, sma_cross, price_above_ema), PriceVs
 
 ### Project Patterns
 
-- `src/TradingApp.Application/StrategyAuthoring/Services/RsiConditionHandler.cs` — canonical IConditionHandler implementation
-- `src/TradingApp.Application/StrategyAuthoring/Services/ConditionEvaluator.cs` — handler dispatch pattern
-- `src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs` — signal mode routing, TrendFilterEvaluator insertion point
-- `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — indicator key/value storage pattern
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — EMA calculation, indicator provisioning
-- `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — requirement extraction
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs` — handler test pattern
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — evaluator test pattern
+- `src/TradePilot.Application/StrategyAuthoring/Services/RsiConditionHandler.cs` — canonical IConditionHandler implementation
+- `src/TradePilot.Application/StrategyAuthoring/Services/ConditionEvaluator.cs` — handler dispatch pattern
+- `src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs` — signal mode routing, TrendFilterEvaluator insertion point
+- `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — indicator key/value storage pattern
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — EMA calculation, indicator provisioning
+- `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — requirement extraction
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs` — handler test pattern
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — evaluator test pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/components/rsi-condition-item/` — condition item UI pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/services/condition-factory.service.ts` — condition factory pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/components/exit-rules-card/` — card form group input pattern

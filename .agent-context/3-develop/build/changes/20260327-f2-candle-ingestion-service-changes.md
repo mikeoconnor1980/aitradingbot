@@ -13,38 +13,38 @@ Implements the Candle Ingestion Service: a new `GetCandlesAsync` overload on `IH
 ### Added
 
 <!-- Phase 1: REST Client Overload & Configuration -->
-- src/TradingApp.Application/MarketData/Models/CandleSnapshotDto.cs: Added rich candle snapshot DTO including NumTrades for ingestion pagination use cases.
-- src/TradingApp.Application/Abstractions/Configuration/CandleIngestionOptions.cs: Added typed ingestion options with defaults and data annotation validation.
-- tests/TradingApp.Api.Tests/Services/HyperliquidRestClientCandleSnapshotTests.cs: Added MSTest coverage for request range payload, full mapping behavior, and invalid timeframe validation.
+- src/TradePilot.Application/MarketData/Models/CandleSnapshotDto.cs: Added rich candle snapshot DTO including NumTrades for ingestion pagination use cases.
+- src/TradePilot.Application/Abstractions/Configuration/CandleIngestionOptions.cs: Added typed ingestion options with defaults and data annotation validation.
+- tests/TradePilot.Api.Tests/Services/HyperliquidRestClientCandleSnapshotTests.cs: Added MSTest coverage for request range payload, full mapping behavior, and invalid timeframe validation.
 
 <!-- Phase 2: Ingestion Service Implementation -->
-- src/TradingApp.Application/Abstractions/Services/ICandleIngestionService.cs: Added the ingestion service contract exposed from the Application layer.
-- src/TradingApp.Application/Candles/Models/IngestionRequest.cs: Added the request DTO for symbol, intervals, and optional time bounds.
-- src/TradingApp.Application/Candles/Models/IngestionResult.cs: Added the aggregate ingestion result DTO with totals and elapsed time.
-- src/TradingApp.Application/Candles/Models/IntervalResult.cs: Added the per-interval result DTO with fetched/inserted/skipped counts and error text.
-- src/TradingApp.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs: Added the custom exception used by the static concurrency guard.
-- src/TradingApp.Infrastructure/Services/CandleIngestionService.cs: Implemented batching, retry/backoff, timeout handling, ordering, mapping, persistence, logging, and concurrency protection.
-- tests/TradingApp.Api.Tests/Services/CandleIngestionServiceTests.cs: Added unit tests for default start behavior, incremental sync, pagination, delay, timeout, interval isolation, and concurrency.
+- src/TradePilot.Application/Abstractions/Services/ICandleIngestionService.cs: Added the ingestion service contract exposed from the Application layer.
+- src/TradePilot.Application/Candles/Models/IngestionRequest.cs: Added the request DTO for symbol, intervals, and optional time bounds.
+- src/TradePilot.Application/Candles/Models/IngestionResult.cs: Added the aggregate ingestion result DTO with totals and elapsed time.
+- src/TradePilot.Application/Candles/Models/IntervalResult.cs: Added the per-interval result DTO with fetched/inserted/skipped counts and error text.
+- src/TradePilot.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs: Added the custom exception used by the static concurrency guard.
+- src/TradePilot.Infrastructure/Services/CandleIngestionService.cs: Implemented batching, retry/backoff, timeout handling, ordering, mapping, persistence, logging, and concurrency protection.
+- tests/TradePilot.Api.Tests/Services/CandleIngestionServiceTests.cs: Added unit tests for default start behavior, incremental sync, pagination, delay, timeout, interval isolation, and concurrency.
 
 <!-- Phase 3: API Endpoint & Exception Handling -->
-- src/TradingApp.Application/Candles/Commands/IngestCandlesCommand.cs: Adds the ingestion command and thin handler delegating to ICandleIngestionService.
-- src/TradingApp.Api/Models/IngestCandlesRequest.cs: Adds the API request model with required symbol and interval validation attributes.
-- src/TradingApp.Api/Controllers/CandlesController.cs: Adds the ingestion endpoint with symbol and interval validation before dispatching the MediatR command.
-- tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs: Adds integration coverage for success, validation failures, unknown symbols, and ingestion conflict handling.
+- src/TradePilot.Application/Candles/Commands/IngestCandlesCommand.cs: Adds the ingestion command and thin handler delegating to ICandleIngestionService.
+- src/TradePilot.Api/Models/IngestCandlesRequest.cs: Adds the API request model with required symbol and interval validation attributes.
+- src/TradePilot.Api/Controllers/CandlesController.cs: Adds the ingestion endpoint with symbol and interval validation before dispatching the MediatR command.
+- tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs: Adds integration coverage for success, validation failures, unknown symbols, and ingestion conflict handling.
 
 ### Modified
 
 <!-- Phase 1: REST Client Overload & Configuration -->
-- src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs: Added GetCandleSnapshotsAsync overload signature with explicit start/end time bounds.
-- src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs: Implemented GetCandleSnapshotsAsync using candleSnapshot request payload and CandleSnapshotDto mapping including NumTrades.
-- src/TradingApp.Api/appsettings.json: Added CandleIngestion configuration section with phase-specified defaults.
+- src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs: Added GetCandleSnapshotsAsync overload signature with explicit start/end time bounds.
+- src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs: Implemented GetCandleSnapshotsAsync using candleSnapshot request payload and CandleSnapshotDto mapping including NumTrades.
+- src/TradePilot.Api/appsettings.json: Added CandleIngestion configuration section with phase-specified defaults.
 
 <!-- Phase 2: Ingestion Service Implementation -->
-- src/TradingApp.Api/Program.cs: Bound CandleIngestionOptions with startup validation and registered ICandleIngestionService as scoped.
+- src/TradePilot.Api/Program.cs: Bound CandleIngestionOptions with startup validation and registered ICandleIngestionService as scoped.
 
 <!-- Phase 3: API Endpoint & Exception Handling -->
-- src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Maps IngestionAlreadyRunningException to 409 Conflict with the ingestion_conflict error code.
-- src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs: Adds IsValidCoin so the API can validate supported raw coin symbols after stripping any -PERP suffix.
+- src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Maps IngestionAlreadyRunningException to 409 Conflict with the ingestion_conflict error code.
+- src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs: Adds IsValidCoin so the API can validate supported raw coin symbols after stripping any -PERP suffix.
 
 ### Removed
 
@@ -52,19 +52,19 @@ Implements the Candle Ingestion Service: a new `GetCandlesAsync` overload on `IH
 
 <!-- Phase 1: REST Client Overload & Configuration -->
 - HyperliquidRestClientCandleSnapshotTests: 2/2 passed
-- TradingApp.Domain.Tests: 7/7 passed
-- TradingApp.Application.Tests: 5/5 passed
-- TradingApp.Persistence.Tests: 8/8 passed
-- TradingApp.Infrastructure.Tests: 30/30 passed
-- TradingApp.Api.Tests: 51/51 passed
+- TradePilot.Domain.Tests: 7/7 passed
+- TradePilot.Application.Tests: 5/5 passed
+- TradePilot.Persistence.Tests: 8/8 passed
+- TradePilot.Infrastructure.Tests: 30/30 passed
+- TradePilot.Api.Tests: 51/51 passed
 
 <!-- Phase 2: Ingestion Service Implementation -->
 - CandleIngestionServiceTests: 7/7 passed
-- TradingApp.Api.Tests (cumulative): 58/58 passed
+- TradePilot.Api.Tests (cumulative): 58/58 passed
 
 <!-- Phase 3: API Endpoint & Exception Handling -->
 - CandlesControllerTests: 6/6 passed
-- TradingApp.Api.Tests (final): 64/64 passed
+- TradePilot.Api.Tests (final): 64/64 passed
 - All projects (final full run): PASS
 
 ## Issues

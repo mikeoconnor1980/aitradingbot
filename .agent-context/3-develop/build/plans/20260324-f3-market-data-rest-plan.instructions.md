@@ -52,7 +52,7 @@ Fetch and display market metadata and recent candle data for perpetual assets vi
 
 ### Discovery References
 
-- **F1 provides**: Solution scaffolding (TradingApp.sln), Api project, Infrastructure project, HyperliquidRestClient (connectivity check), HyperliquidOptions, Program.cs with DI/CORS/config
+- **F1 provides**: Solution scaffolding (TradePilot.sln), Api project, Infrastructure project, HyperliquidRestClient (connectivity check), HyperliquidOptions, Program.cs with DI/CORS/config
 - **F3 introduces**: Application project, MediatR, CQRS queries/handlers, ApiController base, Envelope, HttpGlobalExceptionFilter, BaseControllerTests, AutoMapper
 - **Hyperliquid API**: POST `/info` with `{"type": "metaAndAssetCtxs"}` for market metadata; POST `/info` with `{"type": "candleSnapshot", "req": {...}}` for candle data — no auth required
 - **Angular**: Standalone components, Angular Material, ApiRestClient wrapper, interval-based polling with takeUntilDestroyed

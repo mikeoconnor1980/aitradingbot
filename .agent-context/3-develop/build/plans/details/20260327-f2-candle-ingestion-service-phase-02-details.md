@@ -28,10 +28,10 @@ Create the ingestion service interface and all associated DTOs: `IngestionReques
 - **Complexity**: Medium
 - **Risk Factors**: DTO design must match the PBI response shape exactly (totalFetched, totalInserted, totalSkipped, elapsedMs, per-interval breakdown with error)
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/ICandleIngestionService.cs` — New interface
-  - `src/TradingApp.Application/Candles/Models/IngestionRequest.cs` — New request DTO
-  - `src/TradingApp.Application/Candles/Models/IngestionResult.cs` — New result DTO
-  - `src/TradingApp.Application/Candles/Models/IntervalResult.cs` — New per-interval result DTO
+  - `src/TradePilot.Application/Abstractions/Services/ICandleIngestionService.cs` — New interface
+  - `src/TradePilot.Application/Candles/Models/IngestionRequest.cs` — New request DTO
+  - `src/TradePilot.Application/Candles/Models/IngestionResult.cs` — New result DTO
+  - `src/TradePilot.Application/Candles/Models/IntervalResult.cs` — New per-interval result DTO
 - **Success**:
   - `ICandleIngestionService` has `IngestAsync(IngestionRequest, CancellationToken)` returning `IngestionResult`
   - DTOs match the PBI response shape
@@ -41,10 +41,10 @@ Create the ingestion service interface and all associated DTOs: `IngestionReques
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/ICandleIngestionService.cs — new file
-using TradingApp.Application.Candles.Models;
+// src/TradePilot.Application/Abstractions/Services/ICandleIngestionService.cs — new file
+using TradePilot.Application.Candles.Models;
 
-namespace TradingApp.Application.Abstractions.Services;
+namespace TradePilot.Application.Abstractions.Services;
 
 public interface ICandleIngestionService
 {
@@ -53,8 +53,8 @@ public interface ICandleIngestionService
 ```
 
 ```csharp
-// src/TradingApp.Application/Candles/Models/IngestionRequest.cs — new file
-namespace TradingApp.Application.Candles.Models;
+// src/TradePilot.Application/Candles/Models/IngestionRequest.cs — new file
+namespace TradePilot.Application.Candles.Models;
 
 public sealed class IngestionRequest
 {
@@ -66,8 +66,8 @@ public sealed class IngestionRequest
 ```
 
 ```csharp
-// src/TradingApp.Application/Candles/Models/IngestionResult.cs — new file
-namespace TradingApp.Application.Candles.Models;
+// src/TradePilot.Application/Candles/Models/IngestionResult.cs — new file
+namespace TradePilot.Application.Candles.Models;
 
 public sealed class IngestionResult
 {
@@ -80,8 +80,8 @@ public sealed class IngestionResult
 ```
 
 ```csharp
-// src/TradingApp.Application/Candles/Models/IntervalResult.cs — new file
-namespace TradingApp.Application.Candles.Models;
+// src/TradePilot.Application/Candles/Models/IntervalResult.cs — new file
+namespace TradePilot.Application.Candles.Models;
 
 public sealed class IntervalResult
 {
@@ -95,8 +95,8 @@ public sealed class IntervalResult
 
 ##### Pattern References
 
-- `src/TradingApp.Application/MarketData/Models/CandleDto.cs` — DTO pattern with `sealed class` and `{ get; init; }`
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — interface placement pattern
+- `src/TradePilot.Application/MarketData/Models/CandleDto.cs` — DTO pattern with `sealed class` and `{ get; init; }`
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — interface placement pattern
 
 ---
 
@@ -111,7 +111,7 @@ Implement the full ingestion service with: concurrency guard, per-interval batch
   - Timeout enforcement must cleanly stop in-progress ingestion
   - Per-interval error isolation must not abort remaining intervals
 - **Files**:
-  - `src/TradingApp.Infrastructure/Services/CandleIngestionService.cs` — New implementation
+  - `src/TradePilot.Infrastructure/Services/CandleIngestionService.cs` — New implementation
 - **Success**:
   - Service fetches candles in batches, advancing cursor by last candle timestamp
   - Pagination stops when API returns empty response or fewer candles than batch size
@@ -125,18 +125,18 @@ Implement the full ingestion service with: concurrency guard, per-interval batch
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Services/CandleIngestionService.cs — new file
+// src/TradePilot.Infrastructure/Services/CandleIngestionService.cs — new file
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TradingApp.Application.Abstractions.Configuration;
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Candles.Models;
-using TradingApp.Domain.Entities;
-using TradingApp.Infrastructure.Hyperliquid;
+using TradePilot.Application.Abstractions.Configuration;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Candles.Models;
+using TradePilot.Domain.Entities;
+using TradePilot.Infrastructure.Hyperliquid;
 
-namespace TradingApp.Infrastructure.Services;
+namespace TradePilot.Infrastructure.Services;
 
 public sealed class CandleIngestionService : ICandleIngestionService
 {
@@ -355,9 +355,9 @@ public sealed class CandleIngestionService : ICandleIngestionService
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` — `SemaphoreSlim(1, 1)` concurrency guard pattern
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — `HyperliquidAssetMapper.ToCoin()` and `GetIntervalMs()` usage
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — validation methods
+- `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` — `SemaphoreSlim(1, 1)` concurrency guard pattern
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — `HyperliquidAssetMapper.ToCoin()` and `GetIntervalMs()` usage
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — validation methods
 
 ---
 
@@ -368,7 +368,7 @@ Register `ICandleIngestionService` as scoped in `Program.cs` and bind `CandleIng
 - **Complexity**: Low
 - **Risk Factors**: The `SemaphoreSlim` concurrency guard is a static field, shared across all scoped instances
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — Add options binding and service registration
+  - `src/TradePilot.Api/Program.cs` — Add options binding and service registration
 - **Success**:
   - `CandleIngestionOptions` is bound and validated on start
   - `ICandleIngestionService` is registered as scoped
@@ -377,7 +377,7 @@ Register `ICandleIngestionService` as scoped in `Program.cs` and bind `CandleIng
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modification
+// src/TradePilot.Api/Program.cs — modification
 // Add after the HyperliquidOptions binding block:
 
 // Bind CandleIngestion configuration
@@ -392,8 +392,8 @@ builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — existing `AddOptions<HyperliquidOptions>()` pattern, `AddScoped<>()` pattern
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — `SectionName` constant pattern
+- `src/TradePilot.Api/Program.cs` — existing `AddOptions<HyperliquidOptions>()` pattern, `AddScoped<>()` pattern
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — `SectionName` constant pattern
 
 ---
 
@@ -404,7 +404,7 @@ Write comprehensive unit tests covering: happy path pagination, incremental sync
 - **Complexity**: High
 - **Risk Factors**: Multiple async scenarios; must carefully orchestrate mock sequences for pagination; concurrency test needs parallel task execution
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/CandleIngestionServiceTests.cs` — New test class
+  - `tests/TradePilot.Api.Tests/Services/CandleIngestionServiceTests.cs` — New test class
 - **Success**:
   - Tests cover: initial ingestion from default start, incremental sync from latest timestamp, empty batch stops pagination, failed interval doesn't abort others, timeout stops ingestion, concurrent calls throw `IngestionAlreadyRunningException`, batch delay is applied between calls
 - **Dependencies**: Tasks 2.1, 2.2
@@ -412,18 +412,18 @@ Write comprehensive unit tests covering: happy path pagination, incremental sync
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/CandleIngestionServiceTests.cs — new file
+// tests/TradePilot.Api.Tests/Services/CandleIngestionServiceTests.cs — new file
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TradingApp.Application.Abstractions.Configuration;
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Candles.Models;
-using TradingApp.Application.MarketData.Models;
-using TradingApp.Domain.Entities;
-using TradingApp.Infrastructure.Services;
+using TradePilot.Application.Abstractions.Configuration;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Candles.Models;
+using TradePilot.Application.MarketData.Models;
+using TradePilot.Domain.Entities;
+using TradePilot.Infrastructure.Services;
 
-namespace TradingApp.Api.Tests.Services;
+namespace TradePilot.Api.Tests.Services;
 
 [TestClass]
 public sealed class CandleIngestionServiceTests
@@ -567,8 +567,8 @@ public sealed class CandleIngestionServiceTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — service unit test pattern with `[TestInitialize]`, `Options.Create`, `Mock<ILogger<T>>`
-- `tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs` — async lifecycle testing with `CancellationToken`
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — service unit test pattern with `[TestInitialize]`, `Options.Create`, `Mock<ILogger<T>>`
+- `tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs` — async lifecycle testing with `CancellationToken`
 
 ---
 

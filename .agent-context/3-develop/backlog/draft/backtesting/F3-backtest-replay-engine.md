@@ -141,14 +141,14 @@ There is no mechanism to replay historical candle data through the trading pipel
 
 | Component | Layer | Action |
 |-----------|-------|--------|
-| `CandleReplayEngine` | `TradingApp.Application` | Reads candles from DB and emits them sequentially |
-| `SimulatedExecutionEngine` | `TradingApp.Application` | In-memory order matching and fill simulation |
-| `IBacktestRunner` / `BacktestRunner` | `TradingApp.Application` | Orchestrates the full backtest pipeline |
-| `BacktestMetricsCalculator` | `TradingApp.Application` | Computes summary metrics from trade log |
-| `BacktestResult` | `TradingApp.Application` | Result DTO containing metrics and trade log |
-| `BacktestTrade` | `TradingApp.Application` | DTO for individual trade: entry/exit time, price, PnL, fees |
-| `BacktestConfig` | `TradingApp.Application` | Configuration DTO for strategy parameters, fee model, slippage, initial capital |
-| `EquitySnapshot` | `TradingApp.Application` | DTO for per-tick equity: timestamp + equity value |
+| `CandleReplayEngine` | `TradePilot.Application` | Reads candles from DB and emits them sequentially |
+| `SimulatedExecutionEngine` | `TradePilot.Application` | In-memory order matching and fill simulation |
+| `IBacktestRunner` / `BacktestRunner` | `TradePilot.Application` | Orchestrates the full backtest pipeline |
+| `BacktestMetricsCalculator` | `TradePilot.Application` | Computes summary metrics from trade log |
+| `BacktestResult` | `TradePilot.Application` | Result DTO containing metrics and trade log |
+| `BacktestTrade` | `TradePilot.Application` | DTO for individual trade: entry/exit time, price, PnL, fees |
+| `BacktestConfig` | `TradePilot.Application` | Configuration DTO for strategy parameters, fee model, slippage, initial capital |
+| `EquitySnapshot` | `TradePilot.Application` | DTO for per-tick equity: timestamp + equity value |
 
 ### Pipeline Wiring (Backtest Mode)
 

@@ -15,15 +15,15 @@ Completed the signal parameter key standardization and related risk-engine enfor
 ### Modified
 
 <!-- Phase 1: Fix Key Mismatches Across Pipeline and Tests -->
-- src/TradingApp.Application/Trading/Services/GridController.cs: Renamed the DeployGrid notional parameter key from `notionalPerLevel` to `notionalUsd`.
-- src/TradingApp.Application/Trading/Services/SignalController.cs: Renamed the OpenPosition notional parameter key from `notional` to `notionalUsd`.
-- src/TradingApp.Application/Trading/Services/LivePositionManager.cs: Updated grid deployment to read `notionalUsd` from signal parameters.
-- src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs: Updated backtest grid deployment to read `notionalUsd` from signal parameters.
-- src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs: Fixed the open-order limit check to read `gridLevels` instead of `levels`.
-- tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs: Updated DeployGrid assertions to expect `notionalUsd`.
-- tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs: Updated OpenPosition assertions to expect `notionalUsd`.
-- tests/TradingApp.Application.Tests/Trading/Services/LivePositionManagerTests.cs: Updated test signal payloads to use `notionalUsd`.
-- tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs: Corrected payload keys and added acceptance-criteria coverage for oversized `notionalUsd` signals.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Renamed the DeployGrid notional parameter key from `notionalPerLevel` to `notionalUsd`.
+- src/TradePilot.Application/Trading/Services/SignalController.cs: Renamed the OpenPosition notional parameter key from `notional` to `notionalUsd`.
+- src/TradePilot.Application/Trading/Services/LivePositionManager.cs: Updated grid deployment to read `notionalUsd` from signal parameters.
+- src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs: Updated backtest grid deployment to read `notionalUsd` from signal parameters.
+- src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs: Fixed the open-order limit check to read `gridLevels` instead of `levels`.
+- tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs: Updated DeployGrid assertions to expect `notionalUsd`.
+- tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs: Updated OpenPosition assertions to expect `notionalUsd`.
+- tests/TradePilot.Application.Tests/Trading/Services/LivePositionManagerTests.cs: Updated test signal payloads to use `notionalUsd`.
+- tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs: Corrected payload keys and added acceptance-criteria coverage for oversized `notionalUsd` signals.
 
 ### Removed
 
@@ -31,7 +31,7 @@ Completed the signal parameter key standardization and related risk-engine enfor
 
 <!-- Phase 1: Fix Key Mismatches Across Pipeline and Tests -->
 - Impacted application signal and risk test scope: 124/124 passed.
-- Solution build (`dotnet build TradingApp.sln --no-restore --verbosity minimal`): PASSED.
+- Solution build (`dotnet build TradePilot.sln --no-restore --verbosity minimal`): PASSED.
 - Full solution test run: 987/987 passed.
 - Architecture Tests: FAILED - no dedicated architecture test project was run for this phase.
 
@@ -39,7 +39,7 @@ Completed the signal parameter key standardization and related risk-engine enfor
 
 <!-- Phase 1: Fix Key Mismatches Across Pipeline and Tests -->
 - The dedicated full-suite test runner surfaced generic project-build failures that did not match the passing solution build, so verification had to fall back to direct `dotnet test --no-build` runs.
-- Initial end-state verification was blocked by a stale `testhost` process locking `tests/TradingApp.Api.Tests/bin/Debug/net10.0` assemblies and causing `MSB3027` and `MSB3021` copy failures; terminating the stale process resolved the issue and the rerun passed.
+- Initial end-state verification was blocked by a stale `testhost` process locking `tests/TradePilot.Api.Tests/bin/Debug/net10.0` assemblies and causing `MSB3027` and `MSB3021` copy failures; terminating the stale process resolved the issue and the rerun passed.
 - Existing `NU1901` and `NU1902` package vulnerability warnings remain in Infrastructure build output.
 
 ## Design Decisions

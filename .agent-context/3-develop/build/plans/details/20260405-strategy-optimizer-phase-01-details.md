@@ -24,8 +24,8 @@ Create the domain entity that persists an optimization run (one sweep execution)
 - **Complexity**: Medium
 - **Risk Factors**: Must follow BacktestRun pattern — factory method, private constructor, private setters
 - **Files**:
-  - `src/TradingApp.Domain/Entities/OptimizationRun.cs` — new file
-  - `src/TradingApp.Domain/Enums/OptimizationStatus.cs` — new file
+  - `src/TradePilot.Domain/Entities/OptimizationRun.cs` — new file
+  - `src/TradePilot.Domain/Enums/OptimizationStatus.cs` — new file
 - **Success**:
   - Entity compiles with all required properties
   - Factory method `CreateQueued(...)` validates required inputs
@@ -34,8 +34,8 @@ Create the domain entity that persists an optimization run (one sweep execution)
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Domain/Enums/OptimizationStatus.cs
-namespace TradingApp.Domain.Enums;
+// src/TradePilot.Domain/Enums/OptimizationStatus.cs
+namespace TradePilot.Domain.Enums;
 
 public enum OptimizationStatus
 {
@@ -47,10 +47,10 @@ public enum OptimizationStatus
 ```
 
 ```csharp
-// src/TradingApp.Domain/Entities/OptimizationRun.cs
-using TradingApp.Domain.Enums;
+// src/TradePilot.Domain/Entities/OptimizationRun.cs
+using TradePilot.Domain.Enums;
 
-namespace TradingApp.Domain.Entities;
+namespace TradePilot.Domain.Entities;
 
 public sealed class OptimizationRun
 {
@@ -139,7 +139,7 @@ Create the entity for storing individual ranked results within an optimization r
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward data entity
 - **Files**:
-  - `src/TradingApp.Domain/Entities/OptimizationResult.cs` — new file
+  - `src/TradePilot.Domain/Entities/OptimizationResult.cs` — new file
 - **Success**:
   - Entity compiles with all required properties
   - Factory method `Create(...)` validates inputs
@@ -148,8 +148,8 @@ Create the entity for storing individual ranked results within an optimization r
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Domain/Entities/OptimizationResult.cs
-namespace TradingApp.Domain.Entities;
+// src/TradePilot.Domain/Entities/OptimizationResult.cs
+namespace TradePilot.Domain.Entities;
 
 public sealed class OptimizationResult
 {
@@ -224,8 +224,8 @@ Create the configuration models that define what parameter ranges to sweep.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Models/SweepConfig.cs` — new file
-  - `src/TradingApp.Application/Optimization/Models/ParameterBounds.cs` — new file
+  - `src/TradePilot.Application/Optimization/Models/SweepConfig.cs` — new file
+  - `src/TradePilot.Application/Optimization/Models/ParameterBounds.cs` — new file
 - **Success**:
   - Models compile with all range properties
   - Sensible defaults provided
@@ -233,8 +233,8 @@ Create the configuration models that define what parameter ranges to sweep.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Optimization/Models/ParameterBounds.cs
-namespace TradingApp.Application.Optimization.Models;
+// src/TradePilot.Application/Optimization/Models/ParameterBounds.cs
+namespace TradePilot.Application.Optimization.Models;
 
 public sealed record ParameterBounds
 {
@@ -276,8 +276,8 @@ public sealed record ParameterBounds
 ```
 
 ```csharp
-// src/TradingApp.Application/Optimization/Models/SweepConfig.cs
-namespace TradingApp.Application.Optimization.Models;
+// src/TradePilot.Application/Optimization/Models/SweepConfig.cs
+namespace TradePilot.Application.Optimization.Models;
 
 public sealed record SweepConfig
 {
@@ -301,15 +301,15 @@ Create the configurable fitness threshold model used for qualifying/disqualifyin
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Models/FitnessThresholds.cs` — new file
+  - `src/TradePilot.Application/Optimization/Models/FitnessThresholds.cs` — new file
 - **Success**:
   - Defaults match agreed thresholds: WinRate ≥40%, TotalTrades ≥10, MaxDrawdown <30%
 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Optimization/Models/FitnessThresholds.cs
-namespace TradingApp.Application.Optimization.Models;
+// src/TradePilot.Application/Optimization/Models/FitnessThresholds.cs
+namespace TradePilot.Application.Optimization.Models;
 
 public sealed record FitnessThresholds
 {
@@ -328,7 +328,7 @@ Create the service that generates random `StrategyConfig` instances from the par
 - **Complexity**: High
 - **Risk Factors**: Must produce valid `StrategyConfig` instances that the `CompositeStrategyEngine` can evaluate. All entry condition param types must be correctly constructed.
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` — new file
+  - `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` — new file
 - **Success**:
   - Generates N random `StrategyConfig` instances from given `ParameterBounds`
   - Each config is `StrategyMode.Signal`, `Direction.Long`
@@ -369,7 +369,7 @@ public sealed record GeneratedStrategy(StrategyConfig Config, string Description
 ```
 
 ```csharp
-// src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs
+// src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs
 public sealed class StrategyConfigGenerator : IStrategyConfigGenerator
 {
     public IReadOnlyList<GeneratedStrategy> Generate(ParameterBounds bounds, int sampleSize, int? seed = null)
@@ -424,7 +424,7 @@ Create the service that scores a `BacktestResult` and checks it against `Fitness
 - **Complexity**: Low
 - **Risk Factors**: Fitness formula must handle edge cases (zero drawdown, zero trades)
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Services/FitnessScorer.cs` — new file
+  - `src/TradePilot.Application/Optimization/Services/FitnessScorer.cs` — new file
 - **Success**:
   - `IsQualified(result, thresholds, initialCapital)` returns false if any threshold fails
   - `Score(result)` returns decimal fitness score
@@ -435,8 +435,8 @@ Create the service that scores a `BacktestResult` and checks it against `Fitness
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Optimization/Services/FitnessScorer.cs
-namespace TradingApp.Application.Optimization.Services;
+// src/TradePilot.Application/Optimization/Services/FitnessScorer.cs
+namespace TradePilot.Application.Optimization.Services;
 
 public interface IFitnessScorer
 {
@@ -484,7 +484,7 @@ Create the core orchestrator that runs the full sweep: generates configs, runs b
 - **Complexity**: High
 - **Risk Factors**: Parallel execution must be safe — `IBacktestRunner` must support concurrent calls (it does — each RunAsync creates its own scoped services). Progress reporting via callback must be thread-safe.
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Services/SweepRunner.cs` — new file
+  - `src/TradePilot.Application/Optimization/Services/SweepRunner.cs` — new file
 - **Success**:
   - Runs N backtests in parallel using `Parallel.ForEachAsync`
   - Reports progress via `Action<int, int>` callback (completed, total)
@@ -498,8 +498,8 @@ Create the core orchestrator that runs the full sweep: generates configs, runs b
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Optimization/Services/SweepRunner.cs
-namespace TradingApp.Application.Optimization.Services;
+// src/TradePilot.Application/Optimization/Services/SweepRunner.cs
+namespace TradePilot.Application.Optimization.Services;
 
 public sealed record SweepResult(
     IReadOnlyList<RankedResult> TopResults,
@@ -616,7 +616,7 @@ public sealed class SweepRunner : ISweepRunner
 - **Complexity**: Medium
 - **Risk Factors**: Need to verify all 11 template types are reachable
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — new file
 - **Success**: All tests pass
 
 #### Test Cases
@@ -657,7 +657,7 @@ public void GivenLargeSample_WhenGenerate_ThenMultipleConditionTypesPresent()
 - **Complexity**: Low
 - **Risk Factors**: Edge cases — zero drawdown, zero trades, negative PnL
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Optimization/FitnessScorerTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/Optimization/FitnessScorerTests.cs` — new file
 - **Success**: All tests pass
 
 #### Test Cases
@@ -701,7 +701,7 @@ public void GivenMoreTradesSamePnl_WhenScore_ThenHigherScore()
 - **Complexity**: Medium
 - **Risk Factors**: Must mock `IBacktestRunner` for many concurrent calls; verify parallel execution and ranking
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Optimization/SweepRunnerTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/Optimization/SweepRunnerTests.cs` — new file
 - **Success**: All tests pass
 - **Dependencies**: Moq mocks for `IBacktestRunner`, `IStrategyConfigGenerator`, `IFitnessScorer`
 

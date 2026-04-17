@@ -61,23 +61,23 @@ The current sizing modes (`PercentWallet`, `FixedNotional`) control notional amo
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` — static resolver, switch on PositionSizeType
-- `src/TradingApp.Application/StrategyAuthoring/Models/RiskConfig.cs` — sealed record, JSON-serialized
-- `src/TradingApp.Application/StrategyAuthoring/Models/PositionSizeType.cs` — enum {PercentWallet, FixedNotional}
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs` — contains StopLoss as ExitRuleConfig
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — SL config with Type/Value/AtrMultiplier
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleType.cs` — {FixedPercent, SwingLow, AtrTrailing}
-- `src/TradingApp.Application/StrategyAuthoring/Models/GridConfig.cs` — BreakdownThreshold for grid SL fallback
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — calls ResolveNotional, sets notionalPerLevel
-- `src/TradingApp.Application/Trading/Services/SignalController.cs` — calls ResolveNotional in EmitOpenPosition
-- `src/TradingApp.Application/Trading/Models/MarketContext.cs` — AccountEquity + Indicators.Atr
-- `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — ValidateRisk field checks
-- `src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — cross-section consistency
-- `src/TradingApp.Api/Models/RunBacktestRequest.cs` — RiskConfigRequest DTO with Data Annotations
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — MapStrategyConfig manual mapping
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — grid sizing tests, Given/When/Then
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — validation tests
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — cross-field tests
+- `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` — static resolver, switch on PositionSizeType
+- `src/TradePilot.Application/StrategyAuthoring/Models/RiskConfig.cs` — sealed record, JSON-serialized
+- `src/TradePilot.Application/StrategyAuthoring/Models/PositionSizeType.cs` — enum {PercentWallet, FixedNotional}
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitConfig.cs` — contains StopLoss as ExitRuleConfig
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — SL config with Type/Value/AtrMultiplier
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleType.cs` — {FixedPercent, SwingLow, AtrTrailing}
+- `src/TradePilot.Application/StrategyAuthoring/Models/GridConfig.cs` — BreakdownThreshold for grid SL fallback
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — calls ResolveNotional, sets notionalPerLevel
+- `src/TradePilot.Application/Trading/Services/SignalController.cs` — calls ResolveNotional in EmitOpenPosition
+- `src/TradePilot.Application/Trading/Models/MarketContext.cs` — AccountEquity + Indicators.Atr
+- `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — ValidateRisk field checks
+- `src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — cross-section consistency
+- `src/TradePilot.Api/Models/RunBacktestRequest.cs` — RiskConfigRequest DTO with Data Annotations
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — MapStrategyConfig manual mapping
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — grid sizing tests, Given/When/Then
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — validation tests
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — cross-field tests
 
 ### [x] Phase 1: Domain Model & Core Calculation
 

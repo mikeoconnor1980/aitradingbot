@@ -18,7 +18,7 @@ Add optional `StrategyId` property to the `RunBacktestCommand` record.
 - **Complexity**: Low
 - **Risk Factors**: None — optional parameter
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — Add `Guid? StrategyId` to record
+  - `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — Add `Guid? StrategyId` to record
 - **Success**:
   - `RunBacktestCommand` has `Guid? StrategyId` property
   - Existing callers compile without changes (default null)
@@ -27,7 +27,7 @@ Add optional `StrategyId` property to the `RunBacktestCommand` record.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/RunBacktestCommand.cs — modification
+// src/TradePilot.Application/Backtesting/RunBacktestCommand.cs — modification
 // Update the record definition:
 
 public sealed record RunBacktestCommand(
@@ -44,7 +44,7 @@ public sealed record RunBacktestCommand(
 
 ##### Pattern References
 
-Based on `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — existing record definition.
+Based on `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — existing record definition.
 
 ### Task 2.2: Update Handler to Resolve Strategy {#task-22-update-handler-to-resolve-strategy}
 
@@ -53,7 +53,7 @@ Update `RunBacktestCommandHandler` to resolve the strategy when `StrategyId` is 
 - **Complexity**: Medium
 - **Risk Factors**: Must handle non-existent strategy (NotFoundException), must resolve latest revision number from `IStrategyRevisionRepository`
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — Update handler to inject `IStrategyRepository` and `IStrategyRevisionRepository`, resolve strategy, capture revision
+  - `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — Update handler to inject `IStrategyRepository` and `IStrategyRevisionRepository`, resolve strategy, capture revision
 - **Success**:
   - When `StrategyId` is null, behavior is unchanged
   - When `StrategyId` is provided: strategy is fetched, validated to exist, latest revision number is resolved, both are passed to `CreateQueued`
@@ -63,7 +63,7 @@ Update `RunBacktestCommandHandler` to resolve the strategy when `StrategyId` is 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/RunBacktestCommand.cs — modification
+// src/TradePilot.Application/Backtesting/RunBacktestCommand.cs — modification
 // Update handler class:
 
 public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestCommand, BacktestRunResponse>
@@ -124,7 +124,7 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
 
 ##### Pattern References
 
-Based on `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` lines 22–68 — existing handler implementation.
+Based on `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` lines 22–68 — existing handler implementation.
 
 ### Task 2.3: Add GetBacktestsByStrategyQuery {#task-23-add-get-backtests-by-strategy-query}
 
@@ -133,7 +133,7 @@ Create a new query + handler for fetching paged backtest summaries filtered by s
 - **Complexity**: Medium
 - **Risk Factors**: Must validate strategy ownership (strategy belongs to calling user) before returning results
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/GetBacktestsByStrategyQuery.cs` — New file with query + handler
+  - `src/TradePilot.Application/Backtesting/GetBacktestsByStrategyQuery.cs` — New file with query + handler
 - **Success**:
   - Query accepts `StrategyId`, `Page`, `PageSize`, and `AppIdentity`
   - Handler validates strategy exists and belongs to the user, then delegates to `GetPagedSummariesByStrategyAsync`
@@ -143,17 +143,17 @@ Create a new query + handler for fetching paged backtest summaries filtered by s
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/GetBacktestsByStrategyQuery.cs — new file
+// src/TradePilot.Application/Backtesting/GetBacktestsByStrategyQuery.cs — new file
 
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.Abstractions.Models;
-using TradingApp.Application.Abstractions.Queries;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Domain.Entities;
-using TradingApp.Application.Abstractions.Identity;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Models;
+using TradePilot.Application.Abstractions.Queries;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Domain.Entities;
+using TradePilot.Application.Abstractions.Identity;
 
-namespace TradingApp.Application.Backtesting;
+namespace TradePilot.Application.Backtesting;
 
 public sealed record GetBacktestsByStrategyQuery(
     Guid StrategyId,
@@ -200,11 +200,11 @@ public sealed class GetBacktestsByStrategyQueryHandler
 }
 ```
 
-> **Note**: `AppIdentity` lives in `TradingApp.Application.Abstractions.Identity`. `IdentityService.Identity` (injected in `ApiController` base) returns the current `AppIdentity` with `UserId` and `Email` properties.
+> **Note**: `AppIdentity` lives in `TradePilot.Application.Abstractions.Identity`. `IdentityService.Identity` (injected in `ApiController` base) returns the current `AppIdentity` with `UserId` and `Email` properties.
 
 ##### Pattern References
 
-Based on `src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs` — existing query/handler pattern with `Query<T>` base type.
+Based on `src/TradePilot.Application/Backtesting/GetBacktestListQuery.cs` — existing query/handler pattern with `Query<T>` base type.
 
 ### Task 2.4: Update Response and Mapper {#task-24-update-response-and-mapper}
 
@@ -213,8 +213,8 @@ Add strategy metadata fields to `BacktestRunResponse` and update `BacktestRunRes
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — Add 3 nullable properties
-  - `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — Map new properties in `ToResponse`
+  - `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — Add 3 nullable properties
+  - `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — Map new properties in `ToResponse`
 - **Success**:
   - `BacktestRunResponse` includes `StrategyId`, `StrategyRevisionId`, `StrategyName`
   - `ToResponse` maps from entity; `StrategyName` is null in the mapper (resolved at API layer via strategy lookup or left null)
@@ -223,7 +223,7 @@ Add strategy metadata fields to `BacktestRunResponse` and update `BacktestRunRes
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs — modification
+// src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs — modification
 // Add after existing HasAuditLog property:
 
     public Guid? StrategyId { get; init; }
@@ -232,7 +232,7 @@ Add strategy metadata fields to `BacktestRunResponse` and update `BacktestRunRes
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs — modification
+// src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs — modification
 // Add to the return block in ToResponse, after HasAuditLog:
 
             StrategyId = entity.StrategyId,
@@ -242,7 +242,7 @@ Add strategy metadata fields to `BacktestRunResponse` and update `BacktestRunRes
 
 ##### Pattern References
 
-Based on `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — existing `ToResponse` mapping.
+Based on `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — existing `ToResponse` mapping.
 
 ### Task 2.5: Update API Models {#task-25-update-api-models}
 
@@ -251,8 +251,8 @@ Add `StrategyId` to `RunBacktestRequest` and strategy fields to `BacktestSummary
 - **Complexity**: Low
 - **Risk Factors**: `StrategyConfig` must remain `[Required]` when `StrategyId` is null — cross-field validation needed in controller
 - **Files**:
-  - `src/TradingApp.Api/Models/RunBacktestRequest.cs` — Add nullable `StrategyId` property
-  - `src/TradingApp.Api/Models/BacktestSummaryDto.cs` — Add strategy metadata fields
+  - `src/TradePilot.Api/Models/RunBacktestRequest.cs` — Add nullable `StrategyId` property
+  - `src/TradePilot.Api/Models/BacktestSummaryDto.cs` — Add strategy metadata fields
 - **Success**:
   - `RunBacktestRequest.StrategyId` is nullable Guid
   - `BacktestSummaryDto` includes `StrategyId`, `StrategyRevisionId`, `StrategyName`
@@ -261,14 +261,14 @@ Add `StrategyId` to `RunBacktestRequest` and strategy fields to `BacktestSummary
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/RunBacktestRequest.cs — modification
+// src/TradePilot.Api/Models/RunBacktestRequest.cs — modification
 // Add after EnableAuditLog property:
 
     public Guid? StrategyId { get; set; }
 ```
 
 ```csharp
-// src/TradingApp.Api/Models/BacktestSummaryDto.cs — modification
+// src/TradePilot.Api/Models/BacktestSummaryDto.cs — modification
 // Add after existing CreatedAt property:
 
     public Guid? StrategyId { get; init; }
@@ -278,7 +278,7 @@ Add `StrategyId` to `RunBacktestRequest` and strategy fields to `BacktestSummary
 
 ##### Pattern References
 
-Based on `src/TradingApp.Api/Models/RunBacktestRequest.cs` and `src/TradingApp.Api/Models/BacktestSummaryDto.cs`.
+Based on `src/TradePilot.Api/Models/RunBacktestRequest.cs` and `src/TradePilot.Api/Models/BacktestSummaryDto.cs`.
 
 ### Task 2.6: Update BacktestsController {#task-26-update-backtests-controller}
 
@@ -287,7 +287,7 @@ Update `RunAsync` to handle strategy-based backtests: when `StrategyId` is provi
 - **Complexity**: High
 - **Risk Factors**: Cross-field validation (StrategyId XOR StrategyConfig), config deserialization from strategy's ConfigJson
 - **Files**:
-  - `src/TradingApp.Api/Controllers/BacktestsController.cs` — Update `RunAsync` with strategy resolution logic
+  - `src/TradePilot.Api/Controllers/BacktestsController.cs` — Update `RunAsync` with strategy resolution logic
 - **Success**:
   - When `StrategyId` is provided: strategy is fetched, `StrategyConfig` is deserialized from `Strategy.ConfigJson`, symbol/intervals/direction are derived
   - When `StrategyId` is null: `StrategyConfig` is required (existing `[Required]` validation enforced)
@@ -297,7 +297,7 @@ Update `RunAsync` to handle strategy-based backtests: when `StrategyId` is provi
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/BacktestsController.cs — modification
+// src/TradePilot.Api/Controllers/BacktestsController.cs — modification
 // In RunBacktestRequest, remove [Required] from StrategyConfig and add cross-field validation
 // In RunAsync, update to handle both paths:
 
@@ -347,7 +347,7 @@ Update `RunAsync` to handle strategy-based backtests: when `StrategyId` is provi
 
 ##### Pattern References
 
-Based on `src/TradingApp.Api/Controllers/BacktestsController.cs` lines 33–114 — existing `RunAsync` implementation.
+Based on `src/TradePilot.Api/Controllers/BacktestsController.cs` lines 33–114 — existing `RunAsync` implementation.
 
 ### Task 2.7: Add Strategy Backtests Endpoint {#task-27-add-strategy-backtests-endpoint}
 
@@ -356,7 +356,7 @@ Add `GET /api/strategies/{id}/backtests` endpoint to `StrategiesController` for 
 - **Complexity**: Medium
 - **Risk Factors**: First nested cross-resource route in the codebase; must validate strategy ownership
 - **Files**:
-  - `src/TradingApp.Api/Controllers/StrategiesController.cs` — Add new action method
+  - `src/TradePilot.Api/Controllers/StrategiesController.cs` — Add new action method
 - **Success**:
   - `GET /api/strategies/{id:guid}/backtests` returns `PagedResult<BacktestSummaryDto>`
   - Supports `page` and `pageSize` query parameters
@@ -366,7 +366,7 @@ Add `GET /api/strategies/{id}/backtests` endpoint to `StrategiesController` for 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/StrategiesController.cs — modification
+// src/TradePilot.Api/Controllers/StrategiesController.cs — modification
 // Add new endpoint method:
 
     [HttpGet("{id:guid}/backtests")]
@@ -413,7 +413,7 @@ Add `GET /api/strategies/{id}/backtests` endpoint to `StrategiesController` for 
 
 ##### Pattern References
 
-Based on `src/TradingApp.Api/Controllers/BacktestsController.cs` `GetBacktestsAsync` — existing paged list endpoint.
+Based on `src/TradePilot.Api/Controllers/BacktestsController.cs` `GetBacktestsAsync` — existing paged list endpoint.
 
 ### Task 2.8: Update Backtest List Mapping {#task-28-update-backtest-list-mapping}
 
@@ -422,7 +422,7 @@ Update `BacktestsController.GetBacktestsAsync` to map the new strategy fields fr
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/Controllers/BacktestsController.cs` — Update projection in `GetBacktestsAsync`
+  - `src/TradePilot.Api/Controllers/BacktestsController.cs` — Update projection in `GetBacktestsAsync`
 - **Success**:
   - `BacktestSummaryDto` includes strategy fields in the global backtest list
 - **Dependencies**: Task 2.5
@@ -430,7 +430,7 @@ Update `BacktestsController.GetBacktestsAsync` to map the new strategy fields fr
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/BacktestsController.cs — modification
+// src/TradePilot.Api/Controllers/BacktestsController.cs — modification
 // Update the Select projection in GetBacktestsAsync to include:
 
                     StrategyId = summary.StrategyId,
@@ -444,7 +444,7 @@ Also update `GetPagedSummariesAsync` in the repository to include `StrategyId` a
 
 ##### Pattern References
 
-Based on `src/TradingApp.Api/Controllers/BacktestsController.cs` lines 119–145 — existing `GetBacktestsAsync` list mapping.
+Based on `src/TradePilot.Api/Controllers/BacktestsController.cs` lines 119–145 — existing `GetBacktestsAsync` list mapping.
 
 ### Task 2.9: Add API Controller Tests {#task-29-add-api-controller-tests}
 
@@ -453,8 +453,8 @@ Add tests to `BacktestsControllerTests` and `StrategiesControllerTests` for the 
 - **Complexity**: High
 - **Risk Factors**: Must mock `IStrategyRepository`, `IStrategyRevisionRepository` in `BacktestsControllerTests`; `StrategiesControllerTests` uses real SQLite so the new endpoint needs seed data
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — Add tests for strategy-based backtest submission
-  - `tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs` — Add tests for `GET /api/strategies/{id}/backtests`
+  - `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — Add tests for strategy-based backtest submission
+  - `tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs` — Add tests for `GET /api/strategies/{id}/backtests`
 - **Success**:
   - Test: POST backtest with `strategyId` returns 202 with strategy fields populated
   - Test: POST backtest with neither `strategyId` nor `strategyConfig` returns 400
@@ -467,7 +467,7 @@ Add tests to `BacktestsControllerTests` and `StrategiesControllerTests` for the 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs — modification
+// tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs — modification
 // Add new test methods:
 
     [TestMethod]
@@ -498,7 +498,7 @@ Add tests to `BacktestsControllerTests` and `StrategiesControllerTests` for the 
 ```
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs — modification
+// tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs — modification
 // Add new test methods:
 
     [TestMethod]
@@ -519,7 +519,7 @@ Add tests to `BacktestsControllerTests` and `StrategiesControllerTests` for the 
 
 ##### Pattern References
 
-Based on `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` (mocked pipeline) and `tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs` (real SQLite DB).
+Based on `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` (mocked pipeline) and `tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs` (real SQLite DB).
 
 ### Task 2.10: Run Architecture Tests {#task-210-run-architecture-tests}
 
@@ -530,8 +530,8 @@ Verify all tests pass and solution builds cleanly.
 - **Files**: None — verification step only
 - **Success**:
   - `dotnet build` succeeds
-  - `dotnet test tests/TradingApp.Api.Tests` passes
-  - `dotnet test tests/TradingApp.Application.Tests` passes (if any new tests added)
+  - `dotnet test tests/TradePilot.Api.Tests` passes
+  - `dotnet test tests/TradePilot.Application.Tests` passes (if any new tests added)
   - All existing tests continue to pass
 - **Dependencies**: Tasks 2.1–2.9
 

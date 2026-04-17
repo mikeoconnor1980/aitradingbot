@@ -6,7 +6,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { interval, switchMap, takeWhile, tap } from "rxjs";
 import { TelegramService, TelegramStatusResponse } from "../../core/services/telegram.service";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { Clipboard } from "@angular/cdk/clipboard";
 import QRCode from "qrcode";
 
@@ -20,7 +20,7 @@ import QRCode from "qrcode";
 export class TelegramLinkComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _telegramService = inject(TelegramService);
-  private readonly _notification = inject(NotificationService);
+  private readonly _notification = inject(NotificationFacade);
   private readonly _clipboard = inject(Clipboard);
 
   public readonly status = signal<TelegramStatusResponse | null>(null);

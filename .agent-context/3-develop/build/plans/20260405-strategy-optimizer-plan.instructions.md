@@ -62,14 +62,14 @@ The optimizer operates exclusively on `StrategyMode.Signal` with `Direction.Long
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — Domain entity with factory method `CreateQueued()`, private setters, mutation methods
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — DbSet registration, SQLite model config
-- `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — Repository pattern with EF Core
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — Direct `RunAsync` invocation (no queue needed for sweep)
-- `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — MediatR command pattern
-- `src/TradingApp.Api/Services/BacktestProcessorService.cs` — BackgroundService with SignalR progress
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — REST controller with MediatR
-- `src/TradingApp.Api/Hubs/MarketDataHub.cs` — SignalR hub for real-time updates
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — Domain entity with factory method `CreateQueued()`, private setters, mutation methods
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — DbSet registration, SQLite model config
+- `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — Repository pattern with EF Core
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — Direct `RunAsync` invocation (no queue needed for sweep)
+- `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — MediatR command pattern
+- `src/TradePilot.Api/Services/BacktestProcessorService.cs` — BackgroundService with SignalR progress
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — REST controller with MediatR
+- `src/TradePilot.Api/Hubs/MarketDataHub.cs` — SignalR hub for real-time updates
 - `frontend/trading-ui/src/app/app.routes.ts` — Lazy-loaded route per feature
 - `frontend/trading-ui/src/app/app.component.html` — Navigation links
 - `frontend/trading-ui/src/app/features/backtesting/backtest-page.component.ts` — Feature page with MatTabGroup

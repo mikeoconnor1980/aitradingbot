@@ -13,10 +13,10 @@ Implements F5 backtesting dashboard work across the backend paginated list endpo
 ### Added
 
 <!-- Phase 1: Backend — Paginated List Endpoint -->
-- src/TradingApp.Application/Abstractions/Models/PagedResult.cs: Added a reusable generic paginated response model with computed total pages.
-- src/TradingApp.Api/Models/BacktestSummaryDto.cs: Added the API summary DTO returned by the new backtest list endpoint.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs: Added the application-layer summary model used by paginated backtest queries.
-- src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs: Added the MediatR query and handler for paginated backtest summary retrieval.
+- src/TradePilot.Application/Abstractions/Models/PagedResult.cs: Added a reusable generic paginated response model with computed total pages.
+- src/TradePilot.Api/Models/BacktestSummaryDto.cs: Added the API summary DTO returned by the new backtest list endpoint.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs: Added the application-layer summary model used by paginated backtest queries.
+- src/TradePilot.Application/Backtesting/GetBacktestListQuery.cs: Added the MediatR query and handler for paginated backtest summary retrieval.
 
 <!-- Phase 2: Frontend — Foundation & Navigation -->
 - frontend/trading-ui/src/app/core/models/backtest.model.ts: Added the shared backtesting frontend models for requests, run results, summaries, paging, and coverage responses.
@@ -62,11 +62,11 @@ Implements F5 backtesting dashboard work across the backend paginated list endpo
 ### Modified
 
 <!-- Phase 1: Backend — Paginated List Endpoint -->
-- src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs: Extended the repository contract with paginated summary retrieval.
-- src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs: Implemented paginated summary loading, ordering, JSON interval parsing, and summary mapping.
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Added GET /api/backtests, added paging validation, and fixed POST CreatedAt routing with an explicit named route.
-- tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs: Added list-endpoint coverage for empty, paged, and invalid paging cases and aligned existing assertions with the nullable request model.
-- src/TradingApp.Application/Backtesting/RunBacktestCommand.cs: Normalized persisted elapsed time to a minimum of 1 ms so fast mocked executions still satisfy the existing API contract and tests.
+- src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs: Extended the repository contract with paginated summary retrieval.
+- src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs: Implemented paginated summary loading, ordering, JSON interval parsing, and summary mapping.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Added GET /api/backtests, added paging validation, and fixed POST CreatedAt routing with an explicit named route.
+- tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs: Added list-endpoint coverage for empty, paged, and invalid paging cases and aligned existing assertions with the nullable request model.
+- src/TradePilot.Application/Backtesting/RunBacktestCommand.cs: Normalized persisted elapsed time to a minimum of 1 ms so fast mocked executions still satisfy the existing API contract and tests.
 
 <!-- Phase 2: Frontend — Foundation & Navigation -->
 - frontend/trading-ui/src/app/app.routes.ts: Added the lazy-loaded /backtesting route.
@@ -97,11 +97,11 @@ Implements F5 backtesting dashboard work across the backend paginated list endpo
 
 <!-- Phase 1: Backend — Paginated List Endpoint -->
 - BacktestsControllerTests: 21/21 passed
-- TradingApp.Domain.Tests: 15/15 passed
-- TradingApp.Application.Tests: 36/36 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 18/18 passed
-- TradingApp.Api.Tests: 118/118 passed
+- TradePilot.Domain.Tests: 15/15 passed
+- TradePilot.Application.Tests: 36/36 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 18/18 passed
+- TradePilot.Api.Tests: 118/118 passed
 - Architecture Tests: Not run — not required by this phase
 
 <!-- Phase 2: Frontend — Foundation & Navigation -->
@@ -133,7 +133,7 @@ Implements F5 backtesting dashboard work across the backend paginated list endpo
 
 <!-- Phase 1: Backend — Paginated List Endpoint -->
 - Verified the F4 prerequisite before implementation: BacktestsController, BacktestRun, IBacktestRunRepository, BacktestRunRepository, migration, and existing backtest API tests were present, so Phase 1 was not blocked.
-- Default Debug output paths were locked by a running TradingApp.Api process that this session could not terminate. Resolved by running build and test verification with redirected output paths.
+- Default Debug output paths were locked by a running TradePilot.Api process that this session could not terminate. Resolved by running build and test verification with redirected output paths.
 - The existing POST backtest endpoint used CreatedAtAction with an async-suffixed action name, which failed route generation during controller tests. Resolved by naming the GET-by-id route explicitly and switching POST to CreatedAtRoute.
 - The existing POST backtest flow could persist ElapsedMs as 0 for very fast mocked executions, which caused the full API test suite to fail. Resolved by persisting a minimum elapsed duration of 1 ms.
 - Restore and build reported NU1903 warnings for AutoMapper 12.0.1. These are pre-existing and did not block Phase 1 completion.
@@ -167,7 +167,7 @@ Implements F5 backtesting dashboard work across the backend paginated list endpo
 ## Design Decisions
 
 <!-- Phase 1: Backend — Paginated List Endpoint -->
-- Kept GetBacktestListQuery in the existing src/TradingApp.Application/Backtesting folder instead of introducing a new Queries subfolder, because the current codebase already co-locates backtesting queries there.
+- Kept GetBacktestListQuery in the existing src/TradePilot.Application/Backtesting folder instead of introducing a new Queries subfolder, because the current codebase already co-locates backtesting queries there.
 - Performed paging validation at the controller boundary with DomainException so invalid page inputs return the project’s standard 400 envelope instead of surfacing as 500s from ArgumentOutOfRangeException.
 - Mapped BacktestRun summaries in the persistence repository after loading the requested page, because intervals are stored as JSON and Unix timestamps need conversion that is safer in memory than in an EF-translated projection.
 - Used an explicit named route for GET by id because it is more robust than relying on ASP.NET Core async-suffix action-name conventions.
@@ -199,7 +199,7 @@ Implements F5 backtesting dashboard work across the backend paginated list endpo
 
 <!-- Phase 1: Backend — Paginated List Endpoint -->
 - Review whether the new paging validation limits of 1..100 for pageSize match the intended long-term API contract for the UI.
-- Review whether summary mapping logic in src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs should later move to a shared mapper if additional backtest list or filter endpoints are added.
+- Review whether summary mapping logic in src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs should later move to a shared mapper if additional backtest list or filter endpoints are added.
 - Review the existing POST backtest contract now that it returns 201 with a named location route; this phase fixed the route generation bug but did not change that status-code choice.
 
 <!-- Phase 2: Frontend — Foundation & Navigation -->
@@ -234,7 +234,7 @@ Implemented the full F5 backtesting dashboard across all five phases.
 
 Validation completed during implementation:
 
-- Backend tests: BacktestsControllerTests 21/21, TradingApp.Domain.Tests 15/15, TradingApp.Application.Tests 36/36, TradingApp.Infrastructure.Tests 51/51, TradingApp.Persistence.Tests 18/18, TradingApp.Api.Tests 118/118.
+- Backend tests: BacktestsControllerTests 21/21, TradePilot.Domain.Tests 15/15, TradePilot.Application.Tests 36/36, TradePilot.Infrastructure.Tests 51/51, TradePilot.Persistence.Tests 18/18, TradePilot.Api.Tests 118/118.
 - Frontend tests: Angular suites progressed from 43/43 to 50/50 to 60/60 to 69/69 across the UI phases, with focused component specs also passing.
 - Frontend lint: passed.
 - Frontend build: passed, with a pre-existing bundle-budget warning around 620 kB versus the configured 500 kB threshold.

@@ -182,7 +182,7 @@ To show SL/TP on positions, the backend must:
 ## References
 
 - [Hyperliquid Exchange API — Order Types](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#place-an-order)
-- [Current PlaceOrderRequest](../../../src/TradingApp.Api/Models/PlaceOrderRequest.cs)
+- [Current PlaceOrderRequest](../../../src/TradePilot.Api/Models/PlaceOrderRequest.cs)
 - [Current Position model](../../../frontend/trading-ui/src/app/core/models/position.model.ts)
 - [Current order-entry component](../../../frontend/trading-ui/src/app/features/order-entry/order-entry.component.ts)
 - [Current positions-table component](../../../frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.ts)

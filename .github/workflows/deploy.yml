@@ -29,8 +29,8 @@ jobs:
 
       - name: Restore
         run: |
-          dotnet sln TradingApp.sln remove src/TradingApp.Worker/TradingApp.Worker.csproj || true
-          dotnet sln TradingApp.sln remove tests/TradingApp.Worker.Tests/TradingApp.Worker.Tests.csproj || true
+          dotnet sln TradePilot.sln remove src/TradePilot.Worker/TradePilot.Worker.csproj || true
+          dotnet sln TradePilot.sln remove tests/TradePilot.Worker.Tests/TradePilot.Worker.Tests.csproj || true
           dotnet restore
 
       - name: Build
@@ -96,7 +96,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: src/TradingApp.Api/Dockerfile
+          file: src/TradePilot.Api/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
 

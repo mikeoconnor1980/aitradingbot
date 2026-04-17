@@ -20,7 +20,7 @@ Extend `BacktestRiskEngine` to track in-memory HWM, evaluate drawdown tiers, and
 - **Complexity**: Medium
 - **Risk Factors**: BacktestRiskEngine manages its own equity state via `UpdatePortfolioState` — drawdown evaluation must use the same equity. HWM is in-memory only (no DB persistence during backtest).
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` — modification
+  - `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` — modification
 - **Success**:
   - `BacktestRiskEngine` tracks HWM starting from initial equity (first `UpdatePortfolioState` call)
   - `DrawdownEvaluator.Evaluate()` called on each `UpdatePortfolioState`
@@ -33,7 +33,7 @@ Extend `BacktestRiskEngine` to track in-memory HWM, evaluate drawdown tiers, and
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs — modifications
+// src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs — modifications
 
 // New fields:
 private readonly IReadOnlyList<DrawdownTier> _drawdownTiers;
@@ -83,8 +83,8 @@ Note: The implementing agent must inspect the existing `BacktestRiskEngine` cons
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` — existing `_accountEquity`, `UpdatePortfolioState`, portfolio heat check in `ValidateAsync`
-- `src/TradingApp.Application/Trading/Services/DrawdownEvaluator.cs` — stateless evaluator (from Phase 2)
+- `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` — existing `_accountEquity`, `UpdatePortfolioState`, portfolio heat check in `ValidateAsync`
+- `src/TradePilot.Application/Trading/Services/DrawdownEvaluator.cs` — stateless evaluator (from Phase 2)
 
 ---
 
@@ -95,8 +95,8 @@ Expose the count of signals blocked by the drawdown CB so backtest results can r
 - **Complexity**: Low
 - **Risk Factors**: None — additive metric
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` — already added `DrawdownBlockedSignalCount` in Task 3.1
-  - `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` or equivalent — add drawdown-blocked count (if such a result model exists)
+  - `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` — already added `DrawdownBlockedSignalCount` in Task 3.1
+  - `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` or equivalent — add drawdown-blocked count (if such a result model exists)
 - **Success**:
   - `DrawdownBlockedSignalCount` is accessible from `BacktestRiskEngine` after a run
   - Backtest runner or metrics calculator includes the count in results
@@ -108,7 +108,7 @@ The implementing agent should search for the backtest result/summary model and a
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` — existing `HeatBlockedSignalCount` metric
+- `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` — existing `HeatBlockedSignalCount` metric
 
 ---
 
@@ -119,8 +119,8 @@ Write tests for `BacktestRiskEngine` drawdown tracking, including a backtest run
 - **Complexity**: Medium
 - **Risk Factors**: Integration test may need specific equity curve data to trigger drawdown tiers
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs` — add drawdown tests
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — add integration test (optional)
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs` — add drawdown tests
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — add integration test (optional)
 - **Success**:
   - Test: drawdown CB blocks entry signals when equity drops below halt threshold
   - Test: drawdown CB auto-resets when equity recovers
@@ -133,7 +133,7 @@ Write tests for `BacktestRiskEngine` drawdown tracking, including a backtest run
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs — add tests
+// tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs — add tests
 
 [TestMethod]
 public async Task GivenEquityDropsIntoHaltTier_WhenEntrySignalValidated_ThenBlocked()
@@ -179,7 +179,7 @@ public void GivenEquityGrowth_WhenUpdated_ThenHwmRatchetsUp()
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs` — existing heat-blocking test pattern
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs` — existing heat-blocking test pattern
 
 ---
 
@@ -191,8 +191,8 @@ Build the solution and run all tests to verify no regressions.
 - **Risk Factors**: None
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
-  - `dotnet test TradingApp.sln` — all tests pass including new Phase 3 tests
+  - `dotnet build TradePilot.sln` succeeds
+  - `dotnet test TradePilot.sln` — all tests pass including new Phase 3 tests
 - **Dependencies**: Tasks 3.1–3.3
 
 ## Phase Success Criteria

@@ -10,7 +10,7 @@ import { BacktestRequest, BacktestResult, CoverageReport } from "../../core/mode
 import { GridCycleSummary } from "../../core/models/backtest-debug.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { BacktestService } from "../../core/services/backtest.service";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { SignalRService } from "../../core/services/signalr.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { BacktestCompareComponent } from "./backtest-compare/backtest-compare.component";
@@ -50,7 +50,7 @@ export class BacktestPageComponent implements OnInit {
   private readonly _signalRService = inject(SignalRService);
   private readonly _route = inject(ActivatedRoute);
   private readonly _router = inject(Router);
-  private readonly _notificationService = inject(NotificationService);
+  private readonly _notificationService = inject(NotificationFacade);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 

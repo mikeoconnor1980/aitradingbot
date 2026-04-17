@@ -60,18 +60,18 @@ Enrich the positions table and position detail view with mark price display, not
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Models/PositionDto.cs` — DTO to extend with MarginUsed, FundingRate
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Service mapping to extend (JsonElement parsing pattern)
-- `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` — Service interface (no change needed)
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Pattern for `metaAndAssetCtxs` call (GetMarketInfoAsync)
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidAssetCtx.cs` — Already has Funding, MarkPx fields
-- `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` — Coin→index mapping for metaAndAssetCtxs cross-reference
+- `src/TradePilot.Api/Models/PositionDto.cs` — DTO to extend with MarginUsed, FundingRate
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Service mapping to extend (JsonElement parsing pattern)
+- `src/TradePilot.Api/Services/IHyperliquidAccountService.cs` — Service interface (no change needed)
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Pattern for `metaAndAssetCtxs` call (GetMarketInfoAsync)
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidAssetCtx.cs` — Already has Funding, MarkPx fields
+- `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` — Coin→index mapping for metaAndAssetCtxs cross-reference
 - `frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.ts` — Presentational table component to extend
 - `frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.html` — Template to add columns
 - `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts` — Parent with polling and equity access
 - `frontend/trading-ui/src/app/core/models/position.model.ts` — TypeScript interface to extend
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Integration test pattern to extend
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Unit test pattern for services
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Integration test pattern to extend
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Unit test pattern for services
 
 ### [ ] Phase 1: Backend — Enrich PositionDto with MarginUsed and FundingRate
 

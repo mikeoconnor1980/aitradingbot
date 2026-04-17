@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 
-using var conn = new SqliteConnection("Data Source=../src/TradingApp.Api/Data/tradingapp.db");
+using var conn = new SqliteConnection("Data Source=../src/TradePilot.Api/Data/tradepilot.db");
 conn.Open();
 
 Console.WriteLine("=== Users ===");

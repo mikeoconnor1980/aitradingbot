@@ -107,7 +107,7 @@ This is the capstone of the Pine Script epic — it closes the loop from "paste 
 
 ### Bounded Context
 
-**Context:** `TradingApp.Application/Trading` — the strategy lives alongside the existing grid strategy components.
+**Context:** `TradePilot.Application/Trading` — the strategy lives alongside the existing grid strategy components.
 
 ### New/Modified Components
 
@@ -123,7 +123,7 @@ This is the capstone of the Pine Script epic — it closes the loop from "paste 
 | `StrategyScheduler` | Application/Scheduling | **Modified** — Route to correct `IStrategyEngine` implementation based on user's active strategy type |
 | `BacktestMarketContextBuilder` | Application/Backtesting | **Modified** — Compute custom indicators during backtest replay |
 | `BacktestEngine` | Application/Backtesting | **Modified** — Use `CustomIndicatorStrategy` when backtest config specifies it |
-| `TradingAppDbContext` | Persistence | **Modified** — Add `DbSet<StrategyConfig>` |
+| `TradePilotDbContext` | Persistence | **Modified** — Add `DbSet<StrategyConfig>` |
 | EF Migration | Persistence/Migrations | **New** — Add strategy config table |
 
 #### Frontend

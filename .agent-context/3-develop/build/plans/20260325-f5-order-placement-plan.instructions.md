@@ -58,20 +58,20 @@ Place market and limit orders on Hyperliquid testnet via the Angular UI, with EI
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Controllers/AccountController.cs` — Direct service injection controller pattern (ADR 14, POC)
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Api-layer service pattern for Hyperliquid interactions
-- `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` — Service interface in Api layer
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception → HTTP status mapping
-- `src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs` — Existing signer (address derivation only)
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — PostInfoAsync pattern (template for PostExchangeAsync)
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidSigner.cs` — Signer interface to extend
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — REST client interface to extend
-- `src/TradingApp.Api/Models/OpenOrderDto.cs` — Existing DTO pattern
-- `src/TradingApp.Api/Program.cs` — Flat DI registration
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — WebApplicationFactory integration test pattern
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — Test base class with ConfigureTestServices
-- `tests/TradingApp.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP mock pattern
-- `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — Signer unit test pattern
+- `src/TradePilot.Api/Controllers/AccountController.cs` — Direct service injection controller pattern (ADR 14, POC)
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Api-layer service pattern for Hyperliquid interactions
+- `src/TradePilot.Api/Services/IHyperliquidAccountService.cs` — Service interface in Api layer
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception → HTTP status mapping
+- `src/TradePilot.Infrastructure/Services/HyperliquidSigner.cs` — Existing signer (address derivation only)
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — PostInfoAsync pattern (template for PostExchangeAsync)
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidSigner.cs` — Signer interface to extend
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — REST client interface to extend
+- `src/TradePilot.Api/Models/OpenOrderDto.cs` — Existing DTO pattern
+- `src/TradePilot.Api/Program.cs` — Flat DI registration
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — WebApplicationFactory integration test pattern
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — Test base class with ConfigureTestServices
+- `tests/TradePilot.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP mock pattern
+- `tests/TradePilot.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — Signer unit test pattern
 - `frontend/trading-ui/src/app/core/services/api-rest-client.service.ts` — Generic REST wrapper for API calls
 - `frontend/trading-ui/src/app/core/services/market-data.service.ts` — MarketDataService (midPrice source for pre-fill)
 - `frontend/trading-ui/src/app/core/models/open-order.model.ts` — Existing OpenOrder interface

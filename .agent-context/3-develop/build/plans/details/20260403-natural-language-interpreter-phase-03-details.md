@@ -18,7 +18,7 @@ Create the request model with DataAnnotations validation for the interpret endpo
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/Models/InterpretStrategyRequest.cs` — new request DTO
+  - `src/TradePilot.Api/Models/InterpretStrategyRequest.cs` — new request DTO
 - **Success**:
   - `[Required]` rejects empty/null text
   - `[MaxLength(500)]` enforces character limit
@@ -28,10 +28,10 @@ Create the request model with DataAnnotations validation for the interpret endpo
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/InterpretStrategyRequest.cs — new file
+// src/TradePilot.Api/Models/InterpretStrategyRequest.cs — new file
 using System.ComponentModel.DataAnnotations;
 
-namespace TradingApp.Api.Models;
+namespace TradePilot.Api.Models;
 
 public sealed class InterpretStrategyRequest
 {
@@ -43,7 +43,7 @@ public sealed class InterpretStrategyRequest
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — DTO with DataAnnotations validation
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — DTO with DataAnnotations validation
 
 ### Task 3.2: Add interpret endpoint to StrategiesController {#task-32-add-interpret-endpoint}
 
@@ -52,7 +52,7 @@ Add the `POST /api/strategies/interpret` endpoint to the existing `StrategiesCon
 - **Complexity**: Medium
 - **Risk Factors**: Must apply rate limiting attribute; must handle `OperationCanceledException` for timeout
 - **Files**:
-  - `src/TradingApp.Api/Controllers/StrategiesController.cs` — add interpret action
+  - `src/TradePilot.Api/Controllers/StrategiesController.cs` — add interpret action
 - **Success**:
   - `POST /api/strategies/interpret` accepts `InterpretStrategyRequest` and returns `StrategyIntentDto`
   - Rate limiting policy applied via `[EnableRateLimiting]`
@@ -64,13 +64,13 @@ Add the `POST /api/strategies/interpret` endpoint to the existing `StrategiesCon
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/StrategiesController.cs — add new action method
+// src/TradePilot.Api/Controllers/StrategiesController.cs — add new action method
 // Add these usings:
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
-using TradingApp.Api.Models;
-using TradingApp.Application.StrategyAuthoring.Commands;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradePilot.Api.Models;
+using TradePilot.Application.StrategyAuthoring.Commands;
+using TradePilot.Application.StrategyAuthoring.Models;
 
 // Add this action to the existing StrategiesController class:
 
@@ -93,7 +93,7 @@ public async Task<IActionResult> InterpretStrategy(
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/StrategiesController.cs` — existing `CreateStrategy` action pattern with `[FromBody]` + MediatR dispatch
+- `src/TradePilot.Api/Controllers/StrategiesController.cs` — existing `CreateStrategy` action pattern with `[FromBody]` + MediatR dispatch
 
 ### Task 3.3: Configure ASP.NET Core rate limiting {#task-33-configure-rate-limiting}
 
@@ -102,7 +102,7 @@ Set up ASP.NET Core built-in rate limiting with a fixed window policy for the in
 - **Complexity**: Medium
 - **Risk Factors**: Rate limiting middleware must be placed correctly in the pipeline; IP extraction must handle proxies
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — add rate limiting services and middleware
+  - `src/TradePilot.Api/Program.cs` — add rate limiting services and middleware
 - **Success**:
   - 11th request within 1 minute from same IP returns 429
   - Other endpoints are unaffected
@@ -112,7 +112,7 @@ Set up ASP.NET Core built-in rate limiting with a fixed window policy for the in
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — add rate limiting configuration
+// src/TradePilot.Api/Program.cs — add rate limiting configuration
 
 // Add to service registration section (before builder.Build()):
 using System.Threading.RateLimiting;
@@ -150,8 +150,8 @@ The rate limiting uses `AddPolicy` with `RateLimitPartition.GetFixedWindowLimite
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — middleware pipeline order (CorrelationIdMiddleware → CORS → MapControllers)
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — existing 429 mapping for `RateLimitException`
+- `src/TradePilot.Api/Program.cs` — middleware pipeline order (CorrelationIdMiddleware → CORS → MapControllers)
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — existing 429 mapping for `RateLimitException`
 
 ### Task 3.4: Add controller integration tests {#task-34-add-integration-tests}
 
@@ -160,7 +160,7 @@ Add integration tests for the interpret endpoint covering success, validation, a
 - **Complexity**: Medium
 - **Risk Factors**: Must mock ILlmClient in test services to avoid real LLM calls; rate limiting test needs rapid-fire requests
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/InterpretStrategyTests.cs` — new test class
+  - `tests/TradePilot.Api.Tests/Controllers/InterpretStrategyTests.cs` — new test class
 - **Success**:
   - Given valid text, returns 200 with StrategyIntentDto
   - Given empty text, returns 400
@@ -172,18 +172,18 @@ Add integration tests for the interpret endpoint covering success, validation, a
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/InterpretStrategyTests.cs — new file
+// tests/TradePilot.Api.Tests/Controllers/InterpretStrategyTests.cs — new file
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using TradingApp.Api.Tests.Infrastructure;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradePilot.Api.Tests.Infrastructure;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.Api.Tests.Controllers;
+namespace TradePilot.Api.Tests.Controllers;
 
 [TestClass]
 public sealed class InterpretStrategyTests : BaseControllerTests
@@ -285,8 +285,8 @@ public sealed class InterpretStrategyTests : BaseControllerTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs` — controller integration test pattern
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory base with `ConfigureTestServices`
+- `tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs` — controller integration test pattern
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory base with `ConfigureTestServices`
 
 ### Task 3.5: Build verification and architecture tests {#task-35-build-verification}
 
@@ -296,7 +296,7 @@ Verify the solution builds and all tests pass including new integration tests.
 - **Risk Factors**: None
 - **Files**: No files to create
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
+  - `dotnet build TradePilot.sln` succeeds
   - `dotnet test` passes for all test projects
   - Rate limiting does not affect existing endpoint tests
 - **Dependencies**: All previous tasks in phase

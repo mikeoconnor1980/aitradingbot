@@ -63,21 +63,21 @@ Cancel and modify existing orders on Hyperliquid testnet via the Angular UI, ext
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Controllers/AccountController.cs` — Direct service injection controller pattern (F5 OrdersController follows this)
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Api-layer service pattern for Hyperliquid interactions
-- `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` — Service interface in Api layer
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception → HTTP status mapping
-- `src/TradingApp.Api/Infrastructure/Envelope.cs` — Error response wrapper with ErrorMessage + Timestamp
-- `src/TradingApp.Api/Models/OpenOrderDto.cs` — Existing DTO pattern (OrderId as string)
-- `src/TradingApp.Api/Program.cs` — Flat DI registration (AddScoped, AddSingleton)
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidSigner.cs` — Signer interface (extended by F5 with SignAsync)
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — REST client (extended by F5 with PostExchangeAsync)
-- `src/TradingApp.Application/Abstractions/Exceptions/DomainException.cs` — Maps to 400 via global filter
-- `src/TradingApp.Application/Abstractions/Exceptions/NotFoundException.cs` — Maps to 404 via global filter
-- `src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs` — EIP-712 signing (extended by F5)
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — REST client impl (extended by F5)
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory test base
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Controller integration test pattern
+- `src/TradePilot.Api/Controllers/AccountController.cs` — Direct service injection controller pattern (F5 OrdersController follows this)
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Api-layer service pattern for Hyperliquid interactions
+- `src/TradePilot.Api/Services/IHyperliquidAccountService.cs` — Service interface in Api layer
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception → HTTP status mapping
+- `src/TradePilot.Api/Infrastructure/Envelope.cs` — Error response wrapper with ErrorMessage + Timestamp
+- `src/TradePilot.Api/Models/OpenOrderDto.cs` — Existing DTO pattern (OrderId as string)
+- `src/TradePilot.Api/Program.cs` — Flat DI registration (AddScoped, AddSingleton)
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidSigner.cs` — Signer interface (extended by F5 with SignAsync)
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — REST client (extended by F5 with PostExchangeAsync)
+- `src/TradePilot.Application/Abstractions/Exceptions/DomainException.cs` — Maps to 400 via global filter
+- `src/TradePilot.Application/Abstractions/Exceptions/NotFoundException.cs` — Maps to 404 via global filter
+- `src/TradePilot.Infrastructure/Services/HyperliquidSigner.cs` — EIP-712 signing (extended by F5)
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — REST client impl (extended by F5)
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory test base
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Controller integration test pattern
 - `frontend/trading-ui/src/app/core/services/api-rest-client.service.ts` — Generic REST wrapper (delete, put, post)
 - `frontend/trading-ui/src/app/core/models/open-order.model.ts` — OpenOrder TypeScript interface
 - `frontend/trading-ui/src/app/features/dashboard/orders-table/orders-table.component.ts` — Read-only orders table (to be extended)

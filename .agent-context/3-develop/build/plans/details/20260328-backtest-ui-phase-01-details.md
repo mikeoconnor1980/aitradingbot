@@ -24,7 +24,7 @@ Create a reusable generic pagination response model that can be used across the 
 - **Complexity**: Low
 - **Risk Factors**: None — simple data class
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Models/PagedResult.cs` — new file
+  - `src/TradePilot.Application/Abstractions/Models/PagedResult.cs` — new file
 - **Success**:
   - `PagedResult<T>` class exists with Items, Page, PageSize, TotalCount, TotalPages properties
   - Compiles without errors
@@ -32,8 +32,8 @@ Create a reusable generic pagination response model that can be used across the 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Models/PagedResult.cs — new file
-namespace TradingApp.Application.Abstractions.Models;
+// src/TradePilot.Application/Abstractions/Models/PagedResult.cs — new file
+namespace TradePilot.Application.Abstractions.Models;
 
 public sealed class PagedResult<T>
 {
@@ -47,7 +47,7 @@ public sealed class PagedResult<T>
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — `required init` property pattern, `IReadOnlyList<T>` usage
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — `required init` property pattern, `IReadOnlyList<T>` usage
 
 ---
 
@@ -58,7 +58,7 @@ Create a summary DTO for the list endpoint response that excludes the full trade
 - **Complexity**: Low
 - **Risk Factors**: None — simple DTO
 - **Files**:
-  - `src/TradingApp.Api/Models/BacktestSummaryDto.cs` — new file
+  - `src/TradePilot.Api/Models/BacktestSummaryDto.cs` — new file
 - **Success**:
   - DTO contains id, symbol, intervals, startDate, endDate, totalTrades, winRate, totalPnl, maxDrawdown, createdAt
   - Compiles without errors
@@ -66,8 +66,8 @@ Create a summary DTO for the list endpoint response that excludes the full trade
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/BacktestSummaryDto.cs — new file
-namespace TradingApp.Api.Models;
+// src/TradePilot.Api/Models/BacktestSummaryDto.cs — new file
+namespace TradePilot.Api.Models;
 
 public sealed class BacktestSummaryDto
 {
@@ -86,8 +86,8 @@ public sealed class BacktestSummaryDto
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — API model pattern with `required` properties
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — field naming
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — API model pattern with `required` properties
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — field naming
 
 ---
 
@@ -98,10 +98,10 @@ Create a MediatR query and handler that retrieves paginated backtest summaries f
 - **Complexity**: Medium
 - **Risk Factors**: Must ensure the repository method for paginated retrieval exists (assumed from F4) or add it
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Queries/GetBacktestListQuery.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs` — new file (model class should NOT be co-located in query file per C# standards)
-  - `src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs` — modification, assumed to exist from F4 (add GetPagedAsync method if not present)
-  - `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — modification, assumed to exist from F4 (add GetPagedAsync implementation if not present)
+  - `src/TradePilot.Application/Backtesting/Queries/GetBacktestListQuery.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs` — new file (model class should NOT be co-located in query file per C# standards)
+  - `src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs` — modification, assumed to exist from F4 (add GetPagedAsync method if not present)
+  - `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — modification, assumed to exist from F4 (add GetPagedAsync implementation if not present)
 - **Success**:
   - `GetBacktestListQuery` record with Page and PageSize parameters
   - Handler queries repository and returns `PagedResult<BacktestSummaryDto>`
@@ -113,23 +113,23 @@ Create a MediatR query and handler that retrieves paginated backtest summaries f
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Queries/GetBacktestListQuery.cs — new file
-using TradingApp.Application.Abstractions.Models;
-using TradingApp.Application.Abstractions.Queries;
-using TradingApp.Application.Abstractions.Repositories;
+// src/TradePilot.Application/Backtesting/Queries/GetBacktestListQuery.cs — new file
+using TradePilot.Application.Abstractions.Models;
+using TradePilot.Application.Abstractions.Queries;
+using TradePilot.Application.Abstractions.Repositories;
 
-namespace TradingApp.Application.Backtesting.Queries;
+namespace TradePilot.Application.Backtesting.Queries;
 
 public sealed record GetBacktestListQuery(int Page, int PageSize) : Query<PagedResult<BacktestRunSummary>>;
 
 // NOTE: BacktestRunSummary is in a separate file:
-// src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs
+// src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs
 
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public sealed class BacktestRunSummary
 {
@@ -172,13 +172,13 @@ public sealed class GetBacktestListQueryHandler : QueryHandler<GetBacktestListQu
 If `GetPagedSummariesAsync` doesn't exist on `IBacktestRunRepository`, add it:
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs — modification
+// src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs — modification
 // Add to interface:
 Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(int page, int pageSize, CancellationToken cancellationToken = default);
 ```
 
 ```csharp
-// src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs — modification
+// src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs — modification
 // Add implementation:
 public async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(
     int page, int pageSize, CancellationToken cancellationToken = default)
@@ -216,9 +216,9 @@ public async Task<PagedResult<BacktestRunSummary>> GetPagedSummariesAsync(
 
 ##### Pattern References
 
-- `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` — query + handler co-location pattern, argument guards
-- `src/TradingApp.Application/Abstractions/Queries/Query.cs` — `Query<T>` / `QueryHandler<TQuery, TResult>` base classes
-- `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — EF Core repository implementation pattern
+- `src/TradePilot.Application/MarketData/Queries/GetCandlesQuery.cs` — query + handler co-location pattern, argument guards
+- `src/TradePilot.Application/Abstractions/Queries/Query.cs` — `Query<T>` / `QueryHandler<TQuery, TResult>` base classes
+- `src/TradePilot.Persistence/Repositories/CandleRepository.cs` — EF Core repository implementation pattern
 
 ---
 
@@ -229,7 +229,7 @@ Add the `GET /api/backtests` action to the existing BacktestsController (created
 - **Complexity**: Low
 - **Risk Factors**: Route ordering — `GET /api/backtests` must not conflict with `GET /api/backtests/{id}` or `GET /api/backtests/validate`. ASP.NET Core routes `GET` without parameters first, then specific string segments, then parameterised — no conflict expected.
 - **Files**:
-  - `src/TradingApp.Api/Controllers/BacktestsController.cs` — modification, assumed to exist from F4
+  - `src/TradePilot.Api/Controllers/BacktestsController.cs` — modification, assumed to exist from F4
 - **Success**:
   - `GET /api/backtests?page=1&pageSize=20` endpoint returns 200 with `PagedResult<BacktestSummaryDto>`
   - ProducesResponseType attributes present
@@ -241,7 +241,7 @@ Add the `GET /api/backtests` action to the existing BacktestsController (created
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/BacktestsController.cs — modification
+// src/TradePilot.Api/Controllers/BacktestsController.cs — modification
 // Add this action method to the existing controller class:
 
 [HttpGet]
@@ -279,7 +279,7 @@ public async Task<IActionResult> GetBacktestsAsync(
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/CandlesController.cs` — controller action pattern with MediatR.Send(), ProducesResponseType
+- `src/TradePilot.Api/Controllers/CandlesController.cs` — controller action pattern with MediatR.Send(), ProducesResponseType
 
 ---
 
@@ -290,7 +290,7 @@ Add integration tests for the new GET /api/backtests endpoint using the existing
 - **Complexity**: Medium
 - **Risk Factors**: Must mock IBacktestRunRepository to return test data
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — new file (or add to existing if F4 created it)
+  - `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — new file (or add to existing if F4 created it)
 - **Success**:
   - Tests cover: empty list, paginated results, page & pageSize parameters, invalid page values
   - All tests pass
@@ -300,12 +300,12 @@ Add integration tests for the new GET /api/backtests endpoint using the existing
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs — new file or modification
-using TradingApp.Application.Abstractions.Models;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Backtesting.Queries;
+// tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs — new file or modification
+using TradePilot.Application.Abstractions.Models;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Backtesting.Queries;
 
-namespace TradingApp.Api.Tests.Controllers;
+namespace TradePilot.Api.Tests.Controllers;
 
 [TestClass]
 public sealed class BacktestsControllerListTests : BaseControllerTests
@@ -397,8 +397,8 @@ public sealed class BacktestsControllerListTests : BaseControllerTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs` — BaseControllerTests inheritance, mock setup, ReadAndAssertSuccessAsync
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — test infrastructure pattern
+- `tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs` — BaseControllerTests inheritance, mock setup, ReadAndAssertSuccessAsync
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — test infrastructure pattern
 
 ---
 
@@ -410,7 +410,7 @@ Build the full solution and run all backend tests to verify no regressions.
 - **Risk Factors**: None
 - **Files**: None — verification step
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with no errors
+  - `dotnet build TradePilot.sln` succeeds with no errors
   - `dotnet test` passes all existing + new tests
 - **Dependencies**:
   - All previous tasks in Phase 1

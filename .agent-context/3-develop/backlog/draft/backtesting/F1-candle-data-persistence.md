@@ -35,18 +35,18 @@ The platform currently fetches candle data from Hyperliquid's REST API on demand
 
 ### Functional Requirements
 
-- [ ] A `Candle` domain entity exists in `TradingApp.Domain` with properties: `Id` (long, auto-increment), `Symbol` (string, max 20), `Interval` (string, max 10), `Timestamp` (long, unix ms — candle open time), `Open` (decimal), `High` (decimal), `Low` (decimal), `Close` (decimal), `Volume` (decimal), `NumTrades` (int)
-- [ ] A `TradingAppDbContext` exists in `TradingApp.Persistence` using the `Microsoft.EntityFrameworkCore.Sqlite` provider
+- [ ] A `Candle` domain entity exists in `TradePilot.Domain` with properties: `Id` (long, auto-increment), `Symbol` (string, max 20), `Interval` (string, max 10), `Timestamp` (long, unix ms — candle open time), `Open` (decimal), `High` (decimal), `Low` (decimal), `Close` (decimal), `Volume` (decimal), `NumTrades` (int)
+- [ ] A `TradePilotDbContext` exists in `TradePilot.Persistence` using the `Microsoft.EntityFrameworkCore.Sqlite` provider
 - [ ] The `Candle` entity is configured in the DbContext with a composite unique index on (`Symbol`, `Interval`, `Timestamp`) to prevent duplicate candle entries
 - [ ] EF Core migrations are applied automatically on startup via `context.Database.MigrateAsync()`
-- [ ] The SQLite database file path is configured via `appsettings.json` under `ConnectionStrings:DefaultConnection` (default: `Data Source=Data/tradingapp.db`, relative to working directory)
-- [ ] An `ICandleRepository` interface is defined in `TradingApp.Application` with methods: `GetCandlesAsync(symbol, interval, startTime, endTime)` returning candles ordered by Timestamp ascending, `BulkInsertAsync(candles)` for batch insertion, and `GetLatestTimestampAsync(symbol, interval)` returning the most recent candle timestamp for a given symbol/interval
-- [ ] A `CandleRepository` implementation exists in `TradingApp.Persistence` implementing `ICandleRepository`
+- [ ] The SQLite database file path is configured via `appsettings.json` under `ConnectionStrings:DefaultConnection` (default: `Data Source=Data/TradePilot.db`, relative to working directory)
+- [ ] An `ICandleRepository` interface is defined in `TradePilot.Application` with methods: `GetCandlesAsync(symbol, interval, startTime, endTime)` returning candles ordered by Timestamp ascending, `BulkInsertAsync(candles)` for batch insertion, and `GetLatestTimestampAsync(symbol, interval)` returning the most recent candle timestamp for a given symbol/interval
+- [ ] A `CandleRepository` implementation exists in `TradePilot.Persistence` implementing `ICandleRepository`
 - [ ] `BulkInsertAsync` uses `INSERT OR IGNORE` semantics — duplicates are skipped based on the composite unique index (no errors on re-insert)
 - [ ] `BulkInsertAsync` processes large candle sets in batches of 500 rows per transaction to avoid SQLite parameter limits
 - [ ] `GetCandlesAsync` returns an empty collection when no candles exist for the requested range
 - [ ] `GetLatestTimestampAsync` returns `null` when no candles exist for the given symbol/interval
-- [ ] The `TradingAppDbContext` and `ICandleRepository` are registered in the DI container via a Persistence layer extension method
+- [ ] The `TradePilotDbContext` and `ICandleRepository` are registered in the DI container via a Persistence layer extension method
 - [ ] The `Data/` directory for the SQLite database file is created automatically if it does not exist
 
 ### Non-Functional Requirements
@@ -62,7 +62,7 @@ The platform currently fetches candle data from Hyperliquid's REST API on demand
 - **Single-writer model**: Only the Worker process writes candle data (via the ingestion service). The API process is a read-only consumer. No write contention on the SQLite file.
 - **Interval values**: The `Interval` column accepts any string value (e.g., `15m`, `1h`, `4h`, `1d`). No domain-level restriction — the ingestion service (F2) controls which intervals are fetched.
 - **No retention policy**: All candles are kept indefinitely. The expected dataset (~138K candles) fits well within the 50 MB SQLite budget.
-- **Hosting registration**: Both `TradingApp.Api` and `TradingApp.Worker` register the `TradingAppDbContext` via the shared `AddPersistence(configuration)` extension method. The API needs read access for F4 (Backtest API).
+- **Hosting registration**: Both `TradePilot.Api` and `TradePilot.Worker` register the `TradePilotDbContext` via the shared `AddPersistence(configuration)` extension method. The API needs read access for F4 (Backtest API).
 - **Bulk insert batching**: `BulkInsertAsync` processes inserts in batches of 500 rows per transaction using `INSERT OR IGNORE` to skip duplicates at the SQLite level.
 
 ---
@@ -71,8 +71,8 @@ The platform currently fetches candle data from Hyperliquid's REST API on demand
 
 ### Happy Path
 
-1. Application starts and the `TradingAppDbContext` is initialized
-2. EF Core migrations run (or have been applied) and the `Candles` table exists in `Data/tradingapp.db`
+1. Application starts and the `TradePilotDbContext` is initialized
+2. EF Core migrations run (or have been applied) and the `Candles` table exists in `Data/TradePilot.db`
 3. The candle ingestion service (F2) calls `BulkInsertAsync` to insert candle batches — duplicates are silently skipped
 4. The backtest replay engine (F3) calls `GetCandlesAsync` with a symbol, interval, and date range — candles are returned ordered by timestamp ascending
 5. The ingestion service calls `GetLatestTimestampAsync` to determine where to resume fetching
@@ -113,18 +113,18 @@ Index: IX_Candle_Symbol_Interval_Timestamp (unique)
 
 | Component | Layer | Action |
 |-----------|-------|--------|
-| `Candle` | `TradingApp.Domain` | Domain entity representing a single OHLCV candle |
-| `TradingAppDbContext` | `TradingApp.Persistence` | EF Core DbContext with SQLite provider; configures `Candle` entity and composite index |
-| `ICandleRepository` | `TradingApp.Application` | Repository interface for candle data access |
-| `CandleRepository` | `TradingApp.Persistence` | EF Core implementation of `ICandleRepository` with upsert semantics |
-| `PersistenceServiceExtensions` | `TradingApp.Persistence` | DI registration extension method for DbContext and repository |
+| `Candle` | `TradePilot.Domain` | Domain entity representing a single OHLCV candle |
+| `TradePilotDbContext` | `TradePilot.Persistence` | EF Core DbContext with SQLite provider; configures `Candle` entity and composite index |
+| `ICandleRepository` | `TradePilot.Application` | Repository interface for candle data access |
+| `CandleRepository` | `TradePilot.Persistence` | EF Core implementation of `ICandleRepository` with upsert semantics |
+| `PersistenceServiceExtensions` | `TradePilot.Persistence` | DI registration extension method for DbContext and repository |
 
 ### Configuration Shape
 
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=Data/tradingapp.db"
+    "DefaultConnection": "Data Source=Data/TradePilot.db"
   }
 }
 ```
@@ -133,9 +133,9 @@ Index: IX_Candle_Symbol_Interval_Timestamp (unique)
 
 | Package | Project | Purpose |
 |---------|---------|---------|
-| `Microsoft.EntityFrameworkCore.Sqlite` | `TradingApp.Persistence` | SQLite EF Core provider |
-| `Microsoft.EntityFrameworkCore.Design` | `TradingApp.Persistence` | Migration tooling |
-| `Microsoft.EntityFrameworkCore` | `TradingApp.Persistence` | Core EF framework |
+| `Microsoft.EntityFrameworkCore.Sqlite` | `TradePilot.Persistence` | SQLite EF Core provider |
+| `Microsoft.EntityFrameworkCore.Design` | `TradePilot.Persistence` | Migration tooling |
+| `Microsoft.EntityFrameworkCore` | `TradePilot.Persistence` | Core EF framework |
 
 ### Migration Path
 
@@ -143,7 +143,7 @@ SQLite is used for POC/development. Migration to Azure SQL requires only a provi
 
 ### Testing Approach
 
-Integration tests for `CandleRepository` use an in-memory SQLite database (`DataSource=:memory:`) with the real `TradingAppDbContext`. This validates EF Core mappings, index behavior, and upsert semantics without file I/O.
+Integration tests for `CandleRepository` use an in-memory SQLite database (`DataSource=:memory:`) with the real `TradePilotDbContext`. This validates EF Core mappings, index behavior, and upsert semantics without file I/O.
 
 ---
 
@@ -161,14 +161,14 @@ Integration tests for `CandleRepository` use an in-memory SQLite database (`Data
 
 ## Open Questions
 
-- [x] ~~Should the `Data/` directory be relative to the working directory or configurable as an absolute path?~~ **Resolved:** Relative to the working directory. The `Data Source=Data/tradingapp.db` connection string uses a path relative to the app's working directory. Simple and portable for POC/dev.
+- [x] ~~Should the `Data/` directory be relative to the working directory or configurable as an absolute path?~~ **Resolved:** Relative to the working directory. The `Data Source=Data/TradePilot.db` connection string uses a path relative to the app's working directory. Simple and portable for POC/dev.
 - [x] ~~Should the initial migration be applied automatically on startup via `context.Database.MigrateAsync()` or require manual `dotnet ef database update`?~~ **Resolved:** Auto-migrate on startup. Call `context.Database.MigrateAsync()` during application startup. Zero friction for dev/POC and works well in Docker/CI scenarios.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] **Given** the application starts, **When** the persistence layer initializes, **Then** the `TradingAppDbContext` connects to a SQLite database at the configured path
+- [ ] **Given** the application starts, **When** the persistence layer initializes, **Then** the `TradePilotDbContext` connects to a SQLite database at the configured path
 - [ ] **Given** no database file exists, **When** migrations are applied, **Then** the `Candles` table is created with the correct schema including the composite unique index
 - [ ] **Given** a batch of candle data, **When** `BulkInsertAsync` is called, **Then** all candles are persisted to the database
 - [ ] **Given** a batch containing duplicate candles, **When** `BulkInsertAsync` is called, **Then** duplicates are silently skipped and new candles are inserted without error
@@ -179,7 +179,7 @@ Integration tests for `CandleRepository` use an in-memory SQLite database (`Data
 - [ ] **Given** the `Candle` entity, **When** inspecting its properties, **Then** all price and volume fields use `decimal` type
 - [ ] **Given** the unique index on (`Symbol`, `Interval`, `Timestamp`), **When** two candles with the same key are inserted, **Then** the second insert is rejected at the database level
 - [ ] **Given** a large batch of 1000+ candles, **When** `BulkInsertAsync` is called, **Then** candles are inserted in batches of 500 per transaction
-- [ ] **Given** both `TradingApp.Api` and `TradingApp.Worker` hosts, **When** the persistence layer is registered, **Then** both hosts can resolve `TradingAppDbContext` and `ICandleRepository`
+- [ ] **Given** both `TradePilot.Api` and `TradePilot.Worker` hosts, **When** the persistence layer is registered, **Then** both hosts can resolve `TradePilotDbContext` and `ICandleRepository`
 
 ### Release Notes Information
 

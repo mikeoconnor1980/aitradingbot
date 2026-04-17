@@ -56,7 +56,7 @@ The transitional `StrategyConfig` from F0 carries only grid fields. The UI spec 
 
 #### C# Models
 
-- [ ] `StrategyConfig` class in `TradingApp.Application/StrategyAuthoring/Models/` implementing `IStrategyConfig` (marker interface from F0 in Domain) — full schema, replaces F0's `GridStrategyConfig` record entirely
+- [ ] `StrategyConfig` class in `TradePilot.Application/StrategyAuthoring/Models/` implementing `IStrategyConfig` (marker interface from F0 in Domain) — full schema, replaces F0's `GridStrategyConfig` record entirely
 - [ ] Sub-models: `GridConfig`, `TrendFilterConfig`, `EntryConditionConfig`, `ExitConfig`, `ExitRuleConfig`, `RiskConfig`, `StrategyMetadata`, `SourceMetadata`
 - [ ] Enums: `StrategyMode`, `Direction`, `TrendFilterType`, `TrendOperator`, `EntryConditionType`, `EntryLogic`, `ExitRuleType`, `PositionSizeType`, `CooldownUnit`, `StrategyEntryPoint`
 - [ ] Entry condition `params` — typed per condition type (e.g., `RsiParams`, `PriceVsEmaParams`, `MacdParams`) with a base type for unknown/future condition types. Custom `JsonConverter` using the `type` discriminator handles polymorphic deserialization.
@@ -74,7 +74,7 @@ The transitional `StrategyConfig` from F0 carries only grid fields. The UI spec 
 
 #### Validation Pipeline
 
-- [ ] `IStrategyValidator` with `Validate(StrategyConfig) → ValidationResult` in `TradingApp.Application/StrategyAuthoring/Validation/`
+- [ ] `IStrategyValidator` with `Validate(StrategyConfig) → ValidationResult` in `TradePilot.Application/StrategyAuthoring/Validation/`
 - [ ] **Level 1 — Schema validation**: Required fields present, correct types, enum values valid, `schemaVersion` present
 - [ ] **Level 2 — Business rules**: `strategyName` required (max 100), grid levels > 0, spacing > 0, TP/SL values > 0 when enabled, position size > 0, leverage ≥ 1, RSI 0–100, periods > 0
 - [ ] **Level 3 — Cross-field consistency**: `strategyMode = grid` → grid section required; `strategyMode = signal` → entry conditions required; direction vs trend filter `appliesTo`
@@ -238,7 +238,7 @@ Adding a new condition type (e.g., Bollinger) requires:
 |---|----------|----------|
 | 1 | Should `entryConditions[].params` be typed per condition or a generic dictionary? | **Typed records.** `RsiParams`, `PriceVsEmaParams`, `MacdParams` etc. with a `Dictionary<string, object>` fallback for unknown types. Custom `JsonConverter` handles polymorphic deserialization via the `type` discriminator. |
 | 2 | Should the validator warn about unsupported features in v1 (e.g., signal mode, trend filter)? | **Yes — info-level messages.** "Trend filter configured but not yet evaluated by the engine" and "Signal mode strategies are not yet supported for execution." These are informational, not blocking. |
-| 3 | `IStrategyConfig` relationship | **StrategyConfig implements IStrategyConfig.** The marker interface from F0 (in Domain) is preserved. Pipeline interfaces continue to accept `IStrategyConfig`. The concrete `StrategyConfig` lives in `TradingApp.Application`. |
+| 3 | `IStrategyConfig` relationship | **StrategyConfig implements IStrategyConfig.** The marker interface from F0 (in Domain) is preserved. Pipeline interfaces continue to accept `IStrategyConfig`. The concrete `StrategyConfig` lives in `TradePilot.Application`. |
 | 4 | ExecutionConfig / Risk ownership | **StrategyConfig.Risk owns user-facing risk params** (leverage, positionSize, maxOpenTrades, cooldown). **ExecutionConfig shrinks to FeeModel only** (makerFee, takerFee, slippage). No duplication. |
 | 5 | F0's GridStrategyConfig fate | **Replaced entirely.** F0's `GridStrategyConfig` record in Domain is removed. All consumers use the full `StrategyConfig` with `strategyMode = grid`. |
 | 6 | Exit rule params approach | **Flat structure.** `ExitRuleConfig` uses nullable `value` and `lookback` fields. `lookback` is null/ignored unless `type = swing_low`. No typed params for exits in v1. |

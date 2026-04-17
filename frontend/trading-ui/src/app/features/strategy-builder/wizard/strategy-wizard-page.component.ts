@@ -10,7 +10,7 @@ import { STEPPER_GLOBAL_OPTIONS } from "@angular/cdk/stepper";
 import { debounceTime, map, startWith, switchMap, tap } from "rxjs";
 import { of } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
-import { NotificationService } from "../../../core/services/notification.service";
+import { NotificationFacade } from "../../../core/services/notification-facade.service";
 import { StrategyConfig, ServerValidationResult, ValidationError } from "../models/strategy.model";
 import { StrategyApiService } from "../services/strategy-api.service";
 import { StrategyMapperService } from "../services/strategy-mapper.service";
@@ -55,7 +55,7 @@ export class StrategyWizardPageComponent implements OnInit {
   private readonly _strategyMapper = inject(StrategyMapperService);
   private readonly _strategyValidator = inject(StrategyValidationService);
   private readonly _draftService = inject(StrategyDraftService);
-  private readonly _notifications = inject(NotificationService);
+  private readonly _notifications = inject(NotificationFacade);
   private readonly _conditionFactory = inject(ConditionFactoryService);
   public readonly _education = inject(WizardEducationService);
   private readonly _destroyRef = inject(DestroyRef);

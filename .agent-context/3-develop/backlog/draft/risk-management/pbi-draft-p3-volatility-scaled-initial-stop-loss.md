@@ -91,7 +91,7 @@ A fixed-percentage stop loss ignores market conditions. In volatile markets, a t
 - `ExitRuleType` enum has `FixedPercent`, `SwingLow`, `AtrTrailing` — new `AtrInitial` variant needed
 - `ExitRuleConfig` already has `AtrMultiplier` (used by `AtrTrailing`) — can be reused; needs new `AtrPeriod` field
 - `TriggerOrderManager.CalculateStopLossPrice` handles `AtrTrailing` branch using `context.Indicators.Atr` — new `AtrInitial` branch needed (uses entry price instead of candle high as reference)
-- `AtrCalculator` already exists in `TradingApp.Indicators` and calculates ATR series with Wilder smoothing
+- `AtrCalculator` already exists in `TradePilot.Indicators` and calculates ATR series with Wilder smoothing
 - `GridController` line 137 calls `PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity)` — needs to also pass SL distance when `AtrInitial` + `RiskBased`
 - `PositionSizeResolver` currently has no concept of SL distance — the `RiskBased` branch (from PBI #1) will need an optional `stopLossPercent` parameter that this PBI populates with the ATR-derived value
 

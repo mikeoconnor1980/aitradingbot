@@ -13,9 +13,9 @@ Implements F6 order management across the backend and Angular UI, including Hype
 ### Added
 
 <!-- Phase 1: Backend — Cancel & Modify Endpoints + Tests -->
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCancelAction.cs: Added cancel action payload models with Hyperliquid wire-field JSON names.
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs: Added batch modify payload models including order type and GTC limit params.
-- src/TradingApp.Api/Models/ModifyOrderDto.cs: Added PUT request DTO with positive range validation for price and size.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCancelAction.cs: Added cancel action payload models with Hyperliquid wire-field JSON names.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs: Added batch modify payload models including order type and GTC limit params.
+- src/TradePilot.Api/Models/ModifyOrderDto.cs: Added PUT request DTO with positive range validation for price and size.
 
 <!-- Phase 2: Frontend — Order Management Service + Modify Modal -->
 - frontend/trading-ui/src/app/core/models/modify-order.model.ts: Added the ModifyOrderDto interface with price and size numeric fields.
@@ -26,11 +26,11 @@ Implements F6 order management across the backend and Angular UI, including Hype
 ### Modified
 
 <!-- Phase 1: Backend — Cancel & Modify Endpoints + Tests -->
-- src/TradingApp.Api/Services/IHyperliquidOrderService.cs: Extended service contract with cancel single, cancel all, and modify methods.
-- src/TradingApp.Api/Services/HyperliquidOrderService.cs: Implemented cancel/modify flows, added open-order dependency for cancel-all, action submission helper, and input parsing/validation helpers.
-- src/TradingApp.Api/Controllers/OrdersController.cs: Added DELETE single, DELETE by asset, and PUT modify endpoints with 204/400/503 response contracts.
-- tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Added unit tests for cancel/modify behaviors, invalid order id handling, and no-op cancel-all.
-- tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs: Added integration tests for cancel/modify success and failure paths, and updated test DI registrations for account service dependency.
+- src/TradePilot.Api/Services/IHyperliquidOrderService.cs: Extended service contract with cancel single, cancel all, and modify methods.
+- src/TradePilot.Api/Services/HyperliquidOrderService.cs: Implemented cancel/modify flows, added open-order dependency for cancel-all, action submission helper, and input parsing/validation helpers.
+- src/TradePilot.Api/Controllers/OrdersController.cs: Added DELETE single, DELETE by asset, and PUT modify endpoints with 204/400/503 response contracts.
+- tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Added unit tests for cancel/modify behaviors, invalid order id handling, and no-op cancel-all.
+- tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs: Added integration tests for cancel/modify success and failure paths, and updated test DI registrations for account service dependency.
 
 <!-- Phase 2: Frontend — Order Management Service + Modify Modal -->
 - frontend/trading-ui/src/app/core/services/order.service.ts: Added cancelOrder, cancelAllOrders, and modifyOrder methods and ModifyOrderDto import.
@@ -53,10 +53,10 @@ Implements F6 order management across the backend and Angular UI, including Hype
 ## Test Results
 
 <!-- Phase 1: Backend — Cancel & Modify Endpoints + Tests -->
-- TradingApp.Api.Tests: 40/40 passed
-- TradingApp.Infrastructure.Tests: 22/22 passed
-- TradingApp.Domain.Tests: 0 tests discovered (project executed, no tests present)
-- TradingApp.Application.Tests: 0 tests discovered (project executed, no tests present)
+- TradePilot.Api.Tests: 40/40 passed
+- TradePilot.Infrastructure.Tests: 22/22 passed
+- TradePilot.Domain.Tests: 0 tests discovered (project executed, no tests present)
+- TradePilot.Application.Tests: 0 tests discovered (project executed, no tests present)
 - Architecture Tests: PASSED (no dedicated architecture test project was present in the executed solution scope)
 
 <!-- Phase 2: Frontend — Order Management Service + Modify Modal -->
@@ -99,8 +99,8 @@ Implements F6 order management across the backend and Angular UI, including Hype
 ## Review Hints
 
 <!-- Phase 1: Backend — Cancel & Modify Endpoints + Tests -->
-- Validate that resolving order side and asset from open orders in src/TradingApp.Api/Controllers/OrdersController.cs aligns with expected behavior when exchange state is stale between read and modify.
-- Consider whether asset normalization rules in src/TradingApp.Api/Services/HyperliquidOrderService.cs should be centralized further as additional assets are introduced beyond POC BTC-only scope.
+- Validate that resolving order side and asset from open orders in src/TradePilot.Api/Controllers/OrdersController.cs aligns with expected behavior when exchange state is stale between read and modify.
+- Consider whether asset normalization rules in src/TradePilot.Api/Services/HyperliquidOrderService.cs should be centralized further as additional assets are introduced beyond POC BTC-only scope.
 
 <!-- Phase 2: Frontend — Order Management Service + Modify Modal -->
 - Verify modal wiring in the next phase integration points (orders table actions) to ensure dialog data shape and returned ModifyOrderDto are consumed without additional mapping.

@@ -28,7 +28,7 @@ Extend the `PlaceOrderRequest` model to support trigger order types (stop-market
 - **Complexity**: Medium
 - **Risk Factors**: Regex change must not break existing market/limit orders; new fields must be optional for backward compatibility
 - **Files**:
-  - `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — Add `TriggerPrice`, `ReduceOnly`, `TpSlType` fields; update `OrderType` regex
+  - `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — Add `TriggerPrice`, `ReduceOnly`, `TpSlType` fields; update `OrderType` regex
 - **Success**:
   - `PlaceOrderRequest` accepts `"stop-market"` as a valid `OrderType`
   - `TriggerPrice`, `ReduceOnly`, `TpSlType` are optional properties with correct validation
@@ -38,10 +38,10 @@ Extend the `PlaceOrderRequest` model to support trigger order types (stop-market
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/PlaceOrderRequest.cs — modification
+// src/TradePilot.Api/Models/PlaceOrderRequest.cs — modification
 using System.ComponentModel.DataAnnotations;
 
-namespace TradingApp.Api.Models;
+namespace TradePilot.Api.Models;
 
 public sealed class PlaceOrderRequest
 {
@@ -85,7 +85,7 @@ public sealed class PlaceOrderRequest
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — existing model with `RegularExpression` validation pattern
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — existing model with `RegularExpression` validation pattern
 
 ---
 
@@ -96,7 +96,7 @@ Create a new model class for the Hyperliquid trigger order type wire format, alo
 - **Complexity**: Low
 - **Risk Factors**: None — additive change
 - **Files**:
-  - `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — Add `HyperliquidTriggerParams` class (co-located with existing `HyperliquidLimitParams`)
+  - `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — Add `HyperliquidTriggerParams` class (co-located with existing `HyperliquidLimitParams`)
 - **Success**:
   - `HyperliquidTriggerParams` has `TriggerPx` (string), `IsMarket` (bool), `Tpsl` (string) properties
   - Properties match the Hyperliquid wire format naming
@@ -105,7 +105,7 @@ Create a new model class for the Hyperliquid trigger order type wire format, alo
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs — add new class at end of file
+// src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs — add new class at end of file
 
 /// <summary>
 /// Wire format for Hyperliquid trigger order type (TP/SL).
@@ -126,7 +126,7 @@ public sealed class HyperliquidTriggerParams
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — existing `HyperliquidLimitParams` and `HyperliquidOrderType` classes
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — existing `HyperliquidLimitParams` and `HyperliquidOrderType` classes
 
 ---
 
@@ -137,7 +137,7 @@ Add a new overload or extend the existing `BuildOrderAction` method in `Hyperliq
 - **Complexity**: High
 - **Risk Factors**: Wire format must match Hyperliquid API exactly; MessagePack serialization must produce byte-compatible output; incorrect `limit_px` for market triggers could cause order rejection
 - **Files**:
-  - `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — Add `BuildTriggerOrderAction` method
+  - `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — Add `BuildTriggerOrderAction` method
 - **Success**:
   - `BuildTriggerOrderAction` produces the correct trigger order wire format dictionary
   - `grouping` is set to `"normalTpsl"` for trigger orders
@@ -149,7 +149,7 @@ Add a new overload or extend the existing `BuildOrderAction` method in `Hyperliq
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs — add new method after existing BuildOrderAction
+// src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs — add new method after existing BuildOrderAction
 
 /// <summary>
 /// Builds a trigger order action payload for TP/SL orders.
@@ -208,7 +208,7 @@ public static Dictionary<string, object> BuildTriggerOrderAction(
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — existing `BuildOrderAction` method (lines 95–118)
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — existing `BuildOrderAction` method (lines 95–118)
 
 ---
 
@@ -219,8 +219,8 @@ Extend `PlaceOrderAsync` in `HyperliquidOrderService` to detect `stop-market` or
 - **Complexity**: High
 - **Risk Factors**: Must correctly compute sentinel limit price for market triggers; must pass `reduceOnly` for existing order types without breaking them; nonce/signing pipeline is shared
 - **Files**:
-  - `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — Modify `PlaceOrderAsync` to handle `stop-market` order type
-  - `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` — No change needed (same `PlaceOrderAsync` signature)
+  - `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — Modify `PlaceOrderAsync` to handle `stop-market` order type
+  - `src/TradePilot.Api/Services/IHyperliquidOrderService.cs` — No change needed (same `PlaceOrderAsync` signature)
 - **Success**:
   - `stop-market` orders are routed through `BuildTriggerOrderAction` with correct trigger wire format
   - `triggerPrice` is validated as required for `stop-market` orders
@@ -232,7 +232,7 @@ Extend `PlaceOrderAsync` in `HyperliquidOrderService` to detect `stop-market` or
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidOrderService.cs — modification to PlaceOrderAsync
+// src/TradePilot.Api/Services/HyperliquidOrderService.cs — modification to PlaceOrderAsync
 // Replace the section after metadata resolution with order type branching
 
 public async Task<PlaceOrderResponse> PlaceOrderAsync(PlaceOrderRequest request, CancellationToken cancellationToken = default)
@@ -317,8 +317,8 @@ public async Task<PlaceOrderResponse> PlaceOrderAsync(PlaceOrderRequest request,
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — existing `PlaceOrderAsync` method (lines 45–140)
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — `BuildOrderAction` and new `BuildTriggerOrderAction`
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — existing `PlaceOrderAsync` method (lines 45–140)
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — `BuildOrderAction` and new `BuildTriggerOrderAction`
 
 ---
 
@@ -329,8 +329,8 @@ Add `MarginUsed` and `PositionValue` properties to `PositionDto` and map them fr
 - **Complexity**: Low
 - **Risk Factors**: Field names in the Hyperliquid response must be verified (`marginUsed`, `positionValue`)
 - **Files**:
-  - `src/TradingApp.Api/Models/PositionDto.cs` — Add `MarginUsed` and `PositionValue` properties
-  - `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Map new fields in `MapToPositions()`
+  - `src/TradePilot.Api/Models/PositionDto.cs` — Add `MarginUsed` and `PositionValue` properties
+  - `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Map new fields in `MapToPositions()`
 - **Success**:
   - `GET /api/account/positions` returns `marginUsed` and `positionValue` for each position
   - Values are correctly parsed from the `clearinghouseState` JSON response
@@ -339,8 +339,8 @@ Add `MarginUsed` and `PositionValue` properties to `PositionDto` and map them fr
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/PositionDto.cs — modification
-namespace TradingApp.Api.Models;
+// src/TradePilot.Api/Models/PositionDto.cs — modification
+namespace TradePilot.Api.Models;
 
 public sealed class PositionDto
 {
@@ -360,7 +360,7 @@ public sealed class PositionDto
 ```
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidAccountService.cs — modification to MapToPositions
+// src/TradePilot.Api/Services/HyperliquidAccountService.cs — modification to MapToPositions
 // Add these two lines to the PositionDto initializer in the foreach loop:
 
 results.Add(new PositionDto
@@ -375,8 +375,8 @@ results.Add(new PositionDto
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/PositionDto.cs` — existing DTO with decimal properties
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — `MapToPositions()` method using `ParseDecimal` + `GetPropertyOrDefault` pattern
+- `src/TradePilot.Api/Models/PositionDto.cs` — existing DTO with decimal properties
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — `MapToPositions()` method using `ParseDecimal` + `GetPropertyOrDefault` pattern
 
 ---
 
@@ -387,9 +387,9 @@ Add tests for the new trigger order flow in both `OrdersControllerTests` (integr
 - **Complexity**: Medium
 - **Risk Factors**: Trigger order mock setup requires matching the new code path; position enrichment test needs mock JSON with new fields
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs` — Add trigger order integration tests
-  - `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Add trigger order unit tests
-  - `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Add position enrichment test (if not already covered)
+  - `tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs` — Add trigger order integration tests
+  - `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Add trigger order unit tests
+  - `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Add position enrichment test (if not already covered)
 - **Success**:
   - Test: `GivenValidStopMarketOrder_WhenPlaceOrderAsync_ThenReturnsSuccessWithOrderId`
   - Test: `GivenStopMarketOrderWithoutTriggerPrice_WhenPlaceOrderAsync_ThenReturnsBadRequest`
@@ -402,7 +402,7 @@ Add tests for the new trigger order flow in both `OrdersControllerTests` (integr
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs — add new tests
+// tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs — add new tests
 
 [TestMethod]
 public async Task GivenValidStopMarketOrder_WhenPlaceOrderAsync_ThenSubmitsTriggerOrderToExchange()
@@ -503,7 +503,7 @@ public async Task GivenMarketOrderWithReduceOnly_WhenPlaceOrderAsync_ThenPassesR
 ```
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs — add integration test
+// tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs — add integration test
 
 [TestMethod]
 public async Task GivenValidStopMarketOrder_WhenPostOrder_ThenReturnsOk()
@@ -557,8 +557,8 @@ public async Task GivenInvalidStopMarketOrder_WhenPostOrder_ThenReturnsBadReques
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — existing test structure, `_restClientMock`, `CreateSuccessExchangeResponse`
-- `tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs` — existing `PostAsJsonAsync` + `_orderServiceMock` pattern
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — existing test structure, `_restClientMock`, `CreateSuccessExchangeResponse`
+- `tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs` — existing `PostAsJsonAsync` + `_orderServiceMock` pattern
 
 ---
 
@@ -570,7 +570,7 @@ Build all test projects and run the full test suite to verify no regressions.
 - **Risk Factors**: None
 - **Files**: None (build/test only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with no errors
+  - `dotnet build TradePilot.sln` succeeds with no errors
   - `dotnet test` passes all existing and new tests
 - **Dependencies**: Tasks 1.1–1.6
 

@@ -25,9 +25,9 @@ Create a new service that evaluates trend filter configuration against indicator
 - **Complexity**: High
 - **Risk Factors**: Cross detection logic; insufficient data handling; unknown type handling
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Services/ITrendFilterEvaluator.cs` — new interface
-  - `src/TradingApp.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs` — new implementation
-  - `src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterResult.cs` — new result model
+  - `src/TradePilot.Application/StrategyAuthoring/Services/ITrendFilterEvaluator.cs` — new interface
+  - `src/TradePilot.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs` — new implementation
+  - `src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterResult.cs` — new result model
 - **Success**:
   - Handles `ema_cross`, `sma_cross`, `price_above_ema` types
   - Handles `gt`, `lt`, `gte`, `lte`, `cross_above`, `cross_below`, `above`, `below` operators
@@ -42,8 +42,8 @@ Create a new service that evaluates trend filter configuration against indicator
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterResult.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterResult.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public sealed class TrendFilterResult
 {
@@ -56,11 +56,11 @@ public sealed class TrendFilterResult
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/ITrendFilterEvaluator.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
+// src/TradePilot.Application/StrategyAuthoring/Services/ITrendFilterEvaluator.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 public interface ITrendFilterEvaluator
 {
@@ -69,13 +69,13 @@ public interface ITrendFilterEvaluator
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs — new file
+// src/TradePilot.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs — new file
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 public sealed class TrendFilterEvaluator : ITrendFilterEvaluator
 {
@@ -335,7 +335,7 @@ Create a condition handler for `price_vs_ema` entry conditions. Handles operator
 - **Complexity**: High
 - **Risk Factors**: Distance calculation for different distance types; touch detection using candle high/low
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs` — new file
+  - `src/TradePilot.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs` — new file
 - **Success**:
   - Implements `IConditionHandler` with `ConditionType = EntryConditionType.PriceVsEma`
   - Handles all 6 operators correctly
@@ -353,12 +353,12 @@ Create a condition handler for `price_vs_ema` entry conditions. Handles operator
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs — new file
+// src/TradePilot.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs — new file
 using System.Globalization;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 /// <summary>
 /// Evaluates price vs EMA conditions: near, above, below, cross_above, cross_below, touch.
@@ -557,7 +557,7 @@ Inject `ITrendFilterEvaluator` into `CompositeStrategyEngine` and call it before
 - **Complexity**: Medium
 - **Risk Factors**: Must preserve existing grid mode behavior; must propagate `TrendFilterPassed` into result; **F6.75 may restructure signal mode flow** — injection point may shift from `CompositeStrategyEngine` to a new signal orchestrator
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs` — inject and wire
+  - `src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs` — inject and wire
 - **Success**:
   - Grid mode unaffected
   - Signal mode: trend filter evaluated before conditions
@@ -570,14 +570,14 @@ Inject `ITrendFilterEvaluator` into `CompositeStrategyEngine` and call it before
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs — modification
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Trading;
+// src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs — modification
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Trading;
 
-namespace TradingApp.Application.Trading.Services;
+namespace TradePilot.Application.Trading.Services;
 
 public sealed class CompositeStrategyEngine : IStrategyEngine
 {
@@ -660,7 +660,7 @@ Remove or update the `TREND_FILTER_NOT_EVALUATED` info message now that trend fi
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — remove placeholder
+  - `src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — remove placeholder
 - **Success**:
   - `TREND_FILTER_NOT_EVALUATED` info message no longer emitted
   - Other cross-field validations unchanged
@@ -668,7 +668,7 @@ Remove or update the `TREND_FILTER_NOT_EVALUATED` info message now that trend fi
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs — modification
+// src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs — modification
 // Remove the entire EmitV1InfoMessages method and its call from Validate:
 
 public sealed class CrossFieldValidator
@@ -700,7 +700,7 @@ Register `PriceVsEmaConditionHandler` and `TrendFilterEvaluator` in `Program.cs`
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — add registrations
+  - `src/TradePilot.Api/Program.cs` — add registrations
 - **Success**:
   - `PriceVsEmaConditionHandler` registered as `IConditionHandler`
   - `TrendFilterEvaluator` registered as `ITrendFilterEvaluator`
@@ -709,7 +709,7 @@ Register `PriceVsEmaConditionHandler` and `TrendFilterEvaluator` in `Program.cs`
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — add after existing RsiConditionHandler registration
+// src/TradePilot.Api/Program.cs — add after existing RsiConditionHandler registration
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();  // NEW
 builder.Services.AddScoped<ITrendFilterEvaluator, TrendFilterEvaluator>();    // NEW
@@ -729,7 +729,7 @@ Create comprehensive unit tests for `TrendFilterEvaluator` covering all filter t
 - **Complexity**: High
 - **Risk Factors**: Must cover all acceptance criteria from F7 PBI
 - **Files**:
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/TrendFilterEvaluatorTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/TrendFilterEvaluatorTests.cs` — new file
 - **Success**:
   - Tests for ema_cross: gt (pass/fail), lt, cross_above, cross_below
   - Tests for sma_cross: gt (pass)
@@ -742,14 +742,14 @@ Create comprehensive unit tests for `TrendFilterEvaluator` covering all filter t
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Services/TrendFilterEvaluatorTests.cs — new file
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Services/TrendFilterEvaluatorTests.cs — new file
 using Microsoft.Extensions.Logging;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.StrategyAuthoring.Services;
+namespace TradePilot.Application.Tests.StrategyAuthoring.Services;
 
 [TestClass]
 public sealed class TrendFilterEvaluatorTests
@@ -986,7 +986,7 @@ Create comprehensive unit tests for `PriceVsEmaConditionHandler`.
 - **Complexity**: High
 - **Risk Factors**: Must cover all operators and distance types
 - **Files**:
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/PriceVsEmaConditionHandlerTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/PriceVsEmaConditionHandlerTests.cs` — new file
 - **Success**:
   - Tests for: near (percent pass/fail), near (absolute), touch (pass/fail), above, below, cross_above, cross_below
   - Tests for: missing EMA data, unknown operator
@@ -997,13 +997,13 @@ Create comprehensive unit tests for `PriceVsEmaConditionHandler`.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Services/PriceVsEmaConditionHandlerTests.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Services/PriceVsEmaConditionHandlerTests.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.StrategyAuthoring.Services;
+namespace TradePilot.Application.Tests.StrategyAuthoring.Services;
 
 [TestClass]
 public sealed class PriceVsEmaConditionHandlerTests
@@ -1188,9 +1188,9 @@ Update existing tests to account for `ITrendFilterEvaluator` injection in `Compo
 - **Complexity**: Medium
 - **Risk Factors**: Must not break existing grid mode tests
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs` — update constructor, add trend filter tests
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — add PriceVsEma handler to evaluator setup
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — remove/update `TREND_FILTER_NOT_EVALUATED` test assertion (Task 2.4 removes this code)
+  - `tests/TradePilot.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs` — update constructor, add trend filter tests
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — add PriceVsEma handler to evaluator setup
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — remove/update `TREND_FILTER_NOT_EVALUATED` test assertion (Task 2.4 removes this code)
 - **Success**:
   - All existing tests updated and pass
   - `CrossFieldValidatorTests` updated to reflect removal of `TREND_FILTER_NOT_EVALUATED` info message
@@ -1255,7 +1255,7 @@ Build the solution and run all backend test projects.
 - **Risk Factors**: None
 - **Files**: N/A
 - **Success**:
-  - `dotnet build TradingApp.sln --configuration Release` succeeds
+  - `dotnet build TradePilot.sln --configuration Release` succeeds
   - All test projects pass: Application.Tests, Domain.Tests, Api.Tests, Infrastructure.Tests, Persistence.Tests
 
 ## Phase Success Criteria

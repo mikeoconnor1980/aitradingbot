@@ -20,8 +20,8 @@ Create the result models for condition evaluation: `ConditionResult` (per-condit
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward model creation
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/ConditionResult.cs` — **New**
-  - `src/TradingApp.Application/StrategyAuthoring/Models/ConditionEvaluationResult.cs` — **New**
+  - `src/TradePilot.Application/StrategyAuthoring/Models/ConditionResult.cs` — **New**
+  - `src/TradePilot.Application/StrategyAuthoring/Models/ConditionEvaluationResult.cs` — **New**
 - **Success**:
   - `ConditionResult` has `Passed` (bool), `Reason` (string), `ConditionId` (string)
   - `ConditionEvaluationResult` has `SetupDetected` (bool), `TrendFilterPassed` (bool?), `ConditionResults` (list), `OverallReason` (string)
@@ -29,8 +29,8 @@ Create the result models for condition evaluation: `ConditionResult` (per-condit
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/ConditionResult.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/ConditionResult.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 /// <summary>
 /// Result of evaluating a single entry condition.
@@ -44,8 +44,8 @@ public sealed class ConditionResult
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/ConditionEvaluationResult.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/ConditionEvaluationResult.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 /// <summary>
 /// Overall result of evaluating all entry conditions for a signal-mode strategy.
@@ -61,7 +61,7 @@ public sealed class ConditionEvaluationResult
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/StrategyEvaluation.cs` — similar result pattern (`SetupDetected` + `Reason`)
+- `src/TradePilot.Application/Trading/Models/StrategyEvaluation.cs` — similar result pattern (`SetupDetected` + `Reason`)
 
 ---
 
@@ -72,8 +72,8 @@ Create the handler interface and the first concrete handler for RSI conditions. 
 - **Complexity**: High
 - **Risk Factors**: Must handle all 6 operators (`lt`, `lte`, `gt`, `gte`, `cross_above`, `cross_below`); cross operators require previous RSI value; must handle missing indicator data gracefully
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Services/IConditionHandler.cs` — **New**
-  - `src/TradingApp.Application/StrategyAuthoring/Services/RsiConditionHandler.cs` — **New**
+  - `src/TradePilot.Application/StrategyAuthoring/Services/IConditionHandler.cs` — **New**
+  - `src/TradePilot.Application/StrategyAuthoring/Services/RsiConditionHandler.cs` — **New**
 - **Success**:
   - RSI(14)=35 with operator `lt`, value=40 → `Passed = true`, reason includes "RSI(14) = 35 < 40"
   - RSI(14)=45 with operator `lt`, value=40 → `Passed = false`
@@ -87,11 +87,11 @@ Create the handler interface and the first concrete handler for RSI conditions. 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/IConditionHandler.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
+// src/TradePilot.Application/StrategyAuthoring/Services/IConditionHandler.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 /// <summary>
 /// Evaluates a single entry condition against market context and indicator data.
@@ -105,11 +105,11 @@ public interface IConditionHandler
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/RsiConditionHandler.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
+// src/TradePilot.Application/StrategyAuthoring/Services/RsiConditionHandler.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 /// <summary>
 /// Evaluates RSI conditions: compares RSI(period) to a threshold using the configured operator.
@@ -215,8 +215,8 @@ public sealed class RsiConditionHandler : IConditionHandler
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/RsiParams.cs` — `Period`, `Operator`, `Value` consumed by handler
-- `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` (Phase 1) — `GetRsi(period)`, `GetPreviousRsi(period)`
+- `src/TradePilot.Application/StrategyAuthoring/Models/RsiParams.cs` — `Period`, `Operator`, `Value` consumed by handler
+- `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` (Phase 1) — `GetRsi(period)`, `GetPreviousRsi(period)`
 
 ---
 
@@ -227,7 +227,7 @@ Create the evaluator orchestrator that resolves handlers by condition type and c
 - **Complexity**: High
 - **Risk Factors**: Must correctly implement All/Any logic; must handle unknown types with warning (not failure); must handle no enabled conditions
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Services/ConditionEvaluator.cs` — **New** (interface `IConditionEvaluator` defined in same file per project convention)
+  - `src/TradePilot.Application/StrategyAuthoring/Services/ConditionEvaluator.cs` — **New** (interface `IConditionEvaluator` defined in same file per project convention)
 - **Success**:
   - `entryLogic = All`: all enabled conditions must pass → `SetupDetected = true`
   - `entryLogic = Any`: at least one enabled condition passes → `SetupDetected = true`
@@ -240,12 +240,12 @@ Create the evaluator orchestrator that resolves handlers by condition type and c
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/ConditionEvaluator.cs — new file
+// src/TradePilot.Application/StrategyAuthoring/Services/ConditionEvaluator.cs — new file
 using Microsoft.Extensions.Logging;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 /// <summary>
 /// Evaluates strategy entry conditions by dispatching to registered condition handlers.
@@ -363,8 +363,8 @@ public sealed class ConditionEvaluator : IConditionEvaluator
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs` — existing strategy engine pattern returning `StrategyEvaluation`
-- `src/TradingApp.Application/StrategyAuthoring/Validation/CompositeStrategyValidator.cs` — composite pattern delegating to sub-validators
+- `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs` — existing strategy engine pattern returning `StrategyEvaluation`
+- `src/TradePilot.Application/StrategyAuthoring/Validation/CompositeStrategyValidator.cs` — composite pattern delegating to sub-validators
 
 ---
 
@@ -375,8 +375,8 @@ Write comprehensive tests for `RsiConditionHandler` and `ConditionEvaluator`.
 - **Complexity**: Medium
 - **Risk Factors**: Must cover all 6 RSI operators, All/Any logic, unknown types, disabled conditions, no enabled conditions, missing indicator data
 - **Files**:
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs` — **New**
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — **New**
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs` — **New**
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — **New**
 - **Success**:
   - All acceptance criteria covered
   - Edge cases for cross detection, missing data, unknown operators tested
@@ -386,13 +386,13 @@ Write comprehensive tests for `RsiConditionHandler` and `ConditionEvaluator`.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.StrategyAuthoring.Services;
+namespace TradePilot.Application.Tests.StrategyAuthoring.Services;
 
 [TestClass]
 public sealed class RsiConditionHandlerTests
@@ -525,14 +525,14 @@ public sealed class RsiConditionHandlerTests
 ```
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs — new file
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs — new file
 using Microsoft.Extensions.Logging;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.StrategyAuthoring.Services;
+namespace TradePilot.Application.Tests.StrategyAuthoring.Services;
 
 [TestClass]
 public sealed class ConditionEvaluatorTests
@@ -694,8 +694,8 @@ public sealed class ConditionEvaluatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — private static `Create*` helpers, MSTest [TestInitialize] pattern
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — Moq mock setup pattern
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — private static `Create*` helpers, MSTest [TestInitialize] pattern
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — Moq mock setup pattern
 
 ---
 
@@ -712,8 +712,8 @@ Build and run all Phase 2 tests plus existing tests.
   - All existing tests pass
 
 ```bash
-dotnet build tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj
-dotnet test tests/TradingApp.Application.Tests --no-build
+dotnet build tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj
+dotnet test tests/TradePilot.Application.Tests --no-build
 ```
 
 ## Phase Success Criteria

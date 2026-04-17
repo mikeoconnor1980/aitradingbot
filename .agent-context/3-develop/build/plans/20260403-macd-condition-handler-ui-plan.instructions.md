@@ -64,13 +64,13 @@ Backend infrastructure already scaffolded by F5/F6.5:
 
 ### Project Patterns
 
-- `src/TradingApp.Application/StrategyAuthoring/Services/RsiConditionHandler.cs` — Reference handler implementation (no logger, operator switch, Fail helper)
-- `src/TradingApp.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs` — Handler with ILogger, cross detection pattern
-- `src/TradingApp.Application/StrategyAuthoring/Services/IConditionHandler.cs` — Interface: `ConditionType` + `Evaluate`
-- `src/TradingApp.Application/StrategyAuthoring/Models/MacdParams.cs` — Existing params record
-- `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — MACD getters (current + previous for line, signal, histogram)
-- `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — Existing MACD_PERIODS_INVALID rule
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs` — Test pattern for condition handlers
+- `src/TradePilot.Application/StrategyAuthoring/Services/RsiConditionHandler.cs` — Reference handler implementation (no logger, operator switch, Fail helper)
+- `src/TradePilot.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs` — Handler with ILogger, cross detection pattern
+- `src/TradePilot.Application/StrategyAuthoring/Services/IConditionHandler.cs` — Interface: `ConditionType` + `Evaluate`
+- `src/TradePilot.Application/StrategyAuthoring/Models/MacdParams.cs` — Existing params record
+- `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — MACD getters (current + previous for line, signal, histogram)
+- `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — Existing MACD_PERIODS_INVALID rule
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs` — Test pattern for condition handlers
 - `frontend/trading-ui/src/app/features/strategy-builder/components/rsi-condition-item/` — Reference UI condition card
 - `frontend/trading-ui/src/app/features/strategy-builder/services/condition-factory.service.ts` — FormGroup factory pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/services/strategy-mapper.service.ts` — Condition params mapping

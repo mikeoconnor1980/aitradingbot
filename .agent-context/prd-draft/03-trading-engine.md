@@ -169,10 +169,10 @@ Compiled Runtime Plan (from PRD-02)
 
 ### Project Location
 
-All pipeline services live in `TradingApp.Application`:
+All pipeline services live in `TradePilot.Application`:
 
 ```
-src/TradingApp.Application/
+src/TradePilot.Application/
 ├── Trading/
 │   ├── Models/         (MarketContext, StrategyEvaluation, GridState, GridLifecycle,
 │   │                    PositionState, TradingSignal, OrderRequest, TradeType)

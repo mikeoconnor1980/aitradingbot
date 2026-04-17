@@ -13,27 +13,27 @@ Implements the F2 strategy builder experience across persistence, API, reference
 ### Added
 
 <!-- Phase 1: Domain Entities and Persistence -->
-- src/TradingApp.Domain/Entities/Strategy.cs: Added the Strategy domain entity with create, update, and soft-delete behavior.
-- src/TradingApp.Application/Abstractions/Repositories/IStrategyRepository.cs: Added the strategy repository abstraction for Phase 1 persistence operations.
-- src/TradingApp.Persistence/Repositories/StrategyRepository.cs: Added the EF Core repository implementation for strategy persistence.
-- src/TradingApp.Persistence/Migrations/20260402203000_AddStrategies.cs: Added the EF migration that creates the Strategies table and its indexes.
-- tests/TradingApp.Domain.Tests/Entities/StrategyTests.cs: Added domain tests covering strategy creation, update, soft delete, and guard clauses.
+- src/TradePilot.Domain/Entities/Strategy.cs: Added the Strategy domain entity with create, update, and soft-delete behavior.
+- src/TradePilot.Application/Abstractions/Repositories/IStrategyRepository.cs: Added the strategy repository abstraction for Phase 1 persistence operations.
+- src/TradePilot.Persistence/Repositories/StrategyRepository.cs: Added the EF Core repository implementation for strategy persistence.
+- src/TradePilot.Persistence/Migrations/20260402203000_AddStrategies.cs: Added the EF migration that creates the Strategies table and its indexes.
+- tests/TradePilot.Domain.Tests/Entities/StrategyTests.cs: Added domain tests covering strategy creation, update, soft delete, and guard clauses.
 
 <!-- Phase 2: Backend CQRS Commands, Queries, and Controller -->
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategyDto.cs: Added the full strategy read DTO used by the edit/details endpoint.
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategySummaryDto.cs: Added the strategy list DTO used by the list endpoint.
-- src/TradingApp.Application/Abstractions/Exceptions/DuplicateStrategyNameException.cs: Added the typed duplicate-name conflict exception for HTTP 409 mapping.
-- src/TradingApp.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs: Added the create command and handler with validation, uniqueness checks, serialization, and persistence.
-- src/TradingApp.Application/StrategyAuthoring/Commands/UpdateStrategyCommand.cs: Added the update command and handler with tenant scoping, uniqueness checks, validation, and persistence.
-- src/TradingApp.Application/StrategyAuthoring/Commands/DeleteStrategyCommand.cs: Added the delete command and handler with tenant scoping and soft-delete behavior.
-- src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategiesQuery.cs: Added the list query and handler that deserialize config into summary fields.
-- src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategyByIdQuery.cs: Added the by-id query and handler that return full strategy config for editing.
-- src/TradingApp.Persistence/Migrations/20260402203000_AddStrategies.Designer.cs: Added the EF Core migration designer metadata so the Strategies migration is discovered and applied.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategyDto.cs: Added the full strategy read DTO used by the edit/details endpoint.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategySummaryDto.cs: Added the strategy list DTO used by the list endpoint.
+- src/TradePilot.Application/Abstractions/Exceptions/DuplicateStrategyNameException.cs: Added the typed duplicate-name conflict exception for HTTP 409 mapping.
+- src/TradePilot.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs: Added the create command and handler with validation, uniqueness checks, serialization, and persistence.
+- src/TradePilot.Application/StrategyAuthoring/Commands/UpdateStrategyCommand.cs: Added the update command and handler with tenant scoping, uniqueness checks, validation, and persistence.
+- src/TradePilot.Application/StrategyAuthoring/Commands/DeleteStrategyCommand.cs: Added the delete command and handler with tenant scoping and soft-delete behavior.
+- src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategiesQuery.cs: Added the list query and handler that deserialize config into summary fields.
+- src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategyByIdQuery.cs: Added the by-id query and handler that return full strategy config for editing.
+- src/TradePilot.Persistence/Migrations/20260402203000_AddStrategies.Designer.cs: Added the EF Core migration designer metadata so the Strategies migration is discovered and applied.
 
 <!-- Phase 3: Reference Data API -->
-- src/TradingApp.Api/Controllers/ReferenceDataController.cs: Added the reference-data API controller exposing GET /api/reference-data/markets.
-- src/TradingApp.Api/Models/ReferenceDataResponse.cs: Added the API response model for markets and timeframes.
-- tests/TradingApp.Api.Tests/Controllers/ReferenceDataControllerTests.cs: Added controller integration coverage for the new reference-data endpoint.
+- src/TradePilot.Api/Controllers/ReferenceDataController.cs: Added the reference-data API controller exposing GET /api/reference-data/markets.
+- src/TradePilot.Api/Models/ReferenceDataResponse.cs: Added the API response model for markets and timeframes.
+- tests/TradePilot.Api.Tests/Controllers/ReferenceDataControllerTests.cs: Added controller integration coverage for the new reference-data endpoint.
 
 <!-- Phase 4: Frontend Strategy Builder Components -->
 - frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts: Added the frontend strategy schema, DTOs, validation models, and template catalog.
@@ -87,17 +87,17 @@ Implements the F2 strategy builder experience across persistence, API, reference
 ### Modified
 
 <!-- Phase 1: Domain Entities and Persistence -->
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Added the Strategies DbSet and EF Core entity configuration for Strategy.
-- src/TradingApp.Persistence/PersistenceServiceExtensions.cs: Registered IStrategyRepository in DI.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated the EF Core model snapshot to include Strategy.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Added the Strategies DbSet and EF Core entity configuration for Strategy.
+- src/TradePilot.Persistence/PersistenceServiceExtensions.cs: Registered IStrategyRepository in DI.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated the EF Core model snapshot to include Strategy.
 
 <!-- Phase 2: Backend CQRS Commands, Queries, and Controller -->
-- src/TradingApp.Api/Controllers/StrategiesController.cs: Replaced the validation-only stub with an ApiController-based CRUD controller while preserving POST /validate.
-- src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Mapped DuplicateStrategyNameException to HTTP 409 with the duplicate_name error code.
-- tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs: Extended controller integration coverage for create, list, get, update, delete, duplicate-name conflict, and not-found behavior, and isolated the tests onto a temporary SQLite database.
+- src/TradePilot.Api/Controllers/StrategiesController.cs: Replaced the validation-only stub with an ApiController-based CRUD controller while preserving POST /validate.
+- src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Mapped DuplicateStrategyNameException to HTTP 409 with the duplicate_name error code.
+- tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs: Extended controller integration coverage for create, list, get, update, delete, duplicate-name conflict, and not-found behavior, and isolated the tests onto a temporary SQLite database.
 
 <!-- Phase 3: Reference Data API -->
-- src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs: Added supported coin and timeframe accessors so the controller reuses existing Hyperliquid mapping infrastructure.
+- src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs: Added supported coin and timeframe accessors so the controller reuses existing Hyperliquid mapping infrastructure.
 
 <!-- Phase 4: Frontend Strategy Builder Components -->
 - frontend/trading-ui/src/app/app.routes.ts: Added lazy-loaded strategy builder routes for /strategies, /strategies/new, and /strategies/:id/edit.
@@ -125,31 +125,31 @@ Implements the F2 strategy builder experience across persistence, API, reference
 ## Test Results
 
 <!-- Phase 1: Domain Entities and Persistence -->
-- TradingApp.Domain.Tests: 30/30 passed
-- TradingApp.Application.Tests: 99/99 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Api.Tests: 148/148 passed
+- TradePilot.Domain.Tests: 30/30 passed
+- TradePilot.Application.Tests: 99/99 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Api.Tests: 148/148 passed
 - Full Test Suite: 348/348 passed
 - Architecture Tests: N/A - no architecture test project exists in this repository
 
 <!-- Phase 2: Backend CQRS Commands, Queries, and Controller -->
-- TradingApp.Api.Tests: 155/155 passed
-- TradingApp.Domain.Tests: 30/30 passed
-- TradingApp.Application.Tests: 99/99 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
+- TradePilot.Api.Tests: 155/155 passed
+- TradePilot.Domain.Tests: 30/30 passed
+- TradePilot.Application.Tests: 99/99 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
 - Architecture Tests: N/A - no architecture test project exists in this repository
 
 <!-- Phase 3: Reference Data API -->
 - ReferenceDataControllerTests: 1/1 passed
-- Build: PASSED via `dotnet build TradingApp.sln --nologo`
-- TradingApp.Domain.Tests: 30/30 passed
-- TradingApp.Application.Tests: 99/99 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Api.Tests: 156/156 passed
-- Full Test Suite: 356/356 passed via `dotnet test TradingApp.sln --no-build --logger "console;verbosity=minimal"`
+- Build: PASSED via `dotnet build TradePilot.sln --nologo`
+- TradePilot.Domain.Tests: 30/30 passed
+- TradePilot.Application.Tests: 99/99 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Api.Tests: 156/156 passed
+- Full Test Suite: 356/356 passed via `dotnet test TradePilot.sln --no-build --logger "console;verbosity=minimal"`
 - Architecture Tests: N/A - no architecture test project exists in this repository
 
 <!-- Phase 4: Frontend Strategy Builder Components -->
@@ -162,11 +162,11 @@ Implements the F2 strategy builder experience across persistence, API, reference
 - Angular Full Test Suite: 124/124 passed
 - Angular Build: PASSED with non-blocking warnings
 - Angular Lint: PASSED
-- TradingApp.Domain.Tests: 30/30 passed
-- TradingApp.Application.Tests: 99/99 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Api.Tests: 156/156 passed
+- TradePilot.Domain.Tests: 30/30 passed
+- TradePilot.Application.Tests: 99/99 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Api.Tests: 156/156 passed
 - Full .NET Test Suite: 356/356 passed
 - Architecture Tests: N/A - no architecture test project exists in this repository
 
@@ -224,13 +224,13 @@ Implements the F2 strategy builder experience across persistence, API, reference
 ## Review Hints
 
 <!-- Phase 1: Domain Entities and Persistence -->
-- Review the new migration and snapshot together first to confirm the filtered unique index and table shape match the `TradingAppDbContext` configuration.
+- Review the new migration and snapshot together first to confirm the filtered unique index and table shape match the `TradePilotDbContext` configuration.
 - Review the `Strategy` entity versioning behavior to confirm `Update()` increments `Version` and `SoftDelete()` preserves historical rows via `IsActive = false`.
 
 <!-- Phase 2: Backend CQRS Commands, Queries, and Controller -->
-- Review `src/TradingApp.Api/Controllers/StrategiesController.cs` together with the new CQRS files to confirm the endpoint status codes and tenant-scoped identity flow match the phase detail.
-- Review `src/TradingApp.Persistence/Migrations/20260402203000_AddStrategies.Designer.cs`, `src/TradingApp.Persistence/Migrations/20260402203000_AddStrategies.cs`, and `src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs` together to confirm migration discovery and target model consistency.
-- Review `tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs` for the test-host isolation approach and the new CRUD coverage assertions.
+- Review `src/TradePilot.Api/Controllers/StrategiesController.cs` together with the new CQRS files to confirm the endpoint status codes and tenant-scoped identity flow match the phase detail.
+- Review `src/TradePilot.Persistence/Migrations/20260402203000_AddStrategies.Designer.cs`, `src/TradePilot.Persistence/Migrations/20260402203000_AddStrategies.cs`, and `src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs` together to confirm migration discovery and target model consistency.
+- Review `tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs` for the test-host isolation approach and the new CRUD coverage assertions.
 
 <!-- Phase 3: Reference Data API -->
 - Review the `BTC-USD` mapping logic in `ReferenceDataController` together with the new accessor methods on `HyperliquidAssetMapper` to confirm the UI-facing contract stays decoupled from internal `-PERP` naming.

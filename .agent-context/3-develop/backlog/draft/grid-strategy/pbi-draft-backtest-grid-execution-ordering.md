@@ -80,11 +80,11 @@ This PBI is to capture the problem, document the current execution assumptions, 
 
 ### Relevant Components
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs`
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
-- `src/TradingApp.Application/Trading/Services/GridController.cs`
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs`
-- `src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs`
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
+- `src/TradePilot.Application/Trading/Services/GridController.cs`
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs`
+- `src/TradePilot.Application/Backtesting/GetBacktestDebugQuery.cs`
 
 ### Constraints
 

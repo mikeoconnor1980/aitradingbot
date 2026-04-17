@@ -74,11 +74,11 @@ As a result, the strategy behaves more like “enter on the first filled levels,
 
 ### Relevant Components
 
-- `src/TradingApp.Application/Trading/Services/GridController.cs`
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs`
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs`
-- `src/TradingApp.Application/Trading/Models/GridState.cs`
-- `src/TradingApp.Application/Trading/Models/GridLifecycle.cs`
+- `src/TradePilot.Application/Trading/Services/GridController.cs`
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs`
+- `src/TradePilot.Application/Trading/Models/GridState.cs`
+- `src/TradePilot.Application/Trading/Models/GridLifecycle.cs`
 
 ### Design Questions To Refine Later
 

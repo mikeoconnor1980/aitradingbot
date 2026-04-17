@@ -11,7 +11,7 @@ import { StrategyBuilderPageComponent } from "./strategy-builder-page.component"
 import { StrategyMapperService } from "./services/strategy-mapper.service";
 import { StrategyValidationService } from "./services/strategy-validation.service";
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 
 describe("StrategyBuilderPageComponent", () => {
   let fixture: ComponentFixture<StrategyBuilderPageComponent>;
@@ -104,8 +104,8 @@ describe("StrategyBuilderPageComponent", () => {
           }
         },
         {
-          provide: NotificationService,
-          useValue: jasmine.createSpyObj("NotificationService", ["success", "error"])
+          provide: NotificationFacade,
+          useValue: jasmine.createSpyObj("NotificationFacade", ["success", "error"])
         },
         {
           provide: HyperliquidApiService,

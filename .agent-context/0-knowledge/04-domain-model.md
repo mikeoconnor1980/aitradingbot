@@ -1,6 +1,6 @@
 # Domain Model
 
-This document describes the persisted domain entities that exist in the current codebase and the most important runtime concepts around them. It replaces the original aspirational model with the entities actually present in `TradingApp.Domain` and `TradingApp.Persistence`.
+This document describes the persisted domain entities that exist in the current codebase and the most important runtime concepts around them. It replaces the original aspirational model with the entities actually present in `TradePilot.Domain` and `TradePilot.Persistence`.
 
 ## Overview
 

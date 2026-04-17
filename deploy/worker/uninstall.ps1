@@ -1,17 +1,17 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Uninstalls the TradingApp Execution Agent Windows Service.
+    Uninstalls the TradePilot Execution Agent Windows Service.
 
 .DESCRIPTION
     Stops the service, removes the service registration, and optionally
     deletes the install directory and private key environment variable.
 
 .PARAMETER InstallDir
-    Installation directory. Defaults to C:\Program Files\TradingApp\ExecutionAgent
+    Installation directory. Defaults to C:\Program Files\TradePilot\ExecutionAgent
 
 .PARAMETER ServiceName
-    The Windows Service name. Defaults to TradingApp.ExecutionAgent
+    The Windows Service name. Defaults to TradePilot.ExecutionAgent
 
 .PARAMETER RemoveData
     Also delete the data directory (SQLite DB). Off by default to preserve trade history.
@@ -25,8 +25,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$InstallDir = "C:\Program Files\TradingApp\ExecutionAgent",
-    [string]$ServiceName = "TradingApp.ExecutionAgent",
+    [string]$InstallDir = "C:\Program Files\TradePilot\ExecutionAgent",
+    [string]$ServiceName = "TradePilot.ExecutionAgent",
     [switch]$RemoveData,
     [switch]$RemoveKey
 )
@@ -35,7 +35,7 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  TradingApp Execution Agent Uninstaller" -ForegroundColor Cyan
+Write-Host "  TradePilot Execution Agent Uninstaller" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

@@ -40,16 +40,16 @@ Serve the Market Data price chart from the local SQLite candle database instead 
 - `ICandleRepository.GetCandlesAsync(symbol, interval, startTime, endTime, source?)` already exists — no new repo methods needed
 - `CandleRepository` returns candles ordered by timestamp ascending — matches chart expectations
 - `PriceChartComponent` already has `prependCandles()` and `loadMoreCandles` event for infinite scroll — frontend pagination is already wired
-- `CandleDto` already exists in `TradingApp.Application.MarketData.Models` — reuse for the new endpoint
+- `CandleDto` already exists in `TradePilot.Application.MarketData.Models` — reuse for the new endpoint
 - The Candle entity uses `Symbol` (e.g., "BTC") while the API uses `Asset` (e.g., "BTC-PERP") — the handler must map between them (strip `-PERP` suffix)
 - `MarketDataController` inherits from `ApiController` which provides `Mediator` and `IdentityService`
 - Frontend `Candle` model matches `CandleDto` shape (timestamp, OHLCV)
 
 ### Project Patterns
 
-- `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` — Existing CQRS query pattern (sealed record + QueryHandler)
-- `src/TradingApp.Api/Controllers/MarketDataController.cs` — Controller pattern with MediatR dispatch
-- `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — Repository implementation pattern
+- `src/TradePilot.Application/MarketData/Queries/GetCandlesQuery.cs` — Existing CQRS query pattern (sealed record + QueryHandler)
+- `src/TradePilot.Api/Controllers/MarketDataController.cs` — Controller pattern with MediatR dispatch
+- `src/TradePilot.Persistence/Repositories/CandleRepository.cs` — Repository implementation pattern
 - `frontend/trading-ui/src/app/core/services/market-data.service.ts` — Angular service pattern with `ApiRestClient`
 
 ### [x] Phase 1: Backend — New CQRS Query & API Endpoint
@@ -106,9 +106,9 @@ Serve the Market Data price chart from the local SQLite candle database instead 
 
 ## Dependencies
 
-- `ICandleRepository` (exists in `TradingApp.Application.Abstractions.Repositories`)
-- `CandleDto` (exists in `TradingApp.Application.MarketData.Models`)
-- `Candle` entity (exists in `TradingApp.Domain.Entities`)
+- `ICandleRepository` (exists in `TradePilot.Application.Abstractions.Repositories`)
+- `CandleDto` (exists in `TradePilot.Application.MarketData.Models`)
+- `Candle` entity (exists in `TradePilot.Domain.Entities`)
 - `MarketDataController` (exists — adding new endpoint)
 - `MarketDataService` (exists — adding new method)
 - `MarketDataComponent` (exists — modifying candle loading logic)

@@ -38,16 +38,16 @@ flowchart LR
 
 | Component | Location | Purpose |
 |---|---|---|
-| `RunOptimizationCommand` | `src/TradingApp.Application/Optimization/RunOptimizationCommand.cs` | Validates the request, creates a queued run, and enqueues work |
-| `CancelOptimizationCommand` | `src/TradingApp.Application/Optimization/CancelOptimizationCommand.cs` | Cancels a queued or running optimization |
-| `OptimizationJobQueue` | `src/TradingApp.Application/Optimization/OptimizationJobQueue.cs` | Channel-backed queue of optimization jobs |
-| `OptimizationCancellationRegistry` | `src/TradingApp.Application/Optimization/OptimizationCancellationRegistry.cs` | Tracks per-run cancellation tokens |
-| `OptimizationProcessorService` | `src/TradingApp.Api/Services/OptimizationProcessorService.cs` | Hosted service that processes queued jobs and persists results |
-| `SweepRunner` | `src/TradingApp.Application/Optimization/Services/SweepRunner.cs` | Runs candidate generation, in-sample backtests, evolutionary generations, and OOS validation |
-| `EvolutionaryRunner` | `src/TradingApp.Application/Optimization/Services/EvolutionaryRunner.cs` | Breeds offspring from elite strategies using crossover and mutation |
-| `StrategyConfigGenerator` | `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` | Produces randomized signal-mode `StrategyConfig` candidates from parameter bounds |
-| `FitnessScorer` | `src/TradingApp.Application/Optimization/Services/FitnessScorer.cs` | Applies qualification thresholds and computes ranking scores plus Sharpe/Sortino/ProfitFactor/Calmar metrics |
-| `OptimizationsController` | `src/TradingApp.Api/Controllers/OptimizationsController.cs` | REST API for run, list, detail, and cancel operations |
+| `RunOptimizationCommand` | `src/TradePilot.Application/Optimization/RunOptimizationCommand.cs` | Validates the request, creates a queued run, and enqueues work |
+| `CancelOptimizationCommand` | `src/TradePilot.Application/Optimization/CancelOptimizationCommand.cs` | Cancels a queued or running optimization |
+| `OptimizationJobQueue` | `src/TradePilot.Application/Optimization/OptimizationJobQueue.cs` | Channel-backed queue of optimization jobs |
+| `OptimizationCancellationRegistry` | `src/TradePilot.Application/Optimization/OptimizationCancellationRegistry.cs` | Tracks per-run cancellation tokens |
+| `OptimizationProcessorService` | `src/TradePilot.Api/Services/OptimizationProcessorService.cs` | Hosted service that processes queued jobs and persists results |
+| `SweepRunner` | `src/TradePilot.Application/Optimization/Services/SweepRunner.cs` | Runs candidate generation, in-sample backtests, evolutionary generations, and OOS validation |
+| `EvolutionaryRunner` | `src/TradePilot.Application/Optimization/Services/EvolutionaryRunner.cs` | Breeds offspring from elite strategies using crossover and mutation |
+| `StrategyConfigGenerator` | `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` | Produces randomized signal-mode `StrategyConfig` candidates from parameter bounds |
+| `FitnessScorer` | `src/TradePilot.Application/Optimization/Services/FitnessScorer.cs` | Applies qualification thresholds and computes ranking scores plus Sharpe/Sortino/ProfitFactor/Calmar metrics |
+| `OptimizationsController` | `src/TradePilot.Api/Controllers/OptimizationsController.cs` | REST API for run, list, detail, and cancel operations |
 | `OptimizerService` | `frontend/trading-ui/src/app/core/services/optimizer.service.ts` | Angular API client for optimization endpoints |
 | `OptimizerPageComponent` | `frontend/trading-ui/src/app/features/optimizer/optimizer-page.component.ts` | Main optimizer page for submission, progress, results, and history |
 
@@ -135,7 +135,7 @@ The code comments explicitly dampen metric bonuses when trade counts are small, 
 
 ### `OptimizationRun`
 
-`src/TradingApp.Domain/Entities/OptimizationRun.cs`
+`src/TradePilot.Domain/Entities/OptimizationRun.cs`
 
 | Field Group | Notes |
 |---|---|
@@ -149,7 +149,7 @@ Current-state note: the entity tracks the optimization run itself, not a source 
 
 ### `OptimizationResult`
 
-`src/TradingApp.Domain/Entities/OptimizationResult.cs`
+`src/TradePilot.Domain/Entities/OptimizationResult.cs`
 
 | Field Group | Notes |
 |---|---|

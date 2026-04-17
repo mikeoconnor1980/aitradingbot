@@ -13,23 +13,23 @@ Implemented the backtest debug and audit log across the backtest engine, persist
 ### Added
 
 <!-- Phase 1: Audit Log Models & Collector Infrastructure -->
-- src/TradingApp.Application/Backtesting/Models/CandleEvaluationEntry.cs: Added the per-candle audit log entry model with OHLCV, indicators, setup result, position state, signals, and cycle context.
-- src/TradingApp.Application/Backtesting/Models/OrderEventEntry.cs: Added the order lifecycle audit log entry model including fill and cancellation metadata.
-- src/TradingApp.Application/Backtesting/Models/GridCycleEntry.cs: Added the completed grid cycle summary model for audit serialization.
-- src/TradingApp.Application/Backtesting/Models/OrderEventType.cs: Added order event classification enum values.
-- src/TradingApp.Application/Backtesting/Models/CancellationReason.cs: Added cancellation reason enum values.
-- src/TradingApp.Application/Backtesting/Services/IBacktestAuditCollector.cs: Added the audit collector abstraction for candle, order, and grid-cycle logging.
-- src/TradingApp.Application/Backtesting/Services/BacktestAuditCollector.cs: Added the active in-memory collector implementation using thread-safe queues and snapshot accessors.
-- src/TradingApp.Application/Backtesting/Services/NullBacktestAuditCollector.cs: Added the singleton no-op collector for disabled/live usage.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestAuditCollectorTests.cs: Added targeted unit coverage for entry capture, ordering, null guards, and null-collector behavior.
+- src/TradePilot.Application/Backtesting/Models/CandleEvaluationEntry.cs: Added the per-candle audit log entry model with OHLCV, indicators, setup result, position state, signals, and cycle context.
+- src/TradePilot.Application/Backtesting/Models/OrderEventEntry.cs: Added the order lifecycle audit log entry model including fill and cancellation metadata.
+- src/TradePilot.Application/Backtesting/Models/GridCycleEntry.cs: Added the completed grid cycle summary model for audit serialization.
+- src/TradePilot.Application/Backtesting/Models/OrderEventType.cs: Added order event classification enum values.
+- src/TradePilot.Application/Backtesting/Models/CancellationReason.cs: Added cancellation reason enum values.
+- src/TradePilot.Application/Backtesting/Services/IBacktestAuditCollector.cs: Added the audit collector abstraction for candle, order, and grid-cycle logging.
+- src/TradePilot.Application/Backtesting/Services/BacktestAuditCollector.cs: Added the active in-memory collector implementation using thread-safe queues and snapshot accessors.
+- src/TradePilot.Application/Backtesting/Services/NullBacktestAuditCollector.cs: Added the singleton no-op collector for disabled/live usage.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestAuditCollectorTests.cs: Added targeted unit coverage for entry capture, ordering, null guards, and null-collector behavior.
 
 <!-- Phase 2: Entity, Persistence & Migration -->
-- src/TradingApp.Persistence/Migrations/20260329093813_AddAuditLogToBacktestRun.cs: Added the EF Core migration that creates the four audit-log columns on BacktestRuns.
-- src/TradingApp.Persistence/Migrations/20260329093813_AddAuditLogToBacktestRun.Designer.cs: Added the generated EF Core designer metadata for the new migration.
+- src/TradePilot.Persistence/Migrations/20260329093813_AddAuditLogToBacktestRun.cs: Added the EF Core migration that creates the four audit-log columns on BacktestRuns.
+- src/TradePilot.Persistence/Migrations/20260329093813_AddAuditLogToBacktestRun.Designer.cs: Added the generated EF Core designer metadata for the new migration.
 
 <!-- Phase 4: API Endpoint & CQRS Query -->
-- src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs: Added the CQRS query and handler that loads a backtest run, deserializes audit blobs, filters them by cycle ID, and returns nullable debug data.
-- src/TradingApp.Application/Backtesting/Models/BacktestDebugResponse.cs: Added the debug endpoint response DTO that wraps filtered candle evaluations, order events, and the grid cycle summary.
+- src/TradePilot.Application/Backtesting/GetBacktestDebugQuery.cs: Added the CQRS query and handler that loads a backtest run, deserializes audit blobs, filters them by cycle ID, and returns nullable debug data.
+- src/TradePilot.Application/Backtesting/Models/BacktestDebugResponse.cs: Added the debug endpoint response DTO that wraps filtered candle evaluations, order events, and the grid cycle summary.
 
 <!-- Phase 5: Frontend - Expandable Debug Panel -->
 - frontend/trading-ui/src/app/core/models/backtest-debug.model.ts: Added frontend DTOs and enums for backtest debug payloads.
@@ -37,38 +37,38 @@ Implemented the backtest debug and audit log across the backtest engine, persist
 ### Modified
 
 <!-- Phase 1: Audit Log Models & Collector Infrastructure -->
-- src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs: Added EnableAuditLog with a default value of true.
+- src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs: Added EnableAuditLog with a default value of true.
 
 <!-- Phase 2: Entity, Persistence & Migration -->
-- src/TradingApp.Domain/Entities/BacktestRun.cs: Added audit-log fields and extended factory and completion methods with backward-compatible optional parameters.
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Added EF Core property mappings for the new BacktestRun audit-log columns.
-- src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs: Added JSON serializers for candle, order-event, and grid-cycle audit logs.
-- tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs: Added persistence coverage for enabled and disabled audit-log storage scenarios.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated the EF Core snapshot to include the new BacktestRun columns.
+- src/TradePilot.Domain/Entities/BacktestRun.cs: Added audit-log fields and extended factory and completion methods with backward-compatible optional parameters.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Added EF Core property mappings for the new BacktestRun audit-log columns.
+- src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs: Added JSON serializers for candle, order-event, and grid-cycle audit logs.
+- tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs: Added persistence coverage for enabled and disabled audit-log storage scenarios.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated the EF Core snapshot to include the new BacktestRun columns.
 
 <!-- Phase 3: Pipeline Integration -->
-- src/TradingApp.Application/Trading/Models/OrderRequest.cs: Added optional GridCycleId so simulated orders and fills retain cycle identity end to end.
-- src/TradingApp.Application/Backtesting/Models/SimulatedOrder.cs: Added GridCycleId to persisted in-memory open orders.
-- src/TradingApp.Application/Backtesting/Models/SimulatedFill.cs: Added GridCycleId to fill records for accurate audit and trade association.
-- src/TradingApp.Application/Backtesting/BacktestExecutionContextAccessor.cs: Added CurrentTimestampUtc so order audit events use simulated candle time.
-- src/TradingApp.Application/Scheduling/StrategyScheduler.cs: Added optional audit collector dependency and per-candle evaluation logging.
-- src/TradingApp.Application/Trading/Services/GridController.cs: Propagated gridCycleId in DeployGrid and TakeProfit signal parameters.
-- src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs: Logged placed and cancelled order events with cancellation reasons and cycle IDs.
-- src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Carried GridCycleId into simulated orders and fills and returned snapshot open-order lists.
-- src/TradingApp.Application/Backtesting/Models/BacktestResult.cs: Added nullable candle, order-event, and grid-cycle audit payload properties.
-- src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs: Created and wired the collector, logged warmup and fill events, tracked completed grid cycles, and returned audit data with the result.
-- src/TradingApp.Api/Services/BacktestProcessorService.cs: Persisted serialized audit JSON and passed AuditLogEnabled into BacktestConfig.
-- src/TradingApp.Application/Backtesting/Models/BacktestTradeResponse.cs: Added GridCycleId to API trade responses.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs: Added HasAuditLog to backtest run responses.
-- src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs: Mapped GridCycleId on trades and HasAuditLog on runs.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Added audit-disabled verification and updated config helper support.
-- tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Added end-to-end audit-enabled coverage for warmup, order-event, and grid-cycle capture.
+- src/TradePilot.Application/Trading/Models/OrderRequest.cs: Added optional GridCycleId so simulated orders and fills retain cycle identity end to end.
+- src/TradePilot.Application/Backtesting/Models/SimulatedOrder.cs: Added GridCycleId to persisted in-memory open orders.
+- src/TradePilot.Application/Backtesting/Models/SimulatedFill.cs: Added GridCycleId to fill records for accurate audit and trade association.
+- src/TradePilot.Application/Backtesting/BacktestExecutionContextAccessor.cs: Added CurrentTimestampUtc so order audit events use simulated candle time.
+- src/TradePilot.Application/Scheduling/StrategyScheduler.cs: Added optional audit collector dependency and per-candle evaluation logging.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Propagated gridCycleId in DeployGrid and TakeProfit signal parameters.
+- src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs: Logged placed and cancelled order events with cancellation reasons and cycle IDs.
+- src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Carried GridCycleId into simulated orders and fills and returned snapshot open-order lists.
+- src/TradePilot.Application/Backtesting/Models/BacktestResult.cs: Added nullable candle, order-event, and grid-cycle audit payload properties.
+- src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs: Created and wired the collector, logged warmup and fill events, tracked completed grid cycles, and returned audit data with the result.
+- src/TradePilot.Api/Services/BacktestProcessorService.cs: Persisted serialized audit JSON and passed AuditLogEnabled into BacktestConfig.
+- src/TradePilot.Application/Backtesting/Models/BacktestTradeResponse.cs: Added GridCycleId to API trade responses.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs: Added HasAuditLog to backtest run responses.
+- src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs: Mapped GridCycleId on trades and HasAuditLog on runs.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Added audit-disabled verification and updated config helper support.
+- tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Added end-to-end audit-enabled coverage for warmup, order-event, and grid-cycle capture.
 
 <!-- Phase 4: API Endpoint & CQRS Query -->
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Added GET /api/backtests/{id}/debug and passed EnableAuditLog through the run command.
-- src/TradingApp.Api/Models/RunBacktestRequest.cs: Added EnableAuditLog with a default value of true.
-- src/TradingApp.Application/Backtesting/RunBacktestCommand.cs: Extended the command record and queued run creation flow to carry the audit-log flag.
-- tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs: Added controller coverage for debug endpoint success, no-content, and not-found behavior, plus request flag verification.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Added GET /api/backtests/{id}/debug and passed EnableAuditLog through the run command.
+- src/TradePilot.Api/Models/RunBacktestRequest.cs: Added EnableAuditLog with a default value of true.
+- src/TradePilot.Application/Backtesting/RunBacktestCommand.cs: Extended the command record and queued run creation flow to carry the audit-log flag.
+- tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs: Added controller coverage for debug endpoint success, no-content, and not-found behavior, plus request flag verification.
 
 <!-- Phase 5: Frontend - Expandable Debug Panel -->
 - frontend/trading-ui/src/app/core/models/backtest.model.ts: Added audit-log awareness to backtest result and trade models.
@@ -104,15 +104,15 @@ Implemented the backtest debug and audit log across the backtest engine, persist
 
 <!-- Phase 2: Entity, Persistence & Migration -->
 - BacktestRunRepositoryTests: 4/4 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Application.Tests: 59/59 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Application.Tests: 59/59 passed
 - Architecture Tests: Not applicable — no architecture test project exists for this phase
 - EF database update verification: PASSED
 
 <!-- Phase 3: Pipeline Integration -->
 - BacktestRunnerTests + RealBacktestRunnerTests filtered scope: 11/11 passed
-- TradingApp.Application.Tests: 61/61 passed
-- TradingApp.Api.Tests: 123/123 passed
+- TradePilot.Application.Tests: 61/61 passed
+- TradePilot.Api.Tests: 123/123 passed
 - Architecture Tests: Not applicable — no architecture test project exists in this repository
 
 <!-- Phase 4: API Endpoint & CQRS Query -->
@@ -127,15 +127,15 @@ Implemented the backtest debug and audit log across the backtest engine, persist
 ## Issues
 
 <!-- Phase 1: Audit Log Models & Collector Infrastructure -->
-- The dedicated test runner did not resolve the single test file path, so the phase used dotnet test tests/TradingApp.Application.Tests --filter "FullyQualifiedName~BacktestAuditCollectorTests" instead. The tests passed.
-- dotnet restore emitted an existing NU1903 warning for AutoMapper 12.0.1 in TradingApp.Application.csproj. This did not block the phase and was not introduced by these changes.
+- The dedicated test runner did not resolve the single test file path, so the phase used dotnet test tests/TradePilot.Application.Tests --filter "FullyQualifiedName~BacktestAuditCollectorTests" instead. The tests passed.
+- dotnet restore emitted an existing NU1903 warning for AutoMapper 12.0.1 in TradePilot.Application.csproj. This did not block the phase and was not introduced by these changes.
 
 <!-- Phase 2: Entity, Persistence & Migration -->
-- dotnet ef migrations add failed when using src/TradingApp.Api as the startup project because that project does not reference Microsoft.EntityFrameworkCore.Design. Resolved by using src/TradingApp.Persistence as the startup project, which already has the required design-time tooling and factory.
+- dotnet ef migrations add failed when using src/TradePilot.Api as the startup project because that project does not reference Microsoft.EntityFrameworkCore.Design. Resolved by using src/TradePilot.Persistence as the startup project, which already has the required design-time tooling and factory.
 - dotnet ef database update initially failed because the design-time SQLite path was relative to the EF tooling execution location. Resolved by running the update with an explicit absolute connection string to the repository database.
 
 <!-- Phase 3: Pipeline Integration -->
-- Initial compile failure in src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs from null-coalescing two different concrete collector types. Resolved by assigning through IBacktestAuditCollector.
+- Initial compile failure in src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs from null-coalescing two different concrete collector types. Resolved by assigning through IBacktestAuditCollector.
 - Initial integration failure where a closed cycle could be redeployed on the same candle before counting or logging, producing an empty grid-cycle audit log. Resolved by capturing closed-cycle completion immediately after fill processing, before scheduler execution.
 - First API test invocation failed with an MSBuild host access-denied error during restore or node shutdown. Resolved by rerunning with single-process settings using /nodeReuse:false and -m:1.
 - Existing NU1903 warning for AutoMapper 12.0.1 still appears during test runs. It was not introduced by this phase.
@@ -151,8 +151,8 @@ Implemented the backtest debug and audit log across the backtest engine, persist
 ## Design Decisions
 
 <!-- Phase 1: Audit Log Models & Collector Infrastructure -->
-- Used ConcurrentQueue in src/TradingApp.Application/Backtesting/Services/BacktestAuditCollector.cs to keep insertion order while providing thread-safe in-memory collection.
-- Kept src/TradingApp.Application/Backtesting/Services/NullBacktestAuditCollector.cs as a singleton with a private constructor to reinforce the null-object pattern and avoid unnecessary allocations.
+- Used ConcurrentQueue in src/TradePilot.Application/Backtesting/Services/BacktestAuditCollector.cs to keep insertion order while providing thread-safe in-memory collection.
+- Kept src/TradePilot.Application/Backtesting/Services/NullBacktestAuditCollector.cs as a singleton with a private constructor to reinforce the null-object pattern and avoid unnecessary allocations.
 
 <!-- Phase 2: Entity, Persistence & Migration -->
 - Kept new BacktestRun factory and MarkCompleted parameters optional where appropriate so existing call sites remain source-compatible until later phases wire real audit payloads through the pipeline.
@@ -182,11 +182,11 @@ Implemented the backtest debug and audit log across the backtest engine, persist
 - Review the default behavior choice on CreateQueued and Create, which currently defaults auditLogEnabled to true per the phase details; Phase 4 needs to ensure the request DTO controls that value end to end.
 
 <!-- Phase 3: Pipeline Integration -->
-- Review the cancellation-reason mapping in src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs, especially the stop-loss detection branch that infers StopLossTriggered from signal reason text.
-- Review the grid-cycle summary values in src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs, particularly the fallback behavior for StopLossPrice and TakeProfitPrice when the cycle closes without a tracked resting limit order.
+- Review the cancellation-reason mapping in src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs, especially the stop-loss detection branch that infers StopLossTriggered from signal reason text.
+- Review the grid-cycle summary values in src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs, particularly the fallback behavior for StopLossPrice and TakeProfitPrice when the cycle closes without a tracked resting limit order.
 
 <!-- Phase 4: API Endpoint & CQRS Query -->
-- Review the debug query’s current full-blob deserialization approach in src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs if audit payload sizes grow significantly; it is correct for this phase but intentionally in-memory filtered.
+- Review the debug query’s current full-blob deserialization approach in src/TradePilot.Application/Backtesting/GetBacktestDebugQuery.cs if audit payload sizes grow significantly; it is correct for this phase but intentionally in-memory filtered.
 
 <!-- Phase 5: Frontend - Expandable Debug Panel -->
 - Review the UX around duplicate trades sharing the same gridCycleId; debug data is cached per cycle while expansion state is tracked per row, which avoids duplicate fetches but still allows repeated views of the same cycle.

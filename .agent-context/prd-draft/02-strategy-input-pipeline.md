@@ -188,13 +188,13 @@ UI Selectors / Natural Language / Pine Script Import
 
 ### Architecture
 
-The strategy authoring pipeline introduces a new vertical slice within the existing clean architecture. All new services live in `TradingApp.Application`; no changes to `TradingApp.Domain` entities are required unless the `StrategyConfig` storage model changes.
+The strategy authoring pipeline introduces a new vertical slice within the existing clean architecture. All new services live in `TradePilot.Application`; no changes to `TradePilot.Domain` entities are required unless the `StrategyConfig` storage model changes.
 
 ```
-TradingApp.Api
+TradePilot.Api
   └─ Controllers/StrategyAuthoringController  (new — receives UI/NL/Pine input)
 
-TradingApp.Application
+TradePilot.Application
   ├─ StrategyAuthoring/
   │   ├─ Ast/                   (AST node types — internal, not persisted)
   │   ├─ Models/                (StrategyIntentDto, CanonicalStrategyJson)
@@ -211,12 +211,12 @@ TradingApp.Application
       └─ Repositories/
           └─ IStrategyRepository            (extended — revision history, source metadata)
 
-TradingApp.Infrastructure
+TradePilot.Infrastructure
   └─ Services/
       └─ LlmStrategyInterpreter            (Phase 2 — implements INaturalLanguageStrategyInterpreter)
       └─ PineImportSidecarClient            (Phase 3 — HTTP client to Python sidecar)
 
-TradingApp.Persistence
+TradePilot.Persistence
   └─ Repositories/
       └─ StrategyRepository                 (extended — canonical JSON + revision storage)
 ```

@@ -31,11 +31,11 @@ My current classification is:
 
 Relevant code:
 
-- `src/TradingApp.Worker/Program.cs`
-- `src/TradingApp.Worker/Services/TradingSession.cs`
-- `src/TradingApp.Worker/Services/AgentCheckInService.cs`
-- `src/TradingApp.Worker/Services/HealthMonitorService.cs`
-- `src/TradingApp.Worker/Services/UpdateCheckerService.cs`
+- `src/TradePilot.Worker/Program.cs`
+- `src/TradePilot.Worker/Services/TradingSession.cs`
+- `src/TradePilot.Worker/Services/AgentCheckInService.cs`
+- `src/TradePilot.Worker/Services/HealthMonitorService.cs`
+- `src/TradePilot.Worker/Services/UpdateCheckerService.cs`
 
 This is no longer an empty Worker shell.
 
@@ -55,9 +55,9 @@ That is the most important change since the last review.
 
 Relevant code:
 
-- `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs`
-- `src/TradingApp.Application/Trading/Services/LivePositionManager.cs`
-- `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs`
+- `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs`
+- `src/TradePilot.Application/Trading/Services/LivePositionManager.cs`
+- `src/TradePilot.Infrastructure/Services/LiveExecutionEngine.cs`
 
 The live path is no longer just architectural intent.
 
@@ -74,10 +74,10 @@ The live path is no longer just architectural intent.
 
 Relevant code:
 
-- `src/TradingApp.Application/Trading/Services/StateRecoveryService.cs`
-- `src/TradingApp.Application/Trading/Services/FillProcessor.cs`
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs`
-- `src/TradingApp.Worker/Services/TradingSession.cs`
+- `src/TradePilot.Application/Trading/Services/StateRecoveryService.cs`
+- `src/TradePilot.Application/Trading/Services/FillProcessor.cs`
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs`
+- `src/TradePilot.Worker/Services/TradingSession.cs`
 
 This is one of the strongest improvements in the repository.
 
@@ -96,10 +96,10 @@ That materially improves restart safety and reduces the risk of blind re-entry a
 
 Relevant code:
 
-- `src/TradingApp.Api/Program.cs`
-- `src/TradingApp.Api/Controllers/AuthController.cs`
-- `src/TradingApp.Api/Infrastructure/IdentityService.cs`
-- `src/TradingApp.Infrastructure/Services/JwtTokenService.cs`
+- `src/TradePilot.Api/Program.cs`
+- `src/TradePilot.Api/Controllers/AuthController.cs`
+- `src/TradePilot.Api/Infrastructure/IdentityService.cs`
+- `src/TradePilot.Infrastructure/Services/JwtTokenService.cs`
 
 The platform now has a real authentication layer:
 
@@ -146,9 +146,9 @@ This is no longer a narrow proof-of-concept UI.
 
 Relevant code:
 
-- `src/TradingApp.Application/Optimization/Services/SweepRunner.cs`
-- `src/TradingApp.Application/Optimization/Services/EvolutionaryRunner.cs`
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs`
+- `src/TradePilot.Application/Optimization/Services/SweepRunner.cs`
+- `src/TradePilot.Application/Optimization/Services/EvolutionaryRunner.cs`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs`
 
 The research side of the platform is now meaningfully deeper than in the earlier reviews.
 
@@ -165,9 +165,9 @@ That makes the application stronger as a research platform even before the live 
 
 Relevant code:
 
-- `src/TradingApp.Application/Trading/Services/LiveMarketContextBuilder.cs`
-- `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs`
-- `src/TradingApp.Api/Controllers/MarketContextController.cs`
+- `src/TradePilot.Application/Trading/Services/LiveMarketContextBuilder.cs`
+- `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs`
+- `src/TradePilot.Api/Controllers/MarketContextController.cs`
 
 The AI layer is no longer only presentational.
 
@@ -241,10 +241,10 @@ The recent development wave is not untested across the board.
 
 Relevant code:
 
-- `src/TradingApp.Application/Agent/Services/AgentCommandStore.cs`
-- `src/TradingApp.Application/Agent/Models/AgentInfo.cs`
-- `src/TradingApp.Api/Controllers/AgentController.cs`
-- `src/TradingApp.Api/Controllers/TradingController.cs`
+- `src/TradePilot.Application/Agent/Services/AgentCommandStore.cs`
+- `src/TradePilot.Application/Agent/Models/AgentInfo.cs`
+- `src/TradePilot.Api/Controllers/AgentController.cs`
+- `src/TradePilot.Api/Controllers/TradingController.cs`
 
 This is now the most important unresolved issue.
 
@@ -265,9 +265,9 @@ Why this matters:
 
 Relevant code:
 
-- `src/TradingApp.Api/Controllers/WalletController.cs`
-- `src/TradingApp.Api/Controllers/OrdersController.cs`
-- `src/TradingApp.Api/Services/HyperliquidExecutionEngine.cs`
+- `src/TradePilot.Api/Controllers/WalletController.cs`
+- `src/TradePilot.Api/Controllers/OrdersController.cs`
+- `src/TradePilot.Api/Services/HyperliquidExecutionEngine.cs`
 - `frontend/trading-ui/src/app/features/order-entry/order-entry.component.ts`
 - `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts`
 - `deploy/worker/README.md`
@@ -294,13 +294,13 @@ If Option C is the real direction, the API-side private-key upload and direct-or
 
 Relevant code:
 
-- `src/TradingApp.Api/Controllers/LiveTradingController.cs`
-- `src/TradingApp.Persistence/Repositories/LiveFillRepository.cs`
-- `src/TradingApp.Persistence/Repositories/GridCycleRepository.cs`
-- `src/TradingApp.Persistence/Repositories/LiveOrderRepository.cs`
-- `src/TradingApp.Domain/Entities/LiveFill.cs`
-- `src/TradingApp.Domain/Entities/GridCycle.cs`
-- `src/TradingApp.Domain/Entities/LiveOrder.cs`
+- `src/TradePilot.Api/Controllers/LiveTradingController.cs`
+- `src/TradePilot.Persistence/Repositories/LiveFillRepository.cs`
+- `src/TradePilot.Persistence/Repositories/GridCycleRepository.cs`
+- `src/TradePilot.Persistence/Repositories/LiveOrderRepository.cs`
+- `src/TradePilot.Domain/Entities/LiveFill.cs`
+- `src/TradePilot.Domain/Entities/GridCycle.cs`
+- `src/TradePilot.Domain/Entities/LiveOrder.cs`
 
 This is a concrete data-isolation problem.
 
@@ -317,8 +317,8 @@ That means the live-trading history surface does not currently match the repo's 
 
 Relevant code:
 
-- `src/TradingApp.Api/Program.cs`
-- `src/TradingApp.Infrastructure/Providers/MacroCalendar/StubMacroCalendarProvider.cs`
+- `src/TradePilot.Api/Program.cs`
+- `src/TradePilot.Infrastructure/Providers/MacroCalendar/StubMacroCalendarProvider.cs`
 
 The project now has macro-calendar UI and supporting abstractions, which is good.
 
@@ -330,8 +330,8 @@ That means one of the platform's more important contextual safety signals is not
 
 Relevant code:
 
-- `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs`
-- `src/TradingApp.Application/Trading/Services/LiveMarketContextBuilder.cs`
+- `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs`
+- `src/TradePilot.Application/Trading/Services/LiveMarketContextBuilder.cs`
 - `frontend/trading-ui/src/app/features/dashboard/market-context-card/market-context-card.component.ts`
 
 This is not a complaint about using the LLM boundary. The boundary is still directionally correct.
@@ -350,10 +350,10 @@ That creates a risk of "why is the system not entering?" confusion during operat
 
 Relevant code:
 
-- `src/TradingApp.Api/Controllers/AgentController.cs`
-- `src/TradingApp.Api/Controllers/TradingController.cs`
-- `src/TradingApp.Worker/Services/AgentCheckInService.cs`
-- `src/TradingApp.Worker/Services/AgentCheckInService.cs` (`AgentOptions`)
+- `src/TradePilot.Api/Controllers/AgentController.cs`
+- `src/TradePilot.Api/Controllers/TradingController.cs`
+- `src/TradePilot.Worker/Services/AgentCheckInService.cs`
+- `src/TradePilot.Worker/Services/AgentCheckInService.cs` (`AgentOptions`)
 
 The agent endpoints are protected with `[Authorize]`.
 
@@ -382,17 +382,17 @@ That means the current safety-critical gaps are concentrated in exactly the surf
 
 Validated during this review:
 
-- `dotnet test tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj --filter "LiveRiskEngineTests|LivePositionManagerTests|GridStrategyEngineRegimeTests|EvolutionaryRunnerTests"`
+- `dotnet test tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj --filter "LiveRiskEngineTests|LivePositionManagerTests|GridStrategyEngineRegimeTests|EvolutionaryRunnerTests"`
   - result: 42 tests passed
-- `dotnet test tests/TradingApp.Infrastructure.Tests/TradingApp.Infrastructure.Tests.csproj --filter "LiveExecutionEngineTests"`
+- `dotnet test tests/TradePilot.Infrastructure.Tests/TradePilot.Infrastructure.Tests.csproj --filter "LiveExecutionEngineTests"`
   - result: 8 tests passed
-- `dotnet test tests/TradingApp.Worker.Tests/TradingApp.Worker.Tests.csproj`
+- `dotnet test tests/TradePilot.Worker.Tests/TradePilot.Worker.Tests.csproj`
   - result: 15 tests passed
 
 Warnings observed during test execution:
 
-- duplicate `using TradingApp.Domain.Entities` in `src/TradingApp.Application/Trading/Services/LiveMarketContextBuilder.cs`
-- nullable warning in `tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs`
+- duplicate `using TradePilot.Domain.Entities` in `src/TradePilot.Application/Trading/Services/LiveMarketContextBuilder.cs`
+- nullable warning in `tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs`
 
 I did not run:
 

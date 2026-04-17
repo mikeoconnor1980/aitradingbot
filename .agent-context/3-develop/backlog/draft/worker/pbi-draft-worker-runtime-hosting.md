@@ -11,7 +11,7 @@ As a **platform operator**, I want to **have a long-running Worker process that 
 
 ### Business Value
 
-The live execution engine (PBI 1) provides the components — `HyperliquidExecutionEngine`, `CandleBuilder`, `MarketStateStore`. This PBI wires them together as hosted `BackgroundService`s in the `TradingApp.Worker` project, creating the runtime that keeps the trading system alive 24/7. This is the bridge from "strategies work in backtest" to "strategies trade real markets".
+The live execution engine (PBI 1) provides the components — `HyperliquidExecutionEngine`, `CandleBuilder`, `MarketStateStore`. This PBI wires them together as hosted `BackgroundService`s in the `TradePilot.Worker` project, creating the runtime that keeps the trading system alive 24/7. This is the bridge from "strategies work in backtest" to "strategies trade real markets".
 
 ---
 
@@ -24,7 +24,7 @@ The live execution engine (PBI 1) provides the components — `HyperliquidExecut
 - [ ] **Subscriber lifecycle management** — Load active subscribers on startup. Support dynamic reload when subscribers are activated/deactivated via the API (without requiring Worker restart). Maintain a registry of active subscriber contexts
 - [ ] **Indicator warmup on startup** — When the Worker starts (or a subscriber activates), load the last N candles from `ICandleRepository` and feed them through `IMarketContextBuilder.UpdateIndicators()` to seed indicator state before the first live candle triggers strategy evaluation
 - [ ] **Graceful shutdown** — On `CancellationToken` signal, complete any in-flight strategy evaluations before stopping. Do not leave orphaned orders
-- [ ] **Worker DI registration** — Wire all dependencies in `TradingApp.Worker/Program.cs`: persistence, infrastructure (WebSocket, REST client, signer), application services (strategy engine, grid controller, risk engine, position manager), and the two background services
+- [ ] **Worker DI registration** — Wire all dependencies in `TradePilot.Worker/Program.cs`: persistence, infrastructure (WebSocket, REST client, signer), application services (strategy engine, grid controller, risk engine, position manager), and the two background services
 
 ### Non-Functional Requirements
 
@@ -45,7 +45,7 @@ The live execution engine (PBI 1) provides the components — `HyperliquidExecut
 ### Architecture
 
 ```
-TradingApp.Worker
+TradePilot.Worker
 ├── Program.cs                              — DI composition root
 ├── Services/
 │   ├── MarketDataBackgroundService.cs      — WebSocket → CandleBuilder → CandleClock

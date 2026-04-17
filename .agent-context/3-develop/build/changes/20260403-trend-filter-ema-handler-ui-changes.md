@@ -16,12 +16,12 @@ Implements F7 across backend trend filter evaluation, price-vs-EMA condition han
 - None.
 
 <!-- Phase 2: TrendFilterEvaluator & PriceVsEmaConditionHandler -->
-- src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterResult.cs: Added the trend-filter evaluation result model with pass and fail factory helpers.
-- src/TradingApp.Application/StrategyAuthoring/Services/ITrendFilterEvaluator.cs: Added the trend-filter evaluator contract for signal-mode orchestration.
-- src/TradingApp.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs: Implemented EMA-cross, SMA-cross, and price-vs-EMA trend-filter evaluation.
-- src/TradingApp.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs: Implemented price-vs-EMA condition handling for near, above, below, touch, and cross operators.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Services/TrendFilterEvaluatorTests.cs: Added unit coverage for trend-filter evaluation paths and fail-closed behavior.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Services/PriceVsEmaConditionHandlerTests.cs: Added unit coverage for price-vs-EMA operators and failure paths.
+- src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterResult.cs: Added the trend-filter evaluation result model with pass and fail factory helpers.
+- src/TradePilot.Application/StrategyAuthoring/Services/ITrendFilterEvaluator.cs: Added the trend-filter evaluator contract for signal-mode orchestration.
+- src/TradePilot.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs: Implemented EMA-cross, SMA-cross, and price-vs-EMA trend-filter evaluation.
+- src/TradePilot.Application/StrategyAuthoring/Services/PriceVsEmaConditionHandler.cs: Implemented price-vs-EMA condition handling for near, above, below, touch, and cross operators.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Services/TrendFilterEvaluatorTests.cs: Added unit coverage for trend-filter evaluation paths and fail-closed behavior.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Services/PriceVsEmaConditionHandlerTests.cs: Added unit coverage for price-vs-EMA operators and failure paths.
 
 <!-- Phase 3: Frontend Trend Filter Card & Models -->
 - frontend/trading-ui/src/app/features/strategy-builder/enums/trend-filter-operator.enum.ts: Added trend-filter operator options and display-name helpers for the new card.
@@ -35,30 +35,30 @@ Implements F7 across backend trend filter evaluation, price-vs-EMA condition han
 ### Modified
 
 <!-- Phase 1: Backend Models & Infrastructure -->
-- src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterType.cs: Added SmaCross and PriceAboveEma trend filter types.
-- src/TradingApp.Application/StrategyAuthoring/Models/TrendOperator.cs: Added cross and directional operators needed by new trend filters.
-- src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterConfig.cs: Added nullable Period support for single-period trend filters.
-- src/TradingApp.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs: Added DistanceType and DistanceValue fields for near-EMA conditions.
-- src/TradingApp.Application/Trading/Models/IndicatorContext.cs: Added SMA current and previous value storage and retrieval methods.
-- src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs: Added SMA indicator requirement handling and current and previous SMA calculations.
-- src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs: Extended extraction to include enabled trend filter EMA and SMA requirements with deduplication.
-- src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs: Added conditional trend filter validation and near-operator distance validation for PriceVsEmaParams.
-- tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs: Added SMA indicator context coverage.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs: Added trend filter extraction and deduplication coverage.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs: Added PriceAboveEma and PriceVsEma near-operator validation coverage.
-- tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs: Added SMA population coverage for backtest indicator context building.
+- src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterType.cs: Added SmaCross and PriceAboveEma trend filter types.
+- src/TradePilot.Application/StrategyAuthoring/Models/TrendOperator.cs: Added cross and directional operators needed by new trend filters.
+- src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterConfig.cs: Added nullable Period support for single-period trend filters.
+- src/TradePilot.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs: Added DistanceType and DistanceValue fields for near-EMA conditions.
+- src/TradePilot.Application/Trading/Models/IndicatorContext.cs: Added SMA current and previous value storage and retrieval methods.
+- src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs: Added SMA indicator requirement handling and current and previous SMA calculations.
+- src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs: Extended extraction to include enabled trend filter EMA and SMA requirements with deduplication.
+- src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs: Added conditional trend filter validation and near-operator distance validation for PriceVsEmaParams.
+- tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs: Added SMA indicator context coverage.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs: Added trend filter extraction and deduplication coverage.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs: Added PriceAboveEma and PriceVsEma near-operator validation coverage.
+- tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs: Added SMA population coverage for backtest indicator context building.
 
 <!-- Phase 2: TrendFilterEvaluator & PriceVsEmaConditionHandler -->
-- src/TradingApp.Application/Trading/Models/MarketContext.cs: Added previous-candle support so cross detection can use actual previous close data.
-- src/TradingApp.Application/Trading/Models/StrategyEvaluation.cs: Added TrendFilterPassed to carry trend-filter outcome through strategy evaluation.
-- src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs: Populates PreviousCandle during context construction for backtest signal evaluation.
-- src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs: Evaluates trend filters before signal conditions, gates failed setups, and propagates trend-filter status.
-- src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs: Removed the obsolete TREND_FILTER_NOT_EVALUATED placeholder info message.
-- src/TradingApp.Api/Program.cs: Registered PriceVsEmaConditionHandler and TrendFilterEvaluator in DI.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs: Added the new condition handler to the evaluator fixture and added price-vs-EMA coverage.
-- tests/TradingApp.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs: Updated constructor setup for the new dependency and added trend-filter gating assertions.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs: Updated validation expectations to reflect removal of the legacy info message.
-- tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Updated the backtest fixture to satisfy the new strategy-engine dependency graph.
+- src/TradePilot.Application/Trading/Models/MarketContext.cs: Added previous-candle support so cross detection can use actual previous close data.
+- src/TradePilot.Application/Trading/Models/StrategyEvaluation.cs: Added TrendFilterPassed to carry trend-filter outcome through strategy evaluation.
+- src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs: Populates PreviousCandle during context construction for backtest signal evaluation.
+- src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs: Evaluates trend filters before signal conditions, gates failed setups, and propagates trend-filter status.
+- src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs: Removed the obsolete TREND_FILTER_NOT_EVALUATED placeholder info message.
+- src/TradePilot.Api/Program.cs: Registered PriceVsEmaConditionHandler and TrendFilterEvaluator in DI.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs: Added the new condition handler to the evaluator fixture and added price-vs-EMA coverage.
+- tests/TradePilot.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs: Updated constructor setup for the new dependency and added trend-filter gating assertions.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs: Updated validation expectations to reflect removal of the legacy info message.
+- tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Updated the backtest fixture to satisfy the new strategy-engine dependency graph.
 
 <!-- Phase 3: Frontend Trend Filter Card & Models -->
 - frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts: Added trend-filter and price-vs-EMA frontend contracts and widened entry-condition params typing.
@@ -102,17 +102,17 @@ Implements F7 across backend trend filter evaluation, price-vs-EMA condition han
 ## Test Results
 
 <!-- Phase 1: Backend Models & Infrastructure -->
-- TradingApp.Application.Tests: 167/167 passed.
-- Architecture Tests: PASSED - TradingApp.Domain.Tests scope ran successfully at 46/46 passed.
+- TradePilot.Application.Tests: 167/167 passed.
+- Architecture Tests: PASSED - TradePilot.Domain.Tests scope ran successfully at 46/46 passed.
 
 <!-- Phase 2: TrendFilterEvaluator & PriceVsEmaConditionHandler -->
 - Solution Build Release: PASSED.
-- TradingApp.Application.Tests: 198/198 passed.
-- TradingApp.Domain.Tests: 46/46 passed.
-- TradingApp.Api.Tests: 182/182 passed.
-- TradingApp.Infrastructure.Tests: 59/59 passed.
-- TradingApp.Persistence.Tests: 28/28 passed.
-- TradingApp.Indicators.Tests: 33/33 passed.
+- TradePilot.Application.Tests: 198/198 passed.
+- TradePilot.Domain.Tests: 46/46 passed.
+- TradePilot.Api.Tests: 182/182 passed.
+- TradePilot.Infrastructure.Tests: 59/59 passed.
+- TradePilot.Persistence.Tests: 28/28 passed.
+- TradePilot.Indicators.Tests: 33/33 passed.
 - Architecture Tests: NOT RUN - not required by Phase 2.
 
 <!-- Phase 3: Frontend Trend Filter Card & Models -->
@@ -146,7 +146,7 @@ Implements F7 across backend trend filter evaluation, price-vs-EMA condition han
 
 <!-- Phase 1: Backend Models & Infrastructure -->
 - Kept enum serialization on the existing snake_case JsonStringEnumConverter configuration rather than adding type-specific converters.
-- Used TradingApp.Domain.Tests as the architecture verification step because the repository does not contain a dedicated architecture-test project.
+- Used TradePilot.Domain.Tests as the architecture verification step because the repository does not contain a dedicated architecture-test project.
 
 <!-- Phase 2: TrendFilterEvaluator & PriceVsEmaConditionHandler -->
 - Added PreviousCandle to MarketContext and populated it in BacktestMarketContextBuilder so price and EMA cross detection uses actual previous-close semantics instead of an approximation.
@@ -164,12 +164,12 @@ Implements F7 across backend trend filter evaluation, price-vs-EMA condition han
 ## Review Hints
 
 <!-- Phase 1: Backend Models & Infrastructure -->
-- Review src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs to confirm the existing EmaSingle extraction behavior is still the intended requirement shape.
-- Review src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs if later work requires strict insufficient-history semantics, because the new SMA helpers currently average the available window.
+- Review src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs to confirm the existing EmaSingle extraction behavior is still the intended requirement shape.
+- Review src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs if later work requires strict insufficient-history semantics, because the new SMA helpers currently average the available window.
 
 <!-- Phase 2: TrendFilterEvaluator & PriceVsEmaConditionHandler -->
-- Review src/TradingApp.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs to confirm the intentional fail-closed treatment of the legacy EmaSingle enum value is acceptable for existing persisted strategies.
-- Review src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs to confirm StrategyEvaluation is the correct boundary for propagating TrendFilterPassed to downstream consumers.
+- Review src/TradePilot.Application/StrategyAuthoring/Services/TrendFilterEvaluator.cs to confirm the intentional fail-closed treatment of the legacy EmaSingle enum value is acceptable for existing persisted strategies.
+- Review src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs to confirm StrategyEvaluation is the correct boundary for propagating TrendFilterPassed to downstream consumers.
 
 <!-- Phase 3: Frontend Trend Filter Card & Models -->
 - Review frontend/trading-ui/src/app/features/strategy-builder/components/trend-filter-card/trend-filter-card.component.ts to confirm the operator reset and control enable and disable behavior matches the intended UX when switching filter types.

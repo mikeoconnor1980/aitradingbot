@@ -2,24 +2,24 @@
 
 ## Solution Overview
 
-Solution entry point: `TradingApp.sln`
+Solution entry point: `TradePilot.sln`
 
 | Project | Role |
 |---------|------|
-| `TradingApp.Domain` | Core entities and domain rules |
-| `TradingApp.Application` | CQRS handlers, strategy pipeline abstractions, scheduling, macro calendar, optimization, and feature contracts |
-| `TradingApp.Infrastructure` | Auth, Hyperliquid, Binance, signing, SignalR publishing, and external integration implementations |
-| `TradingApp.Persistence` | EF Core context, migrations, and repository implementations |
-| `TradingApp.Api` | ASP.NET Core control plane host |
-| `TradingApp.AI` | LLM interpretation and review services |
-| `TradingApp.Indicators` | Standalone indicator calculation library used by Application services |
-| `TradingApp.Worker` | Builds the `TradingApp.ExecutionAgent` Windows Service for client-side live execution |
+| `TradePilot.Domain` | Core entities and domain rules |
+| `TradePilot.Application` | CQRS handlers, strategy pipeline abstractions, scheduling, macro calendar, optimization, and feature contracts |
+| `TradePilot.Infrastructure` | Auth, Hyperliquid, Binance, signing, SignalR publishing, and external integration implementations |
+| `TradePilot.Persistence` | EF Core context, migrations, and repository implementations |
+| `TradePilot.Api` | ASP.NET Core control plane host |
+| `TradePilot.AI` | LLM interpretation and review services |
+| `TradePilot.Indicators` | Standalone indicator calculation library used by Application services |
+| `TradePilot.Worker` | Builds the `TradePilot.ExecutionAgent` Windows Service for client-side live execution |
 
 The tenant boundary is enforced in the Domain, Application, Persistence, and API layers through `UserId`-scoped entities and repository access.
 
 ## Indicators Project
 
-`src/TradingApp.Indicators/` is now a first-class project in the solution.
+`src/TradePilot.Indicators/` is now a first-class project in the solution.
 
 It contains reusable technical indicator implementations including:
 
@@ -35,7 +35,7 @@ The project file currently has no external NuGet dependencies and is consumed as
 
 ## Application Layer
 
-`src/TradingApp.Application/` is organized by feature and by cross-cutting abstractions.
+`src/TradePilot.Application/` is organized by feature and by cross-cutting abstractions.
 
 ### Core folders
 
@@ -69,7 +69,7 @@ The project file currently has no external NuGet dependencies and is consumed as
 
 ## AI Layer
 
-`src/TradingApp.AI/` contains the LLM-facing implementation used by the control plane.
+`src/TradePilot.AI/` contains the LLM-facing implementation used by the control plane.
 
 | Area | Purpose |
 |------|---------|
@@ -83,7 +83,7 @@ The project file currently has no external NuGet dependencies and is consumed as
 
 ## Infrastructure Layer
 
-`src/TradingApp.Infrastructure/` holds concrete implementations that integrate the system with external APIs and platform services.
+`src/TradePilot.Infrastructure/` holds concrete implementations that integrate the system with external APIs and platform services.
 
 ### Service implementations
 
@@ -116,7 +116,7 @@ The project file currently has no external NuGet dependencies and is consumed as
 
 ## API Layer
 
-`src/TradingApp.Api/` is the browser-facing control plane.
+`src/TradePilot.Api/` is the browser-facing control plane.
 
 ### Controllers
 
@@ -175,15 +175,15 @@ The project file currently has no external NuGet dependencies and is consumed as
 
 ## Worker Host
 
-`src/TradingApp.Worker/` is not a generic backend worker. It produces the subscriber-side execution agent.
+`src/TradePilot.Worker/` is not a generic backend worker. It produces the subscriber-side execution agent.
 
-Important characteristics from `TradingApp.Worker.csproj`:
+Important characteristics from `TradePilot.Worker.csproj`:
 
-- `AssemblyName` is `TradingApp.ExecutionAgent`
+- `AssemblyName` is `TradePilot.ExecutionAgent`
 - Release publishes are single-file, self-contained, and `win-x64`
 - the service is intended to run as a Windows Service and is distributed through the installer pipeline
 
-Key worker services live under `src/TradingApp.Worker/Services/` and include:
+Key worker services live under `src/TradePilot.Worker/Services/` and include:
 
 - `AgentCheckInService`
 - `MarketDataStreamService`
@@ -195,15 +195,15 @@ Key worker services live under `src/TradingApp.Worker/Services/` and include:
 
 ## Persistence Layer
 
-`src/TradingApp.Persistence/` contains:
+`src/TradePilot.Persistence/` contains:
 
-- `TradingAppDbContext`
+- `TradePilotDbContext`
 - repository implementations
 - EF Core migrations
 - `PersistenceServiceExtensions` for registration and startup migration
 - `DesignTimeDbContextFactory` for tooling
 
-Repository contracts remain in `src/TradingApp.Application/Abstractions/Repositories/`, while implementations live in `src/TradingApp.Persistence/Repositories/`.
+Repository contracts remain in `src/TradePilot.Application/Abstractions/Repositories/`, while implementations live in `src/TradePilot.Persistence/Repositories/`.
 
 ## Frontend
 
@@ -245,6 +245,6 @@ The route map in `src/app/app.routes.ts` confirms that auth, strategy authoring,
 - Add a short ownership map showing which layer owns each major business capability.
 - Add a repository-level note for generated artifacts and deployment output directories.
 - Add a dedicated section for cross-project conventions such as DI composition roots, options binding, and tenant scoping.
-- Add a small dependency diagram showing how `TradingApp.Indicators`, `TradingApp.AI`, and the worker relate to the core application layers.
+- Add a small dependency diagram showing how `TradePilot.Indicators`, `TradePilot.AI`, and the worker relate to the core application layers.
 | Angular component | `frontend/trading-ui/src/app/features/market-data/market-data.component.ts` |
-| API integration test | `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` |
+| API integration test | `tests/TradePilot.Api.Tests/Controllers/MarketDataControllerTests.cs` |

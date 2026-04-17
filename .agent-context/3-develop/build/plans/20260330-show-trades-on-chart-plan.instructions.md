@@ -49,13 +49,13 @@ As a trader, I want to see my live fills displayed as markers on the main price 
 
 ### Project Patterns
 
-- src/TradingApp.Api/Controllers/AccountController.cs - fills endpoint (no asset param yet)
-- src/TradingApp.Api/Services/IHyperliquidAccountService.cs - service interface
-- src/TradingApp.Api/Services/HyperliquidAccountService.cs - 24h lookback, delegates to rest client
-- src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs - GetUserFillsAsync with Take(50)
-- src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs - ToCoin() helper
-- src/TradingApp.Application/MarketData/Models/FillEventDto.cs - fill DTO
-- src/TradingApp.Api/Services/UserEventStreamService.cs - SignalR fill broadcast
+- src/TradePilot.Api/Controllers/AccountController.cs - fills endpoint (no asset param yet)
+- src/TradePilot.Api/Services/IHyperliquidAccountService.cs - service interface
+- src/TradePilot.Api/Services/HyperliquidAccountService.cs - 24h lookback, delegates to rest client
+- src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs - GetUserFillsAsync with Take(50)
+- src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs - ToCoin() helper
+- src/TradePilot.Application/MarketData/Models/FillEventDto.cs - fill DTO
+- src/TradePilot.Api/Services/UserEventStreamService.cs - SignalR fill broadcast
 - frontend/trading-ui/src/app/features/backtesting/cycle-chart/cycle-chart.component.ts - canonical createSeriesMarkers pattern
 - frontend/trading-ui/src/app/features/market-data/price-chart/price-chart.component.ts - main chart (no markers yet)
 - frontend/trading-ui/src/app/features/market-data/market-data.component.ts - host page
@@ -63,8 +63,8 @@ As a trader, I want to see my live fills displayed as markers on the main price 
 - frontend/trading-ui/src/app/core/services/signalr.service.ts - ReceiveFillEvent handler
 - frontend/trading-ui/src/app/core/services/hyperliquid-api.service.ts - getRecentFills() (no asset param)
 - frontend/trading-ui/src/app/core/models/fill-event.model.ts - FillEvent interface
-- tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs - fill endpoint tests
-- tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs - test base class
+- tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs - fill endpoint tests
+- tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs - test base class
 - frontend/trading-ui/src/app/features/backtesting/equity-chart/equity-chart.component.spec.ts - chart test pattern
 
 ### [x] Phase 1: Backend API Extension

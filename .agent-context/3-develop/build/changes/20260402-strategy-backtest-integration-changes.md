@@ -13,12 +13,12 @@ Implements strategy-linked backtesting across backend and frontend phases, inclu
 ### Added
 
 <!-- Phase 1: Backend — Domain, Persistence & Tests -->
-- src/TradingApp.Persistence/Migrations/20260403080004_AddStrategyLinkToBacktestRuns.cs: Added the EF Core migration for nullable BacktestRun strategy link columns and index.
-- src/TradingApp.Persistence/Migrations/20260403080004_AddStrategyLinkToBacktestRuns.Designer.cs: Added the generated EF migration designer metadata.
-- tests/TradingApp.Domain.Tests/Entities/BacktestRunTests.cs: Added domain coverage for CreateQueued strategy metadata behavior.
+- src/TradePilot.Persistence/Migrations/20260403080004_AddStrategyLinkToBacktestRuns.cs: Added the EF Core migration for nullable BacktestRun strategy link columns and index.
+- src/TradePilot.Persistence/Migrations/20260403080004_AddStrategyLinkToBacktestRuns.Designer.cs: Added the generated EF migration designer metadata.
+- tests/TradePilot.Domain.Tests/Entities/BacktestRunTests.cs: Added domain coverage for CreateQueued strategy metadata behavior.
 
 <!-- Phase 2: Backend — Application, API & Tests -->
-- src/TradingApp.Application/Backtesting/GetBacktestsByStrategyQuery.cs: Added the strategy-scoped backtest query and ownership-validating handler.
+- src/TradePilot.Application/Backtesting/GetBacktestsByStrategyQuery.cs: Added the strategy-scoped backtest query and ownership-validating handler.
 
 <!-- Phase 4: Frontend — Navigation & Backtest History -->
 - frontend/trading-ui/src/app/features/strategy-builder/components/strategy-backtest-history/strategy-backtest-history.component.ts: Added the standalone strategy-scoped backtest history component with revision grouping and navigation to saved results.
@@ -28,25 +28,25 @@ Implements strategy-linked backtesting across backend and frontend phases, inclu
 ### Modified
 
 <!-- Phase 1: Backend — Domain, Persistence & Tests -->
-- src/TradingApp.Domain/Entities/BacktestRun.cs: Added nullable StrategyId and StrategyRevisionId properties and extended CreateQueued to accept optional strategy metadata.
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Configured BacktestRun strategy link columns and added an index on StrategyId.
-- src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs: Added the strategy-scoped paged summary repository method contract.
-- src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs: Implemented strategy-scoped paged summary retrieval and projected strategy metadata.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs: Added nullable StrategyId, StrategyRevisionId, and StrategyName fields.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated the EF model snapshot for the new BacktestRun columns and index.
-- tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs: Added persistence coverage for strategy-scoped backtest summary queries.
+- src/TradePilot.Domain/Entities/BacktestRun.cs: Added nullable StrategyId and StrategyRevisionId properties and extended CreateQueued to accept optional strategy metadata.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Configured BacktestRun strategy link columns and added an index on StrategyId.
+- src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs: Added the strategy-scoped paged summary repository method contract.
+- src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs: Implemented strategy-scoped paged summary retrieval and projected strategy metadata.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs: Added nullable StrategyId, StrategyRevisionId, and StrategyName fields.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated the EF model snapshot for the new BacktestRun columns and index.
+- tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs: Added persistence coverage for strategy-scoped backtest summary queries.
 
 <!-- Phase 2: Backend — Application, API & Tests -->
-- src/TradingApp.Application/Backtesting/RunBacktestCommand.cs: Added optional strategy linkage to the command and resolved strategy revision metadata in the handler.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs: Added nullable strategy metadata fields to the backtest response model.
-- src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs: Mapped strategy id and revision id from BacktestRun into the response DTO.
-- src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs: Added strategy metadata to the global summary projection used by the backtest list.
-- src/TradingApp.Api/Models/RunBacktestRequest.cs: Added optional StrategyId and conditional validation so strategy-based POST requests bypass manual strategy-config requirements.
-- src/TradingApp.Api/Models/BacktestSummaryDto.cs: Added strategy id, revision id, and name fields to the API summary DTO.
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Added saved-strategy resolution for POST runs and API-layer strategy-name enrichment for the global list.
-- src/TradingApp.Api/Controllers/StrategiesController.cs: Added GET /api/strategies/{id}/backtests and strategy-name enrichment for the returned summaries.
-- tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs: Added controller coverage for strategy-linked backtest submission and adjusted test wiring for strategy repositories.
-- tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs: Added coverage for the strategy-scoped backtest history endpoint.
+- src/TradePilot.Application/Backtesting/RunBacktestCommand.cs: Added optional strategy linkage to the command and resolved strategy revision metadata in the handler.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs: Added nullable strategy metadata fields to the backtest response model.
+- src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs: Mapped strategy id and revision id from BacktestRun into the response DTO.
+- src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs: Added strategy metadata to the global summary projection used by the backtest list.
+- src/TradePilot.Api/Models/RunBacktestRequest.cs: Added optional StrategyId and conditional validation so strategy-based POST requests bypass manual strategy-config requirements.
+- src/TradePilot.Api/Models/BacktestSummaryDto.cs: Added strategy id, revision id, and name fields to the API summary DTO.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Added saved-strategy resolution for POST runs and API-layer strategy-name enrichment for the global list.
+- src/TradePilot.Api/Controllers/StrategiesController.cs: Added GET /api/strategies/{id}/backtests and strategy-name enrichment for the returned summaries.
+- tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs: Added controller coverage for strategy-linked backtest submission and adjusted test wiring for strategy repositories.
+- tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs: Added coverage for the strategy-scoped backtest history endpoint.
 
 <!-- Phase 3: Frontend — Strategy Picker & Backtest Form Refactor -->
 - frontend/trading-ui/src/app/core/models/backtest.model.ts: Added optional strategy-linked request and response fields for strategy-aware backtest flows.
@@ -80,15 +80,15 @@ Implements strategy-linked backtesting across backend and frontend phases, inclu
 ## Test Results
 
 <!-- Phase 1: Backend — Domain, Persistence & Tests -->
-- TradingApp.Domain.Tests: 46/46 passed
-- TradingApp.Persistence.Tests: 27/27 passed
+- TradePilot.Domain.Tests: 46/46 passed
+- TradePilot.Persistence.Tests: 27/27 passed
 - Focused file tests: 8/8 passed
 - Architecture Tests: NOT RUN — no separate architecture test suite or project was present in the workspace
 - Solution Build: PASSED
 
 <!-- Phase 2: Backend — Application, API & Tests -->
-- TradingApp.Api.Tests controller file scope: 96/96 passed
-- TradingApp.Api.Tests project: 175/175 passed
+- TradePilot.Api.Tests controller file scope: 96/96 passed
+- TradePilot.Api.Tests project: 175/175 passed
 - Architecture Tests: NOT RUN — no separate architecture test suite or project exists in the workspace
 - Solution Build: PASSED
 
@@ -105,13 +105,13 @@ Implements strategy-linked backtesting across backend and frontend phases, inclu
 ## Issues
 
 <!-- Phase 1: Backend — Domain, Persistence & Tests -->
-- The initial migration command using TradingApp.Api as the startup project failed because that project does not reference Microsoft.EntityFrameworkCore.Design. Resolved by generating the migration directly from TradingApp.Persistence using the existing design-time DbContext factory.
+- The initial migration command using TradePilot.Api as the startup project failed because that project does not reference Microsoft.EntityFrameworkCore.Design. Resolved by generating the migration directly from TradePilot.Persistence using the existing design-time DbContext factory.
 - The new persistence test initially failed to compile because a FluentAssertions expression used `is null` inside an expression tree. Resolved by replacing it with `== null`.
 
 <!-- Phase 2: Backend — Application, API & Tests -->
-- The initial verification failed because src/TradingApp.Api/Controllers/BacktestsController.cs referenced the Strategy entity without the domain namespace import. Resolved by adding the missing using and rerunning verification.
-- A follow-up build failure in tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs came from a missing import for BacktestSummaryDto. Resolved by adding the API model namespace.
-- Final build surfaced nullable warnings in tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs. Resolved with explicit null-checked local variables in the touched test setup.
+- The initial verification failed because src/TradePilot.Api/Controllers/BacktestsController.cs referenced the Strategy entity without the domain namespace import. Resolved by adding the missing using and rerunning verification.
+- A follow-up build failure in tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs came from a missing import for BacktestSummaryDto. Resolved by adding the API model namespace.
+- Final build surfaced nullable warnings in tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs. Resolved with explicit null-checked local variables in the touched test setup.
 
 <!-- Phase 3: Frontend — Strategy Picker & Backtest Form Refactor -->
 - The initial large backtest form refactor left duplicated legacy content appended in the component, template, styles, and spec files, which caused template and compile failures. Resolved by fully rewriting the affected files to a clean single-definition state and rerunning build and lint.
@@ -129,7 +129,7 @@ Implements strategy-linked backtesting across backend and frontend phases, inclu
 - Left StrategyName as a nullable summary field populated as null from persistence-layer queries, with API-layer enrichment deferred to a later phase.
 
 <!-- Phase 2: Backend — Application, API & Tests -->
-- Used conditional request validation in src/TradingApp.Api/Models/RunBacktestRequest.cs so manual runs still validate Symbol and Intervals, while strategy-based runs can omit inline strategy config entirely.
+- Used conditional request validation in src/TradePilot.Api/Models/RunBacktestRequest.cs so manual runs still validate Symbol and Intervals, while strategy-based runs can omit inline strategy config entirely.
 - Kept strategy-name enrichment in the API controllers instead of pushing it into persistence because the repository contract does not expose a batch strategy lookup and the plan explicitly placed name enrichment at the API layer.
 - Treated inactive strategies as not found for strategy-based execution and strategy-scoped history reads to stay aligned with existing strategy ownership and read behavior.
 
@@ -149,7 +149,7 @@ Implements strategy-linked backtesting across backend and frontend phases, inclu
 - Review whether any direct backtest creation flows using the synchronous BacktestRun.Create path should eventually capture strategy metadata as well.
 
 <!-- Phase 2: Backend — Application, API & Tests -->
-- Review the saved-strategy execution path in src/TradingApp.Api/Controllers/BacktestsController.cs: it currently derives the backtest symbol directly from StrategyConfig.Market, so if saved strategies use a different market format than the backtesting pipeline expects, that cross-feature mapping will need to be handled in a later phase.
+- Review the saved-strategy execution path in src/TradePilot.Api/Controllers/BacktestsController.cs: it currently derives the backtest symbol directly from StrategyConfig.Market, so if saved strategies use a different market format than the backtesting pipeline expects, that cross-feature mapping will need to be handled in a later phase.
 
 <!-- Phase 3: Frontend — Strategy Picker & Backtest Form Refactor -->
 - Review the strategy preview labels against the exact strategy-builder terminology, especially entry mode and position sizing formatting, since this phase intentionally presents a read-only summary rather than the full editable schema.

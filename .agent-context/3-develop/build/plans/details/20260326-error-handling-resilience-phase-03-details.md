@@ -25,7 +25,7 @@ After a successful WebSocket reconnection, call REST endpoints to resync open or
 - **Complexity**: Medium
 - **Risk Factors**: REST resync must not block the WebSocket receive loop. If REST resync fails, the WebSocket connection should still proceed (resync is best-effort). Must avoid duplicate SignalR broadcasts that could cause UI flicker.
 - **Files**:
-  - `src/TradingApp.Api/Services/MarketDataStreamService.cs` — Modify: add `ResyncStateFromRestAsync` method, call it after successful reconnection
+  - `src/TradePilot.Api/Services/MarketDataStreamService.cs` — Modify: add `ResyncStateFromRestAsync` method, call it after successful reconnection
 - **Success**:
   - After WebSocket reconnect, REST calls resync market stats (existing `SeedStatsFromRestAsync`)
   - After WebSocket reconnect, open orders and positions are fetched via `IHyperliquidAccountService` and broadcast via SignalR
@@ -38,7 +38,7 @@ After a successful WebSocket reconnection, call REST endpoints to resync open or
 First, `MarketDataStreamService` needs access to `IHyperliquidAccountService`. Since it's a singleton `BackgroundService`, use `IServiceScopeFactory` to create a scope for the scoped service:
 
 ```csharp
-// src/TradingApp.Api/Services/MarketDataStreamService.cs — modification
+// src/TradePilot.Api/Services/MarketDataStreamService.cs — modification
 
 // Add to constructor parameters and field:
 private readonly IServiceScopeFactory _scopeFactory;
@@ -62,7 +62,7 @@ public MarketDataStreamService(
 Add the resync method:
 
 ```csharp
-// src/TradingApp.Api/Services/MarketDataStreamService.cs — new method
+// src/TradePilot.Api/Services/MarketDataStreamService.cs — new method
 private async Task ResyncStateFromRestAsync(CancellationToken cancellationToken)
 {
     try
@@ -106,7 +106,7 @@ private async Task ResyncStateFromRestAsync(CancellationToken cancellationToken)
 Update the reconnect loop in `ExecuteAsync` to call resync:
 
 ```csharp
-// src/TradingApp.Api/Services/MarketDataStreamService.cs — modification to ExecuteAsync
+// src/TradePilot.Api/Services/MarketDataStreamService.cs — modification to ExecuteAsync
 // After successful WebSocket connection + subscription restore:
 // await _wsClient.ConnectAsync(stoppingToken);
 // await _wsClient.SubscribeToTradesAsync(TargetCoin, stoppingToken);
@@ -123,8 +123,8 @@ _retryCount = 0;
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` — Existing `SeedStatsFromRestAsync` and reconnect loop
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — `GetOpenOrdersAsync` and `GetPositionsAsync` methods
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` — Existing `SeedStatsFromRestAsync` and reconnect loop
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — `GetOpenOrdersAsync` and `GetPositionsAsync` methods
 
 ---
 
@@ -135,7 +135,7 @@ Emit the `WebSocketConnectionState.Reconnecting` state to SignalR clients before
 - **Complexity**: Low
 - **Risk Factors**: Minimal — this is an addition to the existing `ConnectionStatusDto` broadcast pattern
 - **Files**:
-  - `src/TradingApp.Api/Services/MarketDataStreamService.cs` — Modify: broadcast `Reconnecting` state before backoff delay
+  - `src/TradePilot.Api/Services/MarketDataStreamService.cs` — Modify: broadcast `Reconnecting` state before backoff delay
 - **Success**:
   - `ConnectionStatusDto` with `Status: "Reconnecting"` is broadcast on each retry attempt
   - Includes `RetryCount` and `Detail` with backoff duration
@@ -145,7 +145,7 @@ Emit the `WebSocketConnectionState.Reconnecting` state to SignalR clients before
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/MarketDataStreamService.cs — modification to ExecuteAsync
+// src/TradePilot.Api/Services/MarketDataStreamService.cs — modification to ExecuteAsync
 // In the reconnect loop, before the backoff delay:
 
 _retryCount++;
@@ -184,8 +184,8 @@ The broadcast uses inline `_hubContext.Clients.All.SendAsync("ReceiveConnectionS
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` — Existing inline `SendAsync("ReceiveConnectionStatus", new ConnectionStatusDto { ... })` pattern (see retry-exhaustion block at line ~115)
-- `src/TradingApp.Application/MarketData/Models/ConnectionStatusDto.cs` — `Source`, `Status`, `Detail`, `RetryCount` model
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` — Existing inline `SendAsync("ReceiveConnectionStatus", new ConnectionStatusDto { ... })` pattern (see retry-exhaustion block at line ~115)
+- `src/TradePilot.Application/MarketData/Models/ConnectionStatusDto.cs` — `Source`, `Status`, `Detail`, `RetryCount` model
 
 ---
 
@@ -196,7 +196,7 @@ Add tests verifying that REST resync is called after WebSocket reconnection and 
 - **Complexity**: Medium
 - **Risk Factors**: Testing async BackgroundService behaviour requires careful timing with cancellation tokens. The `IServiceScopeFactory` mock adds constructor complexity.
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs` — Modify: update `CreateService()` helper, add new test methods
+  - `tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs` — Modify: update `CreateService()` helper, add new test methods
 - **Success**:
   - Test verifies `GetOpenOrdersAsync` and `GetPositionsAsync` are called on reconnection
   - Test verifies `ReceiveOrdersResync` and `ReceivePositionsResync` SignalR messages are sent
@@ -207,7 +207,7 @@ Add tests verifying that REST resync is called after WebSocket reconnection and 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs — modifications
+// tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs — modifications
 
 // Add new mocks to test class:
 private readonly Mock<IServiceScopeFactory> _scopeFactoryMock = new();
@@ -297,7 +297,7 @@ public async Task GivenStreamService_WhenWebSocketReconnects_ThenResyncsOrdersAn
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs` — Existing BackgroundService test patterns with cancellation token timing
+- `tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs` — Existing BackgroundService test patterns with cancellation token timing
 
 ## Phase Success Criteria
 
@@ -305,5 +305,5 @@ public async Task GivenStreamService_WhenWebSocketReconnects_ThenResyncsOrdersAn
 - Resynced orders and positions are pushed to SignalR clients via `ReceiveOrdersResync` and `ReceivePositionsResync`
 - REST resync failure is logged as warning but does not prevent WebSocket operation
 - `Reconnecting` state is broadcast via SignalR before each backoff delay
-- `dotnet build TradingApp.sln` succeeds
+- `dotnet build TradePilot.sln` succeeds
 - `dotnet test` passes for all projects

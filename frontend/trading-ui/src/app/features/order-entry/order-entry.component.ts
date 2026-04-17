@@ -19,7 +19,7 @@ import { Position } from "../../core/models/position.model";
 import { TradableAsset } from "../../core/models/tradable-asset.model";
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
 import { MarketDataService } from "../../core/services/market-data.service";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { OrderService } from "../../core/services/order.service";
 import { AgentInfo, AgentService } from "../../core/services/agent.service";
 import { SignalRService } from "../../core/services/signalr.service";
@@ -65,7 +65,7 @@ export class OrderEntryComponent implements OnInit {
   private readonly _marketDataService = inject(MarketDataService);
   private readonly _signalRService = inject(SignalRService);
   private readonly _dialog = inject(MatDialog);
-  private readonly _notifications = inject(NotificationService);
+  private readonly _notifications = inject(NotificationFacade);
   private readonly _destroyRef = inject(DestroyRef);
 
   public orderForm!: FormGroup<OrderEntryForm>;

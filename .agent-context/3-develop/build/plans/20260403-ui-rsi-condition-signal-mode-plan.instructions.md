@@ -47,7 +47,7 @@ Enable signal mode in the Strategy Builder UI by unlocking the entry conditions 
 
 ### Discovery References
 
-- Backend models fully implemented (F5): `StrategyMode`, `EntryConditionConfig`, `RsiParams`, `EntryConditionType`, `EntryLogic` in `src/TradingApp.Application/StrategyAuthoring/Models/`
+- Backend models fully implemented (F5): `StrategyMode`, `EntryConditionConfig`, `RsiParams`, `EntryConditionType`, `EntryLogic` in `src/TradePilot.Application/StrategyAuthoring/Models/`
 - Server-side validation already enforces: signal mode requires non-empty `entryConditions` + `entryLogic`; RSI period > 0, value 0–100
 - RSI operators are string literals (not enum): `lt`, `lte`, `gt`, `gte`, `cross_above`, `cross_below`
 - `EntryLogic` enum: `All` | `Any` — required for signal mode
@@ -63,7 +63,7 @@ Enable signal mode in the Strategy Builder UI by unlocking the entry conditions 
 - `frontend/trading-ui/src/app/features/strategy-builder/services/strategy-validation.service.ts` — Client-side validation (currently grid-only)
 - `frontend/trading-ui/src/app/features/strategy-builder/components/preview-summary-card/preview-summary-card.component.ts` — Preview text generation (currently grid-only)
 - `frontend/trading-ui/src/app/features/strategy-builder/components/entry-conditions-card/entry-conditions-card.component.ts` — Empty stub to transform
-- `src/TradingApp.Application/StrategyAuthoring/Models/RsiParams.cs` — Backend RSI params model (source of truth for field names/ranges)
+- `src/TradePilot.Application/StrategyAuthoring/Models/RsiParams.cs` — Backend RSI params model (source of truth for field names/ranges)
 
 ### [x] Phase 1: Foundation — Models, Enums & Condition Factory
 

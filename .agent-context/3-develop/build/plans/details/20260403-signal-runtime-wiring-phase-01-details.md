@@ -20,21 +20,21 @@ Update the `HandleCandleClosedAsync` method to detect signal-mode strategies, ex
 - **Complexity**: Medium
 - **Risk Factors**: Must not break grid-mode — for grid strategies, `requiredIndicators` will be `null`, preserving existing behavior (3-arg delegates to 4-arg with `null`)
 - **Files**:
-  - `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — modification
+  - `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — modification
 - **Success**:
   - Signal-mode strategies receive a `MarketContext` with populated `IndicatorContext`
   - Grid-mode strategies continue to receive `IndicatorContext = null` (unchanged behavior)
 - **Important**: After this change, the scheduler always calls the 4-arg `Build` overload (with `null` requirements for grid mode). Existing test mock setups in `StrategySchedulerTests.Setup()` and `BacktestRunnerTests.Setup()` that only mock the 3-arg `Build` must be updated to also mock the 4-arg overload, otherwise they will return `null` `MarketContext` and fail.
 - **Dependencies**:
-  - `IndicatorExtractor.Extract()` — already implemented in `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs`
+  - `IndicatorExtractor.Extract()` — already implemented in `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs`
 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Scheduling/StrategyScheduler.cs — modification
+// src/TradePilot.Application/Scheduling/StrategyScheduler.cs — modification
 // Add using at top of file:
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
 
 // Replace current Build call (lines 67-70):
 // BEFORE:
@@ -60,9 +60,9 @@ using TradingApp.Application.StrategyAuthoring.Services;
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static `Extract(StrategyConfig)` method
-- `src/TradingApp.Application/Abstractions/Services/IMarketContextBuilder.cs` — 4-arg `Build` overload signature
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — implementation that populates `IndicatorContext` from requirements
+- `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static `Extract(StrategyConfig)` method
+- `src/TradePilot.Application/Abstractions/Services/IMarketContextBuilder.cs` — 4-arg `Build` overload signature
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — implementation that populates `IndicatorContext` from requirements
 
 ### Task 1.2: Add signal-mode scheduler tests proving indicator requirements are passed to market-context builder {#task-12-add-signal-mode-scheduler-tests}
 
@@ -75,7 +75,7 @@ Update the default mock setup in `StrategySchedulerTests` and add tests that ver
 - **Complexity**: Medium
 - **Risk Factors**: Must mock the 4-arg overload correctly; existing tests mock only 3-arg
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — modification
+  - `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — modification
 - **Success**:
   - New tests pass: `GivenSignalModeConfig_WhenHandleCandleClosed_ThenFourArgBuildCalledWithIndicatorRequirements`
   - New tests pass: `GivenGridModeConfig_WhenHandleCandleClosed_ThenThreeArgBuildCalledWithoutIndicators`
@@ -86,7 +86,7 @@ Update the default mock setup in `StrategySchedulerTests` and add tests that ver
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs — modification
+// tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs — modification
 // Add a signal-mode config alongside the existing TestConfig:
 
     private static readonly StrategyConfig SignalTestConfig = new()
@@ -190,8 +190,8 @@ Update the default mock setup in `StrategySchedulerTests` and add tests that ver
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — existing test class structure, `_sut` pattern, `CreateEvent` helper
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — `IndicatorContext` inline construction pattern
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — existing test class structure, `_sut` pattern, `CreateEvent` helper
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs` — `IndicatorContext` inline construction pattern
 
 ### Task 1.3: Run all existing scheduler and strategy tests to verify no grid-mode regression {#task-13-run-regression-tests}
 
@@ -200,12 +200,12 @@ Run the full test suite for scheduling and strategy-related test classes to conf
 - **Complexity**: Low
 - **Risk Factors**: None — read-only verification step
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs`
-  - `tests/TradingApp.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs`
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs`
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs`
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs`
-  - `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs`
+  - `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs`
+  - `tests/TradePilot.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs`
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/ConditionEvaluatorTests.cs`
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/RsiConditionHandlerTests.cs`
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs`
+  - `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs`
 - **Success**:
   - All existing tests pass
   - All new Phase 1 tests pass

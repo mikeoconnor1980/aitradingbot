@@ -24,7 +24,7 @@ Create the CQRS query and handler. The handler loads the `BacktestRun`, deserial
 - **Complexity**: Medium
 - **Risk Factors**: JSON deserialization of potentially large blobs; filtering by cycleId must be efficient
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs` — new file
+  - `src/TradePilot.Application/Backtesting/GetBacktestDebugQuery.cs` — new file
 - **Success**:
   - Query accepts `BacktestId` (Guid) and `CycleId` (string)
   - Handler returns `BacktestDebugResponse?` (nullable — null means "no debug data")
@@ -36,14 +36,14 @@ Create the CQRS query and handler. The handler loads the `BacktestRun`, deserial
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs — new file
+// src/TradePilot.Application/Backtesting/GetBacktestDebugQuery.cs — new file
 using System.Text.Json;
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.Abstractions.Queries;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Backtesting.Models;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Queries;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Backtesting.Models;
 
-namespace TradingApp.Application.Backtesting;
+namespace TradePilot.Application.Backtesting;
 
 public sealed record GetBacktestDebugQuery(Guid BacktestId, string CycleId) : Query<BacktestDebugResponse?>;
 
@@ -102,8 +102,8 @@ public sealed class GetBacktestDebugQueryHandler : QueryHandler<GetBacktestDebug
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/GetBacktestResultQuery.cs` — existing query + handler in same file, `NotFoundException` pattern
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — `JsonOptions` pattern for deserialization
+- `src/TradePilot.Application/Backtesting/GetBacktestResultQuery.cs` — existing query + handler in same file, `NotFoundException` pattern
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — `JsonOptions` pattern for deserialization
 
 ---
 
@@ -114,7 +114,7 @@ Create the response DTO for the debug endpoint. It wraps the three filtered log 
 - **Complexity**: Low
 - **Risk Factors**: None — simple DTO
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/BacktestDebugResponse.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/BacktestDebugResponse.cs` — new file
 - **Success**:
   - DTO contains `CycleId`, `CandleEvaluations`, `OrderEvents`, and `GridCycleSummary`
   - Used by the query handler and API controller
@@ -123,8 +123,8 @@ Create the response DTO for the debug endpoint. It wraps the three filtered log 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestDebugResponse.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/BacktestDebugResponse.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public sealed class BacktestDebugResponse
 {
@@ -137,7 +137,7 @@ public sealed class BacktestDebugResponse
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — existing response DTO pattern with `required` init properties
+- `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — existing response DTO pattern with `required` init properties
 
 ---
 
@@ -148,7 +148,7 @@ Add `GET /api/backtests/{id:guid}/debug` with `[FromQuery] string cycleId` param
 - **Complexity**: Medium
 - **Risk Factors**: 204 vs 404 distinction — 404 comes from `NotFoundException` via global filter; 204 returned inline when handler returns null
 - **Files**:
-  - `src/TradingApp.Api/Controllers/BacktestsController.cs` — modification
+  - `src/TradePilot.Api/Controllers/BacktestsController.cs` — modification
 - **Success**:
   - New GET endpoint at `{id:guid}/debug` with `cycleId` query parameter
   - `[ProducesResponseType]` attributes for 200, 204, 404
@@ -159,7 +159,7 @@ Add `GET /api/backtests/{id:guid}/debug` with `[FromQuery] string cycleId` param
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/BacktestsController.cs — modification
+// src/TradePilot.Api/Controllers/BacktestsController.cs — modification
 // Add new endpoint method after GetByIdAsync:
 
     [HttpGet("{id:guid}/debug")]
@@ -182,14 +182,14 @@ Add `GET /api/backtests/{id:guid}/debug` with `[FromQuery] string cycleId` param
 Add required usings at top of controller file:
 
 ```csharp
-using TradingApp.Application.Backtesting.Models;
+using TradePilot.Application.Backtesting.Models;
 using System.ComponentModel.DataAnnotations;
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — existing `GetByIdAsync` pattern with `{id:guid}` route
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — `NotFoundException` → 404 mapping (no inline 404 needed)
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — existing `GetByIdAsync` pattern with `{id:guid}` route
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — `NotFoundException` → 404 mapping (no inline 404 needed)
 
 ---
 
@@ -200,8 +200,8 @@ Add `EnableAuditLog` boolean property to the API request DTO. Default to `true`.
 - **Complexity**: Low
 - **Risk Factors**: None — additive property with default
 - **Files**:
-  - `src/TradingApp.Api/Models/RunBacktestRequest.cs` — modification
-  - `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — modification
+  - `src/TradePilot.Api/Models/RunBacktestRequest.cs` — modification
+  - `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — modification
 - **Success**:
   - `RunBacktestRequest.EnableAuditLog` defaults to `true`
   - Flag is passed through command → handler → `BacktestRun.CreateQueued`
@@ -210,14 +210,14 @@ Add `EnableAuditLog` boolean property to the API request DTO. Default to `true`.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/RunBacktestRequest.cs — modification
+// src/TradePilot.Api/Models/RunBacktestRequest.cs — modification
 // Add after existing StrategyConfig property:
 
     public bool EnableAuditLog { get; set; } = true;
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/RunBacktestCommand.cs — modification
+// src/TradePilot.Application/Backtesting/RunBacktestCommand.cs — modification
 // Update the record to include EnableAuditLog:
 
 // In the command record — add EnableAuditLog parameter
@@ -231,8 +231,8 @@ Add `EnableAuditLog` boolean property to the API request DTO. Default to `true`.
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/RunBacktestRequest.cs` — existing request DTO with default values
-- `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — existing command → handler → entity creation flow
+- `src/TradePilot.Api/Models/RunBacktestRequest.cs` — existing request DTO with default values
+- `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — existing command → handler → entity creation flow
 
 ---
 
@@ -243,18 +243,18 @@ Add controller tests covering: successful debug data retrieval, 204 for no debug
 - **Complexity**: Medium
 - **Risk Factors**: Need to persist a backtest run with debug data for the success case
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — modification
+  - `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — modification
 - **Success**:
   - Test: GET debug with valid ID and cycleId → 200 with debug response
   - Test: GET debug for backtest without audit data → 204
   - Test: GET debug for non-existent ID → 404
-  - All tests pass: `dotnet test tests/TradingApp.Api.Tests --filter "FullyQualifiedName~BacktestsControllerTests"`
+  - All tests pass: `dotnet test tests/TradePilot.Api.Tests --filter "FullyQualifiedName~BacktestsControllerTests"`
 - **Dependencies**: Tasks 4.1–4.4
 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs — modification
+// tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs — modification
 // Add new test methods:
 
     [TestMethod]
@@ -333,8 +333,8 @@ Note: These tests follow the established `BacktestsControllerTests` pattern — 
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — existing test class with `ReadAndAssertSuccessAsync<T>()` and `AssertStatusCode()` patterns
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — `WebApplicationFactory` + service mock injection
+- `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — existing test class with `ReadAndAssertSuccessAsync<T>()` and `AssertStatusCode()` patterns
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — `WebApplicationFactory` + service mock injection
 
 ## Phase Success Criteria
 
@@ -342,5 +342,5 @@ Note: These tests follow the established `BacktestsControllerTests` pattern — 
 - Endpoint returns 204 when audit data is null
 - Endpoint returns 404 when backtest run does not exist
 - `EnableAuditLog` flows from API request → command → entity
-- All controller tests pass: `dotnet test tests/TradingApp.Api.Tests`
+- All controller tests pass: `dotnet test tests/TradePilot.Api.Tests`
 - All existing tests still pass

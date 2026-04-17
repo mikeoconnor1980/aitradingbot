@@ -25,8 +25,8 @@ Create `IngestionAlreadyRunningException` in the Application layer and add a 409
 - **Complexity**: Low
 - **Risk Factors**: Must insert the new arm in the correct position in the switch expression (before the catch-all `_` arm)
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs` — New exception class
-  - `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Add 409 mapping arm
+  - `src/TradePilot.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs` — New exception class
+  - `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Add 409 mapping arm
 - **Success**:
   - `IngestionAlreadyRunningException` extends `Exception` with a default message
   - `HttpGlobalExceptionFilter` maps it to 409 Conflict with error code `"ingestion_conflict"`
@@ -35,8 +35,8 @@ Create `IngestionAlreadyRunningException` in the Application layer and add a 409
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs — new file
-namespace TradingApp.Application.Abstractions.Exceptions;
+// src/TradePilot.Application/Abstractions/Exceptions/IngestionAlreadyRunningException.cs — new file
+namespace TradePilot.Application.Abstractions.Exceptions;
 
 public sealed class IngestionAlreadyRunningException : Exception
 {
@@ -48,7 +48,7 @@ public sealed class IngestionAlreadyRunningException : Exception
 ```
 
 ```csharp
-// src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs — modification
+// src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs — modification
 // Add new arm in the switch expression, before the HttpRequestException arm:
 
             // ... existing code ...
@@ -66,14 +66,14 @@ public sealed class IngestionAlreadyRunningException : Exception
 
 Add the required using at the top of the file:
 ```csharp
-using TradingApp.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Exceptions;
 ```
 (This using likely already exists since `DomainException` is already referenced.)
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — existing switch expression pattern (DomainException→400, NotFoundException→404, RateLimitException→429)
-- `src/TradingApp.Application/Abstractions/Exceptions/RateLimitException.cs` — existing custom exception pattern
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — existing switch expression pattern (DomainException→400, NotFoundException→404, RateLimitException→429)
+- `src/TradePilot.Application/Abstractions/Exceptions/RateLimitException.cs` — existing custom exception pattern
 
 ---
 
@@ -84,7 +84,7 @@ Create the MediatR command and handler that delegates to `ICandleIngestionServic
 - **Complexity**: Low
 - **Risk Factors**: None — thin handler with no business logic
 - **Files**:
-  - `src/TradingApp.Application/Candles/Commands/IngestCandlesCommand.cs` — New command + handler (co-located)
+  - `src/TradePilot.Application/Candles/Commands/IngestCandlesCommand.cs` — New command + handler (co-located)
 - **Success**:
   - Command record carries `Symbol`, `Intervals`, optional `StartTime`/`EndTime`
   - Handler delegates to `ICandleIngestionService.IngestAsync()`
@@ -94,12 +94,12 @@ Create the MediatR command and handler that delegates to `ICandleIngestionServic
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Candles/Commands/IngestCandlesCommand.cs — new file
-using TradingApp.Application.Abstractions.Commands;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Candles.Models;
+// src/TradePilot.Application/Candles/Commands/IngestCandlesCommand.cs — new file
+using TradePilot.Application.Abstractions.Commands;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Candles.Models;
 
-namespace TradingApp.Application.Candles.Commands;
+namespace TradePilot.Application.Candles.Commands;
 
 public sealed record IngestCandlesCommand(
     string Symbol,
@@ -133,8 +133,8 @@ public sealed class IngestCandlesCommandHandler : CommandHandler<IngestCandlesCo
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Commands/Command.cs` — `Command<T>` base record, `CommandHandler<TCommand, TResult>`
-- `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` — query + handler co-located in same file
+- `src/TradePilot.Application/Abstractions/Commands/Command.cs` — `Command<T>` base record, `CommandHandler<TCommand, TResult>`
+- `src/TradePilot.Application/MarketData/Queries/GetCandlesQuery.cs` — query + handler co-located in same file
 
 ---
 
@@ -147,9 +147,9 @@ Create the API controller with `POST /api/candles/ingest` endpoint. Includes req
 - **Complexity**: Medium
 - **Risk Factors**: Must validate symbol against `HyperliquidAssetMapper` before MediatR dispatch; must return all possible status codes in `[ProducesResponseType]`
 - **Files**:
-  - `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Add `IsValidCoin()` method
-  - `src/TradingApp.Api/Models/IngestCandlesRequest.cs` — New request model
-  - `src/TradingApp.Api/Controllers/CandlesController.cs` — New controller
+  - `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Add `IsValidCoin()` method
+  - `src/TradePilot.Api/Models/IngestCandlesRequest.cs` — New request model
+  - `src/TradePilot.Api/Controllers/CandlesController.cs` — New controller
 - **Success**:
   - `POST /api/candles/ingest` accepts valid request and returns 200 OK with `IngestionResult`
   - Invalid/missing `Symbol` returns 400 (data annotations)
@@ -162,7 +162,7 @@ Create the API controller with `POST /api/candles/ingest` endpoint. Includes req
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs — modification
+// src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs — modification
 // Add after the existing IsValidTimeframe method:
 
     public static bool IsValidCoin(string coin)
@@ -172,10 +172,10 @@ Create the API controller with `POST /api/candles/ingest` endpoint. Includes req
 ```
 
 ```csharp
-// src/TradingApp.Api/Models/IngestCandlesRequest.cs — new file
+// src/TradePilot.Api/Models/IngestCandlesRequest.cs — new file
 using System.ComponentModel.DataAnnotations;
 
-namespace TradingApp.Api.Models;
+namespace TradePilot.Api.Models;
 
 public sealed class IngestCandlesRequest
 {
@@ -193,17 +193,17 @@ public sealed class IngestCandlesRequest
 ```
 
 ```csharp
-// src/TradingApp.Api/Controllers/CandlesController.cs — new file
+// src/TradePilot.Api/Controllers/CandlesController.cs — new file
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using TradingApp.Api.Infrastructure;
-using TradingApp.Api.Models;
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.Candles.Commands;
-using TradingApp.Application.Candles.Models;
-using TradingApp.Infrastructure.Hyperliquid;
+using TradePilot.Api.Infrastructure;
+using TradePilot.Api.Models;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Candles.Commands;
+using TradePilot.Application.Candles.Models;
+using TradePilot.Infrastructure.Hyperliquid;
 
-namespace TradingApp.Api.Controllers;
+namespace TradePilot.Api.Controllers;
 
 [Route("api/candles")]
 public sealed class CandlesController : ApiController
@@ -254,9 +254,9 @@ public sealed class CandlesController : ApiController
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/MarketDataController.cs` — MediatR controller pattern inheriting `ApiController`
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — request model with data annotations
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — base class with `Mediator` and `IdentityService`
+- `src/TradePilot.Api/Controllers/MarketDataController.cs` — MediatR controller pattern inheriting `ApiController`
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — request model with data annotations
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — base class with `Mediator` and `IdentityService`
 
 ---
 
@@ -267,7 +267,7 @@ Write integration tests for `CandlesController` following the `BaseControllerTes
 - **Complexity**: Medium
 - **Risk Factors**: Must properly replace `ICandleIngestionService` in test DI; must handle concurrent request testing
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs` — New test class
+  - `tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs` — New test class
 - **Success**:
   - Valid request returns 200 OK with `IngestionResult`
   - Missing symbol returns 400
@@ -280,16 +280,16 @@ Write integration tests for `CandlesController` following the `BaseControllerTes
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs — new file
+// tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs — new file
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using TradingApp.Api.Tests.Infrastructure;
-using TradingApp.Application.Abstractions.Exceptions;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Candles.Models;
+using TradePilot.Api.Tests.Infrastructure;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Candles.Models;
 
-namespace TradingApp.Api.Tests.Controllers;
+namespace TradePilot.Api.Tests.Controllers;
 
 [TestClass]
 public sealed class CandlesControllerTests : BaseControllerTests
@@ -413,8 +413,8 @@ public sealed class CandlesControllerTests : BaseControllerTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` — controller integration test pattern with `BaseControllerTests`, `ConfigureWebHost`, `ConfigureTestServices`, mock replacement
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — `GetTestClient()`, `ReadAndAssertSuccessAsync<T>()`, `AssertStatusCode()`
+- `tests/TradePilot.Api.Tests/Controllers/MarketDataControllerTests.cs` — controller integration test pattern with `BaseControllerTests`, `ConfigureWebHost`, `ConfigureTestServices`, mock replacement
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — `GetTestClient()`, `ReadAndAssertSuccessAsync<T>()`, `AssertStatusCode()`
 
 ---
 

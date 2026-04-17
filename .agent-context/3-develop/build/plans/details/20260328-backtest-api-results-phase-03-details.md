@@ -9,7 +9,7 @@
 - **api-controllers.instructions.md**: Controller extends `ApiController`, `[Route("api/backtests")]`, MediatR dispatch, `[ProducesResponseType]` attributes, error paths throw exceptions caught by global filter
 - **csharp.instructions.md**: Sealed classes, PascalCase naming, data annotations for request validation
 - **testing.instructions.md**: MSTest, Moq, FluentAssertions v6, `BaseControllerTests` for controller integration tests, Given_When_Then naming, mock injection via `ConfigureTestServices`
-- **dotnet-architecture.instructions.md**: Request models in `TradingApp.Api/Models/`, validation via data annotations + domain exception guards
+- **dotnet-architecture.instructions.md**: Request models in `TradePilot.Api/Models/`, validation via data annotations + domain exception guards
 
 ## Design References
 
@@ -24,7 +24,7 @@ Create the API request model with data annotation validation attributes.
 - **Complexity**: Medium
 - **Risk Factors**: Must include all PBI validation rules as data annotations; `GridStrategyConfig` nested object validation
 - **Files**:
-  - `src/TradingApp.Api/Models/RunBacktestRequest.cs` — new file
+  - `src/TradePilot.Api/Models/RunBacktestRequest.cs` — new file
 - **Success**:
   - Request model has all fields from PBI spec including `initialCapital`
   - Data annotations enforce basic validation (Required, Range)
@@ -34,11 +34,11 @@ Create the API request model with data annotation validation attributes.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/RunBacktestRequest.cs — new file
+// src/TradePilot.Api/Models/RunBacktestRequest.cs — new file
 using System.ComponentModel.DataAnnotations;
-using TradingApp.Application.Backtesting.Models;
+using TradePilot.Application.Backtesting.Models;
 
-namespace TradingApp.Api.Models;
+namespace TradePilot.Api.Models;
 
 public sealed class RunBacktestRequest
 {
@@ -108,8 +108,8 @@ public sealed class GridStrategyConfigRequest
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/IngestCandlesRequest.cs` — request model with `[Required]` data annotations
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — request model with `[Required]`, `[Range]` annotations
+- `src/TradePilot.Api/Models/IngestCandlesRequest.cs` — request model with `[Required]` data annotations
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — request model with `[Required]`, `[Range]` annotations
 
 ### Task 3.2: Create `BacktestsController` {#task-32-create-backtestscontroller}
 
@@ -118,7 +118,7 @@ Create the API controller with all three endpoints. The controller extends `ApiC
 - **Complexity**: Medium
 - **Risk Factors**: Route ordering for `/validate` vs `/{id}`; correct mapping from `RunBacktestRequest` to `RunBacktestCommand`; symbol/interval validation using `BinanceAssetMapper`
 - **Files**:
-  - `src/TradingApp.Api/Controllers/BacktestsController.cs` — new file
+  - `src/TradePilot.Api/Controllers/BacktestsController.cs` — new file
 - **Success**:
   - `POST /api/backtests` validates inputs, dispatches `RunBacktestCommand`, returns 200
   - `GET /api/backtests/{id}` dispatches `GetBacktestResultQuery`, returns 200 or 404
@@ -130,17 +130,17 @@ Create the API controller with all three endpoints. The controller extends `ApiC
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/BacktestsController.cs — new file
+// src/TradePilot.Api/Controllers/BacktestsController.cs — new file
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using TradingApp.Api.Infrastructure;
-using TradingApp.Api.Models;
-using TradingApp.Application.Backtesting;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Domain.Exceptions;
-using TradingApp.Infrastructure.Binance;
+using TradePilot.Api.Infrastructure;
+using TradePilot.Api.Models;
+using TradePilot.Application.Backtesting;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Domain.Exceptions;
+using TradePilot.Infrastructure.Binance;
 
-namespace TradingApp.Api.Controllers;
+namespace TradePilot.Api.Controllers;
 
 [Route("api/backtests")]
 public sealed class BacktestsController : ApiController
@@ -241,15 +241,15 @@ public sealed class BacktestsController : ApiController
 }
 ```
 
-> **Note**: The exact namespace and static members of `BinanceAssetMapper` are confirmed: use `BinanceAssetMapper.IsValidSymbol()`, `BinanceAssetMapper.IsValidInterval()`, `BinanceAssetMapper.ValidSymbols` (IReadOnlyCollection<string>), and `BinanceAssetMapper.ValidIntervals` (IReadOnlyCollection<string>). Namespace: `TradingApp.Infrastructure.Binance`.
+> **Note**: The exact namespace and static members of `BinanceAssetMapper` are confirmed: use `BinanceAssetMapper.IsValidSymbol()`, `BinanceAssetMapper.IsValidInterval()`, `BinanceAssetMapper.ValidSymbols` (IReadOnlyCollection<string>), and `BinanceAssetMapper.ValidIntervals` (IReadOnlyCollection<string>). Namespace: `TradePilot.Infrastructure.Binance`.
 
 > **Note**: The `validate` action is declared before `{id:guid}` and uses the route template `"validate"` — ASP.NET Core's `{id:guid}` constraint will not match the literal string "validate", but explicit ordering is a safety measure.
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/CandlesController.cs` — controller extending ApiController, MediatR dispatch, DomainException for validation, `[ProducesResponseType]` attributes
-- `src/TradingApp.Api/Controllers/FundingRatesController.cs` — same MediatR + validation pattern
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — base controller with `Mediator` and `IdentityService`
+- `src/TradePilot.Api/Controllers/CandlesController.cs` — controller extending ApiController, MediatR dispatch, DomainException for validation, `[ProducesResponseType]` attributes
+- `src/TradePilot.Api/Controllers/FundingRatesController.cs` — same MediatR + validation pattern
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — base controller with `Mediator` and `IdentityService`
 
 ### Task 3.3: Write `BacktestsControllerTests` — happy paths {#task-33-write-backtestscontrollertests-happy-paths}
 
@@ -258,7 +258,7 @@ Write controller integration tests for the successful scenarios using `BaseContr
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly mock `IBacktestRunner` and `IBacktestRunRepository`; must configure Hyperliquid settings to prevent DI failures
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — new file
+  - `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — new file
 - **Success**:
   - POST happy path: valid request → 200 with full result
   - GET by ID happy path: valid ID → 200 with full result
@@ -269,20 +269,20 @@ Write controller integration tests for the successful scenarios using `BaseContr
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs — new file
+// tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs — new file
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using TradingApp.Api.Models;
-using TradingApp.Api.Tests.Infrastructure;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Domain.Entities;
+using TradePilot.Api.Models;
+using TradePilot.Api.Tests.Infrastructure;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Api.Tests.Controllers;
+namespace TradePilot.Api.Tests.Controllers;
 
 [TestClass]
 public sealed class BacktestsControllerTests : BaseControllerTests
@@ -384,7 +384,7 @@ public sealed class BacktestsControllerTests : BaseControllerTests
     public async Task GivenValidSymbolAndIntervals_WhenValidate_ThenReturnsOkWithCoverage()
     {
         // Arrange
-        var candles = new List<TradingApp.Domain.Entities.Candle>
+        var candles = new List<TradePilot.Domain.Entities.Candle>
         {
             // Implementer: create test Candle entities using Candle.Create()
             // covering the expected date range for BTC/15m
@@ -451,11 +451,11 @@ public sealed class BacktestsControllerTests : BaseControllerTests
                 EntryPrice = 42150.50m,
                 ExitTimeUtc = 1704082800000,
                 ExitPrice = 42361.25m,
-                Side = TradingApp.Application.Trading.Models.OrderSide.Buy,
+                Side = TradePilot.Application.Trading.Models.OrderSide.Buy,
                 Size = 0.001m,
                 PnL = 0.21m,
                 Fees = 0.015m,
-                TradeType = TradingApp.Application.Trading.Models.TradeType.GridFill
+                TradeType = TradePilot.Application.Trading.Models.TradeType.GridFill
             }
         ]
     };
@@ -466,9 +466,9 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs` — `BaseControllerTests` inheritance, `ConfigureTestServices`, mock injection, `ReadAndAssertSuccessAsync<T>()`, `GetTestClient()`
-- `tests/TradingApp.Api.Tests/Controllers/FundingRatesControllerTests.cs` — same pattern with mock verify
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — `GetStringContent()`, `GetTestClient()`, cleanup
+- `tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs` — `BaseControllerTests` inheritance, `ConfigureTestServices`, mock injection, `ReadAndAssertSuccessAsync<T>()`, `GetTestClient()`
+- `tests/TradePilot.Api.Tests/Controllers/FundingRatesControllerTests.cs` — same pattern with mock verify
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — `GetStringContent()`, `GetTestClient()`, cleanup
 
 ### Task 3.4: Write `BacktestsControllerTests` — validation and error paths {#task-34-write-backtestscontrollertests-validation-and-error-paths}
 
@@ -477,7 +477,7 @@ Write controller integration tests for all validation and error scenarios from t
 - **Complexity**: Medium
 - **Risk Factors**: Must cover all PBI error states; must verify error response body structure (errorMessage, errorCode)
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — modification (add test methods)
+  - `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — modification (add test methods)
 - **Success**:
   - Invalid date range → 400
   - Unknown symbol → 400 with supported symbols list
@@ -495,7 +495,7 @@ Write controller integration tests for all validation and error scenarios from t
 Add the following test methods to the existing `BacktestsControllerTests` class:
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs — modification (add to existing class)
+// tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs — modification (add to existing class)
 
 [TestMethod]
 public async Task GivenEndDateBeforeStartDate_WhenPostBacktest_ThenReturnsBadRequest()
@@ -611,7 +611,7 @@ public async Task GivenNoCandleData_WhenPostBacktest_ThenReturnsNotFound()
     // Arrange — mock runner throws NotFoundException when no candle data exists
     _backtestRunnerMock
         .Setup(r => r.RunAsync(It.IsAny<BacktestConfig>(), It.IsAny<CancellationToken>()))
-        .ThrowsAsync(new TradingApp.Application.Abstractions.Exceptions.NotFoundException("Candle", "No candle data found for the requested range"));
+        .ThrowsAsync(new TradePilot.Application.Abstractions.Exceptions.NotFoundException("Candle", "No candle data found for the requested range"));
 
     var client = GetTestClient();
     var request = CreateValidRequest();
@@ -648,8 +648,8 @@ public async Task GivenBacktestTimeout_WhenPostBacktest_ThenReturnsRequestTimeou
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs` — error status code assertions, JSON body assertions for `errorMessage` and `errorCode`
-- `tests/TradingApp.Api.Tests/Controllers/FundingRatesControllerTests.cs` — validation error assertions with `correlationId` check
+- `tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs` — error status code assertions, JSON body assertions for `errorMessage` and `errorCode`
+- `tests/TradePilot.Api.Tests/Controllers/FundingRatesControllerTests.cs` — validation error assertions with `correlationId` check
 
 ### Task 3.5: Build solution and run all tests {#task-35-build-solution-and-run-all-tests}
 
@@ -659,15 +659,15 @@ Final verification — build the entire solution and run all tests.
 - **Risk Factors**: Integration test setup may need tuning for DI configuration (Hyperliquid settings, etc.)
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with no errors
+  - `dotnet build TradePilot.sln` succeeds with no errors
   - `dotnet test` on all test projects passes (including new BacktestsControllerTests and BacktestRunRepositoryTests)
   - All existing tests continue to pass
 - **Dependencies**: All prior tasks in Phase 3
 
 ## Phase Success Criteria
 
-- `RunBacktestRequest` model exists in `TradingApp.Api/Models/` with data annotation validation
-- `BacktestsController` exists in `TradingApp.Api/Controllers/` with three endpoints (POST, GET validate, GET by ID)
+- `RunBacktestRequest` model exists in `TradePilot.Api/Models/` with data annotation validation
+- `BacktestsController` exists in `TradePilot.Api/Controllers/` with three endpoints (POST, GET validate, GET by ID)
 - Controller validates symbol, intervals, date range, and strategy config — all returning appropriate 400 errors
 - Controller integration tests cover: POST happy path, GET by ID happy path, GET validate happy path, invalid date range, unknown symbol, invalid interval, invalid config, non-existent ID, missing fields
 - All tests pass and solution builds cleanly

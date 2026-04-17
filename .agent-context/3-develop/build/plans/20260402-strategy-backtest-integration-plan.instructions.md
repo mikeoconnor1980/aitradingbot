@@ -57,19 +57,19 @@ Replace the manual-entry backtest form with a strategy-picker workflow where the
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — Entity with private setters, `CreateQueued` factory, `ArgumentException` guards
-- `src/TradingApp.Domain/Entities/Strategy.cs` — Entity with `Version` (int), `ConfigJson`, in-place `Update()`, `SoftDelete()`
-- `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — Sealed record command + handler, MediatR
-- `src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs` — Query + handler, paged results
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — Static mapper, JSON serialization
-- `src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs` — Application-layer summary DTO
-- `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — Application-layer detail DTO
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — REST controller, manual StrategyConfig mapping
-- `src/TradingApp.Api/Controllers/StrategiesController.cs` — CRUD controller with IdentityService
-- `src/TradingApp.Api/Models/RunBacktestRequest.cs` — Request DTO with DataAnnotations
-- `src/TradingApp.Api/Models/BacktestSummaryDto.cs` — API-layer summary DTO
-- `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — EF repository with typed Select projection
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — Inline OnModelCreating, no separate config files
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — Entity with private setters, `CreateQueued` factory, `ArgumentException` guards
+- `src/TradePilot.Domain/Entities/Strategy.cs` — Entity with `Version` (int), `ConfigJson`, in-place `Update()`, `SoftDelete()`
+- `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — Sealed record command + handler, MediatR
+- `src/TradePilot.Application/Backtesting/GetBacktestListQuery.cs` — Query + handler, paged results
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — Static mapper, JSON serialization
+- `src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs` — Application-layer summary DTO
+- `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — Application-layer detail DTO
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — REST controller, manual StrategyConfig mapping
+- `src/TradePilot.Api/Controllers/StrategiesController.cs` — CRUD controller with IdentityService
+- `src/TradePilot.Api/Models/RunBacktestRequest.cs` — Request DTO with DataAnnotations
+- `src/TradePilot.Api/Models/BacktestSummaryDto.cs` — API-layer summary DTO
+- `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — EF repository with typed Select projection
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — Inline OnModelCreating, no separate config files
 - `frontend/trading-ui/src/app/features/backtesting/backtest-form/backtest-form.component.ts` — Current manual form with 18 controls
 - `frontend/trading-ui/src/app/features/backtesting/backtest-page.component.ts` — Orchestrating page with tabs
 - `frontend/trading-ui/src/app/features/strategy-builder/strategy-list-page.component.ts` — Strategy list with edit/delete actions

@@ -13,27 +13,27 @@ Implemented the AI Strategy Review feature across domain, AI services, API endpo
 ### Added
 
 <!-- Phase 1: Domain, Persistence & Configuration -->
-- src/TradingApp.Domain/Entities/StrategyReview.cs: Added the new immutable review entity with validated factory creation.
-- src/TradingApp.Application/Abstractions/Repositories/IStrategyReviewRepository.cs: Added the application-layer repository contract for strategy reviews.
-- src/TradingApp.Persistence/Repositories/StrategyReviewRepository.cs: Added the EF Core repository implementation for add, lookup, and overwrite support.
-- src/TradingApp.Application/Abstractions/Configuration/LlmReviewOptions.cs: Added typed options for the independent LlmReview configuration section.
-- src/TradingApp.Persistence/Migrations/20260404082527_AddStrategyReviews.cs: Added the EF Core migration creating the StrategyReviews table and unique composite index.
-- src/TradingApp.Persistence/Migrations/20260404082527_AddStrategyReviews.Designer.cs: Added the generated migration designer metadata.
-- tests/TradingApp.Domain.Tests/Entities/StrategyReviewTests.cs: Added unit tests covering valid creation and all entity guard clauses.
+- src/TradePilot.Domain/Entities/StrategyReview.cs: Added the new immutable review entity with validated factory creation.
+- src/TradePilot.Application/Abstractions/Repositories/IStrategyReviewRepository.cs: Added the application-layer repository contract for strategy reviews.
+- src/TradePilot.Persistence/Repositories/StrategyReviewRepository.cs: Added the EF Core repository implementation for add, lookup, and overwrite support.
+- src/TradePilot.Application/Abstractions/Configuration/LlmReviewOptions.cs: Added typed options for the independent LlmReview configuration section.
+- src/TradePilot.Persistence/Migrations/20260404082527_AddStrategyReviews.cs: Added the EF Core migration creating the StrategyReviews table and unique composite index.
+- src/TradePilot.Persistence/Migrations/20260404082527_AddStrategyReviews.Designer.cs: Added the generated migration designer metadata.
+- tests/TradePilot.Domain.Tests/Entities/StrategyReviewTests.cs: Added unit tests covering valid creation and all entity guard clauses.
 
 <!-- Phase 2: AI Service Layer -->
-- src/TradingApp.AI/Prompts/StrategyReviewPrompt.cs: Added the server-side strategy review system prompt.
-- src/TradingApp.Application/Abstractions/Services/IStrategyReviewer.cs: Added the application service contract for strategy reviews.
-- src/TradingApp.Application/Abstractions/Services/IReviewLlmClient.cs: Added the marker interface for the review-specific LLM client registration.
-- src/TradingApp.AI/Services/StrategyReviewer.cs: Added the AI review service that sends strategy JSON to the review LLM.
-- src/TradingApp.AI/Services/ReviewLlmClient.cs: Added the independently configured OpenAI-compatible review client using LlmReviewOptions.
-- src/TradingApp.Application/StrategyAuthoring/Commands/RequestStrategyReviewCommand.cs: Added the CQRS command and handler to validate ownership, overwrite any prior review, and persist a new review.
-- src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategyReviewQuery.cs: Added the CQRS query and handler to retrieve a persisted review with ownership checks.
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategyReviewDto.cs: Added the DTO returned by the command and query layer for strategy reviews.
-- tests/TradingApp.AI.Tests/Services/StrategyReviewerTests.cs: Added AI service unit tests covering success, invalid input, and LLM failure behavior.
+- src/TradePilot.AI/Prompts/StrategyReviewPrompt.cs: Added the server-side strategy review system prompt.
+- src/TradePilot.Application/Abstractions/Services/IStrategyReviewer.cs: Added the application service contract for strategy reviews.
+- src/TradePilot.Application/Abstractions/Services/IReviewLlmClient.cs: Added the marker interface for the review-specific LLM client registration.
+- src/TradePilot.AI/Services/StrategyReviewer.cs: Added the AI review service that sends strategy JSON to the review LLM.
+- src/TradePilot.AI/Services/ReviewLlmClient.cs: Added the independently configured OpenAI-compatible review client using LlmReviewOptions.
+- src/TradePilot.Application/StrategyAuthoring/Commands/RequestStrategyReviewCommand.cs: Added the CQRS command and handler to validate ownership, overwrite any prior review, and persist a new review.
+- src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategyReviewQuery.cs: Added the CQRS query and handler to retrieve a persisted review with ownership checks.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategyReviewDto.cs: Added the DTO returned by the command and query layer for strategy reviews.
+- tests/TradePilot.AI.Tests/Services/StrategyReviewerTests.cs: Added AI service unit tests covering success, invalid input, and LLM failure behavior.
 
 <!-- Phase 3: API Endpoints & Integration Tests -->
-- tests/TradingApp.Api.Tests/Controllers/StrategyReviewTests.cs: Added integration coverage for review creation, retrieval, overwrite, missing-resource cases, invalid revision, and rate limiting.
+- tests/TradePilot.Api.Tests/Controllers/StrategyReviewTests.cs: Added integration coverage for review creation, retrieval, overwrite, missing-resource cases, invalid revision, and rate limiting.
 
 <!-- Phase 4: Angular Frontend -->
 - frontend/trading-ui/src/app/features/strategy-builder/models/strategy-review.model.ts: Added the frontend DTO for persisted strategy review data.
@@ -47,23 +47,23 @@ Implemented the AI Strategy Review feature across domain, AI services, API endpo
 ### Modified
 
 <!-- Phase 1: Domain, Persistence & Configuration -->
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Added the StrategyReview DbSet and inline entity configuration with foreign key and unique index.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated the EF model snapshot to include StrategyReview.
-- src/TradingApp.Persistence/PersistenceServiceExtensions.cs: Registered IStrategyReviewRepository in dependency injection.
-- src/TradingApp.AI/AiServiceExtensions.cs: Bound and validated LlmReviewOptions on startup.
-- src/TradingApp.Api/appsettings.json: Added the LlmReview configuration section.
-- src/TradingApp.Api/TradingApp.Api.csproj: Added Microsoft.EntityFrameworkCore.Design so the required API-startup migration workflow works.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Added the StrategyReview DbSet and inline entity configuration with foreign key and unique index.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated the EF model snapshot to include StrategyReview.
+- src/TradePilot.Persistence/PersistenceServiceExtensions.cs: Registered IStrategyReviewRepository in dependency injection.
+- src/TradePilot.AI/AiServiceExtensions.cs: Bound and validated LlmReviewOptions on startup.
+- src/TradePilot.Api/appsettings.json: Added the LlmReview configuration section.
+- src/TradePilot.Api/TradePilot.Api.csproj: Added Microsoft.EntityFrameworkCore.Design so the required API-startup migration workflow works.
 
 <!-- Phase 2: AI Service Layer -->
-- src/TradingApp.AI/AiServiceExtensions.cs: Registered the review-specific typed HttpClient and IStrategyReviewer service alongside the existing AI registrations.
+- src/TradePilot.AI/AiServiceExtensions.cs: Registered the review-specific typed HttpClient and IStrategyReviewer service alongside the existing AI registrations.
 
 <!-- Phase 3: API Endpoints & Integration Tests -->
-- src/TradingApp.Api/Controllers/StrategiesController.cs: Added POST and GET review endpoints for strategy revisions with validation, MediatR dispatch, and 404 handling for missing reviews.
-- src/TradingApp.Api/Program.cs: Added the review-specific fixed-window rate limiting policy at 1 request per minute per IP.
-- tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs: Added default LlmReview startup settings for shared API integration test hosts.
-- tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs: Added LlmReview startup settings for direct WebApplicationFactory-based API tests.
-- tests/TradingApp.Api.Tests/Controllers/HealthControllerTests.cs: Added LlmReview startup settings for direct WebApplicationFactory-based API tests.
-- tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs: Added LlmReview startup settings for direct WebApplicationFactory-based hub tests.
+- src/TradePilot.Api/Controllers/StrategiesController.cs: Added POST and GET review endpoints for strategy revisions with validation, MediatR dispatch, and 404 handling for missing reviews.
+- src/TradePilot.Api/Program.cs: Added the review-specific fixed-window rate limiting policy at 1 request per minute per IP.
+- tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs: Added default LlmReview startup settings for shared API integration test hosts.
+- tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs: Added LlmReview startup settings for direct WebApplicationFactory-based API tests.
+- tests/TradePilot.Api.Tests/Controllers/HealthControllerTests.cs: Added LlmReview startup settings for direct WebApplicationFactory-based API tests.
+- tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs: Added LlmReview startup settings for direct WebApplicationFactory-based hub tests.
 
 <!-- Phase 4: Angular Frontend -->
 - frontend/trading-ui/package.json: Added marked and @types/marked dependencies for markdown rendering.
@@ -98,19 +98,19 @@ Implemented the AI Strategy Review feature across domain, AI services, API endpo
 <!-- Phase 2: AI Service Layer -->
 - dotnet build: PASSED.
 - StrategyReviewer filtered tests: 5/5 passed.
-- TradingApp.AI.Tests: 9/9 passed.
+- TradePilot.AI.Tests: 9/9 passed.
 - Architecture Tests: Not run - not required by Phase 2.
 
 <!-- Phase 3: API Endpoints & Integration Tests -->
 - dotnet build: PASSED.
 - StrategyReviewTests: 8/8 passed.
-- TradingApp.Domain.Tests: 56/56 passed.
-- TradingApp.AI.Tests: 14/14 passed.
-- TradingApp.Application.Tests: 220/220 passed.
-- TradingApp.Api.Tests: 194/194 passed.
-- TradingApp.Indicators.Tests: 33/33 passed.
-- TradingApp.Infrastructure.Tests: 59/59 passed.
-- TradingApp.Persistence.Tests: 28/28 passed.
+- TradePilot.Domain.Tests: 56/56 passed.
+- TradePilot.AI.Tests: 14/14 passed.
+- TradePilot.Application.Tests: 220/220 passed.
+- TradePilot.Api.Tests: 194/194 passed.
+- TradePilot.Indicators.Tests: 33/33 passed.
+- TradePilot.Infrastructure.Tests: 59/59 passed.
+- TradePilot.Persistence.Tests: 28/28 passed.
 - Architecture Tests: Not present in repository.
 
 <!-- Phase 4: Angular Frontend -->
@@ -121,7 +121,7 @@ Implemented the AI Strategy Review feature across domain, AI services, API endpo
 ## Issues
 
 <!-- Phase 1: Domain, Persistence & Configuration -->
-- dotnet ef migrations add initially failed because the API startup project did not reference Microsoft.EntityFrameworkCore.Design; resolved by adding the design package to TradingApp.Api.csproj.
+- dotnet ef migrations add initially failed because the API startup project did not reference Microsoft.EntityFrameworkCore.Design; resolved by adding the design package to TradePilot.Api.csproj.
 - The first migration apply check failed because the SQLite path was relative to the API startup folder; resolved by rerunning dotnet ef database update with an absolute database path.
 
 <!-- Phase 2: AI Service Layer -->
@@ -139,7 +139,7 @@ Implemented the AI Strategy Review feature across domain, AI services, API endpo
 ## Design Decisions
 
 <!-- Phase 1: Domain, Persistence & Configuration -->
-- Added EF Core design tooling to the API host rather than changing the prescribed migration command because the phase explicitly requires generating the migration with --startup-project src/TradingApp.Api.
+- Added EF Core design tooling to the API host rather than changing the prescribed migration command because the phase explicitly requires generating the migration with --startup-project src/TradePilot.Api.
 - Reused the existing partial Phase 1 work already present in the worktree and only filled the gaps needed to complete verification and migration generation.
 
 <!-- Phase 2: AI Service Layer -->

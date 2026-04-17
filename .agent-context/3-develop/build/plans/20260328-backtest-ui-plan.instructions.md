@@ -69,11 +69,11 @@ Build an Angular dashboard at `/backtesting` for triggering backtests, viewing r
 - `frontend/trading-ui/src/app/features/market-data/price-chart/price-chart.component.ts` — lightweight-charts pattern (createChart, ResizeObserver, ngOnDestroy cleanup)
 - `frontend/trading-ui/src/app/features/market-data/market-data.component.html` — mat-table pattern
 - `frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.ts` — sortable table pattern
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — controller base class
-- `src/TradingApp.Api/Controllers/CandlesController.cs` — MediatR controller action pattern
-- `src/TradingApp.Application/Abstractions/Queries/Query.cs` — CQRS query base
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — backtest result model
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — controller test base
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — controller base class
+- `src/TradePilot.Api/Controllers/CandlesController.cs` — MediatR controller action pattern
+- `src/TradePilot.Application/Abstractions/Queries/Query.cs` — CQRS query base
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — backtest result model
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — controller test base
 
 ### [x] Phase 1: Backend — Paginated List Endpoint
 

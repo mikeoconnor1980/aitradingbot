@@ -25,7 +25,7 @@ Modify `TryProcessProtectionOrLiquidation` to process ALL matching TP trigger or
 - **Complexity**: High
 - **Risk Factors**: Order of fill processing matters — lower R-levels must fill before higher ones on the same candle. Position size must reduce correctly after each partial fill.
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — Modify `TryProcessProtectionOrLiquidation`
+  - `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — Modify `TryProcessProtectionOrLiquidation`
 - **Success**:
   - SL triggers still take priority over TP triggers
   - All TP triggers whose conditions are met on a candle fire (not just the first)
@@ -80,7 +80,7 @@ private List<SimulatedFill> ProcessProtectionOrders(Candle candle)
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — existing `TryProcessProtectionOrLiquidation` method (single-fill version)
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — existing `TryProcessProtectionOrLiquidation` method (single-fill version)
 
 ### Task 2.2: Extend `BacktestPositionManager` to place partial TP triggers {#task-22-extend-backtestpositionmanager-to-place-partial-tp-triggers}
 
@@ -89,7 +89,7 @@ When a signal-mode entry fills and `ExitConfig.PartialCloses` is configured, pla
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly calculate trigger price per tranche using existing R-multiple formula. Must handle the case where `PartialCloses` sums to < 100 (no TP trigger for the remainder — managed by SL/trailing only).
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — Modify TP trigger placement logic
+  - `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — Modify TP trigger placement logic
 - **Success**:
   - When `PartialCloses` is configured, places N triggers (one per tranche) with fractional sizes
   - Each tranche trigger price uses `CalculateTakeProfitPrice` with the tranche's `AtRMultiple`
@@ -124,8 +124,8 @@ else
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — existing TP placement after signal entry
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — `CalculateTakeProfitPrice` for `RMultiple` type
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — existing TP placement after signal entry
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — `CalculateTakeProfitPrice` for `RMultiple` type
 
 ### Task 2.3: Extend `BacktestRunner` R-metric tracking for partial closes {#task-23-extend-backtestrunner-r-metric-tracking-for-partial-closes}
 
@@ -134,7 +134,7 @@ Ensure `RecordFill` and `CloseCompatibleTrades` correctly handle partial TP fill
 - **Complexity**: Medium
 - **Risk Factors**: FIFO trade pairing in `CloseCompatibleTrades` already supports partial fills. The main risk is MFE/MAE tracker management for split trades.
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — Review and extend `RecordFill` / `CloseCompatibleTrades` if needed
+  - `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — Review and extend `RecordFill` / `CloseCompatibleTrades` if needed
 - **Success**:
   - Partial TP fills correctly pair with open trades using FIFO partial matching
   - R-multiple result for each tranche = `tranche_pnl / InitialRDollars` (correct since InitialR is for the full position)
@@ -149,7 +149,7 @@ Reuse the existing `TradeType.TakeProfit` for both full and partial closes. No n
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — `CloseCompatibleTrades` FIFO partial matching
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — `CloseCompatibleTrades` FIFO partial matching
 
 ### Task 2.4: Add unit tests for backtest partial close simulation {#task-24-add-unit-tests-for-backtest-partial-close-simulation}
 
@@ -158,8 +158,8 @@ Add tests to `SimulatedExecutionEngineTests` and `BacktestRunnerTests` covering 
 - **Complexity**: Medium
 - **Risk Factors**: None
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs` — Add tests
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — Add tests
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs` — Add tests
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — Add tests
 - **Success**:
   - Test: multiple TP triggers at different R-levels all fire when candle covers all levels
   - Test: partial fills reduce position size correctly in simulation
@@ -205,7 +205,7 @@ public async Task GivenPartialTpAndSl_WhenSlTriggeredFirst_ThenAllTpCancelled()
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs` — existing trigger fill test patterns
+- `tests/TradePilot.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs` — existing trigger fill test patterns
 
 ### Task 2.5: Run architecture tests {#task-25-run-architecture-tests}
 

@@ -15,7 +15,7 @@
 
 - EF Core migration pattern established in `20260328204609_AddEquityTimeSeriesToBacktestRun.cs`
 - JSON blob column pattern from `TradesJson` and `EquityTimeSeriesJson` on `BacktestRun`
-- No `IEntityTypeConfiguration` — all config inline in `TradingAppDbContext.OnModelCreating`
+- No `IEntityTypeConfiguration` — all config inline in `TradePilotDbContext.OnModelCreating`
 
 ### Task 2.1: Add audit log properties to BacktestRun entity {#task-21-add-audit-log-properties-to-backtestrun-entity}
 
@@ -24,7 +24,7 @@ Add 4 new properties to `BacktestRun`: `AuditLogEnabled` (bool), `CandleLogJson`
 - **Complexity**: Medium
 - **Risk Factors**: `MarkCompleted` signature grows from 14 to 18 parameters; ensure all call sites are updated
 - **Files**:
-  - `src/TradingApp.Domain/Entities/BacktestRun.cs` — modification
+  - `src/TradePilot.Domain/Entities/BacktestRun.cs` — modification
 - **Success**:
   - 4 new properties exist on `BacktestRun`
   - `CreateQueued` accepts `auditLogEnabled` parameter and initializes JSON columns to null
@@ -36,7 +36,7 @@ Add 4 new properties to `BacktestRun`: `AuditLogEnabled` (bool), `CandleLogJson`
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Domain/Entities/BacktestRun.cs — modification
+// src/TradePilot.Domain/Entities/BacktestRun.cs — modification
 // Add after existing properties (after EquityTimeSeriesJson):
 
     public bool AuditLogEnabled { get; private set; }
@@ -48,7 +48,7 @@ Add 4 new properties to `BacktestRun`: `AuditLogEnabled` (bool), `CandleLogJson`
 Update `CreateQueued` — add `bool auditLogEnabled = true` parameter:
 
 ```csharp
-// src/TradingApp.Domain/Entities/BacktestRun.cs — modification to CreateQueued
+// src/TradePilot.Domain/Entities/BacktestRun.cs — modification to CreateQueued
     public static BacktestRun CreateQueued(
         string symbol,
         string intervalsJson,
@@ -76,7 +76,7 @@ Update `CreateQueued` — add `bool auditLogEnabled = true` parameter:
 Update `MarkCompleted` — add 3 nullable string parameters:
 
 ```csharp
-// src/TradingApp.Domain/Entities/BacktestRun.cs — modification to MarkCompleted
+// src/TradePilot.Domain/Entities/BacktestRun.cs — modification to MarkCompleted
     public void MarkCompleted(
         int candlesReplayed,
         long elapsedMs,
@@ -108,7 +108,7 @@ Update `MarkCompleted` — add 3 nullable string parameters:
 Update `Create` — add the same new parameters (with defaults for backward compatibility):
 
 ```csharp
-// src/TradingApp.Domain/Entities/BacktestRun.cs — modification to Create
+// src/TradePilot.Domain/Entities/BacktestRun.cs — modification to Create
     public static BacktestRun Create(
         // ... existing 20 parameters ...
         string equityTimeSeriesJson = "[]",
@@ -133,7 +133,7 @@ Update `Create` — add the same new parameters (with defaults for backward comp
 
 ##### Pattern References
 
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — existing `MarkCompleted` parameter pattern and nullable `ErrorMessage` property
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — existing `MarkCompleted` parameter pattern and nullable `ErrorMessage` property
 
 ---
 
@@ -144,9 +144,9 @@ Run `dotnet ef migrations add AddAuditLogToBacktestRun` to generate the migratio
 - **Complexity**: Low
 - **Risk Factors**: Must include `defaultValue: false` on `AuditLogEnabled` for existing rows
 - **Files**:
-  - `src/TradingApp.Persistence/Migrations/{timestamp}_AddAuditLogToBacktestRun.cs` — new file (auto-generated)
-  - `src/TradingApp.Persistence/Migrations/{timestamp}_AddAuditLogToBacktestRun.Designer.cs` — new file (auto-generated)
-  - `src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs` — updated
+  - `src/TradePilot.Persistence/Migrations/{timestamp}_AddAuditLogToBacktestRun.cs` — new file (auto-generated)
+  - `src/TradePilot.Persistence/Migrations/{timestamp}_AddAuditLogToBacktestRun.Designer.cs` — new file (auto-generated)
+  - `src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs` — updated
 - **Success**:
   - Migration adds 4 columns to `BacktestRuns` table
   - `AuditLogEnabled` has `defaultValue: false` for backward compatibility
@@ -159,8 +159,8 @@ Run from the repository root:
 
 ```bash
 dotnet ef migrations add AddAuditLogToBacktestRun \
-  --project src/TradingApp.Persistence \
-  --startup-project src/TradingApp.Api
+  --project src/TradePilot.Persistence \
+  --startup-project src/TradePilot.Api
 ```
 
 Verify the generated migration resembles:
@@ -206,19 +206,19 @@ protected override void Down(MigrationBuilder migrationBuilder)
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/Migrations/20260328190000_AddBacktestRunStatus.cs` — uses `defaultValue:` for non-nullable columns added to existing tables
-- `src/TradingApp.Persistence/Migrations/20260328204609_AddEquityTimeSeriesToBacktestRun.cs` — latest migration, TEXT column pattern
+- `src/TradePilot.Persistence/Migrations/20260328190000_AddBacktestRunStatus.cs` — uses `defaultValue:` for non-nullable columns added to existing tables
+- `src/TradePilot.Persistence/Migrations/20260328204609_AddEquityTimeSeriesToBacktestRun.cs` — latest migration, TEXT column pattern
 
 ---
 
 ### Task 2.3: Update DbContext configuration {#task-23-update-dbcontext-configuration}
 
-Add property configurations for the 4 new columns in `TradingAppDbContext.OnModelCreating` within the `BacktestRun` entity builder block.
+Add property configurations for the 4 new columns in `TradePilotDbContext.OnModelCreating` within the `BacktestRun` entity builder block.
 
 - **Complexity**: Low
 - **Risk Factors**: None — additive configuration
 - **Files**:
-  - `src/TradingApp.Persistence/TradingAppDbContext.cs` — modification
+  - `src/TradePilot.Persistence/TradePilotDbContext.cs` — modification
 - **Success**:
   - New properties are configured (nullable JSON columns, non-nullable bool)
   - Existing configuration is unchanged
@@ -227,7 +227,7 @@ Add property configurations for the 4 new columns in `TradingAppDbContext.OnMode
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Persistence/TradingAppDbContext.cs — modification
+// src/TradePilot.Persistence/TradePilotDbContext.cs — modification
 // Add inside the modelBuilder.Entity<BacktestRun>(entity => { ... }) block,
 // after the existing EquityTimeSeriesJson line:
 
@@ -239,7 +239,7 @@ Add property configurations for the 4 new columns in `TradingAppDbContext.OnMode
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — existing inline entity configuration (all config in `OnModelCreating`, no separate configuration classes)
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — existing inline entity configuration (all config in `OnModelCreating`, no separate configuration classes)
 
 ---
 
@@ -250,7 +250,7 @@ Add static serialization methods for the three debug log types, following the ex
 - **Complexity**: Low
 - **Risk Factors**: None — same JSON serialization pattern
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — modification
+  - `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — modification
 - **Success**:
   - `SerializeCandleLog`, `SerializeOrderEventLog`, `SerializeGridCycleLog` methods exist
   - Methods use the same `JsonOptions` as existing serializers
@@ -259,7 +259,7 @@ Add static serialization methods for the three debug log types, following the ex
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs — modification
+// src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs — modification
 // Add after existing SerializeEquityTimeSeries method:
 
     public static string SerializeCandleLog(IReadOnlyList<CandleEvaluationEntry> entries)
@@ -284,13 +284,13 @@ Add static serialization methods for the three debug log types, following the ex
 Add necessary using at the top:
 
 ```csharp
-using TradingApp.Application.Backtesting.Models;
+using TradePilot.Application.Backtesting.Models;
 // (may already exist — ensure CandleEvaluationEntry, OrderEventEntry, GridCycleEntry are accessible)
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — `SerializeTrades` and `SerializeEquityTimeSeries` methods using same `JsonOptions`
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — `SerializeTrades` and `SerializeEquityTimeSeries` methods using same `JsonOptions`
 
 ---
 
@@ -301,17 +301,17 @@ Add tests to `BacktestRunRepositoryTests` verifying the new columns can be persi
 - **Complexity**: Medium
 - **Risk Factors**: None — extends existing test class with same patterns
 - **Files**:
-  - `tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — modification
+  - `tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — modification
 - **Success**:
   - Test verifies: BacktestRun with audit log enabled and debug JSON blobs persists and retrieves correctly
   - Test verifies: BacktestRun with null debug JSON (audit disabled) persists and retrieves correctly
-  - Tests pass: `dotnet test tests/TradingApp.Persistence.Tests --filter "FullyQualifiedName~BacktestRunRepositoryTests"`
+  - Tests pass: `dotnet test tests/TradePilot.Persistence.Tests --filter "FullyQualifiedName~BacktestRunRepositoryTests"`
 - **Dependencies**: Task 2.1, Task 2.2, Task 2.3
 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs — modification
+// tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs — modification
 // Add two new test methods following the existing test patterns:
 
     [TestMethod]
@@ -382,7 +382,7 @@ Note: The `CreateCompletedBacktestRun` helper may need updating to use the new `
 
 ##### Pattern References
 
-- `tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — existing write/read with separate DbContext pattern
+- `tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — existing write/read with separate DbContext pattern
 
 ## Phase Success Criteria
 
@@ -390,5 +390,5 @@ Note: The `CreateCompletedBacktestRun` helper may need updating to use the new `
 - EF Core migration applies cleanly (including on existing databases with pre-existing rows)
 - DbContext configures new columns correctly
 - Serialization methods exist and follow established pattern
-- All persistence tests pass: `dotnet test tests/TradingApp.Persistence.Tests`
-- All existing tests still pass: `dotnet test tests/TradingApp.Application.Tests` (call sites compile with defaults)
+- All persistence tests pass: `dotnet test tests/TradePilot.Persistence.Tests`
+- All existing tests still pass: `dotnet test tests/TradePilot.Application.Tests` (call sites compile with defaults)

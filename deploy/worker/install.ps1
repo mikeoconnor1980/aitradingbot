@@ -1,17 +1,17 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Installs the TradingApp Execution Agent as a Windows Service.
+    Installs the TradePilot Execution Agent as a Windows Service.
 
 .DESCRIPTION
     Copies files to the install directory, prompts for the Hyperliquid private key,
     sets it as a machine-level environment variable, registers and starts the Windows Service.
 
 .PARAMETER InstallDir
-    Target installation directory. Defaults to C:\Program Files\TradingApp\ExecutionAgent
+    Target installation directory. Defaults to C:\Program Files\TradePilot\ExecutionAgent
 
 .PARAMETER ServiceName
-    The Windows Service name. Defaults to TradingApp.ExecutionAgent
+    The Windows Service name. Defaults to TradePilot.ExecutionAgent
 
 .PARAMETER NoStart
     Register the service but don't start it immediately.
@@ -23,20 +23,20 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$InstallDir = "C:\Program Files\TradingApp\ExecutionAgent",
-    [string]$ServiceName = "TradingApp.ExecutionAgent",
+    [string]$InstallDir = "C:\Program Files\TradePilot\ExecutionAgent",
+    [string]$ServiceName = "TradePilot.ExecutionAgent",
     [switch]$NoStart
 )
 
 $ErrorActionPreference = 'Stop'
 
-$exeName = "TradingApp.ExecutionAgent.exe"
-$displayName = "TradingApp Execution Agent"
+$exeName = "TradePilot.ExecutionAgent.exe"
+$displayName = "TradePilot Execution Agent"
 $description = "Executes trading strategies on Hyperliquid. Private key never leaves this machine."
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  TradingApp Execution Agent Installer" -ForegroundColor Cyan
+Write-Host "  TradePilot Execution Agent Installer" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -129,7 +129,7 @@ if ([string]::IsNullOrWhiteSpace($existingCpUrl)) {
     Write-Host ""
     Write-Host "--- Control Plane Configuration ---" -ForegroundColor Cyan
     Write-Host "The Control Plane URL is the address of the deployed API." -ForegroundColor White
-    Write-Host "Example: https://tradingapp-prod-api.niceocean-abc123.uksouth.azurecontainerapps.io" -ForegroundColor Gray
+    Write-Host "Example: https://TradePilot-prod-api.niceocean-abc123.uksouth.azurecontainerapps.io" -ForegroundColor Gray
     Write-Host ""
 
     $cpUrl = Read-Host "Enter the Control Plane URL (or press Enter to skip)"
@@ -233,6 +233,6 @@ Write-Host "  Config file : $InstallDir\appsettings.json" -ForegroundColor White
 Write-Host "  Edit strategy settings in appsettings.json, then restart:" -ForegroundColor Gray
 Write-Host "    Restart-Service -Name '$ServiceName'" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  To view logs: Get-EventLog -LogName Application -Source 'TradingApp.ExecutionAgent' -Newest 20" -ForegroundColor Gray
+Write-Host "  To view logs: Get-EventLog -LogName Application -Source 'TradePilot.ExecutionAgent' -Newest 20" -ForegroundColor Gray
 Write-Host "  To uninstall: Run uninstall.ps1 as Administrator" -ForegroundColor Gray
 Write-Host ""

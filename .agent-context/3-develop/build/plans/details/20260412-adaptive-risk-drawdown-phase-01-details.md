@@ -18,7 +18,7 @@ Create a new `DrawdownTier` record to represent a single drawdown threshold and 
 - **Complexity**: Low
 - **Risk Factors**: None — simple record type
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/DrawdownTier.cs` — new file
+  - `src/TradePilot.Application/StrategyAuthoring/Models/DrawdownTier.cs` — new file
 - **Success**:
   - `DrawdownTier` record exists with `ThresholdPercent` and `ScalingFactor` properties
   - Record is `sealed`
@@ -27,8 +27,8 @@ Create a new `DrawdownTier` record to represent a single drawdown threshold and 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/DrawdownTier.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/DrawdownTier.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 /// <summary>
 /// A single drawdown tier defining a threshold and its risk scaling factor.
@@ -45,7 +45,7 @@ public sealed record DrawdownTier
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — existing sealed record pattern in the same folder
+- `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — existing sealed record pattern in the same folder
 
 ---
 
@@ -56,7 +56,7 @@ Add the `DrawdownTiers` collection to the existing `RiskLimitsConfig` record wit
 - **Complexity**: Low
 - **Risk Factors**: Config binding for list of objects — verify appsettings deserialization
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — modification
+  - `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — modification
 - **Success**:
   - `DrawdownTiers` property exists on `RiskLimitsConfig`
   - Default value provides 4 tiers matching the specification
@@ -65,7 +65,7 @@ Add the `DrawdownTiers` collection to the existing `RiskLimitsConfig` record wit
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs — modification
+// src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs — modification
 public sealed record RiskLimitsConfig
 {
     public const string SectionName = "RiskLimits";
@@ -85,7 +85,7 @@ Note: The 0–5% range has implicit scaling factor 1.0 (no tier reached). The fi
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — existing record structure
+- `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — existing record structure
 
 ---
 
@@ -96,9 +96,9 @@ Create an `IValidateOptions<RiskLimitsConfig>` validator to enforce drawdown tie
 - **Complexity**: Medium
 - **Risk Factors**: Validation must run at startup — incorrect validation could prevent app start
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Validation/RiskLimitsConfigValidator.cs` — new file
-  - `src/TradingApp.Api/Program.cs` — add validator registration
-  - `src/TradingApp.Worker/Program.cs` — add validator registration
+  - `src/TradePilot.Application/StrategyAuthoring/Validation/RiskLimitsConfigValidator.cs` — new file
+  - `src/TradePilot.Api/Program.cs` — add validator registration
+  - `src/TradePilot.Worker/Program.cs` — add validator registration
 - **Success**:
   - Tiers validated for ascending threshold order
   - Tiers validated for descending scaling factor order
@@ -111,11 +111,11 @@ Create an `IValidateOptions<RiskLimitsConfig>` validator to enforce drawdown tie
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Validation/RiskLimitsConfigValidator.cs — new file
+// src/TradePilot.Application/StrategyAuthoring/Validation/RiskLimitsConfigValidator.cs — new file
 using Microsoft.Extensions.Options;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Validation;
+namespace TradePilot.Application.StrategyAuthoring.Validation;
 
 public sealed class RiskLimitsConfigValidator : IValidateOptions<RiskLimitsConfig>
 {
@@ -146,12 +146,12 @@ public sealed class RiskLimitsConfigValidator : IValidateOptions<RiskLimitsConfi
 ```
 
 ```csharp
-// src/TradingApp.Api/Program.cs — add after existing RiskLimitsConfig registration
+// src/TradePilot.Api/Program.cs — add after existing RiskLimitsConfig registration
 builder.Services.AddSingleton<IValidateOptions<RiskLimitsConfig>, RiskLimitsConfigValidator>();
 ```
 
 ```csharp
-// src/TradingApp.Worker/Program.cs — add .ValidateDataAnnotations().ValidateOnStart() to existing
+// src/TradePilot.Worker/Program.cs — add .ValidateDataAnnotations().ValidateOnStart() to existing
 // RiskLimitsConfig registration (currently only has .Bind()), then add validator:
 builder.Services.AddOptions<RiskLimitsConfig>()
     .Bind(builder.Configuration.GetSection(RiskLimitsConfig.SectionName))
@@ -162,8 +162,8 @@ builder.Services.AddSingleton<IValidateOptions<RiskLimitsConfig>, RiskLimitsConf
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — existing `ValidateDataAnnotations().ValidateOnStart()` pattern
-- `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — existing validation class in same folder
+- `src/TradePilot.Api/Program.cs` — existing `ValidateDataAnnotations().ValidateOnStart()` pattern
+- `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — existing validation class in same folder
 
 ---
 
@@ -174,9 +174,9 @@ Add a nullable `HighWaterMarkUsd` column to the `Strategy` entity for persisting
 - **Complexity**: Medium
 - **Risk Factors**: SQLite dev mode uses `EnsureCreated` — new column on existing table requires special handling. SQL Server uses EF migrations.
 - **Files**:
-  - `src/TradingApp.Domain/Entities/Strategy.cs` — add property
-  - `src/TradingApp.Persistence/TradingAppDbContext.cs` — add fluent config
-  - `src/TradingApp.Persistence/Migrations/` — new migration file
+  - `src/TradePilot.Domain/Entities/Strategy.cs` — add property
+  - `src/TradePilot.Persistence/TradePilotDbContext.cs` — add fluent config
+  - `src/TradePilot.Persistence/Migrations/` — new migration file
 - **Success**:
   - `Strategy.HighWaterMarkUsd` nullable decimal property exists
   - EF Core mapping uses `HasConversion<double?>()` for SQLite compatibility
@@ -187,7 +187,7 @@ Add a nullable `HighWaterMarkUsd` column to the `Strategy` entity for persisting
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Domain/Entities/Strategy.cs — add property (matches private-set pattern)
+// src/TradePilot.Domain/Entities/Strategy.cs — add property (matches private-set pattern)
 public decimal? HighWaterMarkUsd { get; private set; }
 
 // Add public method to update HWM (follows entity encapsulation pattern)
@@ -199,7 +199,7 @@ public void UpdateHighWaterMark(decimal highWaterMark)
 ```
 
 ```csharp
-// src/TradingApp.Persistence/TradingAppDbContext.cs — add in OnModelCreating Strategy block
+// src/TradePilot.Persistence/TradePilotDbContext.cs — add in OnModelCreating Strategy block
 entity.Property(s => s.HighWaterMarkUsd)
     .HasConversion<double?>()
     .HasColumnName("HighWaterMarkUsd");
@@ -207,13 +207,13 @@ entity.Property(s => s.HighWaterMarkUsd)
 
 Migration command:
 ```bash
-dotnet ef migrations add AddHighWaterMarkToStrategy --project src/TradingApp.Persistence --startup-project src/TradingApp.Api
+dotnet ef migrations add AddHighWaterMarkToStrategy --project src/TradePilot.Persistence --startup-project src/TradePilot.Api
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — existing `HasConversion<double>()` pattern for decimals
-- `src/TradingApp.Persistence/Migrations/` — existing migration examples with `AddColumn<double>`
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — existing `HasConversion<double>()` pattern for decimals
+- `src/TradePilot.Persistence/Migrations/` — existing migration examples with `AddColumn<double>`
 
 ---
 
@@ -224,8 +224,8 @@ Add default drawdown tier configuration to both Api and Worker appsettings files
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/appsettings.json` — add DrawdownTiers to RiskLimits section
-  - `src/TradingApp.Worker/appsettings.json` — add DrawdownTiers to RiskLimits section
+  - `src/TradePilot.Api/appsettings.json` — add DrawdownTiers to RiskLimits section
+  - `src/TradePilot.Worker/appsettings.json` — add DrawdownTiers to RiskLimits section
 - **Success**:
   - Both appsettings files contain DrawdownTiers array matching default values
 - **Dependencies**: Task 1.2
@@ -249,8 +249,8 @@ Add default drawdown tier configuration to both Api and Worker appsettings files
 
 ##### Pattern References
 
-- `src/TradingApp.Worker/appsettings.json` — existing RiskLimits block
-- `src/TradingApp.Api/appsettings.json` — existing RiskLimits block
+- `src/TradePilot.Worker/appsettings.json` — existing RiskLimits block
+- `src/TradePilot.Api/appsettings.json` — existing RiskLimits block
 
 ---
 
@@ -261,7 +261,7 @@ Write unit tests for `DrawdownTier`, `RiskLimitsConfig` defaults, and `RiskLimit
 - **Complexity**: Medium
 - **Risk Factors**: None
 - **Files**:
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/RiskLimitsConfigValidatorTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/RiskLimitsConfigValidatorTests.cs` — new file
 - **Success**:
   - Tests verify validator accepts valid tier configurations
   - Tests verify validator rejects out-of-order thresholds
@@ -275,13 +275,13 @@ Write unit tests for `DrawdownTier`, `RiskLimitsConfig` defaults, and `RiskLimit
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/RiskLimitsConfigValidatorTests.cs — new file
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/RiskLimitsConfigValidatorTests.cs — new file
 using FluentAssertions;
 using Microsoft.Extensions.Options;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Validation;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Validation;
 
-namespace TradingApp.Application.Tests.StrategyAuthoring.Validation;
+namespace TradePilot.Application.Tests.StrategyAuthoring.Validation;
 
 [TestClass]
 public sealed class RiskLimitsConfigValidatorTests
@@ -370,7 +370,7 @@ public sealed class RiskLimitsConfigValidatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — MSTest class structure, Setup pattern
+- `tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — MSTest class structure, Setup pattern
 
 ---
 
@@ -382,14 +382,14 @@ Build the solution and run all tests to verify no regressions.
 - **Risk Factors**: Existing tests may fail if EF model changes aren't compatible
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
-  - `dotnet test TradingApp.sln` — all existing tests pass
+  - `dotnet build TradePilot.sln` succeeds
+  - `dotnet test TradePilot.sln` — all existing tests pass
   - New validation tests pass
 - **Dependencies**: Tasks 1.1–1.6
 
 ## Phase Success Criteria
 
-- `DrawdownTier` record exists in `TradingApp.Application/StrategyAuthoring/Models/`
+- `DrawdownTier` record exists in `TradePilot.Application/StrategyAuthoring/Models/`
 - `RiskLimitsConfig` has `DrawdownTiers` property with sensible defaults
 - `RiskLimitsConfigValidator` validates tier ordering and ranges
 - `Strategy.HighWaterMarkUsd` nullable column exists with EF mapping and migration

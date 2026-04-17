@@ -1,4 +1,4 @@
-import { AsyncPipe, DatePipe } from "@angular/common";
+import { AsyncPipe, DatePipe, SlicePipe } from "@angular/common";
 import { Component, inject, OnInit, signal } from "@angular/core";
 import { ReactiveFormsModule, FormControl, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -7,8 +7,11 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
-import { map } from "rxjs";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { map, catchError, of, combineLatest } from "rxjs";
 import { AuthService } from "../../core/services/auth.service";
+import { AgentService } from "../../core/services/agent.service";
+import { InstallerInfo } from "../../core/models/installer-info.model";
 import { HealthService } from "../../core/services/health.service";
 import { ProfileService } from "../../core/services/profile.service";
 import { SubscriptionService } from "../../core/services/subscription.service";
@@ -20,12 +23,13 @@ import { TelegramLinkComponent } from "./telegram-link.component";
 @Component({
   selector: "app-profile-page",
   standalone: true,
-  imports: [AsyncPipe, DatePipe, ReactiveFormsModule, MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TelegramLinkComponent],
+  imports: [AsyncPipe, DatePipe, SlicePipe, ReactiveFormsModule, MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatTooltipModule, TelegramLinkComponent],
   templateUrl: "./profile-page.component.html",
   styleUrl: "./profile-page.component.scss"
 })
 export class ProfilePageComponent implements OnInit {
   private readonly _authService = inject(AuthService);
+  private readonly _agentService = inject(AgentService);
   private readonly _healthService = inject(HealthService);
   private readonly _profileService = inject(ProfileService);
   private readonly _walletService = inject(WalletService);
@@ -52,6 +56,17 @@ export class ProfilePageComponent implements OnInit {
   public readonly profile$ = this._profileService.profile$;
   public readonly appVersion = environment.appVersion;
 
+  public readonly installerInfo$ = this._agentService.getInstallerInfo().pipe(
+    map((info) => ({ data: info, error: false })),
+    catchError(() => of({ data: null as InstallerInfo | null, error: true }))
+  );
+  public readonly hasConnectedAgent$ = this._agentService.agents$.pipe(
+    map((agents) => agents.some((a) => a.state !== "disconnected" && a.state !== "killed"))
+  );
+  public readonly sha256Copied = signal(false);
+  public readonly exeDownloadUrl = this._agentService.getInstallerDownloadUrl("exe");
+  public readonly zipDownloadUrl = this._agentService.getInstallerDownloadUrl("zip");
+
   public readonly networkControl = new FormControl("mainnet");
   public readonly networkSaving = signal(false);
 
@@ -68,6 +83,7 @@ export class ProfilePageComponent implements OnInit {
     this._walletService.refreshStatus();
     this._profileService.load();
     this._subscriptionService.loadStatus();
+    this._agentService.refreshAgents();
     this.profile$.subscribe((profile) => {
       if (profile) {
         this.networkControl.setValue(profile.preferredNetwork, { emitEvent: false });
@@ -141,6 +157,18 @@ export class ProfilePageComponent implements OnInit {
   public onLogout(): void {
     this._authService.logout();
     this._router.navigate(["/login"]);
+  }
+
+  public onCopySha256(hash: string): void {
+    navigator.clipboard.writeText(hash);
+    this.sha256Copied.set(true);
+    setTimeout(() => this.sha256Copied.set(false), 2000);
+  }
+
+  public formatFileSize(bytes: number | null): string {
+    if (bytes === null || bytes === 0) return "";
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
   }
 
   public getTierName(tier: string | null): string {

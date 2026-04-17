@@ -13,14 +13,14 @@ Completed both phases for serving price chart history from the local candle data
 ### Added
 
 <!-- Phase 1: Backend — New CQRS Query & API Endpoint -->
-- src/TradingApp.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs: Added the historical-candles CQRS query and handler that maps asset symbols, validates timeframe and limit, calculates the requested window, queries ICandleRepository, and returns CandleDto results.
-- tests/TradingApp.Application.Tests/MarketData/Queries/GetHistoricalCandlesQueryHandlerTests.cs: Added focused handler unit tests covering mapping, validation, limit enforcement, time-range calculation, and empty-result behavior.
+- src/TradePilot.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs: Added the historical-candles CQRS query and handler that maps asset symbols, validates timeframe and limit, calculates the requested window, queries ICandleRepository, and returns CandleDto results.
+- tests/TradePilot.Application.Tests/MarketData/Queries/GetHistoricalCandlesQueryHandlerTests.cs: Added focused handler unit tests covering mapping, validation, limit enforcement, time-range calculation, and empty-result behavior.
 
 ### Modified
 
 <!-- Phase 1: Backend — New CQRS Query & API Endpoint -->
-- src/TradingApp.Api/Controllers/MarketDataController.cs: Added GET /api/market/candles/history to dispatch the new query with asset, timeframe, endTime, and limit parameters.
-- tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs: Added controller integration tests for the new history endpoint and registered a mocked ICandleRepository for the MediatR-backed path.
+- src/TradePilot.Api/Controllers/MarketDataController.cs: Added GET /api/market/candles/history to dispatch the new query with asset, timeframe, endTime, and limit parameters.
+- tests/TradePilot.Api.Tests/Controllers/MarketDataControllerTests.cs: Added controller integration tests for the new history endpoint and registered a mocked ICandleRepository for the MediatR-backed path.
 
 <!-- Phase 2: Frontend — Wire Chart to Local DB Endpoint -->
 - frontend/trading-ui/src/app/core/services/market-data.service.ts: Added getHistoricalCandles() for the new /api/market/candles/history endpoint.
@@ -36,11 +36,11 @@ Completed both phases for serving price chart history from the local candle data
 <!-- Phase 1: Backend — New CQRS Query & API Endpoint -->
 - GetHistoricalCandlesQueryHandlerTests: 12/12 passed
 - MarketDataControllerTests: 10/10 passed
-- TradingApp.Application.Tests: 49/49 passed
-- TradingApp.Domain.Tests: 15/15 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 18/18 passed
-- TradingApp.Api.Tests: 122/122 passed
+- TradePilot.Application.Tests: 49/49 passed
+- TradePilot.Domain.Tests: 15/15 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 18/18 passed
+- TradePilot.Api.Tests: 122/122 passed
 - Architecture Tests: Not run separately; no dedicated architecture test task was defined in this phase
 
 <!-- Phase 2: Frontend — Wire Chart to Local DB Endpoint -->
@@ -78,7 +78,7 @@ Completed both phases for serving price chart history from the local candle data
 ## Review Hints
 
 <!-- Phase 1: Backend — New CQRS Query & API Endpoint -->
-- Review the time-window calculation in src/TradingApp.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs to confirm the inclusive range behavior matches the frontend paging expectations.
+- Review the time-window calculation in src/TradePilot.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs to confirm the inclusive range behavior matches the frontend paging expectations.
 - There is an existing AutoMapper 12.0.1 package warning during builds; it did not block this phase, but it remains an out-of-scope dependency hygiene item.
 
 <!-- Phase 2: Frontend — Wire Chart to Local DB Endpoint -->

@@ -20,7 +20,7 @@ Create a new model that holds computed indicator values keyed by type and period
 - **Complexity**: Medium
 - **Risk Factors**: Must be designed to support current + previous values for cross detection; keyed lookup by (type, period)
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — **New**
+  - `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — **New**
 - **Success**:
   - `IndicatorContext` class exists with `GetRsi(int period)`, `GetPreviousRsi(int period)`, `GetEma(int period)`, `GetPreviousEma(int period)` methods
   - Returns `decimal?` for missing indicators
@@ -28,8 +28,8 @@ Create a new model that holds computed indicator values keyed by type and period
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/IndicatorContext.cs — new file
-namespace TradingApp.Application.Trading.Models;
+// src/TradePilot.Application/Trading/Models/IndicatorContext.cs — new file
+namespace TradePilot.Application.Trading.Models;
 
 /// <summary>
 /// Holds computed indicator values keyed by type and period.
@@ -78,7 +78,7 @@ public sealed class IndicatorContext
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` — existing flat indicator model; `IndicatorContext` is the dynamic-keyed alternative
+- `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` — existing flat indicator model; `IndicatorContext` is the dynamic-keyed alternative
 
 ---
 
@@ -89,8 +89,8 @@ Create a model representing a required indicator (type + period) and a utility t
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly handle all condition types (RSI, PriceVsEma, Macd) and TrendFilter; must handle null/empty conditions
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/IndicatorRequirement.cs` — **New**
-  - `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — **New**
+  - `src/TradePilot.Application/StrategyAuthoring/Models/IndicatorRequirement.cs` — **New**
+  - `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — **New**
 - **Success**:
   - Given a `StrategyConfig` with RSI condition (period=14), returns `IndicatorRequirement { Type = "RSI", Period = 14 }`
   - Given a config with no conditions, returns empty list
@@ -101,8 +101,8 @@ Create a model representing a required indicator (type + period) and a utility t
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/IndicatorRequirement.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/IndicatorRequirement.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 /// <summary>
 /// Describes an indicator that needs to be computed for strategy evaluation.
@@ -118,10 +118,10 @@ public sealed record IndicatorRequirement
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Services;
+namespace TradePilot.Application.StrategyAuthoring.Services;
 
 /// <summary>
 /// Extracts required indicator computations from a strategy configuration.
@@ -188,9 +188,9 @@ public static class IndicatorExtractor
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/RsiParams.cs` — `Period`, `Operator`, `Value` used for extraction
-- `src/TradingApp.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs` — `Period`, `Operator`
-- `src/TradingApp.Application/StrategyAuthoring/Models/MacdParams.cs` — `FastPeriod`, `SlowPeriod`, `SignalPeriod`
+- `src/TradePilot.Application/StrategyAuthoring/Models/RsiParams.cs` — `Period`, `Operator`, `Value` used for extraction
+- `src/TradePilot.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs` — `Period`, `Operator`
+- `src/TradePilot.Application/StrategyAuthoring/Models/MacdParams.cs` — `FastPeriod`, `SlowPeriod`, `SignalPeriod`
 
 ---
 
@@ -201,8 +201,8 @@ Add an overload to `IMarketContextBuilder.Build()` that accepts indicator requir
 - **Complexity**: Medium
 - **Risk Factors**: Must preserve original 3-parameter `Build()` overload for grid path backward compatibility; cross detection requires computing RSI on `_candles[0..^1]` for previous value
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/IMarketContextBuilder.cs` — **Modified**
-  - `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — **Modified**
+  - `src/TradePilot.Application/Abstractions/Services/IMarketContextBuilder.cs` — **Modified**
+  - `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — **Modified**
 - **Success**:
   - Original `Build(candle, 1h, 4h)` still works unchanged
   - New `Build(candle, 1h, 4h, requirements)` populates `IndicatorContext` with requested indicator values
@@ -214,12 +214,12 @@ Add an overload to `IMarketContextBuilder.Build()` that accepts indicator requir
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/IMarketContextBuilder.cs — modification
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
+// src/TradePilot.Application/Abstractions/Services/IMarketContextBuilder.cs — modification
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Abstractions.Services;
+namespace TradePilot.Application.Abstractions.Services;
 
 public interface IMarketContextBuilder
 {
@@ -236,7 +236,7 @@ public interface IMarketContextBuilder
 ```
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs — modification
+// src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs — modification
 // Refactor the existing Build method into two overloads.
 
 public MarketContext Build(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle)
@@ -366,8 +366,8 @@ private decimal CalculatePreviousEma(int period)
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — existing `CalculateRsi(int period)`, `CalculateEma(int period)` methods
-- `src/TradingApp.Application/Abstractions/Services/IMarketContextBuilder.cs` — existing interface with 3-parameter `Build`
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — existing `CalculateRsi(int period)`, `CalculateEma(int period)` methods
+- `src/TradePilot.Application/Abstractions/Services/IMarketContextBuilder.cs` — existing interface with 3-parameter `Build`
 
 ---
 
@@ -378,7 +378,7 @@ Add `IndicatorContext` as an optional (nullable) property on `MarketContext`.
 - **Complexity**: Low
 - **Risk Factors**: Must be nullable to avoid breaking existing grid tests that construct `MarketContext` without it
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/MarketContext.cs` — **Modified**
+  - `src/TradePilot.Application/Trading/Models/MarketContext.cs` — **Modified**
 - **Success**:
   - `MarketContext.IndicatorContext` property exists and is nullable
   - Existing code constructing `MarketContext` compiles without changes
@@ -388,14 +388,14 @@ Add `IndicatorContext` as an optional (nullable) property on `MarketContext`.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/MarketContext.cs — modification
+// src/TradePilot.Application/Trading/Models/MarketContext.cs — modification
 // Add after the Indicators property:
 public IndicatorContext? IndicatorContext { get; init; }
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/MarketContext.cs` — existing model
+- `src/TradePilot.Application/Trading/Models/MarketContext.cs` — existing model
 
 ---
 
@@ -406,9 +406,9 @@ Write tests for `IndicatorContext`, `IndicatorExtractor`, and the modified `Back
 - **Complexity**: Medium
 - **Risk Factors**: Must follow project test conventions (MSTest, FluentAssertions 6, Given_When_Then, private static Create* helpers)
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs` — **New**
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs` — **New**
-  - `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — **New**
+  - `tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs` — **New**
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs` — **New**
+  - `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — **New**
 - **Success**:
   - `IndicatorContext.GetRsi(14)` returns set value
   - `IndicatorContext.GetRsi(20)` returns null when not set
@@ -423,10 +423,10 @@ Write tests for `IndicatorContext`, `IndicatorExtractor`, and the modified `Back
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs — new file
-using TradingApp.Application.Trading.Models;
+// tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs — new file
+using TradePilot.Application.Trading.Models;
 
-namespace TradingApp.Application.Tests.Trading.Models;
+namespace TradePilot.Application.Tests.Trading.Models;
 
 [TestClass]
 public sealed class IndicatorContextTests
@@ -472,11 +472,11 @@ public sealed class IndicatorContextTests
 ```
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
 
-namespace TradingApp.Application.Tests.StrategyAuthoring.Services;
+namespace TradePilot.Application.Tests.StrategyAuthoring.Services;
 
 [TestClass]
 public sealed class IndicatorExtractorTests
@@ -559,8 +559,8 @@ public sealed class IndicatorExtractorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — private static `Create*` helper pattern
-- `tests/TradingApp.Application.Tests/Usings.cs` — global usings for FluentAssertions, MSTest, Moq
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — private static `Create*` helper pattern
+- `tests/TradePilot.Application.Tests/Usings.cs` — global usings for FluentAssertions, MSTest, Moq
 
 ---
 
@@ -574,13 +574,13 @@ Build the solution and run all tests to verify Phase 1 changes.
 - **Success**:
   - `dotnet build` succeeds
   - All new Phase 1 tests pass
-  - All existing `TradingApp.Application.Tests` pass (including `RealBacktestRunnerTests`)
+  - All existing `TradePilot.Application.Tests` pass (including `RealBacktestRunnerTests`)
   - Architecture tests pass (if any)
 
 ```bash
-dotnet build src/TradingApp.Application/TradingApp.Application.csproj
-dotnet build tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj
-dotnet test tests/TradingApp.Application.Tests --no-build
+dotnet build src/TradePilot.Application/TradePilot.Application.csproj
+dotnet build tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj
+dotnet test tests/TradePilot.Application.Tests --no-build
 ```
 
 ## Phase Success Criteria

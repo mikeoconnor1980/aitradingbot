@@ -13,10 +13,10 @@ Cross-cutting hardening pass standardising error handling, retry logic, and resi
 ### Added
 
 <!-- Phase 1: Backend Error Infrastructure -->
-- src/TradingApp.Application/Abstractions/Exceptions/HyperliquidApiException.cs: Base exception for all Hyperliquid API errors with ExchangeStatusCode and ErrorCategory properties
-- src/TradingApp.Application/Abstractions/Exceptions/RateLimitException.cs: Sealed exception for 429 rate-limit errors with optional RetryAfterSeconds
-- src/TradingApp.Application/Abstractions/Exceptions/SigningException.cs: Sealed exception for EIP-712 signing failures
-- src/TradingApp.Api/Infrastructure/CorrelationIdMiddleware.cs: Middleware that propagates or generates X-Correlation-ID header and enriches log scope
+- src/TradePilot.Application/Abstractions/Exceptions/HyperliquidApiException.cs: Base exception for all Hyperliquid API errors with ExchangeStatusCode and ErrorCategory properties
+- src/TradePilot.Application/Abstractions/Exceptions/RateLimitException.cs: Sealed exception for 429 rate-limit errors with optional RetryAfterSeconds
+- src/TradePilot.Application/Abstractions/Exceptions/SigningException.cs: Sealed exception for EIP-712 signing failures
+- src/TradePilot.Api/Infrastructure/CorrelationIdMiddleware.cs: Middleware that propagates or generates X-Correlation-ID header and enriches log scope
 
 <!-- Phase 2: Backend HTTP Resilience -->
 (no new files)
@@ -33,22 +33,22 @@ Cross-cutting hardening pass standardising error handling, retry logic, and resi
 ### Modified
 
 <!-- Phase 1: Backend Error Infrastructure -->
-- src/TradingApp.Api/Infrastructure/Envelope.cs: Added ErrorCode (nullable string) and CorrelationId properties; updated constructor to accept both
-- src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Added typed exception mappings (RateLimitException→429, SigningException→422, HyperliquidApiException); structured logging with CorrelationId; removed InvalidOperationException→502 mapping
-- src/TradingApp.Api/Controllers/AccountController.cs: Removed shadow try/catch blocks; errors now flow to global filter; ProducesResponseType updated to Envelope; removed unused ILogger dependency
-- src/TradingApp.Api/Program.cs: Registered CorrelationIdMiddleware before UseCors
-- tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs: Updated error assertions from anonymous {error} shape to Envelope {errorMessage, correlationId} shape
+- src/TradePilot.Api/Infrastructure/Envelope.cs: Added ErrorCode (nullable string) and CorrelationId properties; updated constructor to accept both
+- src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Added typed exception mappings (RateLimitException→429, SigningException→422, HyperliquidApiException); structured logging with CorrelationId; removed InvalidOperationException→502 mapping
+- src/TradePilot.Api/Controllers/AccountController.cs: Removed shadow try/catch blocks; errors now flow to global filter; ProducesResponseType updated to Envelope; removed unused ILogger dependency
+- src/TradePilot.Api/Program.cs: Registered CorrelationIdMiddleware before UseCors
+- tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs: Updated error assertions from anonymous {error} shape to Envelope {errorMessage, correlationId} shape
 
 <!-- Phase 2: Backend HTTP Resilience -->
-- src/TradingApp.Api/TradingApp.Api.csproj: Added Microsoft.Extensions.Http.Resilience 8.0.0 package reference
-- src/TradingApp.Api/Program.cs: Added retry resilience handler to HyperliquidRestClient HttpClient (5 retries, exponential backoff 1s–60s, retries on 429 and 5xx); outer timeout changed to 30s with 5s per-attempt timeout
-- src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs: Replaced generic HttpRequestException throws with typed HyperliquidApiException/RateLimitException; added structured warning logging before throwing
-- src/TradingApp.Api/Services/HyperliquidOrderService.cs: Replaced fragile HttpRequestException string match with typed HyperliquidApiException catch; signing errors now throw SigningException
-- tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Updated GivenSignatureRejection test to throw HyperliquidApiException and assert SigningException is thrown
+- src/TradePilot.Api/TradePilot.Api.csproj: Added Microsoft.Extensions.Http.Resilience 8.0.0 package reference
+- src/TradePilot.Api/Program.cs: Added retry resilience handler to HyperliquidRestClient HttpClient (5 retries, exponential backoff 1s–60s, retries on 429 and 5xx); outer timeout changed to 30s with 5s per-attempt timeout
+- src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs: Replaced generic HttpRequestException throws with typed HyperliquidApiException/RateLimitException; added structured warning logging before throwing
+- src/TradePilot.Api/Services/HyperliquidOrderService.cs: Replaced fragile HttpRequestException string match with typed HyperliquidApiException catch; signing errors now throw SigningException
+- tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Updated GivenSignatureRejection test to throw HyperliquidApiException and assert SigningException is thrown
 
 <!-- Phase 3: Backend WebSocket Resilience -->
-- src/TradingApp.Api/Services/MarketDataStreamService.cs: Added IServiceScopeFactory dependency; added ResyncStateFromRestAsync method (resync orders+positions via REST after reconnect, push via SignalR); broadcast Reconnecting status before backoff delay; call resync after reconnect before resetting retry count
-- tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs: Added IServiceScopeFactory/IServiceScope/IHyperliquidAccountService mocks; updated CreateService() helper; added GivenStreamService_WhenWebSocketReconnects_ThenResyncsOrdersAndPositions test
+- src/TradePilot.Api/Services/MarketDataStreamService.cs: Added IServiceScopeFactory dependency; added ResyncStateFromRestAsync method (resync orders+positions via REST after reconnect, push via SignalR); broadcast Reconnecting status before backoff delay; call resync after reconnect before resetting retry count
+- tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs: Added IServiceScopeFactory/IServiceScope/IHyperliquidAccountService mocks; updated CreateService() helper; added GivenStreamService_WhenWebSocketReconnects_ThenResyncsOrdersAndPositions test
 
 <!-- Phase 4: Frontend Error Infrastructure & Component Refactoring -->
 - frontend/trading-ui/src/app/app.config.ts: Registered errorInterceptor via provideHttpClient(withInterceptors([errorInterceptor]))
@@ -63,23 +63,23 @@ Cross-cutting hardening pass standardising error handling, retry logic, and resi
 
 <!-- Phase 1: Backend Error Infrastructure -->
 - AccountControllerTests: 6/6 passed (updated assertions for Envelope shape)
-- TradingApp.Api.Tests: 40/40 passed
-- TradingApp.Infrastructure.Tests: 25/25 passed
+- TradePilot.Api.Tests: 40/40 passed
+- TradePilot.Infrastructure.Tests: 25/25 passed
 
 <!-- Phase 2: Backend HTTP Resilience -->
 - HyperliquidOrderServiceTests: 40/40 passed (signing test now asserts SigningException)
-- TradingApp.Api.Tests: 40/40 passed (all passing including updated signing test)
+- TradePilot.Api.Tests: 40/40 passed (all passing including updated signing test)
 
 <!-- Phase 3: Backend WebSocket Resilience -->
 - MarketDataStreamServiceTests: 41/41 passed (1 new reconnect resync test)
-- TradingApp.Api.Tests: 41/41 passed
-- TradingApp.Infrastructure.Tests: 25/25 passed
+- TradePilot.Api.Tests: 41/41 passed
+- TradePilot.Infrastructure.Tests: 25/25 passed
 
 <!-- Phase 4: Frontend Error Infrastructure & Component Refactoring -->
 - ng build: succeeded (budget warning only, not an error)
 - ng lint: all files pass
-- TradingApp.Api.Tests: 41/41 passed (no regression)
-- TradingApp.Infrastructure.Tests: 25/25 passed
+- TradePilot.Api.Tests: 41/41 passed (no regression)
+- TradePilot.Infrastructure.Tests: 25/25 passed
 
 ## Issues
 

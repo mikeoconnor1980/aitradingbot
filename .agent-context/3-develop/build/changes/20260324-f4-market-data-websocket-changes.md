@@ -13,22 +13,22 @@ Establishes a persistent WebSocket connection to Hyperliquid, subscribes to BTC-
 ### Added
 
 <!-- Phase 1: Backend — WebSocket Client & Models -->
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidWebSocketMessage.cs: Added base WebSocket envelope model for incoming channel/data messages.
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidSubscribeRequest.cs: Added subscribe request and subscription payload models for trades stream.
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidTrade.cs: Added individual trade message model.
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidTradesMessage.cs: Added trades channel envelope model containing trade list.
-- src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs: Added WebSocket client contract and connection state enum.
-- src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs: Implemented WebSocket connect/disconnect, subscribe, receive loop, message parsing, and callback dispatch.
-- src/TradingApp.Application/MarketData/Models/TradeTickDto.cs: Added internal trade tick DTO used by WebSocket callback pipeline.
-- src/TradingApp.Application/MarketData/Models/PriceUpdateDto.cs: Added aggregated price update DTO for SignalR payloads.
-- src/TradingApp.Application/MarketData/Models/ConnectionStatusDto.cs: Added connection status DTO for SignalR payloads.
-- tests/TradingApp.Infrastructure.Tests/Services/HyperliquidWebSocketClientTests.cs: Added unit tests for baseline client behavior and subscription precondition validation.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidWebSocketMessage.cs: Added base WebSocket envelope model for incoming channel/data messages.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidSubscribeRequest.cs: Added subscribe request and subscription payload models for trades stream.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidTrade.cs: Added individual trade message model.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidTradesMessage.cs: Added trades channel envelope model containing trade list.
+- src/TradePilot.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs: Added WebSocket client contract and connection state enum.
+- src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs: Implemented WebSocket connect/disconnect, subscribe, receive loop, message parsing, and callback dispatch.
+- src/TradePilot.Application/MarketData/Models/TradeTickDto.cs: Added internal trade tick DTO used by WebSocket callback pipeline.
+- src/TradePilot.Application/MarketData/Models/PriceUpdateDto.cs: Added aggregated price update DTO for SignalR payloads.
+- src/TradePilot.Application/MarketData/Models/ConnectionStatusDto.cs: Added connection status DTO for SignalR payloads.
+- tests/TradePilot.Infrastructure.Tests/Services/HyperliquidWebSocketClientTests.cs: Added unit tests for baseline client behavior and subscription precondition validation.
 
 <!-- Phase 2: Backend — SignalR Hub & Stream Service -->
-- src/TradingApp.Api/Hubs/MarketDataHub.cs: Added SignalR hub for market data client connection lifecycle logging.
-- src/TradingApp.Api/Services/MarketDataStreamService.cs: Added hosted background service for REST seeding, WebSocket subscription, 500ms aggregation, SignalR broadcasting, and reconnect backoff.
-- tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs: Added integration test validating SignalR hub connectivity.
-- tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs: Added service tests for REST seeding, subscription behavior, trade broadcast, and retry behavior.
+- src/TradePilot.Api/Hubs/MarketDataHub.cs: Added SignalR hub for market data client connection lifecycle logging.
+- src/TradePilot.Api/Services/MarketDataStreamService.cs: Added hosted background service for REST seeding, WebSocket subscription, 500ms aggregation, SignalR broadcasting, and reconnect backoff.
+- tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs: Added integration test validating SignalR hub connectivity.
+- tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs: Added service tests for REST seeding, subscription behavior, trade broadcast, and retry behavior.
 
 <!-- Phase 3: Frontend — SignalR Client, Price Ticker & Connection Status -->
 - frontend/trading-ui/src/app/core/models/price-update.model.ts: Added frontend model for live price update payload.
@@ -46,15 +46,15 @@ Establishes a persistent WebSocket connection to Hyperliquid, subscribes to BTC-
 ### Modified
 
 <!-- Phase 1: Backend — WebSocket Client & Models -->
-- src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs: Added WsBaseUrl option with required validation.
-- src/TradingApp.Api/appsettings.json: Added Hyperliquid WsBaseUrl default setting.
-- src/TradingApp.Api/appsettings.Development.json: Added Hyperliquid BaseUrl, WsBaseUrl, and Network development settings.
-- src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs: Added reverse coin-to-display mapping via ToDisplayName.
+- src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs: Added WsBaseUrl option with required validation.
+- src/TradePilot.Api/appsettings.json: Added Hyperliquid WsBaseUrl default setting.
+- src/TradePilot.Api/appsettings.Development.json: Added Hyperliquid BaseUrl, WsBaseUrl, and Network development settings.
+- src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs: Added reverse coin-to-display mapping via ToDisplayName.
 
 <!-- Phase 2: Backend — SignalR Hub & Stream Service -->
-- src/TradingApp.Api/Program.cs: Registered SignalR, WebSocket client singleton, hosted stream service, CORS credentials, and mapped `/hubs/marketdata`.
-- tests/TradingApp.Api.Tests/TradingApp.Api.Tests.csproj: Added `Microsoft.AspNetCore.SignalR.Client` package for hub integration testing.
-- tests/TradingApp.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs: Updated fake handler to return fresh response instances per request to prevent disposed-content failures after hosted service startup calls.
+- src/TradePilot.Api/Program.cs: Registered SignalR, WebSocket client singleton, hosted stream service, CORS credentials, and mapped `/hubs/marketdata`.
+- tests/TradePilot.Api.Tests/TradePilot.Api.Tests.csproj: Added `Microsoft.AspNetCore.SignalR.Client` package for hub integration testing.
+- tests/TradePilot.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs: Updated fake handler to return fresh response instances per request to prevent disposed-content failures after hosted service startup calls.
 
 <!-- Phase 3: Frontend — SignalR Client, Price Ticker & Connection Status -->
 - frontend/trading-ui/package.json: Added @microsoft/signalr dependency.
@@ -81,10 +81,10 @@ Establishes a persistent WebSocket connection to Hyperliquid, subscribes to BTC-
 
 <!-- Phase 1: Backend — WebSocket Client & Models -->
 - HyperliquidWebSocketClientTests: 6/6 passed
-- TradingApp.Infrastructure.Tests: 10/10 passed
+- TradePilot.Infrastructure.Tests: 10/10 passed
 
 <!-- Phase 2: Backend — SignalR Hub & Stream Service -->
-- TradingApp.Api.Tests: 19/19 passed
+- TradePilot.Api.Tests: 19/19 passed
 - MarketDataHubTests: 1/1 passed
 - MarketDataStreamServiceTests: 5/5 passed
 
@@ -99,7 +99,7 @@ Establishes a persistent WebSocket connection to Hyperliquid, subscribes to BTC-
 ## Issues
 
 <!-- Phase 1: Backend — WebSocket Client & Models -->
-- Existing NU1903 warning for AutoMapper 12.0.1 vulnerability in TradingApp.Application.csproj; no build/test failures occurred.
+- Existing NU1903 warning for AutoMapper 12.0.1 vulnerability in TradePilot.Application.csproj; no build/test failures occurred.
 
 <!-- Phase 2: Backend — SignalR Hub & Stream Service -->
 - `runTests` tool did not discover tests when given the `.csproj` path; switched to `dotnet test` execution.
@@ -133,7 +133,7 @@ Establishes a persistent WebSocket connection to Hyperliquid, subscribes to BTC-
 
 ## Review Hints
 
-- Review message parsing path in src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs for expected behavior on non-trades channel/control messages.
+- Review message parsing path in src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs for expected behavior on non-trades channel/control messages.
 - Review whether DI registration for IHyperliquidWebSocketClient should be added in the next phase where the stream service is introduced.
 - Review reconnect timing behavior in `MarketDataStreamService` to confirm expected production tolerance for cancellation during backoff delays.
 - Review whether additional assertions for `ReceiveConnectionStatus` payloads are desired in `MarketDataStreamServiceTests` for stricter status-contract coverage.

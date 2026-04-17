@@ -13,34 +13,34 @@ Implements tenant-scoped strategy revision history across persistence, API, and 
 ### Added
 
 <!-- Phase 1: Domain & Persistence Foundation -->
-- src/TradingApp.Domain/Enums/RevisionSource.cs: Added the revision source enum for revision metadata.
-- src/TradingApp.Domain/Entities/StrategyRevision.cs: Added the new strategy revision domain entity with guarded static factory creation.
-- src/TradingApp.Application/Abstractions/Repositories/IStrategyRevisionRepository.cs: Added the application-layer repository contract for strategy revisions.
-- src/TradingApp.Persistence/Repositories/StrategyRevisionRepository.cs: Added the EF Core repository implementation for revision persistence and retrieval.
-- src/TradingApp.Persistence/Migrations/20260403050801_AddStrategyRevisions.cs: Added the EF migration creating StrategyRevisions and Strategy.IsRunning.
-- src/TradingApp.Persistence/Migrations/20260403050801_AddStrategyRevisions.Designer.cs: Added the generated EF migration designer metadata.
-- tests/TradingApp.Domain.Tests/Entities/StrategyRevisionTests.cs: Added domain tests covering StrategyRevision creation and guard behavior.
-- tests/TradingApp.Persistence.Tests/Repositories/StrategyRevisionRepositoryTests.cs: Added persistence tests for revision add, lookup, pagination, and latest-number queries.
+- src/TradePilot.Domain/Enums/RevisionSource.cs: Added the revision source enum for revision metadata.
+- src/TradePilot.Domain/Entities/StrategyRevision.cs: Added the new strategy revision domain entity with guarded static factory creation.
+- src/TradePilot.Application/Abstractions/Repositories/IStrategyRevisionRepository.cs: Added the application-layer repository contract for strategy revisions.
+- src/TradePilot.Persistence/Repositories/StrategyRevisionRepository.cs: Added the EF Core repository implementation for revision persistence and retrieval.
+- src/TradePilot.Persistence/Migrations/20260403050801_AddStrategyRevisions.cs: Added the EF migration creating StrategyRevisions and Strategy.IsRunning.
+- src/TradePilot.Persistence/Migrations/20260403050801_AddStrategyRevisions.Designer.cs: Added the generated EF migration designer metadata.
+- tests/TradePilot.Domain.Tests/Entities/StrategyRevisionTests.cs: Added domain tests covering StrategyRevision creation and guard behavior.
+- tests/TradePilot.Persistence.Tests/Repositories/StrategyRevisionRepositoryTests.cs: Added persistence tests for revision add, lookup, pagination, and latest-number queries.
 
 <!-- Phase 2: Revision Creation on Strategy Save -->
-- src/TradingApp.Application/StrategyAuthoring/Services/IChangeSummaryGenerator.cs: Added the application service contract for revision change summary generation.
-- src/TradingApp.Application/StrategyAuthoring/Services/ChangeSummaryGenerator.cs: Added the JSON snapshot comparer that produces bounded human-readable change summaries.
-- src/TradingApp.Application/StrategyAuthoring/Services/RevisionSourceMapper.cs: Added shared mapping from strategy entry points to domain revision sources.
+- src/TradePilot.Application/StrategyAuthoring/Services/IChangeSummaryGenerator.cs: Added the application service contract for revision change summary generation.
+- src/TradePilot.Application/StrategyAuthoring/Services/ChangeSummaryGenerator.cs: Added the JSON snapshot comparer that produces bounded human-readable change summaries.
+- src/TradePilot.Application/StrategyAuthoring/Services/RevisionSourceMapper.cs: Added shared mapping from strategy entry points to domain revision sources.
 
 <!-- Phase 3: Revision Read Endpoints -->
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategyRevisionSummaryDto.cs: Added the revision list response DTO with revision metadata fields.
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategyRevisionDto.cs: Added the revision detail response DTO with deserialized strategy config.
-- src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategyVersionsQuery.cs: Added the paginated revision list query and handler with tenant ownership checks.
-- src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategyRevisionQuery.cs: Added the single revision detail query and handler with JSON snapshot deserialization.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategyRevisionSummaryDto.cs: Added the revision list response DTO with revision metadata fields.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategyRevisionDto.cs: Added the revision detail response DTO with deserialized strategy config.
+- src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategyVersionsQuery.cs: Added the paginated revision list query and handler with tenant ownership checks.
+- src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategyRevisionQuery.cs: Added the single revision detail query and handler with JSON snapshot deserialization.
 
 <!-- Phase 4: Diff & Restore Endpoints -->
-- src/TradingApp.Application/StrategyAuthoring/Models/FieldChangeDto.cs: Added field-level diff DTO for JSON path old and new values.
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategyDiffDto.cs: Added structured diff response DTO for revision comparisons.
-- src/TradingApp.Application/StrategyAuthoring/Services/IStrategyDiffService.cs: Added diff service contract for comparing two strategy snapshots.
-- src/TradingApp.Application/StrategyAuthoring/Services/StrategyDiffService.cs: Added deep JSON diff implementation for nested strategy config changes.
-- src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategyDiffQuery.cs: Added query and handler to load two revisions, validate ownership, and compute a diff.
-- src/TradingApp.Application/StrategyAuthoring/Commands/RestoreStrategyVersionCommand.cs: Added command and handler to restore a prior revision as the new active version.
-- src/TradingApp.Application/Abstractions/Exceptions/ConflictException.cs: Added application exception for 409 conflict responses.
+- src/TradePilot.Application/StrategyAuthoring/Models/FieldChangeDto.cs: Added field-level diff DTO for JSON path old and new values.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategyDiffDto.cs: Added structured diff response DTO for revision comparisons.
+- src/TradePilot.Application/StrategyAuthoring/Services/IStrategyDiffService.cs: Added diff service contract for comparing two strategy snapshots.
+- src/TradePilot.Application/StrategyAuthoring/Services/StrategyDiffService.cs: Added deep JSON diff implementation for nested strategy config changes.
+- src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategyDiffQuery.cs: Added query and handler to load two revisions, validate ownership, and compute a diff.
+- src/TradePilot.Application/StrategyAuthoring/Commands/RestoreStrategyVersionCommand.cs: Added command and handler to restore a prior revision as the new active version.
+- src/TradePilot.Application/Abstractions/Exceptions/ConflictException.cs: Added application exception for 409 conflict responses.
 
 <!-- Phase 5: Frontend Revision History Panel -->
 - frontend/trading-ui/src/app/core/models/paged-result.model.ts: Added a shared generic pagination model for revision history and other frontend paged responses.
@@ -54,27 +54,27 @@ Implements tenant-scoped strategy revision history across persistence, API, and 
 ### Modified
 
 <!-- Phase 1: Domain & Persistence Foundation -->
-- src/TradingApp.Domain/Entities/Strategy.cs: Added IsRunning state and SetRunningState mutation method.
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Added StrategyRevisions DbSet, Strategy.IsRunning mapping, and StrategyRevision EF configuration.
-- src/TradingApp.Persistence/PersistenceServiceExtensions.cs: Registered IStrategyRevisionRepository in DI.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated the EF snapshot for Strategy.IsRunning and StrategyRevision.
-- tests/TradingApp.Domain.Tests/Entities/StrategyTests.cs: Extended Strategy tests to cover IsRunning default and mutation behavior.
+- src/TradePilot.Domain/Entities/Strategy.cs: Added IsRunning state and SetRunningState mutation method.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Added StrategyRevisions DbSet, Strategy.IsRunning mapping, and StrategyRevision EF configuration.
+- src/TradePilot.Persistence/PersistenceServiceExtensions.cs: Registered IStrategyRevisionRepository in DI.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated the EF snapshot for Strategy.IsRunning and StrategyRevision.
+- tests/TradePilot.Domain.Tests/Entities/StrategyTests.cs: Extended Strategy tests to cover IsRunning default and mutation behavior.
 
 <!-- Phase 2: Revision Creation on Strategy Save -->
-- src/TradingApp.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs: Added initial revision creation after strategy persistence using the new source mapper and change summary generator.
-- src/TradingApp.Application/StrategyAuthoring/Commands/UpdateStrategyCommand.cs: Captured previous config, generated change summary, and persisted a new revision after each update.
-- src/TradingApp.Api/Program.cs: Registered the change summary generator in DI.
-- tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs: Added and tightened integration coverage for initial versioning and persisted revision creation on create and update.
+- src/TradePilot.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs: Added initial revision creation after strategy persistence using the new source mapper and change summary generator.
+- src/TradePilot.Application/StrategyAuthoring/Commands/UpdateStrategyCommand.cs: Captured previous config, generated change summary, and persisted a new revision after each update.
+- src/TradePilot.Api/Program.cs: Registered the change summary generator in DI.
+- tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs: Added and tightened integration coverage for initial versioning and persisted revision creation on create and update.
 
 <!-- Phase 3: Revision Read Endpoints -->
-- src/TradingApp.Api/Controllers/StrategiesController.cs: Added revision list and revision detail endpoints plus request validation for pagination and revision number inputs.
-- tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs: Added integration coverage for revision list, pagination, revision detail, and 404 scenarios.
+- src/TradePilot.Api/Controllers/StrategiesController.cs: Added revision list and revision detail endpoints plus request validation for pagination and revision number inputs.
+- tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs: Added integration coverage for revision list, pagination, revision detail, and 404 scenarios.
 
 <!-- Phase 4: Diff & Restore Endpoints -->
-- src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Mapped ConflictException to HTTP 409 with error code conflict.
-- src/TradingApp.Api/Program.cs: Registered StrategyDiffService in DI.
-- src/TradingApp.Api/Controllers/StrategiesController.cs: Added diff and restore endpoints with request validation and response metadata.
-- tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs: Added integration coverage for diff success and error cases, restore success and not found, and running-strategy conflict.
+- src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs: Mapped ConflictException to HTTP 409 with error code conflict.
+- src/TradePilot.Api/Program.cs: Registered StrategyDiffService in DI.
+- src/TradePilot.Api/Controllers/StrategiesController.cs: Added diff and restore endpoints with request validation and response metadata.
+- tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs: Added integration coverage for diff success and error cases, restore success and not found, and running-strategy conflict.
 
 <!-- Phase 5: Frontend Revision History Panel -->
 - frontend/trading-ui/src/app/core/models/backtest.model.ts: Re-exported the shared paged result type instead of keeping a duplicate definition.
@@ -116,7 +116,7 @@ Implements tenant-scoped strategy revision history across persistence, API, and 
 ## Issues
 
 <!-- Phase 1: Domain & Persistence Foundation -->
-- The initial migration command using TradingApp.Api as the startup project failed because that project does not reference Microsoft.EntityFrameworkCore.Design. Resolved by generating the migration with TradingApp.Persistence as both project and startup project, using the existing design-time DbContext factory.
+- The initial migration command using TradePilot.Api as the startup project failed because that project does not reference Microsoft.EntityFrameworkCore.Design. Resolved by generating the migration with TradePilot.Persistence as both project and startup project, using the existing design-time DbContext factory.
 
 <!-- Phase 2: Revision Creation on Strategy Save -->
 - None.

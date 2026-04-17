@@ -25,7 +25,7 @@ Create a `BackgroundService` that manages the user event WebSocket lifecycle: co
 - **Complexity**: Medium
 - **Risk Factors**: Reconnection loop must match F4 parameters exactly; must handle all error scenarios gracefully
 - **Files**:
-  - `src/TradingApp.Api/Services/UserEventStreamService.cs` - new file
+  - `src/TradePilot.Api/Services/UserEventStreamService.cs` - new file
 - **Success**:
   - Service connects to Hyperliquid, subscribes to userEvents with wallet address
   - Fill events broadcast via `ReceiveFillEvent` SignalR method
@@ -41,13 +41,13 @@ Create a `BackgroundService` that manages the user event WebSocket lifecycle: co
 > **Note**: The `OnConnectionStateChanged` callback receives all `WebSocketConnectionState` enum values including `Connecting`. The frontend `ConnectionState` union type only includes `"Connected" | "Reconnecting" | "Disconnected"`. Map or skip `Connecting` in the broadcast to stay consistent with the `MarketDataStreamService` pattern (which sets status strings manually). A simple approach: broadcast `Connecting` as `"Reconnecting"` or skip broadcasting the transition entirely.
 
 ```csharp
-// src/TradingApp.Api/Services/UserEventStreamService.cs — new file
+// src/TradePilot.Api/Services/UserEventStreamService.cs — new file
 using Microsoft.AspNetCore.SignalR;
-using TradingApp.Api.Hubs;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.MarketData.Models;
+using TradePilot.Api.Hubs;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.MarketData.Models;
 
-namespace TradingApp.Api.Services;
+namespace TradePilot.Api.Services;
 
 /// <summary>
 /// Background service managing the per-wallet Hyperliquid user event WebSocket.
@@ -217,7 +217,7 @@ public sealed class UserEventStreamService : BackgroundService
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` — direct pattern source: BackgroundService lifecycle, exponential backoff loop, IHubContext broadcast, StopAsync disconnect, structured logging
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` — direct pattern source: BackgroundService lifecycle, exponential backoff loop, IHubContext broadcast, StopAsync disconnect, structured logging
 
 ---
 
@@ -228,7 +228,7 @@ Register the new user event client and stream service in the API's DI container.
 - **Complexity**: Low
 - **Risk Factors**: None — follows existing registration pattern
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` - modification (add DI registrations)
+  - `src/TradePilot.Api/Program.cs` - modification (add DI registrations)
 - **Success**:
   - `IHyperliquidUserEventClient` registered as Singleton
   - `UserEventStreamService` registered as HostedService
@@ -238,7 +238,7 @@ Register the new user event client and stream service in the API's DI container.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modification
+// src/TradePilot.Api/Program.cs — modification
 // Add after the existing market data WebSocket registration:
 
 // ... existing code ...
@@ -254,13 +254,13 @@ builder.Services.AddHostedService<UserEventStreamService>();
 Add required `using` statements:
 
 ```csharp
-using TradingApp.Application.Abstractions.Services; // if not already present
-using TradingApp.Api.Services; // if not already present
+using TradePilot.Application.Abstractions.Services; // if not already present
+using TradePilot.Api.Services; // if not already present
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — existing DI registration pattern: `AddSingleton<Interface, Implementation>()` + `AddHostedService<T>()`
+- `src/TradePilot.Api/Program.cs` — existing DI registration pattern: `AddSingleton<Interface, Implementation>()` + `AddHostedService<T>()`
 
 ---
 
@@ -271,7 +271,7 @@ Create unit tests for the stream service, following the `MarketDataStreamService
 - **Complexity**: Medium
 - **Risk Factors**: Async BackgroundService testing requires careful CancellationToken management
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/UserEventStreamServiceTests.cs` - new file
+  - `tests/TradePilot.Api.Tests/Services/UserEventStreamServiceTests.cs` - new file
 - **Success**:
   - Tests cover: fill event relay to SignalR, order update relay to SignalR, connection status broadcast, reconnection on error
   - All tests pass
@@ -280,14 +280,14 @@ Create unit tests for the stream service, following the `MarketDataStreamService
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/UserEventStreamServiceTests.cs — new file
+// tests/TradePilot.Api.Tests/Services/UserEventStreamServiceTests.cs — new file
 using Microsoft.AspNetCore.SignalR;
-using TradingApp.Api.Hubs;
-using TradingApp.Api.Services;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.MarketData.Models;
+using TradePilot.Api.Hubs;
+using TradePilot.Api.Services;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.MarketData.Models;
 
-namespace TradingApp.Api.Tests.Services;
+namespace TradePilot.Api.Tests.Services;
 
 [TestClass]
 public sealed class UserEventStreamServiceTests
@@ -435,7 +435,7 @@ public sealed class UserEventStreamServiceTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs` — direct pattern source: mock chain setup, callback capture, async service start/stop, CancellationTokenSource timeout
+- `tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs` — direct pattern source: mock chain setup, callback capture, async service start/stop, CancellationTokenSource timeout
 
 ---
 
@@ -446,7 +446,7 @@ Add an integration test verifying that the hub can accept connections when the u
 - **Complexity**: Low
 - **Risk Factors**: None — follows existing hub test pattern
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs` - modification (add new test method and update existing test)
+  - `tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs` - modification (add new test method and update existing test)
 - **Success**:
   - Existing test updated to mock `IHyperliquidUserEventClient` (required to prevent DI resolution failure)
   - New test verifies hub still accepts connections with both market data and user event services registered
@@ -460,7 +460,7 @@ Add an integration test verifying that the hub can accept connections when the u
 **Update existing test** — add user event client mock to `ConfigureServices`:
 
 ```csharp
-// tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs — modification
+// tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs — modification
 // In the existing GivenSignalRHub_WhenClientConnects_ThenConnectionSucceeds test,
 // add IHyperliquidUserEventClient mock alongside the existing mocks:
 
@@ -561,7 +561,7 @@ public async Task GivenSignalRHub_WhenUserEventStreamRegistered_ThenConnectionSt
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs` — existing hub integration test with WebApplicationFactory, LongPolling transport
+- `tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs` — existing hub integration test with WebApplicationFactory, LongPolling transport
 
 ---
 

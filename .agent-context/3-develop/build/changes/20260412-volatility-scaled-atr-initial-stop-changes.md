@@ -15,28 +15,28 @@ ATR-based initial stop-loss implementation across trading lifecycle, trigger man
 ### Modified
 
 <!-- Phase 1: Domain Model, Configuration & Validation -->
-- src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleType.cs: Added the AtrInitial stop-loss enum member.
-- src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleConfig.cs: Added nullable AtrPeriod to support ATR-based stop-loss configuration.
-- src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs: Extended stop-loss validation for AtrInitial multiplier and ATR period rules.
-- src/TradingApp.Application/Trading/Models/GridState.cs: Added AtrAtEntry state for locking ATR at entry.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs: Added AtrInitial validation coverage for required multiplier and invalid ATR period.
+- src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleType.cs: Added the AtrInitial stop-loss enum member.
+- src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleConfig.cs: Added nullable AtrPeriod to support ATR-based stop-loss configuration.
+- src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs: Extended stop-loss validation for AtrInitial multiplier and ATR period rules.
+- src/TradePilot.Application/Trading/Models/GridState.cs: Added AtrAtEntry state for locking ATR at entry.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs: Added AtrInitial validation coverage for required multiplier and invalid ATR period.
 
 <!-- Phase 2: SL Distance Resolution & Exit Evaluation -->
-- src/TradingApp.Application/Trading/Services/StopLossDistanceResolver.cs: Added AtrInitial stop-loss percent resolution with fixed-percent fallback when ATR is unavailable.
-- src/TradingApp.Application/Trading/Services/GridController.cs: Captured AtrAtEntry during deployment, cleared it on reset paths, and evaluated locked ATR initial-stop exits.
-- src/TradingApp.Application/Trading/Services/SignalController.cs: Added signal-mode AtrInitial capture and exit evaluation while excluding AtrInitial from fixed-stop matching.
-- tests/TradingApp.Application.Tests/Trading/Services/StopLossDistanceResolverTests.cs: Added AtrInitial percentage, fallback, and inverse-volatility sizing coverage.
-- tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs: Added AtrInitial deployment, lock, fallback, and trigger behavior coverage.
-- tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs: Added signal-mode AtrInitial capture and exit branch coverage.
+- src/TradePilot.Application/Trading/Services/StopLossDistanceResolver.cs: Added AtrInitial stop-loss percent resolution with fixed-percent fallback when ATR is unavailable.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Captured AtrAtEntry during deployment, cleared it on reset paths, and evaluated locked ATR initial-stop exits.
+- src/TradePilot.Application/Trading/Services/SignalController.cs: Added signal-mode AtrInitial capture and exit evaluation while excluding AtrInitial from fixed-stop matching.
+- tests/TradePilot.Application.Tests/Trading/Services/StopLossDistanceResolverTests.cs: Added AtrInitial percentage, fallback, and inverse-volatility sizing coverage.
+- tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs: Added AtrInitial deployment, lock, fallback, and trigger behavior coverage.
+- tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs: Added signal-mode AtrInitial capture and exit branch coverage.
 
 <!-- Phase 3: Trigger Order Management -->
-- src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs: Added AtrInitial stop-loss pricing anchored to entry and skipped later SL modifications for locked ATR initial stops.
-- tests/TradingApp.Application.Tests/Trading/Services/TriggerOrderManagerTests.cs: Added AtrInitial stop-loss calculation and locked-stop update coverage.
+- src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs: Added AtrInitial stop-loss pricing anchored to entry and skipped later SL modifications for locked ATR initial stops.
+- tests/TradePilot.Application.Tests/Trading/Services/TriggerOrderManagerTests.cs: Added AtrInitial stop-loss calculation and locked-stop update coverage.
 
 <!-- Phase 4: Optimizer Support -->
-- src/TradingApp.Application/Optimization/Models/ParameterBounds.cs: Added stop-loss type, ATR multiplier, and ATR period optimizer bounds with defaults that preserve fixed-percent behavior.
-- src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs: Added AtrInitial optimizer generation, ATR-aware description formatting, and fast-fail validation for unsupported or incomplete ATR bounds.
-- tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs: Added optimizer coverage for default fixed-percent behavior, AtrInitial generation, mixed stop-loss generation, and invalid ATR bounds.
+- src/TradePilot.Application/Optimization/Models/ParameterBounds.cs: Added stop-loss type, ATR multiplier, and ATR period optimizer bounds with defaults that preserve fixed-percent behavior.
+- src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs: Added AtrInitial optimizer generation, ATR-aware description formatting, and fast-fail validation for unsupported or incomplete ATR bounds.
+- tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs: Added optimizer coverage for default fixed-percent behavior, AtrInitial generation, mixed stop-loss generation, and invalid ATR bounds.
 
 ### Removed
 
@@ -44,10 +44,10 @@ ATR-based initial stop-loss implementation across trading lifecycle, trigger man
 
 <!-- Phase 1: Domain Model, Configuration & Validation -->
 - BusinessRuleValidatorTests: 25/25 passed
-- Architecture Tests: No dedicated architecture-test project or target was found; fallback verification via `dotnet build TradingApp.sln` PASSED
+- Architecture Tests: No dedicated architecture-test project or target was found; fallback verification via `dotnet build TradePilot.sln` PASSED
 
 <!-- Phase 2: SL Distance Resolution & Exit Evaluation -->
-- TradingApp.Application.Tests filtered run (StopLossDistance, GridController, SignalController, AtrInitial): 56/56 passed
+- TradePilot.Application.Tests filtered run (StopLossDistance, GridController, SignalController, AtrInitial): 56/56 passed
 - Solution Build: PASSED
 - Architecture Tests: Not run for this phase because the phase details did not require a separate architecture-test target
 
@@ -65,7 +65,7 @@ ATR-based initial stop-loss implementation across trading lifecycle, trigger man
 
 <!-- Phase 1: Domain Model, Configuration & Validation -->
 - Solution build reported pre-existing package vulnerability warnings for Azure.Identity and Microsoft.Identity.Client in infrastructure projects; no phase-specific action required.
-- Solution build reported a pre-existing ForwardedHeadersOptions.KnownNetworks deprecation warning in TradingApp.Api; outside this phase scope.
+- Solution build reported a pre-existing ForwardedHeadersOptions.KnownNetworks deprecation warning in TradePilot.Api; outside this phase scope.
 
 <!-- Phase 2: SL Distance Resolution & Exit Evaluation -->
 - Initial targeted build failed because GridControllerTests needed the backtesting models namespace for CancellationReason; fixed in the phase implementation.

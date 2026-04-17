@@ -27,8 +27,8 @@ Create the C# models that represent the Hyperliquid cancel and modify action pay
 - **Complexity**: Medium
 - **Risk Factors**: JSON serialization must match Hyperliquid's expected field names exactly (lowercase `a`, `o`, `b`, `p`, `s`, `r`, `t`)
 - **Files**:
-  - `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCancelAction.cs` — new file
-  - `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — new file
+  - `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCancelAction.cs` — new file
+  - `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — new file
 - **Success**:
   - Models serialize to JSON matching Hyperliquid's expected payload format
   - Cancel action wraps one or more `{ a, o }` pairs
@@ -39,10 +39,10 @@ Create the C# models that represent the Hyperliquid cancel and modify action pay
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCancelAction.cs — new file
+// src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCancelAction.cs — new file
 using System.Text.Json.Serialization;
 
-namespace TradingApp.Infrastructure.Hyperliquid.Models;
+namespace TradePilot.Infrastructure.Hyperliquid.Models;
 
 public sealed class HyperliquidCancelAction
 {
@@ -64,10 +64,10 @@ public sealed class HyperliquidCancelEntry
 ```
 
 ```csharp
-// src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs — new file
+// src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs — new file
 using System.Text.Json.Serialization;
 
-namespace TradingApp.Infrastructure.Hyperliquid.Models;
+namespace TradePilot.Infrastructure.Hyperliquid.Models;
 
 public sealed class HyperliquidModifyAction
 {
@@ -113,8 +113,8 @@ public sealed class HyperliquidModifyOrderParams
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/` — existing Hyperliquid model files from F3/F5
-- `src/TradingApp.Api/Models/OpenOrderDto.cs` — sealed class DTO pattern with `JsonPropertyName`
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/` — existing Hyperliquid model files from F3/F5
+- `src/TradePilot.Api/Models/OpenOrderDto.cs` — sealed class DTO pattern with `JsonPropertyName`
 
 ---
 
@@ -125,7 +125,7 @@ Create the API request body model for the PUT `/api/orders/{orderId}` endpoint w
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward DTO with validation attributes
 - **Files**:
-  - `src/TradingApp.Api/Models/ModifyOrderDto.cs` — new file
+  - `src/TradePilot.Api/Models/ModifyOrderDto.cs` — new file
 - **Success**:
   - Model has `Price` and `Size` decimal properties
   - Validation attributes enforce price > 0 and size > 0
@@ -135,10 +135,10 @@ Create the API request body model for the PUT `/api/orders/{orderId}` endpoint w
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/ModifyOrderDto.cs — new file
+// src/TradePilot.Api/Models/ModifyOrderDto.cs — new file
 using System.ComponentModel.DataAnnotations;
 
-namespace TradingApp.Api.Models;
+namespace TradePilot.Api.Models;
 
 public sealed class ModifyOrderDto
 {
@@ -152,7 +152,7 @@ public sealed class ModifyOrderDto
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/OpenOrderDto.cs` — existing sealed DTO pattern
+- `src/TradePilot.Api/Models/OpenOrderDto.cs` — existing sealed DTO pattern
 
 ---
 
@@ -163,8 +163,8 @@ Extend the existing `IHyperliquidOrderService` interface and `HyperliquidOrderSe
 - **Complexity**: Medium
 - **Risk Factors**: Order ID parsing (string → long), asset index resolution (hard-coded 0 for POC)
 - **Files**:
-  - `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` — modification (add methods)
-  - `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — modification (implement methods)
+  - `src/TradePilot.Api/Services/IHyperliquidOrderService.cs` — modification (add methods)
+  - `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — modification (implement methods)
 - **Success**:
   - `CancelOrderAsync(string orderId, string asset, CancellationToken)` constructs cancel action and submits to `/exchange`
   - `CancelAllOrdersAsync(string asset, CancellationToken)` fetches open orders for asset, constructs cancel action with all order IDs, submits to `/exchange`
@@ -178,7 +178,7 @@ Extend the existing `IHyperliquidOrderService` interface and `HyperliquidOrderSe
 > **Note**: `CancelAllOrdersAsync` requires `IHyperliquidAccountService` to fetch open orders. This must be added as a new constructor dependency to `HyperliquidOrderService` (not present in F5's version).
 
 ```csharp
-// src/TradingApp.Api/Services/IHyperliquidOrderService.cs — modification
+// src/TradePilot.Api/Services/IHyperliquidOrderService.cs — modification
 public interface IHyperliquidOrderService
 {
     // ... existing PlaceOrderAsync from F5 ...
@@ -188,7 +188,7 @@ public interface IHyperliquidOrderService
 ```
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidOrderService.cs — modification
+// src/TradePilot.Api/Services/HyperliquidOrderService.cs — modification
 // Add to existing class:
 
 public async Task CancelOrderAsync(string orderId, string asset, CancellationToken cancellationToken)
@@ -243,7 +243,7 @@ public async Task CancelAllOrdersAsync(string asset, CancellationToken cancellat
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — service pattern with `IHyperliquidRestClient` + `IHyperliquidSigner` injection
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — service pattern with `IHyperliquidRestClient` + `IHyperliquidSigner` injection
 - F5's `PlaceOrderAsync` in `HyperliquidOrderService` — sign → exchange flow template
 
 ---
@@ -255,8 +255,8 @@ Add the modify order method that constructs the `batchModifyOrders` action paylo
 - **Complexity**: Medium
 - **Risk Factors**: Price/size must be serialized as strings in the action payload (Hyperliquid expects string representation). Side (buy/sell) must be resolved from the existing order.
 - **Files**:
-  - `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` — modification (add method)
-  - `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — modification (implement method)
+  - `src/TradePilot.Api/Services/IHyperliquidOrderService.cs` — modification (add method)
+  - `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — modification (implement method)
 - **Success**:
   - `ModifyOrderAsync(string orderId, string asset, string side, decimal price, decimal size, CancellationToken)` constructs modify action and submits to `/exchange`
   - Price and size are serialized as strings in the action payload
@@ -268,7 +268,7 @@ Add the modify order method that constructs the `batchModifyOrders` action paylo
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/IHyperliquidOrderService.cs — modification
+// src/TradePilot.Api/Services/IHyperliquidOrderService.cs — modification
 public interface IHyperliquidOrderService
 {
     // ... existing methods ...
@@ -277,7 +277,7 @@ public interface IHyperliquidOrderService
 ```
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidOrderService.cs — modification
+// src/TradePilot.Api/Services/HyperliquidOrderService.cs — modification
 
 public async Task ModifyOrderAsync(
     string orderId, string asset, string side, decimal price, decimal size,
@@ -324,7 +324,7 @@ public async Task ModifyOrderAsync(
 ##### Pattern References
 
 - F5's `PlaceOrderAsync` — same signing → exchange pattern
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/` — Hyperliquid model serialization patterns
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/` — Hyperliquid model serialization patterns
 
 ---
 
@@ -335,7 +335,7 @@ Extend the existing `OrdersController` from F5 with three new endpoints for canc
 - **Complexity**: Medium
 - **Risk Factors**: Route parameter binding for orderId (string), query parameter for asset on cancel-all
 - **Files**:
-  - `src/TradingApp.Api/Controllers/OrdersController.cs` — modification (add endpoints)
+  - `src/TradePilot.Api/Controllers/OrdersController.cs` — modification (add endpoints)
 - **Success**:
   - `DELETE /api/orders/{orderId}` returns 204 on success
   - `DELETE /api/orders?asset={asset}` returns 204 on success
@@ -349,7 +349,7 @@ Extend the existing `OrdersController` from F5 with three new endpoints for canc
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/OrdersController.cs — modification
+// src/TradePilot.Api/Controllers/OrdersController.cs — modification
 // Add these endpoints to the existing controller:
 
 [HttpDelete("{orderId}")]
@@ -395,8 +395,8 @@ public async Task<IActionResult> ModifyOrder(
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/AccountController.cs` — direct service injection pattern, try/catch delegated to global filter
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — DomainException → 400, HttpRequestException → 503
+- `src/TradePilot.Api/Controllers/AccountController.cs` — direct service injection pattern, try/catch delegated to global filter
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — DomainException → 400, HttpRequestException → 503
 
 ---
 
@@ -407,7 +407,7 @@ Create unit tests for the cancel and modify methods in `HyperliquidOrderService`
 - **Complexity**: Medium
 - **Risk Factors**: Verifying correct action payload construction and signing flow
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — new file or extend existing from F5
+  - `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — new file or extend existing from F5
 - **Success**:
   - Tests verify cancel single constructs correct action payload
   - Tests verify cancel all fetches orders and constructs batch cancel
@@ -420,7 +420,7 @@ Create unit tests for the cancel and modify methods in `HyperliquidOrderService`
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs — new methods
+// tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs — new methods
 // (Extend existing test class from F5, or add to it)
 
 [TestMethod]
@@ -519,8 +519,8 @@ public async Task GivenValidParameters_WhenModifyOrder_ThenSignsAndSubmitsModify
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Moq setup and verify patterns
-- `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — unit test structure
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Moq setup and verify patterns
+- `tests/TradePilot.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — unit test structure
 
 ---
 
@@ -531,7 +531,7 @@ Create integration tests using `WebApplicationFactory` for the three new endpoin
 - **Complexity**: Medium
 - **Risk Factors**: DELETE with query parameters, PUT with request body, handling 204 No Content assertions
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs` — extend existing from F5 or create
+  - `tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs` — extend existing from F5 or create
 - **Success**:
   - Tests cover: cancel single (204), cancel all (204), modify (204)
   - Tests cover: cancel with invalid order ID, modify with invalid body (400)
@@ -543,7 +543,7 @@ Create integration tests using `WebApplicationFactory` for the three new endpoin
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs — new test methods
+// tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs — new test methods
 // (Extend existing test class from F5)
 
 [TestMethod]
@@ -631,8 +631,8 @@ public async Task GivenOrderNotFoundForModify_WhenModifyOrder_ThenReturnsBadRequ
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — `WebApplicationFactory`, mock setup/verify, HTTP status assertions
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — test base class pattern
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — `WebApplicationFactory`, mock setup/verify, HTTP status assertions
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — test base class pattern
 
 ---
 

@@ -10,7 +10,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 import { BacktestSummary } from "../../../../core/models/backtest.model";
 import { SKIP_ERROR_NOTIFICATION } from "../../../../core/interceptors/http-context-tokens";
-import { NotificationService } from "../../../../core/services/notification.service";
+import { NotificationFacade } from "../../../../core/services/notification-facade.service";
 import { BacktestService } from "../../../../core/services/backtest.service";
 
 interface RevisionGroup {
@@ -28,7 +28,7 @@ interface RevisionGroup {
 export class StrategyBacktestHistoryComponent implements OnChanges {
   private readonly _backtestService = inject(BacktestService);
   private readonly _router = inject(Router);
-  private readonly _notifications = inject(NotificationService);
+  private readonly _notifications = inject(NotificationFacade);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   @Input({ required: true })

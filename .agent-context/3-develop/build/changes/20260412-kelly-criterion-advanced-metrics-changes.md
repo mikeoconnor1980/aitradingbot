@@ -13,25 +13,25 @@ Implemented Kelly Criterion metrics end to end, including backend calculation an
 ### Added
 
 <!-- Phase 1: Backend — Kelly Calculation, Persistence & Tests -->
-- src/TradingApp.Persistence/Migrations/20260412205416_AddKellyMetrics.cs: Adds the EF Core migration for Kelly metric columns on BacktestRuns.
-- src/TradingApp.Persistence/Migrations/20260412205416_AddKellyMetrics.Designer.cs: Captures the generated EF Core model metadata for the Kelly metrics migration.
+- src/TradePilot.Persistence/Migrations/20260412205416_AddKellyMetrics.cs: Adds the EF Core migration for Kelly metric columns on BacktestRuns.
+- src/TradePilot.Persistence/Migrations/20260412205416_AddKellyMetrics.Designer.cs: Captures the generated EF Core model metadata for the Kelly metrics migration.
 
 ### Modified
 
 <!-- Phase 1: Backend — Kelly Calculation, Persistence & Tests -->
-- src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs: Added Kelly, half-Kelly, and win/loss R-ratio calculation and mapped them into BacktestResult.
-- src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs: Mirrored Kelly metric derivation and added persisted-or-derived response mapping.
-- src/TradingApp.Application/Backtesting/Models/BacktestResult.cs: Added nullable Kelly-related result fields.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs: Added nullable Kelly-related response fields.
-- src/TradingApp.Domain/Entities/BacktestRun.cs: Added persisted Kelly fields and extended Create and MarkCompleted to accept them.
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Added EF conversion configuration for KellyPercent, HalfKellyPercent, and WinLossRRatio.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated the EF model snapshot to include the new BacktestRun columns.
-- src/TradingApp.Api/Services/BacktestProcessorService.cs: Passed Kelly metrics through when marking backtests complete.
-- src/TradingApp.Api/Models/BacktestSummaryDto.cs: Added ProfitFactor and Sqn to the list-view DTO.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs: Added ProfitFactor and Sqn to the summary model.
-- src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs: Added ProfitFactor and Sqn to summary projection and mapping.
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Exposed ProfitFactor and Sqn in list endpoint responses.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs: Added Kelly metric assertions and edge-case coverage.
+- src/TradePilot.Application/Backtesting/Services/BacktestMetricsCalculator.cs: Added Kelly, half-Kelly, and win/loss R-ratio calculation and mapped them into BacktestResult.
+- src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs: Mirrored Kelly metric derivation and added persisted-or-derived response mapping.
+- src/TradePilot.Application/Backtesting/Models/BacktestResult.cs: Added nullable Kelly-related result fields.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs: Added nullable Kelly-related response fields.
+- src/TradePilot.Domain/Entities/BacktestRun.cs: Added persisted Kelly fields and extended Create and MarkCompleted to accept them.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Added EF conversion configuration for KellyPercent, HalfKellyPercent, and WinLossRRatio.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated the EF model snapshot to include the new BacktestRun columns.
+- src/TradePilot.Api/Services/BacktestProcessorService.cs: Passed Kelly metrics through when marking backtests complete.
+- src/TradePilot.Api/Models/BacktestSummaryDto.cs: Added ProfitFactor and Sqn to the list-view DTO.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs: Added ProfitFactor and Sqn to the summary model.
+- src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs: Added ProfitFactor and Sqn to summary projection and mapping.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Exposed ProfitFactor and Sqn in list endpoint responses.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs: Added Kelly metric assertions and edge-case coverage.
 
 <!-- Phase 2: Frontend — Advanced Metrics Display -->
 - frontend/trading-ui/src/app/core/models/backtest.model.ts: Added Kelly-related fields to BacktestResult and advanced summary metrics to BacktestSummary.
@@ -51,7 +51,7 @@ Implemented Kelly Criterion metrics end to end, including backend calculation an
 
 <!-- Phase 1: Backend — Kelly Calculation, Persistence & Tests -->
 - Solution Tests: 1861/1861 passed.
-- Build: PASSED (`dotnet build TradingApp.sln --no-restore`).
+- Build: PASSED (`dotnet build TradePilot.sln --no-restore`).
 
 <!-- Phase 2: Frontend — Advanced Metrics Display -->
 - Angular Build: PASSED.
@@ -60,7 +60,7 @@ Implemented Kelly Criterion metrics end to end, including backend calculation an
 ## Issues
 
 <!-- Phase 1: Backend — Kelly Calculation, Persistence & Tests -->
-- A stale `testhost` process locked `TradingApp.Api.Tests` output assemblies and caused `MSB3027` and `MSB3021` build failures. Resolved by terminating the stale `testhost` process and rerunning the build.
+- A stale `testhost` process locked `TradePilot.Api.Tests` output assemblies and caused `MSB3027` and `MSB3021` build failures. Resolved by terminating the stale `testhost` process and rerunning the build.
 - The initial migration command reserved the `AddKellyMetrics` name before reporting back. Verified the generated migration files and model snapshot were present and correct instead of creating a duplicate migration.
 
 <!-- Phase 2: Frontend — Advanced Metrics Display -->
@@ -95,4 +95,4 @@ Completed both planned phases for Kelly Criterion & Advanced Backtest Metrics.
 - Total tasks completed: 13/13
 - Files added: 2
 - Files modified: 20
-- Validation: `dotnet build TradingApp.sln --no-restore`, solution tests, Angular build, and Angular lint all passed.
+- Validation: `dotnet build TradePilot.sln --no-restore`, solution tests, Angular build, and Angular lint all passed.

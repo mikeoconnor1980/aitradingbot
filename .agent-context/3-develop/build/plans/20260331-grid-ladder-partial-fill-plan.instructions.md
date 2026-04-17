@@ -66,14 +66,14 @@ During `PartiallyFilled` state, no persistent TP sell order is placed in the eng
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/GridController.cs` - Primary bug location; lifecycle-blind position-open branch
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` - Signal execution; cancellation logic
-- `src/TradingApp.Application/Trading/Models/GridState.cs` - Mutable state bag: `Lifecycle`, `FilledLevels`, `TotalLevels`, `GridCycleId`
-- `src/TradingApp.Application/Trading/Models/GridLifecycle.cs` - Enum with 8 values including `PartiallyFilled`, `FullyFilled`
-- `src/TradingApp.Application/Trading/Models/PositionState.cs` - `IsOpen => Size != 0`
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` - `ApplyGridFillState` correctly sets intermediate lifecycle states
-- `src/TradingApp.Application/Backtesting/Models/CancellationReason.cs` - Enum: `GridRedeployed`, `PositionOpened`, `StopLossTriggered`, `ManualCancel`
-- `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` - Integration tests with real controller (gridLevels=1 only)
+- `src/TradePilot.Application/Trading/Services/GridController.cs` - Primary bug location; lifecycle-blind position-open branch
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` - Signal execution; cancellation logic
+- `src/TradePilot.Application/Trading/Models/GridState.cs` - Mutable state bag: `Lifecycle`, `FilledLevels`, `TotalLevels`, `GridCycleId`
+- `src/TradePilot.Application/Trading/Models/GridLifecycle.cs` - Enum with 8 values including `PartiallyFilled`, `FullyFilled`
+- `src/TradePilot.Application/Trading/Models/PositionState.cs` - `IsOpen => Size != 0`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` - `ApplyGridFillState` correctly sets intermediate lifecycle states
+- `src/TradePilot.Application/Backtesting/Models/CancellationReason.cs` - Enum: `GridRedeployed`, `PositionOpened`, `StopLossTriggered`, `ManualCancel`
+- `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` - Integration tests with real controller (gridLevels=1 only)
 - `.agent-context/0-knowledge/15-grid-controller.md` - Grid controller knowledge (lifecycle states)
 - `.agent-context/0-knowledge/24-backtesting-grid-engine-explained.md` - Grid engine docs (documents current buggy behavior)
 
@@ -119,7 +119,7 @@ During `PartiallyFilled` state, no persistent TP sell order is placed in the eng
 
 ### Scoping Notes
 
-- The fix is contained entirely within `TradingApp.Application` — no Domain, Infrastructure, or API layer changes needed
+- The fix is contained entirely within `TradePilot.Application` — no Domain, Infrastructure, or API layer changes needed
 - `BacktestPositionManager` and `SimulatedExecutionEngine` do NOT need functional changes — the fix upstream in `GridController` prevents premature signal emission
 - The `CancellationReason` rename is cosmetic but improves auditability
 - The controller-checked TP for partial fills uses candle close (consistent with "strategies execute on confirmed candle closes only" principle)

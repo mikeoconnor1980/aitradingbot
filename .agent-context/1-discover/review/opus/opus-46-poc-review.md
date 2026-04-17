@@ -144,10 +144,10 @@ The knowledge files describe a much larger system (grid strategy, backtesting, L
 
 | Project | Tests | Coverage |
 |---------|-------|----------|
-| TradingApp.Api.Tests | ~40 tests across 9 files | Controllers, services, hub, streaming |
-| TradingApp.Infrastructure.Tests | ~26 tests across 4 files | Nonce, signer, EIP-712, WebSocket |
-| TradingApp.Application.Tests | 0 | Empty |
-| TradingApp.Domain.Tests | 0 | Empty |
+| TradePilot.Api.Tests | ~40 tests across 9 files | Controllers, services, hub, streaming |
+| TradePilot.Infrastructure.Tests | ~26 tests across 4 files | Nonce, signer, EIP-712, WebSocket |
+| TradePilot.Application.Tests | 0 | Empty |
+| TradePilot.Domain.Tests | 0 | Empty |
 
 ### Strengths
 - WebApplicationFactory integration tests (real ASP.NET pipeline)

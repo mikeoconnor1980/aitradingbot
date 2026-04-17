@@ -3,7 +3,7 @@ import { provideNativeDateAdapter } from "@angular/material/core";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { of, throwError } from "rxjs";
 import { BacktestResult } from "../../../core/models/backtest.model";
-import { NotificationService } from "../../../core/services/notification.service";
+import { NotificationFacade } from "../../../core/services/notification-facade.service";
 import { StrategyDto, StrategySummaryDto } from "../../strategy-builder/models/strategy.model";
 import { StrategyApiService } from "../../strategy-builder/services/strategy-api.service";
 import { BacktestFormComponent } from "./backtest-form.component";
@@ -12,7 +12,7 @@ describe("BacktestFormComponent", () => {
   let component: BacktestFormComponent;
   let fixture: ComponentFixture<BacktestFormComponent>;
   let strategyApiService: jasmine.SpyObj<StrategyApiService>;
-  let notificationService: jasmine.SpyObj<NotificationService>;
+  let notificationService: jasmine.SpyObj<NotificationFacade>;
 
   const strategySummary: StrategySummaryDto = {
     id: "strategy-1",
@@ -134,7 +134,7 @@ describe("BacktestFormComponent", () => {
 
   beforeEach(async () => {
     strategyApiService = jasmine.createSpyObj<StrategyApiService>("StrategyApiService", ["getStrategies", "getStrategy"]);
-    notificationService = jasmine.createSpyObj<NotificationService>("NotificationService", ["error"]);
+    notificationService = jasmine.createSpyObj<NotificationFacade>("NotificationFacade", ["error"]);
     strategyApiService.getStrategies.and.returnValue(of([strategySummary, signalStrategySummary]));
     strategyApiService.getStrategy.and.callFake((strategyId: string) => {
       return of(strategyId === signalStrategySummary.id ? signalStrategyDetail : strategyDetail);
@@ -145,7 +145,7 @@ describe("BacktestFormComponent", () => {
       providers: [
         provideNativeDateAdapter(),
         { provide: StrategyApiService, useValue: strategyApiService },
-        { provide: NotificationService, useValue: notificationService }
+        { provide: NotificationFacade, useValue: notificationService }
       ]
     }).compileComponents();
 

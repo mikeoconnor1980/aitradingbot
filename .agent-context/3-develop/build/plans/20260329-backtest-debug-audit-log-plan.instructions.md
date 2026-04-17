@@ -62,33 +62,33 @@ As a developer, I want a debug/audit log available in the backtesting results so
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — Entity with JSON blob columns, factory methods, `MarkCompleted()` pattern
-- `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs` — Configuration model (add `EnableAuditLog` here)
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — Main replay loop (wire collector here)
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — Evaluation pipeline (inject collector here)
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — Signal → order routing (log order events here)
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — JSON serialization pattern (add debug serializers)
-- `src/TradingApp.Application/Backtesting/GetBacktestResultQuery.cs` — CQRS query pattern (follow for debug query)
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — Controller pattern (add debug endpoint)
-- `src/TradingApp.Api/Models/RunBacktestRequest.cs` — Request DTO (add `EnableAuditLog`)
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — Inline entity config in `OnModelCreating`
-- `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — Repository pattern
-- `src/TradingApp.Persistence/Migrations/20260328204609_AddEquityTimeSeriesToBacktestRun.cs` — Latest migration
-- `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` — Indicator values to capture
-- `src/TradingApp.Application/Trading/Models/StrategyEvaluation.cs` — SetupDetected result to capture
-- `src/TradingApp.Application/Trading/Models/TradingSignal.cs` — Signal type + parameters
-- `src/TradingApp.Application/Trading/Models/GridState.cs` — Grid lifecycle + GridCycleId
-- `src/TradingApp.Application/Backtesting/Models/SimulatedOrder.cs` — Order model (needs GridCycleId)
-- `src/TradingApp.Application/Backtesting/Models/SimulatedFill.cs` — Fill model for order event logging
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — Entity with JSON blob columns, factory methods, `MarkCompleted()` pattern
+- `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs` — Configuration model (add `EnableAuditLog` here)
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — Main replay loop (wire collector here)
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — Evaluation pipeline (inject collector here)
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — Signal → order routing (log order events here)
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — JSON serialization pattern (add debug serializers)
+- `src/TradePilot.Application/Backtesting/GetBacktestResultQuery.cs` — CQRS query pattern (follow for debug query)
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — Controller pattern (add debug endpoint)
+- `src/TradePilot.Api/Models/RunBacktestRequest.cs` — Request DTO (add `EnableAuditLog`)
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — Inline entity config in `OnModelCreating`
+- `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — Repository pattern
+- `src/TradePilot.Persistence/Migrations/20260328204609_AddEquityTimeSeriesToBacktestRun.cs` — Latest migration
+- `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` — Indicator values to capture
+- `src/TradePilot.Application/Trading/Models/StrategyEvaluation.cs` — SetupDetected result to capture
+- `src/TradePilot.Application/Trading/Models/TradingSignal.cs` — Signal type + parameters
+- `src/TradePilot.Application/Trading/Models/GridState.cs` — Grid lifecycle + GridCycleId
+- `src/TradePilot.Application/Backtesting/Models/SimulatedOrder.cs` — Order model (needs GridCycleId)
+- `src/TradePilot.Application/Backtesting/Models/SimulatedFill.cs` — Fill model for order event logging
 - `frontend/trading-ui/src/app/features/backtesting/trade-log-table/` — Trade log table to make expandable
 - `frontend/trading-ui/src/app/features/dashboard/activity-feed/` — Expandable row pattern reference
 - `frontend/trading-ui/src/app/features/dashboard/positions-table/` — Filter pattern reference
 - `frontend/trading-ui/src/app/core/services/backtest.service.ts` — API service (add `getDebugData()`)
 - `frontend/trading-ui/src/app/core/models/backtest.model.ts` — TypeScript models (add debug types)
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — Service test pattern
-- `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Integration test pattern
-- `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — Controller test pattern
-- `tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — Persistence test pattern
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — Service test pattern
+- `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Integration test pattern
+- `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — Controller test pattern
+- `tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — Persistence test pattern
 
 ### [x] Phase 1: Audit Log Models & Collector Infrastructure
 

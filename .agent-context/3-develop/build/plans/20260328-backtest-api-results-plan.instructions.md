@@ -51,9 +51,9 @@ Expose the backtest replay engine (F3) via HTTP API endpoints that accept strate
 ### Discovery References
 
 - F3 (Backtest Replay Engine) is not yet implemented — `IBacktestRunner` interface exists but has no concrete implementation
-- `BacktestConfig`, `BacktestResult`, `BacktestTrade`, `FeeModel`, `EquitySnapshot` models already exist in `TradingApp.Application/Backtesting/Models/`
+- `BacktestConfig`, `BacktestResult`, `BacktestTrade`, `FeeModel`, `EquitySnapshot` models already exist in `TradePilot.Application/Backtesting/Models/`
 - The `ICandleRepository.GetCandlesAsync()` method supports filtering by source and date range
-- MediatR auto-discovers handlers from the `TradingApp.Application` assembly — no additional DI wiring needed for new handlers
+- MediatR auto-discovers handlers from the `TradePilot.Application` assembly — no additional DI wiring needed for new handlers
 - The `HttpGlobalExceptionFilter` maps `DomainException` → 400 and `NotFoundException` → 404 but does not handle `OperationCanceledException` → 408
 - `BacktestConfig` uses Unix ms timestamps (`long`), not ISO 8601 strings
 - `BacktestConfig` requires `InitialCapital` — to be added to the API request per user confirmation
@@ -61,25 +61,25 @@ Expose the backtest replay engine (F3) via HTTP API endpoints that accept strate
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/Candle.cs` — Domain entity pattern (sealed class, private constructor, static `Create()` factory, private setters)
-- `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs` — Repository interface pattern
-- `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — Repository implementation pattern (LINQ reads, EF Core context injection)
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — DbContext with DbSet registration, decimal→double conversion for SQLite
-- `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` — DI registration entry point
-- `src/TradingApp.Application/Abstractions/Commands/Command.cs` — CQRS command base types (`Command<T>`)
-- `src/TradingApp.Application/Abstractions/Queries/Query.cs` — CQRS query base type (`Query<T>`)
-- `src/TradingApp.Application/Abstractions/Commands/CommandHandler.cs` — CQRS command handler base
-- `src/TradingApp.Application/Abstractions/Queries/QueryHandler.cs` — CQRS query handler base
-- `src/TradingApp.Application/Candles/IngestCandlesCommand.cs` — Reference CQRS command + handler pattern
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — Base controller with IMediator + IdentityService
-- `src/TradingApp.Api/Infrastructure/Envelope.cs` — Error-only response wrapper
-- `src/TradingApp.Api/Controllers/CandlesController.cs` — Reference controller (POST + validation + MediatR)
-- `src/TradingApp.Api/Controllers/FundingRatesController.cs` — Reference controller (POST + validation)
-- `src/TradingApp.Api/Models/IngestCandlesRequest.cs` — Request model with data annotations
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception → HTTP mapping
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — Controller integration test base
-- `tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs` — Controller test pattern (mock injection, status assertions)
-- `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — Repository test pattern (SQLite in-memory, two-context verify)
+- `src/TradePilot.Domain/Entities/Candle.cs` — Domain entity pattern (sealed class, private constructor, static `Create()` factory, private setters)
+- `src/TradePilot.Application/Abstractions/Repositories/ICandleRepository.cs` — Repository interface pattern
+- `src/TradePilot.Persistence/Repositories/CandleRepository.cs` — Repository implementation pattern (LINQ reads, EF Core context injection)
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — DbContext with DbSet registration, decimal→double conversion for SQLite
+- `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` — DI registration entry point
+- `src/TradePilot.Application/Abstractions/Commands/Command.cs` — CQRS command base types (`Command<T>`)
+- `src/TradePilot.Application/Abstractions/Queries/Query.cs` — CQRS query base type (`Query<T>`)
+- `src/TradePilot.Application/Abstractions/Commands/CommandHandler.cs` — CQRS command handler base
+- `src/TradePilot.Application/Abstractions/Queries/QueryHandler.cs` — CQRS query handler base
+- `src/TradePilot.Application/Candles/IngestCandlesCommand.cs` — Reference CQRS command + handler pattern
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — Base controller with IMediator + IdentityService
+- `src/TradePilot.Api/Infrastructure/Envelope.cs` — Error-only response wrapper
+- `src/TradePilot.Api/Controllers/CandlesController.cs` — Reference controller (POST + validation + MediatR)
+- `src/TradePilot.Api/Controllers/FundingRatesController.cs` — Reference controller (POST + validation)
+- `src/TradePilot.Api/Models/IngestCandlesRequest.cs` — Request model with data annotations
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception → HTTP mapping
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — Controller integration test base
+- `tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs` — Controller test pattern (mock injection, status assertions)
+- `tests/TradePilot.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — Repository test pattern (SQLite in-memory, two-context verify)
 
 ### [x] Phase 1: Domain Entity & Persistence
 
@@ -94,8 +94,8 @@ Expose the backtest replay engine (F3) via HTTP API endpoints that accept strate
 - [x] Task 1.3: Create `BacktestRunRepository` implementation
   - Details: .agent-context/3-develop/build/plans/details/20260328-backtest-api-results-phase-01-details.md#task-13-create-backtestrunrepository-implementation
 
-- [x] Task 1.4: Update `TradingAppDbContext` with `BacktestRuns` DbSet
-  - Details: .agent-context/3-develop/build/plans/details/20260328-backtest-api-results-phase-01-details.md#task-14-update-tradingappdbcontext-with-backtestruns-dbset
+- [x] Task 1.4: Update `TradePilotDbContext` with `BacktestRuns` DbSet
+  - Details: .agent-context/3-develop/build/plans/details/20260328-backtest-api-results-phase-01-details.md#task-14-update-TradePilotdbcontext-with-backtestruns-dbset
 
 - [x] Task 1.5: Create EF Core migration
   - Details: .agent-context/3-develop/build/plans/details/20260328-backtest-api-results-phase-01-details.md#task-15-create-ef-core-migration
@@ -113,7 +113,7 @@ Expose the backtest replay engine (F3) via HTTP API endpoints that accept strate
 
 **Complexity**: Medium | **Risk**: Medium
 
-> **Prerequisite**: `BacktestResult` in `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` does not currently have a `CandlesReplayed` property. Task 2.3 must add `public required int CandlesReplayed { get; init; }` to `BacktestResult` before the handler code will compile.
+> **Prerequisite**: `BacktestResult` in `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` does not currently have a `CandlesReplayed` property. Task 2.3 must add `public required int CandlesReplayed { get; init; }` to `BacktestResult` before the handler code will compile.
 
 - [x] Task 2.1: Create `GridStrategyConfig` and `BacktestRunResponse` DTOs
   - Details: .agent-context/3-develop/build/plans/details/20260328-backtest-api-results-phase-02-details.md#task-21-create-gridstrategyconfig-and-backtestrunresponse-dtos
@@ -177,9 +177,9 @@ Expose the backtest replay engine (F3) via HTTP API endpoints that accept strate
 
 ## Dependencies
 
-- `IBacktestRunner` interface (exists in `TradingApp.Application.Abstractions.Services`)
-- `BacktestConfig`, `BacktestResult`, `BacktestTrade`, `FeeModel` models (exist in `TradingApp.Application.Backtesting.Models`)
-- `ICandleRepository` (exists in `TradingApp.Application.Abstractions.Repositories`)
+- `IBacktestRunner` interface (exists in `TradePilot.Application.Abstractions.Services`)
+- `BacktestConfig`, `BacktestResult`, `BacktestTrade`, `FeeModel` models (exist in `TradePilot.Application.Backtesting.Models`)
+- `ICandleRepository` (exists in `TradePilot.Application.Abstractions.Repositories`)
 - `System.Text.Json` for JSON serialization of trade log and strategy config blobs
 - EF Core SQLite provider (already configured)
 - MediatR (already configured with assembly scanning)

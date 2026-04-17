@@ -49,7 +49,7 @@ Subscribe to per-wallet WebSocket events from Hyperliquid to receive real-time f
 ### Discovery References
 
 **Key Design Decisions:**
-- **Hosting**: UserEventStreamService runs as a BackgroundService in TradingApp.Api (follows F4 MarketDataStreamService pattern; IHubContext is only available in the API process)
+- **Hosting**: UserEventStreamService runs as a BackgroundService in TradePilot.Api (follows F4 MarketDataStreamService pattern; IHubContext is only available in the API process)
 - **WebSocket**: New IHyperliquidUserEventClient with separate WebSocket connection (does not modify existing market data client)
 - **SignalR**: Extends existing MarketDataHub with new push methods; uses Clients.All for POC (single-user)
 - **Angular State**: New AccountStateService with BehaviorSubject replaces polling for positions/orders; SignalRService extended for new events
@@ -69,22 +69,22 @@ Subscribe to per-wallet WebSocket events from Hyperliquid to receive real-time f
 
 ### Project Patterns
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` - WebSocket client with singleton pattern, callback handlers, channel message routing
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` - WebSocket client interface contract
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` - BackgroundService with exponential backoff reconnection and SignalR broadcast
-- `src/TradingApp.Api/Hubs/MarketDataHub.cs` - Thin SignalR hub with lifecycle logging
-- `src/TradingApp.Api/Program.cs` - DI registration, SignalR setup, hub mapping
-- `src/TradingApp.Application/MarketData/Models/ConnectionStatusDto.cs` - Connection status DTO (reusable for user event status)
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidSubscribeRequest.cs` - Subscribe request serialization model
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidWebSocketMessage.cs` - Generic WS message envelope
-- `src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs` - Derives WalletAddress from private key
+- `src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs` - WebSocket client with singleton pattern, callback handlers, channel message routing
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` - WebSocket client interface contract
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` - BackgroundService with exponential backoff reconnection and SignalR broadcast
+- `src/TradePilot.Api/Hubs/MarketDataHub.cs` - Thin SignalR hub with lifecycle logging
+- `src/TradePilot.Api/Program.cs` - DI registration, SignalR setup, hub mapping
+- `src/TradePilot.Application/MarketData/Models/ConnectionStatusDto.cs` - Connection status DTO (reusable for user event status)
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidSubscribeRequest.cs` - Subscribe request serialization model
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidWebSocketMessage.cs` - Generic WS message envelope
+- `src/TradePilot.Infrastructure/Services/HyperliquidSigner.cs` - Derives WalletAddress from private key
 - `frontend/trading-ui/src/app/core/services/signalr.service.ts` - SignalR hub connection, event registration, connection status
 - `frontend/trading-ui/src/app/core/services/health.service.ts` - BehaviorSubject state management pattern
 - `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts` - Dashboard with polling, mat-tab-group
 - `frontend/trading-ui/src/app/app.component.ts` - Navbar connection status indicator
-- `tests/TradingApp.Api.Tests/Services/MarketDataStreamServiceTests.cs` - Stream service unit test pattern (mock chain, callback capture)
-- `tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs` - Hub integration test pattern (WebApplicationFactory, LongPolling)
-- `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidWebSocketClientTests.cs` - WebSocket client unit test pattern
+- `tests/TradePilot.Api.Tests/Services/MarketDataStreamServiceTests.cs` - Stream service unit test pattern (mock chain, callback capture)
+- `tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs` - Hub integration test pattern (WebApplicationFactory, LongPolling)
+- `tests/TradePilot.Infrastructure.Tests/Services/HyperliquidWebSocketClientTests.cs` - WebSocket client unit test pattern
 
 ### [x] Phase 1: Backend — User Event WebSocket Client & Models
 

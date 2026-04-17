@@ -43,7 +43,7 @@ Configure a Hyperliquid testnet wallet and verify end-to-end connectivity from .
 
 ## Objectives
 
-- Scaffold the full enterprise solution (TradingApp.sln) with all 6 projects: Domain, Application, Infrastructure, Persistence, Api, Worker
+- Scaffold the full enterprise solution (TradePilot.sln) with all 6 projects: Domain, Application, Infrastructure, Persistence, Api, Worker
 - Establish MediatR CQRS base classes (Command, Query, Handler bases)
 - Create ApiController base with IMediator, Envelope and CreatedResultEnvelope response wrappers
 - Build test infrastructure: BaseControllerTests, FakeHttpMessageHandler, global Usings.cs
@@ -63,7 +63,7 @@ Configure a Hyperliquid testnet wallet and verify end-to-end connectivity from .
 
 ### Project Patterns
 
-- `.agent-context/0-knowledge/06-project-structure.md` — Enterprise solution structure (TradingApp.sln with 6 projects)
+- `.agent-context/0-knowledge/06-project-structure.md` — Enterprise solution structure (TradePilot.sln with 6 projects)
 - `.agent-context/3-develop/backlog/hyperlink-poc.md` — POC feature list and component mapping
 - `.agent-context/0-knowledge/02-hyperliquid-integration.md` — Hyperliquid REST API, wallet-based signing
 - `.agent-context/0-knowledge/11-angular-instructions.md` — Angular: standalone, strict typing, service-based
@@ -181,11 +181,11 @@ Configure a Hyperliquid testnet wallet and verify end-to-end connectivity from .
 
 ## Success Criteria
 
-- `dotnet build TradingApp.sln` succeeds with all 6 projects + test projects
+- `dotnet build TradePilot.sln` succeeds with all 6 projects + test projects
 - MediatR base classes (Command, Query, Handler bases) exist and compile
 - ApiController base, Envelope, CreatedResultEnvelope compile and work
 - BaseControllerTests infrastructure compiles
-- `dotnet test TradingApp.sln` passes all unit tests (signer derivation, config validation, health controller)
+- `dotnet test TradePilot.sln` passes all unit tests (signer derivation, config validation, health controller)
 - Backend starts with valid config and logs the derived wallet address
 - Backend fails fast with clear error when private key is missing or malformed
 - `GET /api/health` returns structured JSON dispatched through MediatR

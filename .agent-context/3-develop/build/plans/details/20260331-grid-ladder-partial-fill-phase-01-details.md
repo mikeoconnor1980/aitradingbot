@@ -25,7 +25,7 @@ Restructure the `positionState.IsOpen` branch in `GridController.ProcessAsync` t
 - **Complexity**: Medium
 - **Risk Factors**: This is the core bug fix; incorrect lifecycle branching could break the entire grid/backtest pipeline. Must handle all lifecycle states including edge cases.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/GridController.cs` — Refactor the `if (positionState.IsOpen)` branch
+  - `src/TradePilot.Application/Trading/Services/GridController.cs` — Refactor the `if (positionState.IsOpen)` branch
 - **Success**:
   - `GridController` no longer transitions to `Closing` when `lifecycle == PartiallyFilled` (unless SL or TP hit)
   - `GridController` correctly transitions to `Closing` when `lifecycle == FullyFilled`
@@ -37,7 +37,7 @@ Restructure the `positionState.IsOpen` branch in `GridController.ProcessAsync` t
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/GridController.cs — modification
+// src/TradePilot.Application/Trading/Services/GridController.cs — modification
 // Replace the entire `if (positionState.IsOpen) { ... }` block (lines 36–62) with:
 
         if (positionState.IsOpen)
@@ -132,10 +132,10 @@ Restructure the `positionState.IsOpen` branch in `GridController.ProcessAsync` t
 
 ##### Pattern References
 
-- Current `GridController.ProcessAsync`: `src/TradingApp.Application/Trading/Services/GridController.cs` (lines 36–62)
-- `GridLifecycle` enum: `src/TradingApp.Application/Trading/Models/GridLifecycle.cs`
-- `GridState` model: `src/TradingApp.Application/Trading/Models/GridState.cs`
-- `PositionState.IsOpen`: `src/TradingApp.Application/Trading/Models/PositionState.cs` (line 13)
+- Current `GridController.ProcessAsync`: `src/TradePilot.Application/Trading/Services/GridController.cs` (lines 36–62)
+- `GridLifecycle` enum: `src/TradePilot.Application/Trading/Models/GridLifecycle.cs`
+- `GridState` model: `src/TradePilot.Application/Trading/Models/GridState.cs`
+- `PositionState.IsOpen`: `src/TradePilot.Application/Trading/Models/PositionState.cs` (line 13)
 
 ---
 
@@ -146,10 +146,10 @@ Rename the misleading `PositionOpened` enum value to `TakeProfitTriggered`. Afte
 - **Complexity**: Low
 - **Risk Factors**: Simple rename; must update all references including the frontend TypeScript enum
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/CancellationReason.cs` — Rename enum value
-  - `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — Update usage in `PlaceTakeProfitAsync`
+  - `src/TradePilot.Application/Backtesting/Models/CancellationReason.cs` — Rename enum value
+  - `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — Update usage in `PlaceTakeProfitAsync`
   - `frontend/trading-ui/src/app/core/models/backtest-debug.model.ts` — Update TypeScript enum
-  - `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — Update test assertion using `CancellationReason.PositionOpened` (line 752)
+  - `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — Update test assertion using `CancellationReason.PositionOpened` (line 752)
 - **Success**:
   - `CancellationReason.PositionOpened` no longer exists
   - `CancellationReason.TakeProfitTriggered` is used in `PlaceTakeProfitAsync`
@@ -166,7 +166,7 @@ Create a new unit test file for `GridController` covering all lifecycle transiti
 - **Complexity**: Medium
 - **Risk Factors**: First time the controller is unit-tested in isolation; need to carefully construct `GridState`, `PositionState`, `StrategyEvaluation`, and `MarketContext` inputs
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — New file
+  - `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — New file
 - **Success**:
   - All lifecycle transition paths are covered
   - Tests pass with the refactored controller
@@ -176,14 +176,14 @@ Create a new unit test file for `GridController` covering all lifecycle transiti
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs — new file
+// tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs — new file
 
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Application.Trading.Services;
-using TradingApp.Domain.Entities;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Application.Trading.Services;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.Trading.Services;
+namespace TradePilot.Application.Tests.Trading.Services;
 
 [TestClass]
 public sealed class GridControllerTests
@@ -403,11 +403,11 @@ public sealed class GridControllerTests
 
 ##### Pattern References
 
-- Test conventions: `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` (MSTest, FluentAssertions, `Given_When_Then`)
-- Test project: `tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj`
-- Global usings: `tests/TradingApp.Application.Tests/Usings.cs` (FluentAssertions, MSTest, Moq)
-- `GridController` implementation: `src/TradingApp.Application/Trading/Services/GridController.cs`
-- `MarketContext` / `StrategyEvaluation` types: search `src/TradingApp.Application/Trading/Models/`
+- Test conventions: `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` (MSTest, FluentAssertions, `Given_When_Then`)
+- Test project: `tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj`
+- Global usings: `tests/TradePilot.Application.Tests/Usings.cs` (FluentAssertions, MSTest, Moq)
+- `GridController` implementation: `src/TradePilot.Application/Trading/Services/GridController.cs`
+- `MarketContext` / `StrategyEvaluation` types: search `src/TradePilot.Application/Trading/Models/`
 
 ---
 
@@ -420,8 +420,8 @@ Build the solution and run the affected test projects to verify the changes comp
 - **Files**: None (verification step)
 - **Success**:
   - `dotnet build` succeeds with no errors
-  - `dotnet test tests/TradingApp.Application.Tests --filter "FullyQualifiedName~GridController"` — all new unit tests pass
-  - `dotnet test tests/TradingApp.Application.Tests --filter "FullyQualifiedName~RealBacktestRunner"` — existing integration tests still pass
+  - `dotnet test tests/TradePilot.Application.Tests --filter "FullyQualifiedName~GridController"` — all new unit tests pass
+  - `dotnet test tests/TradePilot.Application.Tests --filter "FullyQualifiedName~RealBacktestRunner"` — existing integration tests still pass
   - `dotnet test` for all test projects succeeds
 - **Dependencies**: Tasks 1.1, 1.2, 1.3
 

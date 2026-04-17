@@ -24,7 +24,7 @@ Add an `IncludePartialCloses` boolean to `ParameterBounds` (default: `false`).
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Models/ParameterBounds.cs` — Add property
+  - `src/TradePilot.Application/Optimization/Models/ParameterBounds.cs` — Add property
 - **Success**:
   - `IncludePartialCloses` property exists, defaults to `false`
   - Existing optimizer runs unaffected (default = false)
@@ -32,7 +32,7 @@ Add an `IncludePartialCloses` boolean to `ParameterBounds` (default: `false`).
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Optimization/Models/ParameterBounds.cs — modification
+// src/TradePilot.Application/Optimization/Models/ParameterBounds.cs — modification
 public sealed record ParameterBounds
 {
     // ... existing properties ...
@@ -42,7 +42,7 @@ public sealed record ParameterBounds
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Optimization/Models/ParameterBounds.cs` — existing parameter bounds structure
+- `src/TradePilot.Application/Optimization/Models/ParameterBounds.cs` — existing parameter bounds structure
 
 ### Task 4.2: Extend `StrategyConfigGenerator` for partial close candidates {#task-42-extend-strategyconfiggenerator-for-partial-close-candidates}
 
@@ -51,7 +51,7 @@ When `IncludePartialCloses = true` and the generated exit config uses `RiskBased
 - **Complexity**: Medium
 - **Risk Factors**: Must use the RNG seed for determinism. Must only apply when `PositionSizeType = RiskBased`.
 - **Files**:
-  - `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` — Extend `GenerateExitConfig` or add `GeneratePartialCloses`
+  - `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` — Extend `GenerateExitConfig` or add `GeneratePartialCloses`
 - **Success**:
   - When `IncludePartialCloses = true`: ~50% of candidates get a partial close profile, ~50% get null
   - Predefined profiles: "25/25/50 at 1R/2R/3R", "50/50 at 1R/2R", "33/33/34 at 1R/2R/3R", "none"
@@ -102,7 +102,7 @@ private IReadOnlyList<PartialCloseLevel>? GeneratePartialCloses(
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` — existing `Generate` and random sampling pattern
+- `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` — existing `Generate` and random sampling pattern
 
 ### Task 4.3: Add unit tests for optimizer partial close generation {#task-43-add-unit-tests-for-optimizer-partial-close-generation}
 
@@ -111,7 +111,7 @@ Add tests to `StrategyConfigGeneratorTests` for partial close candidate generati
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — Add tests
+  - `tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — Add tests
 - **Success**:
   - Test: `IncludePartialCloses = false` → all candidates have `PartialCloses = null`
   - Test: `IncludePartialCloses = true` → some candidates have partial closes, some don't
@@ -144,7 +144,7 @@ public void GivenIncludePartialClosesTrue_WhenGenerated_ThenMixOfPartialAndNone(
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — existing parameter generation tests
+- `tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs` — existing parameter generation tests
 
 ### Task 4.4: Run architecture tests {#task-44-run-architecture-tests}
 

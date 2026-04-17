@@ -26,8 +26,8 @@ Reflect the split API + Worker architecture.
 #### Changes Required
 
 1. **Split architecture**: Replace single "AITradingBot Application" box with two deployable processes:
-   - `TradingApp.Api` — Control Plane (cloud-hosted, Azure Container App)
-   - `TradingApp.Worker` — Execution Agent (client-side Windows Service)
+   - `TradePilot.Api` — Control Plane (cloud-hosted, Azure Container App)
+   - `TradePilot.Worker` — Execution Agent (client-side Windows Service)
 
 2. **Add communication paths**:
    - Browser ↔ API: REST + SignalR
@@ -60,7 +60,7 @@ Fix component names and add control path.
 1. **Fix participant names**:
    - "Bot Orchestrator" → `TradingSession`
    - "Market Data Service" → `HyperliquidWebSocketClient` + `CandleBuilder`
-   - "State & Orders Store" → `TradingAppDbContext` (with `LiveOrder`/`LiveFill`/`GridCycle`)
+   - "State & Orders Store" → `TradePilotDbContext` (with `LiveOrder`/`LiveFill`/`GridCycle`)
 
 2. **Add `AgentCheckInService`**: Show how start/stop commands flow from API to Worker via heartbeat protocol.
 

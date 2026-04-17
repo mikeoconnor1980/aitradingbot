@@ -35,12 +35,12 @@ The following authentication functionality exists today:
 
 | Layer | File | Purpose |
 |-------|------|---------|
-| Domain | `src/TradingApp.Domain/Entities/User.cs` | User entity with `AuthProvider`, `ExternalProviderId` (single-provider model) |
-| Application | `src/TradingApp.Application/Abstractions/Auth/` | `IJwtTokenService`, `IPasswordHasher`, `IGoogleTokenValidator` interfaces |
-| Infrastructure | `src/TradingApp.Infrastructure/Services/JwtTokenService.cs` | JWT generation and refresh validation |
-| Infrastructure | `src/TradingApp.Infrastructure/Services/AspNetPasswordHasher.cs` | PBKDF2 password hashing |
-| Infrastructure | `src/TradingApp.Infrastructure/Services/GoogleTokenValidator.cs` | Google ID token validation |
-| API | `src/TradingApp.Api/Controllers/AuthController.cs` | All auth endpoints |
+| Domain | `src/TradePilot.Domain/Entities/User.cs` | User entity with `AuthProvider`, `ExternalProviderId` (single-provider model) |
+| Application | `src/TradePilot.Application/Abstractions/Auth/` | `IJwtTokenService`, `IPasswordHasher`, `IGoogleTokenValidator` interfaces |
+| Infrastructure | `src/TradePilot.Infrastructure/Services/JwtTokenService.cs` | JWT generation and refresh validation |
+| Infrastructure | `src/TradePilot.Infrastructure/Services/AspNetPasswordHasher.cs` | PBKDF2 password hashing |
+| Infrastructure | `src/TradePilot.Infrastructure/Services/GoogleTokenValidator.cs` | Google ID token validation |
+| API | `src/TradePilot.Api/Controllers/AuthController.cs` | All auth endpoints |
 | Frontend | `frontend/trading-ui/src/app/core/services/auth.service.ts` | Angular auth state, localStorage token management |
 | Frontend | `frontend/trading-ui/src/app/core/guards/auth.guard.ts` | Route guard |
 | Frontend | `frontend/trading-ui/src/app/core/interceptors/auth.interceptor.ts` | Bearer token attachment + refresh retry |
@@ -201,10 +201,10 @@ Authentication concerns are split across existing project layers following the e
 ```
 Angular 19 (standalone)
   ↕ HTTP (REST) + HttpOnly cookie (refresh token)
-ASP.NET Core Web API (TradingApp.Api)
-  ↕ Application abstractions (TradingApp.Application)
-  ↕ Infrastructure services (TradingApp.Infrastructure)
-  ↕ EF Core persistence (TradingApp.Persistence)
+ASP.NET Core Web API (TradePilot.Api)
+  ↕ Application abstractions (TradePilot.Application)
+  ↕ Infrastructure services (TradePilot.Infrastructure)
+  ↕ EF Core persistence (TradePilot.Persistence)
 SQLite (POC) / Azure SQL (production)
 ```
 

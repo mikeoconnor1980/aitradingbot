@@ -13,13 +13,13 @@ Implements the F2 Account Dashboard feature: backend DTOs, service layer, and AP
 ### Added
 
 <!-- Phase 1: Backend — DTOs, Service Layer, and API Endpoints -->
-- src/TradingApp.Api/Models/AccountSummaryDto.cs: Added account summary response DTO with equity/margin/PnL fields.
-- src/TradingApp.Api/Models/PositionDto.cs: Added position response DTO for asset/size/pricing/PnL/liquidation data.
-- src/TradingApp.Api/Models/OpenOrderDto.cs: Added open order response DTO for order list output.
-- src/TradingApp.Api/Services/IHyperliquidAccountService.cs: Added account service abstraction with async methods for summary, positions, and orders.
-- src/TradingApp.Api/Services/HyperliquidAccountService.cs: Added service implementation calling Hyperliquid POST /info and mapping JSON responses to DTOs.
-- src/TradingApp.Api/Controllers/AccountController.cs: Added API controller exposing GET /api/account, /api/positions, and /api/orders with 503 handling.
-- tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs: Added 6 integration tests for happy paths, empty orders, and upstream error behavior.
+- src/TradePilot.Api/Models/AccountSummaryDto.cs: Added account summary response DTO with equity/margin/PnL fields.
+- src/TradePilot.Api/Models/PositionDto.cs: Added position response DTO for asset/size/pricing/PnL/liquidation data.
+- src/TradePilot.Api/Models/OpenOrderDto.cs: Added open order response DTO for order list output.
+- src/TradePilot.Api/Services/IHyperliquidAccountService.cs: Added account service abstraction with async methods for summary, positions, and orders.
+- src/TradePilot.Api/Services/HyperliquidAccountService.cs: Added service implementation calling Hyperliquid POST /info and mapping JSON responses to DTOs.
+- src/TradePilot.Api/Controllers/AccountController.cs: Added API controller exposing GET /api/account, /api/positions, and /api/orders with 503 handling.
+- tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs: Added 6 integration tests for happy paths, empty orders, and upstream error behavior.
 
 <!-- Phase 2: Frontend — Angular Material Dashboard with Polling -->
 - frontend/trading-ui/src/app/core/models/account-summary.model.ts: Added account summary model interface for dashboard binding.
@@ -43,9 +43,9 @@ Implements the F2 Account Dashboard feature: backend DTOs, service layer, and AP
 ### Modified
 
 <!-- Phase 1: Backend — DTOs, Service Layer, and API Endpoints -->
-- src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs: Extended interface with generic PostInfoAsync method for typed POST /info reads.
-- src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs: Implemented PostInfoAsync with ensure-success and typed JSON deserialization.
-- src/TradingApp.Api/Program.cs: Registered IHyperliquidAccountService -> HyperliquidAccountService in DI.
+- src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs: Extended interface with generic PostInfoAsync method for typed POST /info reads.
+- src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs: Implemented PostInfoAsync with ensure-success and typed JSON deserialization.
+- src/TradePilot.Api/Program.cs: Registered IHyperliquidAccountService -> HyperliquidAccountService in DI.
 
 <!-- Phase 2: Frontend — Angular Material Dashboard with Polling -->
 - frontend/trading-ui/package.json: Added Angular Material, CDK, and animations dependencies.
@@ -63,8 +63,8 @@ Implements the F2 Account Dashboard feature: backend DTOs, service layer, and AP
 
 <!-- Phase 1: Backend — DTOs, Service Layer, and API Endpoints -->
 - AccountControllerTests: 6/6 passed
-- TradingApp.Api.Tests (full project): 9/9 passed
-- TradingApp.Infrastructure.Tests (full project): 6/6 passed
+- TradePilot.Api.Tests (full project): 9/9 passed
+- TradePilot.Infrastructure.Tests (full project): 6/6 passed
 
 <!-- Phase 2: Frontend — Angular Material Dashboard with Polling -->
 - Frontend Build (ng build --configuration=development): PASSED
@@ -73,7 +73,7 @@ Implements the F2 Account Dashboard feature: backend DTOs, service layer, and AP
 ## Issues
 
 <!-- Phase 1: Backend — DTOs, Service Layer, and API Endpoints -->
-- Initial dotnet build TradingApp.sln failed restore with 401 from private Azure Artifacts feed. Resolved by running build/test with --no-restore and --no-build using already-restored local packages.
+- Initial dotnet build TradePilot.sln failed restore with 401 from private Azure Artifacts feed. Resolved by running build/test with --no-restore and --no-build using already-restored local packages.
 
 <!-- Phase 2: Frontend — Angular Material Dashboard with Polling -->
 - Initial build failed due to strict nullability on forkJoin results in dashboard data assignment; resolved by using null-safe fallback assignments for positions/orders.
@@ -92,7 +92,7 @@ Implements the F2 Account Dashboard feature: backend DTOs, service layer, and AP
 
 ## Review Hints
 
-- Review mapping assumptions in src/TradingApp.Api/Services/HyperliquidAccountService.cs against live Hyperliquid testnet payloads, especially cross margin ratio and order type/status fields.
+- Review mapping assumptions in src/TradePilot.Api/Services/HyperliquidAccountService.cs against live Hyperliquid testnet payloads, especially cross margin ratio and order type/status fields.
 - Review the polling reset behavior in frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts to confirm the timer reset semantics match expected UX under repeated manual refresh clicks.
 - Review API error UX thresholds in frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts to confirm 3 consecutive failures is the intended banner trigger.
 

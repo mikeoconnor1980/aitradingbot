@@ -57,18 +57,18 @@ Wire signal-mode strategies into the shared scheduler/backtest pipeline so RSI e
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — candle-close pipeline orchestrator, calls `IMarketContextBuilder.Build`, `IStrategyEngine.EvaluateAsync`, `IGridController.ProcessAsync`
-- `src/TradingApp.Application/Abstractions/Services/IMarketContextBuilder.cs` — has 3-arg and 4-arg `Build` overloads; 4-arg accepts `IReadOnlyList<IndicatorRequirement>?`
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — implements both overloads; 4-arg populates `IndicatorContext` from requirements
-- `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static class, extracts `IndicatorRequirement[]` from `StrategyConfig.EntryConditions`
-- `src/TradingApp.Application/StrategyAuthoring/Services/ConditionEvaluator.cs` — dispatches conditions to handlers; guard on `IndicatorContext is null`
-- `src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs` — routes `StrategyMode.Signal` → `ConditionEvaluator`, `Grid` → `GridStrategyEngine`
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — grid lifecycle state machine, `DeployGrid` / `TakeProfit` / `CancelGrid` signals
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — handles `DeployGrid`, `TakeProfit`, `CancelGrid`; places `OrderRequest` via `SimulatedExecutionEngine`
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — creates `StrategyScheduler`, wires `CandleClock`, manages trade log and `RecordFill` pairing
-- `src/TradingApp.Application/Trading/Models/TradeType.cs` — enum: `GridFill`, `TakeProfit`, `HedgeOpen`, `HedgeClose`
-- `src/TradingApp.Application/Abstractions/Services/IGridController.cs` — `ProcessAsync` contract returning `IReadOnlyList<TradingSignal>`
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — pipeline wiring tests, currently grid-mode only
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — candle-close pipeline orchestrator, calls `IMarketContextBuilder.Build`, `IStrategyEngine.EvaluateAsync`, `IGridController.ProcessAsync`
+- `src/TradePilot.Application/Abstractions/Services/IMarketContextBuilder.cs` — has 3-arg and 4-arg `Build` overloads; 4-arg accepts `IReadOnlyList<IndicatorRequirement>?`
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — implements both overloads; 4-arg populates `IndicatorContext` from requirements
+- `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static class, extracts `IndicatorRequirement[]` from `StrategyConfig.EntryConditions`
+- `src/TradePilot.Application/StrategyAuthoring/Services/ConditionEvaluator.cs` — dispatches conditions to handlers; guard on `IndicatorContext is null`
+- `src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs` — routes `StrategyMode.Signal` → `ConditionEvaluator`, `Grid` → `GridStrategyEngine`
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — grid lifecycle state machine, `DeployGrid` / `TakeProfit` / `CancelGrid` signals
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — handles `DeployGrid`, `TakeProfit`, `CancelGrid`; places `OrderRequest` via `SimulatedExecutionEngine`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — creates `StrategyScheduler`, wires `CandleClock`, manages trade log and `RecordFill` pairing
+- `src/TradePilot.Application/Trading/Models/TradeType.cs` — enum: `GridFill`, `TakeProfit`, `HedgeOpen`, `HedgeClose`
+- `src/TradePilot.Application/Abstractions/Services/IGridController.cs` — `ProcessAsync` contract returning `IReadOnlyList<TradingSignal>`
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — pipeline wiring tests, currently grid-mode only
 
 ### [x] Phase 1: Indicator Context Wiring in StrategyScheduler
 
@@ -154,7 +154,7 @@ Wire signal-mode strategies into the shared scheduler/backtest pipeline so RSI e
 ## Dependencies
 
 - F6 (UI: RSI Condition + Signal Mode) — must be merged for signal-mode `StrategyConfig` to exist in the database
-- F6.5 (Extract Indicator Calculators) — must be merged for `TradingApp.Indicators` project to be available to `BacktestMarketContextBuilder`
+- F6.5 (Extract Indicator Calculators) — must be merged for `TradePilot.Indicators` project to be available to `BacktestMarketContextBuilder`
 - `IndicatorExtractor.Extract()` — already implemented and tested
 - `BacktestMarketContextBuilder.Build(candle, 1h, 4h, requirements)` — already implemented and tested
 - `CompositeStrategyEngine` — already routes `StrategyMode.Signal` → `ConditionEvaluator`

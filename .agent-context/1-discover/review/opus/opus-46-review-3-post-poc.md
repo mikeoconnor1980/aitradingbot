@@ -187,7 +187,7 @@ The infrastructure to answer the question "does this strategy make money after f
 
 ### 5. HIGH: Worker project is essentially empty
 
-`TradingApp.Worker/Program.cs` is 11 lines: register persistence, run migrations, start host. The Worker PBIs describe the correct architecture, but the gap between the current state and the target is significant:
+`TradePilot.Worker/Program.cs` is 11 lines: register persistence, run migrations, start host. The Worker PBIs describe the correct architecture, but the gap between the current state and the target is significant:
 
 - `MarketDataBackgroundService` — new
 - `StrategyExecutionBackgroundService` — new

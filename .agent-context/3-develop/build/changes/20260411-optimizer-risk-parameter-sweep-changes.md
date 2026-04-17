@@ -13,20 +13,20 @@ Completed optimizer support for RiskBased sizing sweeps and auto-leverage candid
 ### Added
 
 <!-- Phase 1: Domain & Optimizer Model Extensions -->
-- src/TradingApp.Application/Optimization/Models/PositionSizeMode.cs: Added the optimizer-specific sizing mode enum with `PercentWallet` and `RiskBased` values.
+- src/TradePilot.Application/Optimization/Models/PositionSizeMode.cs: Added the optimizer-specific sizing mode enum with `PercentWallet` and `RiskBased` values.
 
 ### Modified
 
 <!-- Phase 1: Domain & Optimizer Model Extensions -->
-- src/TradingApp.Application/StrategyAuthoring/Models/RiskConfig.cs: Preserved the new risk-based fields and added a safe default initializer for `RiskPerTradePercent` while keeping the property nullable.
-- src/TradingApp.Application/Optimization/Models/ParameterBounds.cs: Added sizing-mode, risk-percent-option, and auto-leverage sweep fields for optimizer candidate generation.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Models/StrategyConfigSerializationTests.cs: Added snake_case serialization and round-trip coverage for `RiskBased`, `RiskPerTradePercent`, and `AutoLeverage`.
+- src/TradePilot.Application/StrategyAuthoring/Models/RiskConfig.cs: Preserved the new risk-based fields and added a safe default initializer for `RiskPerTradePercent` while keeping the property nullable.
+- src/TradePilot.Application/Optimization/Models/ParameterBounds.cs: Added sizing-mode, risk-percent-option, and auto-leverage sweep fields for optimizer candidate generation.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Models/StrategyConfigSerializationTests.cs: Added snake_case serialization and round-trip coverage for `RiskBased`, `RiskPerTradePercent`, and `AutoLeverage`.
 
 <!-- Phase 2: Generator Logic, API Wiring & Comprehensive Tests -->
-- src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs: Added mode-specific RiskBased generation, bounds validation, and candidate-description formatting for risk-percent and auto-leverage combinations.
-- src/TradingApp.Api/Models/RunOptimizationRequest.cs: Added nullable request fields for `PositionSizeMode`, `RiskPerTradePercentOptions`, and `IncludeAutoLeverage`.
-- src/TradingApp.Api/Controllers/OptimizationsController.cs: Wired the new request fields into `ParameterBounds` construction and parsing.
-- tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs: Added acceptance-criteria coverage for RiskBased candidate generation, conditional leverage sweep behavior, bounds validation, and description output.
+- src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs: Added mode-specific RiskBased generation, bounds validation, and candidate-description formatting for risk-percent and auto-leverage combinations.
+- src/TradePilot.Api/Models/RunOptimizationRequest.cs: Added nullable request fields for `PositionSizeMode`, `RiskPerTradePercentOptions`, and `IncludeAutoLeverage`.
+- src/TradePilot.Api/Controllers/OptimizationsController.cs: Wired the new request fields into `ParameterBounds` construction and parsing.
+- tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs: Added acceptance-criteria coverage for RiskBased candidate generation, conditional leverage sweep behavior, bounds validation, and description output.
 
 ### Removed
 
@@ -43,11 +43,11 @@ Completed optimizer support for RiskBased sizing sweeps and auto-leverage candid
 ## Issues
 
 <!-- Phase 1: Domain & Optimizer Model Extensions -->
-- The dedicated broad `runTests` path produced generic project-build-failed output, so final verification used a solution build plus `dotnet test TradingApp.sln --no-build --verbosity minimal`.
+- The dedicated broad `runTests` path produced generic project-build-failed output, so final verification used a solution build plus `dotnet test TradePilot.sln --no-build --verbosity minimal`.
 - Existing non-blocking warnings remain during build and test: `NU1901` and `NU1902` in Infrastructure projects, plus `ASPDEPR005` in the API project.
 
 <!-- Phase 2: Generator Logic, API Wiring & Comprehensive Tests -->
-- The dedicated full-suite test runner again surfaced generic project-build-failed output despite a successful solution build; verification was completed with `dotnet build TradingApp.sln --no-restore` followed by `dotnet test TradingApp.sln --no-build`.
+- The dedicated full-suite test runner again surfaced generic project-build-failed output despite a successful solution build; verification was completed with `dotnet build TradePilot.sln --no-restore` followed by `dotnet test TradePilot.sln --no-build`.
 
 ## Design Decisions
 

@@ -19,8 +19,8 @@ Add an optional `[FromQuery] string? asset` parameter to the `GetRecentFillsAsyn
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward parameter addition following existing nullable `[FromQuery]` patterns
 - **Files**:
-  - `src/TradingApp.Api/Controllers/AccountController.cs` — Add `[FromQuery] string? asset` parameter to `GetRecentFillsAsync` action
-  - `src/TradingApp.Api/Services/IHyperliquidAccountService.cs` — Add `string? asset = null` parameter to interface method
+  - `src/TradePilot.Api/Controllers/AccountController.cs` — Add `[FromQuery] string? asset` parameter to `GetRecentFillsAsync` action
+  - `src/TradePilot.Api/Services/IHyperliquidAccountService.cs` — Add `string? asset = null` parameter to interface method
 - **Success**:
   - `GET /api/account/fills` continues to work without the asset parameter (backward compatible)
   - `GET /api/account/fills?asset=BTC-PERP` compiles and passes the asset value to the service
@@ -29,7 +29,7 @@ Add an optional `[FromQuery] string? asset` parameter to the `GetRecentFillsAsyn
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Controllers/AccountController.cs — modification
+// src/TradePilot.Api/Controllers/AccountController.cs — modification
 // ... existing code ...
 [HttpGet("fills")]
 [ProducesResponseType(typeof(IReadOnlyList<FillEventDto>), StatusCodes.Status200OK)]
@@ -46,7 +46,7 @@ public async Task<IActionResult> GetRecentFillsAsync(
 ```
 
 ```csharp
-// src/TradingApp.Api/Services/IHyperliquidAccountService.cs — modification
+// src/TradePilot.Api/Services/IHyperliquidAccountService.cs — modification
 public interface IHyperliquidAccountService
 {
     // ... existing methods ...
@@ -58,8 +58,8 @@ public interface IHyperliquidAccountService
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — nullable `[FromQuery] string? symbol` parameter pattern
-- `src/TradingApp.Api/Controllers/MarketDataController.cs` — `[FromQuery]` asset parameter for filtering
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — nullable `[FromQuery] string? symbol` parameter pattern
+- `src/TradePilot.Api/Controllers/MarketDataController.cs` — `[FromQuery]` asset parameter for filtering
 
 ---
 
@@ -70,7 +70,7 @@ Update `HyperliquidAccountService.GetRecentFillsAsync` to accept the optional `a
 - **Complexity**: Medium
 - **Risk Factors**: Asset name conversion must use `HyperliquidAssetMapper.ToCoin()` to map display name ("BTC-PERP") to coin symbol ("BTC") used in `FillEventDto.Asset`
 - **Files**:
-  - `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Implement asset parameter, filtering, and conditional time window
+  - `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Implement asset parameter, filtering, and conditional time window
 - **Success**:
   - `GetRecentFillsAsync(null)` returns same result as before (24h lookback, all assets)
   - `GetRecentFillsAsync("BTC-PERP")` returns all-time fills filtered to asset "BTC" only
@@ -80,8 +80,8 @@ Update `HyperliquidAccountService.GetRecentFillsAsync` to accept the optional `a
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidAccountService.cs — modification
-using TradingApp.Infrastructure.Hyperliquid;
+// src/TradePilot.Api/Services/HyperliquidAccountService.cs — modification
+using TradePilot.Infrastructure.Hyperliquid;
 
 public async Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(
     string? asset = null,
@@ -109,8 +109,8 @@ public async Task<IReadOnlyList<FillEventDto>> GetRecentFillsAsync(
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — existing `GetRecentFillsAsync` implementation
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — `ToCoin("BTC-PERP")` → `"BTC"`
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — existing `GetRecentFillsAsync` implementation
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — `ToCoin("BTC-PERP")` → `"BTC"`
 
 ---
 
@@ -121,7 +121,7 @@ Remove the hardcoded `.Take(50)` in `HyperliquidRestClient.GetUserFillsAsync`. T
 - **Complexity**: Low
 - **Risk Factors**: Removing the cap means more fills may be returned when no asset filter is applied (e.g. activity feed). This is acceptable — the PBI's non-functional requirement states "fills are few relative to candles".
 - **Files**:
-  - `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Remove `.Take(50)` from the LINQ chain
+  - `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Remove `.Take(50)` from the LINQ chain
 - **Success**:
   - `GetUserFillsAsync` returns all fills matching the time window, ordered by timestamp descending
   - No `Take()` cap in the method
@@ -130,7 +130,7 @@ Remove the hardcoded `.Take(50)` in `HyperliquidRestClient.GetUserFillsAsync`. T
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs — modification
+// src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs — modification
 // In GetUserFillsAsync, change the return statement from:
 return fills
     .Select(f => new FillEventDto { /* ... */ })
@@ -147,7 +147,7 @@ return fills
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — existing `GetUserFillsAsync` implementation
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — existing `GetUserFillsAsync` implementation
 
 ---
 
@@ -158,7 +158,7 @@ Add test cases to `AccountControllerTests` verifying the new asset query paramet
 - **Complexity**: Medium
 - **Risk Factors**: `AccountControllerTests` uses its own `WebApplicationFactory` pattern (not `BaseControllerTests`). New tests must follow the existing class's pattern.
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Add new test methods
+  - `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Add new test methods
 - **Success**:
   - Test `GivenFillsForMultipleAssets_WhenGetFillsWithAssetFilter_ThenReturnsOnlyMatchingFills` passes
   - Test `GivenFillsForMultipleAssets_WhenGetFillsWithoutAssetFilter_ThenReturnsAllFills` passes
@@ -168,7 +168,7 @@ Add test cases to `AccountControllerTests` verifying the new asset query paramet
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs — new test methods
+// tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs — new test methods
 
 [TestMethod]
 public async Task GivenFillsForMultipleAssets_WhenGetFillsWithAssetFilter_ThenReturnsOnlyMatchingFills()
@@ -241,7 +241,7 @@ public async Task GivenNoFillsForAsset_WhenGetFillsWithAssetFilter_ThenReturnsEm
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — existing `GivenRecentFills_WhenGetFills_ThenReturnsSemanticFillFields` test pattern
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — existing `GivenRecentFills_WhenGetFills_ThenReturnsSemanticFillFields` test pattern
 
 ---
 
@@ -253,8 +253,8 @@ Build the solution and run all affected test projects to verify the changes comp
 - **Risk Factors**: None
 - **Files**: No file changes
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with no errors
-  - `dotnet test tests/TradingApp.Api.Tests` passes all tests including the new ones
+  - `dotnet build TradePilot.sln` succeeds with no errors
+  - `dotnet test tests/TradePilot.Api.Tests` passes all tests including the new ones
 - **Dependencies**: Tasks 1.1–1.4
 
 ## Phase Success Criteria

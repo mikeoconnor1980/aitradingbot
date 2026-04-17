@@ -79,7 +79,7 @@ Fix enum names and add missing features.
 
 3. **Remove `StrategyRun` and `StrategyPerformance` references**: These entities were never created
 
-4. **Add StrategyReview feature**: `StrategyReviewDto` + `RequestStrategyReviewCommand` — AI-powered strategy review (separate from interpretation). `StrategyReview` domain entity at `src/TradingApp.Domain/Entities/StrategyReview.cs`
+4. **Add StrategyReview feature**: `StrategyReviewDto` + `RequestStrategyReviewCommand` — AI-powered strategy review (separate from interpretation). `StrategyReview` domain entity at `src/TradePilot.Domain/Entities/StrategyReview.cs`
 
 5. **Add `Strategy.HighWaterMarkUsd`**: Drawdown HWM persisted per strategy, updated via `Strategy.UpdateHighWaterMark()`
 

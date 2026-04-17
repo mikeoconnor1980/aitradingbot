@@ -21,17 +21,17 @@ The interpreter is an authoring aid only. It does not place orders and it is not
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `ILlmClient` | `src/TradingApp.Application/Abstractions/Services/ILlmClient.cs` | LLM contract for interpretation |
-| `OpenAiCompatibleLlmClient` | `src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs` | OpenAI-compatible HTTP client |
-| `IStrategyInterpreter` | `src/TradingApp.Application/Abstractions/Services/IStrategyInterpreter.cs` | Interpretation abstraction |
-| `StrategyInterpreter` | `src/TradingApp.AI/Services/StrategyInterpreter.cs` | Prompt orchestration and response parsing |
-| `StrategyInterpreterPrompt` | `src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs` | Schema and behavior prompt |
-| `InterpretStrategyCommand` | `src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` | CQRS entry point |
-| `StrategyIntentDto` | `src/TradingApp.Application/StrategyAuthoring/Models/StrategyIntentDto.cs` | Parsed config, confidence, assumptions, clarification |
+| `ILlmClient` | `src/TradePilot.Application/Abstractions/Services/ILlmClient.cs` | LLM contract for interpretation |
+| `OpenAiCompatibleLlmClient` | `src/TradePilot.AI/Services/OpenAiCompatibleLlmClient.cs` | OpenAI-compatible HTTP client |
+| `IStrategyInterpreter` | `src/TradePilot.Application/Abstractions/Services/IStrategyInterpreter.cs` | Interpretation abstraction |
+| `StrategyInterpreter` | `src/TradePilot.AI/Services/StrategyInterpreter.cs` | Prompt orchestration and response parsing |
+| `StrategyInterpreterPrompt` | `src/TradePilot.AI/Prompts/StrategyInterpreterPrompt.cs` | Schema and behavior prompt |
+| `InterpretStrategyCommand` | `src/TradePilot.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` | CQRS entry point |
+| `StrategyIntentDto` | `src/TradePilot.Application/StrategyAuthoring/Models/StrategyIntentDto.cs` | Parsed config, confidence, assumptions, clarification |
 
 ## Default Provider Shape
 
-The default configuration shape comes from `LlmOptions` in `src/TradingApp.Application/Abstractions/Configuration/LlmOptions.cs`.
+The default configuration shape comes from `LlmOptions` in `src/TradePilot.Application/Abstractions/Configuration/LlmOptions.cs`.
 
 | Field | Default |
 |------|---------|

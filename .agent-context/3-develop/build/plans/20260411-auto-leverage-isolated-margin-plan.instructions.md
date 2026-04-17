@@ -54,15 +54,15 @@ When using Risk-Based sizing, leverage is automatically derived from stop-loss d
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` — static utility pattern for leverage calculator
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — DeployGrid signal emission with Parameters dict
-- `src/TradingApp.Application/Trading/Services/LivePositionManager.cs` — signal consumption and execution engine calls
-- `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs` — EIP-712 signed exchange actions, asset index caching
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — backtest execution stubs
-- `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` — asset metadata caching with MaxLeverage
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — UpdateLeverageAsync (working API implementation)
-- `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — risk config validation
-- `src/TradingApp.Application/Agent/Models/OrderCommandPayload.cs` — SetLeveragePayload model
+- `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` — static utility pattern for leverage calculator
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — DeployGrid signal emission with Parameters dict
+- `src/TradePilot.Application/Trading/Services/LivePositionManager.cs` — signal consumption and execution engine calls
+- `src/TradePilot.Infrastructure/Services/LiveExecutionEngine.cs` — EIP-712 signed exchange actions, asset index caching
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — backtest execution stubs
+- `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` — asset metadata caching with MaxLeverage
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — UpdateLeverageAsync (working API implementation)
+- `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — risk config validation
+- `src/TradePilot.Application/Agent/Models/OrderCommandPayload.cs` — SetLeveragePayload model
 
 ### [x] Phase 1: Domain Model, Leverage Calculator & Defaults
 

@@ -12,22 +12,22 @@ Completed the F11 positions enrichment work across API and Angular dashboard lay
 
 ### Added
 
-- tests/TradingApp.Api.Tests/Services/HyperliquidAccountServiceTests.cs: New unit tests covering enriched position mapping, cross-margin fallback margin calculation, and graceful degradation when funding lookup fails.
+- tests/TradePilot.Api.Tests/Services/HyperliquidAccountServiceTests.cs: New unit tests covering enriched position mapping, cross-margin fallback margin calculation, and graceful degradation when funding lookup fails.
 - frontend/trading-ui/src/app/features/dashboard/positions-table/funding-indicator/funding-indicator.component.ts: New standalone funding indicator component with funding side semantics and tooltip formatting.
 - frontend/trading-ui/src/app/features/dashboard/positions-table/funding-indicator/funding-indicator.component.html: Template rendering funding rate or an unavailable dash.
 - frontend/trading-ui/src/app/features/dashboard/positions-table/funding-indicator/funding-indicator.component.scss: Styles for receiving/paying funding states and unavailable display.
 
 ### Modified
 
-- src/TradingApp.Api/Services/HyperliquidAccountService.cs: Refactored position enrichment to fetch funding separately, source mark price directly from `clearinghouseState`, and calculate margin fallback from mark price and leverage when the exchange returns zero.
-- tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs: Expanded the sample enriched position DTO to include leverage and margin mode alongside funding and margin fields.
+- src/TradePilot.Api/Services/HyperliquidAccountService.cs: Refactored position enrichment to fetch funding separately, source mark price directly from `clearinghouseState`, and calculate margin fallback from mark price and leverage when the exchange returns zero.
+- tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs: Expanded the sample enriched position DTO to include leverage and margin mode alongside funding and margin fields.
 - frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.ts: Registered FundingIndicatorComponent and refactored mark/notional/margin helpers for the new explicit columns.
 - frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.html: Added Notional and Margin columns, replaced inline funding rendering with the reusable funding indicator, and added graceful dash handling for missing mark price and margin.
 - frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.scss: Added mark-price display helpers, unavailable-state styling, and responsive hiding for the added narrow-screen columns.
 
 ### Notes
 
-- `src/TradingApp.Api/Models/PositionDto.cs`, `frontend/trading-ui/src/app/core/models/position.model.ts`, and `frontend/trading-ui/src/app/features/dashboard/dashboard.component.html` already contained the required F11 fields/binding in the current repo state, so no further edits were required there.
+- `src/TradePilot.Api/Models/PositionDto.cs`, `frontend/trading-ui/src/app/core/models/position.model.ts`, and `frontend/trading-ui/src/app/features/dashboard/dashboard.component.html` already contained the required F11 fields/binding in the current repo state, so no further edits were required there.
 
 ## Test Results
 

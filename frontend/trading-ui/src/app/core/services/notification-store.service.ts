@@ -39,6 +39,11 @@ export class NotificationStoreService {
     this._notifications.set([]);
   }
 
+  /** Add an externally-created notification (e.g. from error interceptor or user-action feedback). */
+  public addExternal(notification: AppNotification): void {
+    this._addNotification(notification);
+  }
+
   private _subscribeToEvents(): void {
     // Buffer fills arriving within 500ms (Hyperliquid splits orders into partial fills)
     this._signalR.fillEvent$

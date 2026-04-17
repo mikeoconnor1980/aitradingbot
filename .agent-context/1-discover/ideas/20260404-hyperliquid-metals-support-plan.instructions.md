@@ -54,17 +54,17 @@ Extend the platform so Gold and Silver instruments listed on Hyperliquid can be 
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Controllers/OrdersController.cs` - dynamic asset list pattern using `IHyperliquidAssetMetadataCache`
-- `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` - exchange metadata cache for asset index, size decimals, and leverage
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` - current static Hyperliquid display-name and timeframe mapping
-- `src/TradingApp.Api/Controllers/ReferenceDataController.cs` - strategy-builder market list endpoint
-- `src/TradingApp.Api/Controllers/CandlesController.cs` - Hyperliquid candle-ingestion validation path
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` - SignalR live price aggregation and broadcast service
-- `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` - WebSocket subscription surface and trade message parsing
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` - current Binance-normalized backtest validation and execution entry point
-- `src/TradingApp.Infrastructure/Binance/BinanceAssetMapper.cs` - current Binance-only backtest symbol allowlist
-- `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs` - already supports optional `source`, which can be used to make backtesting provider-aware
-- `src/TradingApp.Application/Backtesting/Services/CandleReplayEngine.cs` - historical candle loading path that will need source-aware wiring
+- `src/TradePilot.Api/Controllers/OrdersController.cs` - dynamic asset list pattern using `IHyperliquidAssetMetadataCache`
+- `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` - exchange metadata cache for asset index, size decimals, and leverage
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` - current static Hyperliquid display-name and timeframe mapping
+- `src/TradePilot.Api/Controllers/ReferenceDataController.cs` - strategy-builder market list endpoint
+- `src/TradePilot.Api/Controllers/CandlesController.cs` - Hyperliquid candle-ingestion validation path
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` - SignalR live price aggregation and broadcast service
+- `src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs` - WebSocket subscription surface and trade message parsing
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` - current Binance-normalized backtest validation and execution entry point
+- `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` - current Binance-only backtest symbol allowlist
+- `src/TradePilot.Application/Abstractions/Repositories/ICandleRepository.cs` - already supports optional `source`, which can be used to make backtesting provider-aware
+- `src/TradePilot.Application/Backtesting/Services/CandleReplayEngine.cs` - historical candle loading path that will need source-aware wiring
 - `frontend/trading-ui/src/app/features/order-entry/order-entry.component.ts` - manual order UI with BTC-seeded defaults
 - `frontend/trading-ui/src/app/features/market-data/market-data.component.ts` - market-data UI with BTC-seeded defaults
 - `frontend/trading-ui/src/app/features/strategy-builder/strategy-builder-page.component.ts` - strategy builder default market selection
@@ -125,7 +125,7 @@ Extend the platform so Gold and Silver instruments listed on Hyperliquid can be 
 - [ ] Task 5.1: Confirm whether automated live strategy trading is in scope for this workstream
 - [ ] Task 5.2: Build a live `IExecutionEngine` implementation using Hyperliquid order services if automation is required
 - [ ] Task 5.3: Introduce a live `IPositionManager` and runtime composition that is not backtest-specific
-- [ ] Task 5.4: Expand `TradingApp.Worker` from persistence startup only into a candle-close runtime host using `CandleClock` and `StrategyScheduler`
+- [ ] Task 5.4: Expand `TradePilot.Worker` from persistence startup only into a candle-close runtime host using `CandleClock` and `StrategyScheduler`
 - [ ] Task 5.5: Add reconnect recovery and per-user execution checkpoints for live multi-subscriber automation
 
 ### [ ] Phase 6: Risk Tuning, Verification, and Rollout

@@ -25,7 +25,7 @@ Add two new properties to `PositionDto` for margin used (from clearinghouseState
 - **Complexity**: Low
 - **Risk Factors**: None — simple property addition
 - **Files**:
-  - `src/TradingApp.Api/Models/PositionDto.cs` — add `MarginUsed` and `FundingRate` decimal properties
+  - `src/TradePilot.Api/Models/PositionDto.cs` — add `MarginUsed` and `FundingRate` decimal properties
 - **Success**:
   - `PositionDto` compiles with `MarginUsed` and `FundingRate` properties
   - Existing JSON serialization continues to work (new fields default to 0m)
@@ -34,8 +34,8 @@ Add two new properties to `PositionDto` for margin used (from clearinghouseState
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/PositionDto.cs — modification
-namespace TradingApp.Api.Models;
+// src/TradePilot.Api/Models/PositionDto.cs — modification
+namespace TradePilot.Api.Models;
 
 public sealed class PositionDto
 {
@@ -56,7 +56,7 @@ public sealed class PositionDto
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Models/PositionDto.cs` — existing DTO pattern with `{ get; set; }` and default values
+- `src/TradePilot.Api/Models/PositionDto.cs` — existing DTO pattern with `{ get; set; }` and default values
 
 ### Task 1.2: Extract marginUsed from clearinghouseState {#task-12-extract-marginused-from-clearinghousestate}
 
@@ -65,7 +65,7 @@ Parse the `marginUsed` field from the Hyperliquid `clearinghouseState` position 
 - **Complexity**: Low
 - **Risk Factors**: `marginUsed` may be "0" for cross-margin positions (per Hyperliquid docs, cross margin is pooled). Use fallback: `notional / leverage` for cross positions if `marginUsed` is 0.
 - **Files**:
-  - `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — modify `MapToPositions()` to parse and set `MarginUsed`
+  - `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — modify `MapToPositions()` to parse and set `MarginUsed`
 - **Success**:
   - `PositionDto.MarginUsed` is populated from the `marginUsed` JSON field
   - For cross-margin positions where `marginUsed` is 0, the fallback calculation `abs(size) * markPrice / leverage` is used
@@ -74,7 +74,7 @@ Parse the `marginUsed` field from the Hyperliquid `clearinghouseState` position 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidAccountService.cs — modification to MapToPositions()
+// src/TradePilot.Api/Services/HyperliquidAccountService.cs — modification to MapToPositions()
 // Within the foreach loop, after extracting leverage and marginMode:
 
 var marginUsed = ParseDecimal(GetPropertyOrDefault(position, "marginUsed"));
@@ -94,7 +94,7 @@ results.Add(new PositionDto
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — existing `ParseDecimal(GetPropertyOrDefault(...))` pattern used for all other position fields
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — existing `ParseDecimal(GetPropertyOrDefault(...))` pattern used for all other position fields
 
 ### Task 1.3: Add GetFundingRatesAsync to Account Service {#task-13-add-getfundingratesasync-to-account-service}
 
@@ -105,7 +105,7 @@ Per ADR-14 Rule 1 and the extending pattern in `02-hyperliquid-integration.md`, 
 - **Complexity**: Medium
 - **Risk Factors**: Requires cross-referencing the `metaAndAssetCtxs` response (indexed by position) with the `meta.Universe[i].Name` to get coin names. The `metaAndAssetCtxs` response returns both `universe` metadata and asset contexts in a single call, so no external cache is needed.
 - **Files**:
-  - `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — add private method
+  - `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — add private method
 - **Success**:
   - `GetFundingRatesAsync` returns `IReadOnlyDictionary<string, decimal>` mapping coin name → hourly funding rate
   - Method gracefully returns empty dictionary if API call fails
@@ -114,7 +114,7 @@ Per ADR-14 Rule 1 and the extending pattern in `02-hyperliquid-integration.md`, 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidAccountService.cs — modification
+// src/TradePilot.Api/Services/HyperliquidAccountService.cs — modification
 
 // Add private method to fetch all funding rates (no constructor changes needed)
     private async Task<IReadOnlyDictionary<string, decimal>> GetFundingRatesAsync(
@@ -173,8 +173,8 @@ Per ADR-14 Rule 1 and the extending pattern in `02-hyperliquid-integration.md`, 
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` lines 168–200 — `GetMarketInfoAsync()` uses the same `metaAndAssetCtxs` endpoint, same `meta.Universe[i].Name` cross-referencing
-- `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` — similar `universe.EnumerateArray()` iteration pattern
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` lines 168–200 — `GetMarketInfoAsync()` uses the same `metaAndAssetCtxs` endpoint, same `meta.Universe[i].Name` cross-referencing
+- `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` — similar `universe.EnumerateArray()` iteration pattern
 
 ### Task 1.4: Enrich GetPositionsAsync with funding rates {#task-14-enrich-getpositionsasync-with-funding-rates}
 
@@ -183,7 +183,7 @@ Modify `GetPositionsAsync` to call both `GetClearinghouseStateAsync` and `GetFun
 - **Complexity**: Medium
 - **Risk Factors**: The two API calls run in parallel via `Task.WhenAll`. If the funding rate call fails, positions should still be returned with `FundingRate = 0m` (graceful degradation).
 - **Files**:
-  - `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — modify `GetPositionsAsync`
+  - `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — modify `GetPositionsAsync`
 - **Success**:
   - `GetPositionsAsync` returns positions with `FundingRate` populated from `metaAndAssetCtxs`
   - If funding rate fetch fails, positions are returned with `FundingRate = 0m`
@@ -193,7 +193,7 @@ Modify `GetPositionsAsync` to call both `GetClearinghouseStateAsync` and `GetFun
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidAccountService.cs — modification
+// src/TradePilot.Api/Services/HyperliquidAccountService.cs — modification
 
 public async Task<IReadOnlyList<PositionDto>> GetPositionsAsync(CancellationToken cancellationToken = default)
 {
@@ -219,7 +219,7 @@ public async Task<IReadOnlyList<PositionDto>> GetPositionsAsync(CancellationToke
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — existing `GetPositionsAsync` single-call pattern
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — existing `GetPositionsAsync` single-call pattern
 
 ### Task 1.5: Add unit tests for enriched mapping {#task-15-add-unit-tests-for-enriched-mapping}
 
@@ -228,7 +228,7 @@ Create a new test class `HyperliquidAccountServiceTests` to unit test the enrich
 - **Complexity**: Medium
 - **Risk Factors**: The service uses constructor-injected `IHyperliquidRestClient`, `IHyperliquidSigner`, and now `IHyperliquidAssetMetadataCache`. All three must be mocked. The `PostInfoAsync<JsonElement>` mock must return valid JSON that matches the Hyperliquid response shape.
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/HyperliquidAccountServiceTests.cs` — new file
+  - `tests/TradePilot.Api.Tests/Services/HyperliquidAccountServiceTests.cs` — new file
 - **Success**:
   - Test verifies `MarginUsed` is populated from `clearinghouseState` response
   - Test verifies `FundingRate` is populated from `metaAndAssetCtxs` response
@@ -240,13 +240,13 @@ Create a new test class `HyperliquidAccountServiceTests` to unit test the enrich
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/HyperliquidAccountServiceTests.cs — new file
+// tests/TradePilot.Api.Tests/Services/HyperliquidAccountServiceTests.cs — new file
 using System.Text.Json;
-using TradingApp.Api.Models;
-using TradingApp.Api.Services;
-using TradingApp.Application.Abstractions.Services;
+using TradePilot.Api.Models;
+using TradePilot.Api.Services;
+using TradePilot.Application.Abstractions.Services;
 
-namespace TradingApp.Api.Tests.Services;
+namespace TradePilot.Api.Tests.Services;
 
 [TestClass]
 public sealed class HyperliquidAccountServiceTests
@@ -466,8 +466,8 @@ public sealed class HyperliquidAccountServiceTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — unit test pattern for Api-layer services with `_restClientMock`, `_signerMock` mocks
-- `tests/TradingApp.Api.Tests/Usings.cs` — global usings: FluentAssertions, MSTest, Moq
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — unit test pattern for Api-layer services with `_restClientMock`, `_signerMock` mocks
+- `tests/TradePilot.Api.Tests/Usings.cs` — global usings: FluentAssertions, MSTest, Moq
 
 ### Task 1.6: Update AccountControllerTests for enriched DTO {#task-16-update-accountcontrollertests-for-enriched-dto}
 
@@ -476,7 +476,7 @@ Update the existing `AccountControllerTests.GivenPositionsExist_WhenGetPositions
 - **Complexity**: Low
 - **Risk Factors**: None — extending existing test data
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — modify test fixture
+  - `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — modify test fixture
 - **Success**:
   - Position test fixture includes `MarginUsed`, `FundingRate`, `Leverage`, `MarginMode`
   - `BeEquivalentTo` assertion verifies all fields match including new ones
@@ -486,7 +486,7 @@ Update the existing `AccountControllerTests.GivenPositionsExist_WhenGetPositions
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs — modification
+// tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs — modification
 // In GivenPositionsExist_WhenGetPositions_ThenReturnsOkWithPositions:
 var positions = new List<PositionDto>
 {
@@ -510,7 +510,7 @@ var positions = new List<PositionDto>
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — existing test fixture and `BeEquivalentTo` assertion pattern
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — existing test fixture and `BeEquivalentTo` assertion pattern
 
 ### Task 1.7: Run all backend tests {#task-17-run-all-backend-tests}
 
@@ -520,7 +520,7 @@ Run all backend test projects to verify nothing is broken by the changes.
 - **Risk Factors**: None
 - **Files**: None (verification step)
 - **Success**:
-  - `dotnet test` passes for all test projects: `TradingApp.Api.Tests`, `TradingApp.Infrastructure.Tests`, `TradingApp.Application.Tests`, `TradingApp.Domain.Tests`
+  - `dotnet test` passes for all test projects: `TradePilot.Api.Tests`, `TradePilot.Infrastructure.Tests`, `TradePilot.Application.Tests`, `TradePilot.Domain.Tests`
   - Zero test failures
 - **Dependencies**: All previous tasks in Phase 1
 

@@ -294,7 +294,7 @@ Worker (client machine):
   ├── Build: dotnet publish (win-x64, self-contained, single file)
   ├── Package: Inno Setup installer (.exe)
   ├── Distribute: SHA256-verified download from API
-  ├── Install: Windows Service (TradingApp Execution Agent)
+  ├── Install: Windows Service (TradePilot Execution Agent)
   ├── Update: Auto-download + silent install via UpdateCheckerService
   └── Health: Watchdog (stale data), heartbeat (connectivity)
 

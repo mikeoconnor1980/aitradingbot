@@ -13,15 +13,15 @@ Portfolio heat enforcement is implemented across configuration, live risk checks
 ### Added
 
 <!-- Phase 1: Configuration + Heat Calculation Core -->
-- src/TradingApp.Application/Trading/Models/PortfolioHeatEntry.cs: Added the per-position portfolio heat entry model used by live, API, and backtest calculations.
-- src/TradingApp.Application/Trading/Models/PortfolioHeatResult.cs: Added the portfolio heat result model with limit-state helpers for downstream consumers.
-- src/TradingApp.Application/Trading/Services/PortfolioHeatCalculator.cs: Added the shared portfolio heat calculator for exchange positions and tracked risk values.
-- tests/TradingApp.Application.Tests/Trading/Services/PortfolioHeatCalculatorTests.cs: Added calculator unit tests covering stop-loss, fallback, aggregate, and edge-case heat calculations.
+- src/TradePilot.Application/Trading/Models/PortfolioHeatEntry.cs: Added the per-position portfolio heat entry model used by live, API, and backtest calculations.
+- src/TradePilot.Application/Trading/Models/PortfolioHeatResult.cs: Added the portfolio heat result model with limit-state helpers for downstream consumers.
+- src/TradePilot.Application/Trading/Services/PortfolioHeatCalculator.cs: Added the shared portfolio heat calculator for exchange positions and tracked risk values.
+- tests/TradePilot.Application.Tests/Trading/Services/PortfolioHeatCalculatorTests.cs: Added calculator unit tests covering stop-loss, fallback, aggregate, and edge-case heat calculations.
 
 <!-- Phase 3: API Endpoint -->
-- src/TradingApp.Application/Trading/Models/PortfolioHeatResponse.cs: Added the API-facing portfolio heat response model and nested position entries.
-- src/TradingApp.Api/Controllers/RiskController.cs: Added the authenticated portfolio heat endpoint backed by live account summary and position reads.
-- tests/TradingApp.Api.Tests/Controllers/RiskControllerTests.cs: Added integration tests for portfolio heat data, empty-wallet behavior, and unauthorized access.
+- src/TradePilot.Application/Trading/Models/PortfolioHeatResponse.cs: Added the API-facing portfolio heat response model and nested position entries.
+- src/TradePilot.Api/Controllers/RiskController.cs: Added the authenticated portfolio heat endpoint backed by live account summary and position reads.
+- tests/TradePilot.Api.Tests/Controllers/RiskControllerTests.cs: Added integration tests for portfolio heat data, empty-wallet behavior, and unauthorized access.
 
 <!-- Phase 4: Frontend Dashboard -->
 - frontend/trading-ui/src/app/core/models/portfolio-heat.model.ts: Added the shared frontend model for portfolio heat and per-position risk contributions.
@@ -30,26 +30,26 @@ Portfolio heat enforcement is implemented across configuration, live risk checks
 - frontend/trading-ui/src/app/features/dashboard/account-summary/portfolio-heat-indicator/portfolio-heat-indicator.component.scss: Added the portfolio heat indicator styling and critical-state pulse animation.
 
 <!-- Phase 5: Backtest Heat Enforcement -->
-- src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs: Added a backtest-specific risk engine that enforces portfolio heat and counts blocked signals.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs: Added focused tests for backtest heat enforcement, disabled mode, and tracked-risk cleanup.
+- src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs: Added a backtest-specific risk engine that enforces portfolio heat and counts blocked signals.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRiskEngineTests.cs: Added focused tests for backtest heat enforcement, disabled mode, and tracked-risk cleanup.
 
 ### Modified
 
 <!-- Phase 1: Configuration + Heat Calculation Core -->
-- src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs: Added MaxPortfolioHeatPercent with a default value and XML documentation.
-- src/TradingApp.Api/appsettings.json: Added the RiskLimits section with the new default portfolio heat setting for API consumers.
-- src/TradingApp.Worker/appsettings.json: Extended the worker RiskLimits section with the default portfolio heat cap.
+- src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs: Added MaxPortfolioHeatPercent with a default value and XML documentation.
+- src/TradePilot.Api/appsettings.json: Added the RiskLimits section with the new default portfolio heat setting for API consumers.
+- src/TradePilot.Worker/appsettings.json: Extended the worker RiskLimits section with the default portfolio heat cap.
 
 <!-- Phase 2: LiveRiskEngine Heat Enforcement -->
-- src/TradingApp.Application/Abstractions/Services/IRiskEngine.cs: Added default portfolio-state and position-lifecycle tracking methods so existing implementations remain source-compatible.
-- src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs: Added portfolio heat state, validation checks, and signal-driven risk tracking for live enforcement.
-- src/TradingApp.Application/Trading/Services/GridController.cs: Added estimatedRiskUsd to DeployGrid signals using the strategy risk configuration and stop-loss context.
-- src/TradingApp.Application/Scheduling/StrategyScheduler.cs: Updated the scheduler to refresh risk-engine equity before validating candle-close signals.
-- src/TradingApp.Application/Trading/Services/FillProcessor.cs: Added authoritative tracked-risk cleanup when full exit fills are processed.
-- tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs: Expanded the risk-engine test suite to cover heat limits, disabled mode, and tracked-risk cleanup.
+- src/TradePilot.Application/Abstractions/Services/IRiskEngine.cs: Added default portfolio-state and position-lifecycle tracking methods so existing implementations remain source-compatible.
+- src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs: Added portfolio heat state, validation checks, and signal-driven risk tracking for live enforcement.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Added estimatedRiskUsd to DeployGrid signals using the strategy risk configuration and stop-loss context.
+- src/TradePilot.Application/Scheduling/StrategyScheduler.cs: Updated the scheduler to refresh risk-engine equity before validating candle-close signals.
+- src/TradePilot.Application/Trading/Services/FillProcessor.cs: Added authoritative tracked-risk cleanup when full exit fills are processed.
+- tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs: Expanded the risk-engine test suite to cover heat limits, disabled mode, and tracked-risk cleanup.
 
 <!-- Phase 3: API Endpoint -->
-- src/TradingApp.Api/Program.cs: Registered RiskLimitsConfig in the API container so the new controller can resolve heat thresholds from configuration.
+- src/TradePilot.Api/Program.cs: Registered RiskLimitsConfig in the API container so the new controller can resolve heat thresholds from configuration.
 
 <!-- Phase 4: Frontend Dashboard -->
 - frontend/trading-ui/src/app/core/services/hyperliquid-api.service.ts: Added the API client method for retrieving portfolio heat from the new backend endpoint.
@@ -59,9 +59,9 @@ Portfolio heat enforcement is implemented across configuration, live risk checks
 - frontend/trading-ui/src/app/features/dashboard/dashboard.component.html: Passed portfolio heat data from the dashboard container into the account summary card.
 
 <!-- Phase 5: Backtest Heat Enforcement -->
-- src/TradingApp.Api/Program.cs: Switched API-hosted backtests to use BacktestRiskEngine instead of the pass-through risk engine.
-- src/TradingApp.Application/Backtesting/Models/BacktestResult.cs: Added HeatBlockedSignalCount so backtest consumers can see when heat rules rejected entries.
-- src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs: Populated HeatBlockedSignalCount from the scoped backtest risk engine at run completion.
+- src/TradePilot.Api/Program.cs: Switched API-hosted backtests to use BacktestRiskEngine instead of the pass-through risk engine.
+- src/TradePilot.Application/Backtesting/Models/BacktestResult.cs: Added HeatBlockedSignalCount so backtest consumers can see when heat rules rejected entries.
+- src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs: Populated HeatBlockedSignalCount from the scoped backtest risk engine at run completion.
 
 ### Removed
 
@@ -69,16 +69,16 @@ Portfolio heat enforcement is implemented across configuration, live risk checks
 
 <!-- Phase 1: Configuration + Heat Calculation Core -->
 - PortfolioHeatCalculatorTests: 11/11 passed.
-- Solution build: `dotnet build TradingApp.sln --no-restore` completed without build errors; existing package/deprecation warnings remain in Infrastructure and Api projects.
+- Solution build: `dotnet build TradePilot.sln --no-restore` completed without build errors; existing package/deprecation warnings remain in Infrastructure and Api projects.
 
 <!-- Phase 2: LiveRiskEngine Heat Enforcement -->
 - LiveRiskEngineTests: 42/42 passed.
-- Solution build: `dotnet build TradingApp.sln --no-restore` succeeded with the same pre-existing Infrastructure package warnings and Api forwarded-headers deprecation warning.
+- Solution build: `dotnet build TradePilot.sln --no-restore` succeeded with the same pre-existing Infrastructure package warnings and Api forwarded-headers deprecation warning.
 
 <!-- Phase 3: API Endpoint -->
 - RiskControllerTests: 3/3 passed after rebuilding the Api test project.
-- API build: `dotnet build src/TradingApp.Api/TradingApp.Api.csproj --no-restore` succeeded with the existing Infrastructure package warnings and Api forwarded-headers deprecation warning.
-- Solution regression tests: `dotnet test TradingApp.sln --no-build --verbosity minimal` passed 1020/1020 tests.
+- API build: `dotnet build src/TradePilot.Api/TradePilot.Api.csproj --no-restore` succeeded with the existing Infrastructure package warnings and Api forwarded-headers deprecation warning.
+- Solution regression tests: `dotnet test TradePilot.sln --no-build --verbosity minimal` passed 1020/1020 tests.
 
 <!-- Phase 4: Frontend Dashboard -->
 - Frontend build: `npm run build` completed successfully for `frontend/trading-ui`.
@@ -86,8 +86,8 @@ Portfolio heat enforcement is implemented across configuration, live risk checks
 
 <!-- Phase 5: Backtest Heat Enforcement -->
 - BacktestRiskEngineTests: 5/5 passed.
-- Solution build: `dotnet build TradingApp.sln --no-restore` succeeded with the same pre-existing Infrastructure package warnings and Api forwarded-headers deprecation warning.
-- Final regression tests: `dotnet test TradingApp.sln --no-build --verbosity minimal` passed 1028/1028 tests.
+- Solution build: `dotnet build TradePilot.sln --no-restore` succeeded with the same pre-existing Infrastructure package warnings and Api forwarded-headers deprecation warning.
+- Final regression tests: `dotnet test TradePilot.sln --no-build --verbosity minimal` passed 1028/1028 tests.
 
 ## Issues
 

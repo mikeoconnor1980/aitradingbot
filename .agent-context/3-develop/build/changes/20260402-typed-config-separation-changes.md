@@ -13,68 +13,68 @@ Implements typed strategy and execution configuration separation across the trad
 ### Added
 
 <!-- Phase 1: Domain Types & Model Migration -->
-- src/TradingApp.Domain/Trading/IStrategyConfig.cs: Added the new marker interface for typed strategy configs.
-- src/TradingApp.Domain/Enums/OrderSide.cs: Moved OrderSide into the Domain enum namespace.
-- src/TradingApp.Domain/Trading/FeeModel.cs: Moved FeeModel into Domain and kept fee/slippage behavior unchanged.
-- src/TradingApp.Domain/Trading/EntryModes.cs: Added the renamed domain-level entry mode constants and validator.
-- src/TradingApp.Domain/Trading/ExecutionConfig.cs: Added the new execution config record with FeeModel and Leverage.
-- src/TradingApp.Domain/Trading/GridStrategyConfig.cs: Added the new domain strategy config record implementing IStrategyConfig.
+- src/TradePilot.Domain/Trading/IStrategyConfig.cs: Added the new marker interface for typed strategy configs.
+- src/TradePilot.Domain/Enums/OrderSide.cs: Moved OrderSide into the Domain enum namespace.
+- src/TradePilot.Domain/Trading/FeeModel.cs: Moved FeeModel into Domain and kept fee/slippage behavior unchanged.
+- src/TradePilot.Domain/Trading/EntryModes.cs: Added the renamed domain-level entry mode constants and validator.
+- src/TradePilot.Domain/Trading/ExecutionConfig.cs: Added the new execution config record with FeeModel and Leverage.
+- src/TradePilot.Domain/Trading/GridStrategyConfig.cs: Added the new domain strategy config record implementing IStrategyConfig.
 
 <!-- Phase 3: Entity, Command, Mapper & API Contract -->
-- src/TradingApp.Persistence/Migrations/20260402150658_SplitStrategyExecutionConfig.cs: Adds the new required ExecutionConfigJson column to BacktestRuns with a safe JSON default.
-- src/TradingApp.Persistence/Migrations/20260402150658_SplitStrategyExecutionConfig.Designer.cs: EF Core designer snapshot for the new split-config migration.
+- src/TradePilot.Persistence/Migrations/20260402150658_SplitStrategyExecutionConfig.cs: Adds the new required ExecutionConfigJson column to BacktestRuns with a safe JSON default.
+- src/TradePilot.Persistence/Migrations/20260402150658_SplitStrategyExecutionConfig.Designer.cs: EF Core designer snapshot for the new split-config migration.
 
 ### Modified
 
 <!-- Phase 1: Domain Types & Model Migration -->
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Switched validation to EntryModes and aliased the legacy GridStrategyConfig to avoid phase-1 ambiguity.
-- src/TradingApp.Api/Models/RunBacktestRequest.cs: Updated the default entry mode source to Domain EntryModes.
-- src/TradingApp.Api/Services/BacktestProcessorService.cs: Updated FeeModel import and aliased the legacy GridStrategyConfig for deserialization.
-- src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs: Updated FeeModel reference to the Domain namespace.
-- src/TradingApp.Application/Backtesting/Models/GridStrategyConfig.cs: Updated the legacy model to use EntryModes for its default value.
-- src/TradingApp.Application/Backtesting/Models/BacktestTrade.cs: Updated OrderSide reference to Domain.
-- src/TradingApp.Application/Backtesting/Models/SimulatedFill.cs: Updated OrderSide reference to Domain.
-- src/TradingApp.Application/Backtesting/Models/SimulatedOrder.cs: Updated OrderSide reference to Domain.
-- src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs: Updated OrderSide import to Domain.
-- src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs: Updated FeeModel and OrderSide imports to Domain.
-- src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Updated FeeModel and OrderSide imports to Domain.
-- src/TradingApp.Application/Trading/Models/OrderRequest.cs: Updated OrderSide reference to Domain.
-- src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs: Replaced BacktestEntryModes with EntryModes and moved OrderSide import to Domain.
-- src/TradingApp.Application/Trading/Services/GridController.cs: Replaced BacktestEntryModes with EntryModes and aliased the legacy GridStrategyConfig.
-- tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs: Updated tests to use EntryModes, Domain OrderSide, and the aliased legacy GridStrategyConfig.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs: Updated OrderSide import to Domain.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated FeeModel and OrderSide imports to Domain.
-- tests/TradingApp.Application.Tests/Backtesting/Services/CandleReplayEngineTests.cs: Updated FeeModel import to Domain.
-- tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Updated FeeModel and OrderSide imports to Domain.
-- tests/TradingApp.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs: Updated FeeModel and OrderSide imports to Domain.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Switched validation to EntryModes and aliased the legacy GridStrategyConfig to avoid phase-1 ambiguity.
+- src/TradePilot.Api/Models/RunBacktestRequest.cs: Updated the default entry mode source to Domain EntryModes.
+- src/TradePilot.Api/Services/BacktestProcessorService.cs: Updated FeeModel import and aliased the legacy GridStrategyConfig for deserialization.
+- src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs: Updated FeeModel reference to the Domain namespace.
+- src/TradePilot.Application/Backtesting/Models/GridStrategyConfig.cs: Updated the legacy model to use EntryModes for its default value.
+- src/TradePilot.Application/Backtesting/Models/BacktestTrade.cs: Updated OrderSide reference to Domain.
+- src/TradePilot.Application/Backtesting/Models/SimulatedFill.cs: Updated OrderSide reference to Domain.
+- src/TradePilot.Application/Backtesting/Models/SimulatedOrder.cs: Updated OrderSide reference to Domain.
+- src/TradePilot.Application/Backtesting/Services/BacktestMetricsCalculator.cs: Updated OrderSide import to Domain.
+- src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs: Updated FeeModel and OrderSide imports to Domain.
+- src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Updated FeeModel and OrderSide imports to Domain.
+- src/TradePilot.Application/Trading/Models/OrderRequest.cs: Updated OrderSide reference to Domain.
+- src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs: Replaced BacktestEntryModes with EntryModes and moved OrderSide import to Domain.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Replaced BacktestEntryModes with EntryModes and aliased the legacy GridStrategyConfig.
+- tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs: Updated tests to use EntryModes, Domain OrderSide, and the aliased legacy GridStrategyConfig.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs: Updated OrderSide import to Domain.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated FeeModel and OrderSide imports to Domain.
+- tests/TradePilot.Application.Tests/Backtesting/Services/CandleReplayEngineTests.cs: Updated FeeModel import to Domain.
+- tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Updated FeeModel and OrderSide imports to Domain.
+- tests/TradePilot.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs: Updated FeeModel and OrderSide imports to Domain.
 
 <!-- Phase 2: Core Pipeline Refactoring -->
-- src/TradingApp.Application/Abstractions/Services/IStrategyEngine.cs: Changed EvaluateAsync to accept typed strategy config.
-- src/TradingApp.Application/Abstractions/Services/IGridController.cs: Changed ProcessAsync to accept typed strategy config.
-- src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs: Removed JSON deserialization and added typed GridStrategyConfig guard and cast handling.
-- src/TradingApp.Application/Trading/Services/GridController.cs: Removed JSON deserialization and switched lifecycle processing to typed GridStrategyConfig.
-- src/TradingApp.Application/Scheduling/StrategyScheduler.cs: Replaced raw strategy-config JSON storage with typed IStrategyConfig and passed it through the pipeline.
-- src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs: Split backtest config into Strategy and Execution properties.
-- src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs: Wired typed strategy config to StrategyScheduler and execution fee model to SimulatedExecutionEngine; updated validation.
-- src/TradingApp.Api/Services/BacktestProcessorService.cs: Implemented the temporary bridge from legacy single JSON config into typed strategy and execution config objects.
-- tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs: Replaced raw strategy-config JSON with typed GridStrategyConfig test data.
-- tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs: Updated constructor usage and mock expectations for typed strategy config.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated BacktestConfig helpers to the new Strategy and Execution shape and replaced the obsolete invalid-JSON test.
-- tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Replaced inline strategy JSON with typed strategy and execution config builders while preserving scenario parameters.
-- tests/TradingApp.Application.Tests/Backtesting/Services/CandleReplayEngineTests.cs: Updated BacktestConfig creation to the new typed Strategy and Execution shape.
+- src/TradePilot.Application/Abstractions/Services/IStrategyEngine.cs: Changed EvaluateAsync to accept typed strategy config.
+- src/TradePilot.Application/Abstractions/Services/IGridController.cs: Changed ProcessAsync to accept typed strategy config.
+- src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs: Removed JSON deserialization and added typed GridStrategyConfig guard and cast handling.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Removed JSON deserialization and switched lifecycle processing to typed GridStrategyConfig.
+- src/TradePilot.Application/Scheduling/StrategyScheduler.cs: Replaced raw strategy-config JSON storage with typed IStrategyConfig and passed it through the pipeline.
+- src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs: Split backtest config into Strategy and Execution properties.
+- src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs: Wired typed strategy config to StrategyScheduler and execution fee model to SimulatedExecutionEngine; updated validation.
+- src/TradePilot.Api/Services/BacktestProcessorService.cs: Implemented the temporary bridge from legacy single JSON config into typed strategy and execution config objects.
+- tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs: Replaced raw strategy-config JSON with typed GridStrategyConfig test data.
+- tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs: Updated constructor usage and mock expectations for typed strategy config.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated BacktestConfig helpers to the new Strategy and Execution shape and replaced the obsolete invalid-JSON test.
+- tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Replaced inline strategy JSON with typed strategy and execution config builders while preserving scenario parameters.
+- tests/TradePilot.Application.Tests/Backtesting/Services/CandleReplayEngineTests.cs: Updated BacktestConfig creation to the new typed Strategy and Execution shape.
 
 <!-- Phase 3: Entity, Command, Mapper & API Contract -->
-- src/TradingApp.Api/Models/RunBacktestRequest.cs: Split the request DTO into nested StrategyConfigRequest and ExecutionConfigRequest sections.
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Mapped split request DTOs into domain GridStrategyConfig and ExecutionConfig and passed both into the command.
-- src/TradingApp.Application/Backtesting/RunBacktestCommand.cs: Extended the command and handler to carry, serialize, and persist both config objects.
-- src/TradingApp.Domain/Entities/BacktestRun.cs: Added ExecutionConfigJson and updated both factory methods to require separate strategy and execution JSON.
-- src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs: Added execution-config serialization and deserialized both JSON columns into the response.
-- src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs: Exposed separate StrategyConfig and ExecutionConfig properties using domain types.
-- src/TradingApp.Api/Services/BacktestProcessorService.cs: Replaced the phase-2 bridge with final two-column deserialization into BacktestConfig.Strategy and BacktestConfig.Execution.
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Configured ExecutionConfigJson as a required BacktestRun column.
-- src/TradingApp.Persistence/Migrations/TradingAppDbContextModelSnapshot.cs: Updated EF snapshot to include ExecutionConfigJson.
-- tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs: Updated request helpers, persisted-run helpers, and assertions for the split request and response contract.
-- tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs: Updated BacktestRun factory usage and assertions for the new execution JSON column.
+- src/TradePilot.Api/Models/RunBacktestRequest.cs: Split the request DTO into nested StrategyConfigRequest and ExecutionConfigRequest sections.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Mapped split request DTOs into domain GridStrategyConfig and ExecutionConfig and passed both into the command.
+- src/TradePilot.Application/Backtesting/RunBacktestCommand.cs: Extended the command and handler to carry, serialize, and persist both config objects.
+- src/TradePilot.Domain/Entities/BacktestRun.cs: Added ExecutionConfigJson and updated both factory methods to require separate strategy and execution JSON.
+- src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs: Added execution-config serialization and deserialized both JSON columns into the response.
+- src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs: Exposed separate StrategyConfig and ExecutionConfig properties using domain types.
+- src/TradePilot.Api/Services/BacktestProcessorService.cs: Replaced the phase-2 bridge with final two-column deserialization into BacktestConfig.Strategy and BacktestConfig.Execution.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Configured ExecutionConfigJson as a required BacktestRun column.
+- src/TradePilot.Persistence/Migrations/TradePilotDbContextModelSnapshot.cs: Updated EF snapshot to include ExecutionConfigJson.
+- tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs: Updated request helpers, persisted-run helpers, and assertions for the split request and response contract.
+- tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs: Updated BacktestRun factory usage and assertions for the new execution JSON column.
 
 <!-- Phase 4: Frontend -->
 - frontend/trading-ui/src/app/core/models/backtest.model.ts: Split strategy and execution TypeScript contracts and updated request and result shapes.
@@ -90,41 +90,41 @@ Implements typed strategy and execution configuration separation across the trad
 ### Removed
 
 <!-- Phase 1: Domain Types & Model Migration -->
-- src/TradingApp.Application/Trading/Models/OrderSide.cs: Removed the old Application OrderSide definition after moving it to Domain.
-- src/TradingApp.Application/Backtesting/Models/FeeModel.cs: Removed the old Application FeeModel definition after moving it to Domain.
-- src/TradingApp.Application/Backtesting/Models/BacktestEntryModes.cs: Removed the old Application entry mode constants after moving and renaming them in Domain.
+- src/TradePilot.Application/Trading/Models/OrderSide.cs: Removed the old Application OrderSide definition after moving it to Domain.
+- src/TradePilot.Application/Backtesting/Models/FeeModel.cs: Removed the old Application FeeModel definition after moving it to Domain.
+- src/TradePilot.Application/Backtesting/Models/BacktestEntryModes.cs: Removed the old Application entry mode constants after moving and renaming them in Domain.
 
 <!-- Phase 3: Entity, Command, Mapper & API Contract -->
-- src/TradingApp.Application/Backtesting/Models/GridStrategyConfig.cs: Removed the obsolete application-layer combined config type.
+- src/TradePilot.Application/Backtesting/Models/GridStrategyConfig.cs: Removed the obsolete application-layer combined config type.
 
 ## Test Results
 
 <!-- Phase 1: Domain Types & Model Migration -->
-- TradingApp.Domain.Tests: 15/15 passed
-- TradingApp.Application.Tests: 79/79 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Api.Tests: 145/145 passed
+- TradePilot.Domain.Tests: 15/15 passed
+- TradePilot.Application.Tests: 79/79 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Api.Tests: 145/145 passed
 - Architecture Tests: N/A - no architecture tests exist in the project
-- Build: dotnet build TradingApp.sln PASSED
-- Full Test Suite: dotnet test TradingApp.sln --no-build PASSED
+- Build: dotnet build TradePilot.sln PASSED
+- Full Test Suite: dotnet test TradePilot.sln --no-build PASSED
 
 <!-- Phase 2: Core Pipeline Refactoring -->
-- TradingApp.Application.Tests: 79/79 passed
-- TradingApp.Domain.Tests: 15/15 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Api.Tests: 145/145 passed
+- TradePilot.Application.Tests: 79/79 passed
+- TradePilot.Domain.Tests: 15/15 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Api.Tests: 145/145 passed
 - Architecture Tests: N/A - no architecture tests exist in the project
 
 <!-- Phase 3: Entity, Command, Mapper & API Contract -->
-- Build: PASSED (dotnet build TradingApp.sln)
-- TradingApp.Api.Tests: 145/145 passed
-- TradingApp.Persistence.Tests: 20/20 passed
-- TradingApp.Domain.Tests: 15/15 passed
-- TradingApp.Application.Tests: 79/79 passed
-- TradingApp.Infrastructure.Tests: 51/51 passed
-- Full Test Suite: 310/310 passed (dotnet test TradingApp.sln --no-build)
+- Build: PASSED (dotnet build TradePilot.sln)
+- TradePilot.Api.Tests: 145/145 passed
+- TradePilot.Persistence.Tests: 20/20 passed
+- TradePilot.Domain.Tests: 15/15 passed
+- TradePilot.Application.Tests: 79/79 passed
+- TradePilot.Infrastructure.Tests: 51/51 passed
+- Full Test Suite: 310/310 passed (dotnet test TradePilot.sln --no-build)
 - EF Migration Apply: PASSED (dotnet ef database update)
 - Architecture Tests: N/A - no architecture test project exists in this repository
 
@@ -145,7 +145,7 @@ Implements typed strategy and execution configuration separation across the trad
 
 <!-- Phase 3: Entity, Command, Mapper & API Contract -->
 - The host runTests tool reported stale project build failures for the API test project even though the project compiled and passed when run directly with dotnet test; final verification used direct terminal test runs.
-- dotnet ef database update initially failed because the design-time factory targets src/TradingApp.Persistence/Data/tradingapp.db and that directory did not exist; creating the Data directory resolved the issue.
+- dotnet ef database update initially failed because the design-time factory targets src/TradePilot.Persistence/Data/TradePilot.db and that directory did not exist; creating the Data directory resolved the issue.
 - The patch delete operation did not physically remove the obsolete GridStrategyConfig.cs file; it was then removed directly after the type had already been eliminated from code.
 
 <!-- Phase 4: Frontend -->
@@ -155,7 +155,7 @@ Implements typed strategy and execution configuration separation across the trad
 ## Design Decisions
 
 <!-- Phase 1: Domain Types & Model Migration -->
-- Kept the legacy Application GridStrategyConfig in place exactly as specified for Phase 1, and only moved the new typed domain config into TradingApp.Domain.Trading.
+- Kept the legacy Application GridStrategyConfig in place exactly as specified for Phase 1, and only moved the new typed domain config into TradePilot.Domain.Trading.
 - Used Domain EntryModes as the single source of truth immediately, while preserving existing request and serialization shapes until later phases.
 - Preferred minimal import and alias updates over broader refactoring so behavior remains unchanged in this migration phase.
 
@@ -178,11 +178,11 @@ Implements typed strategy and execution configuration separation across the trad
 - Review future Phase 2 and Phase 3 changes for accidental mixing of the legacy Application GridStrategyConfig and the new Domain GridStrategyConfig, since both types currently coexist by design.
 
 <!-- Phase 2: Core Pipeline Refactoring -->
-- Review src/TradingApp.Api/Services/BacktestProcessorService.cs carefully; it is the intentional remaining place where the legacy combined config model is still deserialized and should be removed in Phase 3.
-- Review the typed guards in src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs and src/TradingApp.Application/Trading/Services/GridController.cs; they are the main enforcement points preventing accidental mixed strategy-config types in the shared pipeline.
+- Review src/TradePilot.Api/Services/BacktestProcessorService.cs carefully; it is the intentional remaining place where the legacy combined config model is still deserialized and should be removed in Phase 3.
+- Review the typed guards in src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs and src/TradePilot.Application/Trading/Services/GridController.cs; they are the main enforcement points preventing accidental mixed strategy-config types in the shared pipeline.
 
 <!-- Phase 3: Entity, Command, Mapper & API Contract -->
-- Review the request and response contract boundary in src/TradingApp.Api/Controllers/BacktestsController.cs and src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs; that is the main place where the new split shape is enforced and exposed.
+- Review the request and response contract boundary in src/TradePilot.Api/Controllers/BacktestsController.cs and src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs; that is the main place where the new split shape is enforced and exposed.
 - Review the migration rollout assumption around legacy backtest rows. The column addition is safe, but old StrategyConfigJson payloads are still historical single-object data unless cleaned beforehand as the plan notes.
 
 <!-- Phase 4: Frontend -->

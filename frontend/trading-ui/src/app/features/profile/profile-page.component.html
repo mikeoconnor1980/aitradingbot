@@ -163,6 +163,84 @@
 
     <mat-card class="profile-page__card">
       <mat-card-header>
+        <mat-card-title>Execution Agent</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (installerInfo$ | async; as result) {
+          @if (result.error) {
+            <p class="profile-page__placeholder">Unable to load installer info. Check that the API is running.</p>
+          } @else {
+            <dl class="profile-page__details">
+              <div class="profile-page__detail">
+                <dt>Version</dt>
+                <dd class="profile-page__detail-row">
+                  <span class="profile-page__badge">v{{ result.data!.version }}</span>
+                  @if (hasConnectedAgent$ | async) {
+                    <span class="profile-page__badge profile-page__badge--active">Connected</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+
+            <p class="profile-page__installer-hint">
+              Download and run the installer to set up the execution agent on your Windows PC.
+            </p>
+            <p class="profile-page__installer-req">Requires Windows 10 or later</p>
+
+            <div class="profile-page__installer-actions">
+              @if (result.data!.exeAvailable) {
+                <a
+                  mat-flat-button
+                  color="primary"
+                  [href]="exeDownloadUrl"
+                  download>
+                  <mat-icon>download</mat-icon>
+                  Download Installer{{ result.data!.exeFileSizeBytes ? ' (~' + formatFileSize(result.data!.exeFileSizeBytes) + ')' : '' }}
+                </a>
+              }
+              @if (result.data!.zipAvailable) {
+                <a
+                  mat-stroked-button
+                  [href]="zipDownloadUrl"
+                  download>
+                  <mat-icon>folder_zip</mat-icon>
+                  Download ZIP{{ result.data!.zipFileSizeBytes ? ' (~' + formatFileSize(result.data!.zipFileSizeBytes) + ')' : '' }}
+                </a>
+              }
+            </div>
+
+            @if (!result.data!.exeAvailable && !result.data!.zipAvailable) {
+              <p class="profile-page__placeholder">No installer files available on the server yet.</p>
+            }
+
+            @if (result.data!.sha256Hash) {
+              <div class="profile-page__sha256">
+                <dt>SHA256</dt>
+                <dd
+                  class="profile-page__mono profile-page__sha256-value"
+                  [matTooltip]="sha256Copied() ? 'Copied!' : 'Click to copy full hash'"
+                  (click)="onCopySha256(result.data!.sha256Hash)">
+                  {{ result.data!.sha256Hash | slice:0:16 }}…
+                  <mat-icon class="profile-page__copy-icon">content_copy</mat-icon>
+                </dd>
+              </div>
+            }
+
+            @if (result.data!.releaseNotes) {
+              <div class="profile-page__release-notes">
+                <dt>Release Notes</dt>
+                <dd>{{ result.data!.releaseNotes }}</dd>
+              </div>
+            }
+          }
+        } @else {
+          <p class="profile-page__placeholder">Loading installer info...</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="profile-page__card">
+      <mat-card-header>
         <mat-card-title>Preferences</mat-card-title>
       </mat-card-header>
       <mat-card-content>

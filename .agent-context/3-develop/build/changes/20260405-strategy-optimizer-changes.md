@@ -13,35 +13,35 @@ Completed the optimizer feature end to end. This release adds backend sweep orch
 ### Added
 
 <!-- Phase 1: Backend - Domain Model & Sweep Engine -->
-- src/TradingApp.Domain/Enums/OptimizationStatus.cs: Added the optimizer run lifecycle enum for queued, running, completed, and failed states.
-- src/TradingApp.Domain/Entities/OptimizationRun.cs: Added the optimizer run aggregate root with queue, progress, completion, and failure state transitions.
-- src/TradingApp.Domain/Entities/OptimizationResult.cs: Added persisted ranked result records for storing top sweep outputs and strategy JSON.
-- src/TradingApp.Application/Optimization/Models/ParameterBounds.cs: Added the optimizer parameter-bounds model covering exit, leverage, sizing, indicator, and trend-filter ranges.
-- src/TradingApp.Application/Optimization/Models/FitnessThresholds.cs: Added configurable optimizer qualification thresholds for win rate, trade count, and drawdown.
-- src/TradingApp.Application/Optimization/Models/SweepConfig.cs: Added the top-level optimizer request model for symbol, range, capital, sample size, and thresholds.
-- src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs: Added deterministic signal-strategy sampling across RSI, MACD, and Price-vs-EMA combinations with descriptions.
-- src/TradingApp.Application/Optimization/Services/FitnessScorer.cs: Added result qualification and composite fitness scoring for ranking sweep outcomes.
-- src/TradingApp.Application/Optimization/Services/SweepRunner.cs: Added parallel backtest orchestration, qualification filtering, ranking, and progress reporting.
-- tests/TradingApp.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs: Added generator tests for determinism, bounds compliance, and condition coverage.
-- tests/TradingApp.Application.Tests/Optimization/FitnessScorerTests.cs: Added scorer tests for threshold checks and edge-case scoring behavior.
-- tests/TradingApp.Application.Tests/Optimization/SweepRunnerTests.cs: Added sweep-runner tests for ranking, progress, cancellation, and partial-failure handling.
+- src/TradePilot.Domain/Enums/OptimizationStatus.cs: Added the optimizer run lifecycle enum for queued, running, completed, and failed states.
+- src/TradePilot.Domain/Entities/OptimizationRun.cs: Added the optimizer run aggregate root with queue, progress, completion, and failure state transitions.
+- src/TradePilot.Domain/Entities/OptimizationResult.cs: Added persisted ranked result records for storing top sweep outputs and strategy JSON.
+- src/TradePilot.Application/Optimization/Models/ParameterBounds.cs: Added the optimizer parameter-bounds model covering exit, leverage, sizing, indicator, and trend-filter ranges.
+- src/TradePilot.Application/Optimization/Models/FitnessThresholds.cs: Added configurable optimizer qualification thresholds for win rate, trade count, and drawdown.
+- src/TradePilot.Application/Optimization/Models/SweepConfig.cs: Added the top-level optimizer request model for symbol, range, capital, sample size, and thresholds.
+- src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs: Added deterministic signal-strategy sampling across RSI, MACD, and Price-vs-EMA combinations with descriptions.
+- src/TradePilot.Application/Optimization/Services/FitnessScorer.cs: Added result qualification and composite fitness scoring for ranking sweep outcomes.
+- src/TradePilot.Application/Optimization/Services/SweepRunner.cs: Added parallel backtest orchestration, qualification filtering, ranking, and progress reporting.
+- tests/TradePilot.Application.Tests/Optimization/StrategyConfigGeneratorTests.cs: Added generator tests for determinism, bounds compliance, and condition coverage.
+- tests/TradePilot.Application.Tests/Optimization/FitnessScorerTests.cs: Added scorer tests for threshold checks and edge-case scoring behavior.
+- tests/TradePilot.Application.Tests/Optimization/SweepRunnerTests.cs: Added sweep-runner tests for ranking, progress, cancellation, and partial-failure handling.
 
 <!-- Phase 2: Backend - Persistence & API -->
-- src/TradingApp.Application/Abstractions/Repositories/IOptimizationRunRepository.cs: Added the optimization persistence contract for runs, ranked results, and paged history retrieval.
-- src/TradingApp.Application/Optimization/Models/OptimizationRunResponse.cs: Added the full optimizer run response model returned by API commands and queries.
-- src/TradingApp.Application/Optimization/Models/OptimizationResultResponse.cs: Added the ranked-result response model with persisted metrics and strategy JSON.
-- src/TradingApp.Application/Optimization/Models/OptimizationRunSummary.cs: Added the optimizer history summary model with top-result metrics for list views.
-- src/TradingApp.Application/Optimization/OptimizationRunResponseMapper.cs: Added the internal mapper from optimization entities to API-facing response models.
-- src/TradingApp.Application/Optimization/OptimizationJobQueue.cs: Added the channel-backed optimizer work queue for background sweep processing.
-- src/TradingApp.Application/Optimization/RunOptimizationCommand.cs: Added the MediatR command that persists queued runs and enqueues optimizer jobs.
-- src/TradingApp.Application/Optimization/GetOptimizationResultQuery.cs: Added the MediatR query for loading a run and its ranked results.
-- src/TradingApp.Application/Optimization/GetOptimizationListQuery.cs: Added the paged history query for optimizer runs.
-- src/TradingApp.Persistence/Repositories/OptimizationRunRepository.cs: Added the EF Core repository implementation for optimization runs, results, and paged history summaries.
-- src/TradingApp.Api/Models/RunOptimizationRequest.cs: Added the optimizer API request model with bounds and threshold inputs.
-- src/TradingApp.Api/Controllers/OptimizationsController.cs: Added the optimizer REST controller with start, list, and result endpoints.
-- src/TradingApp.Api/Services/OptimizationProcessorService.cs: Added the background processor that executes sweeps, persists results, and broadcasts SignalR progress.
-- src/TradingApp.Persistence/Migrations/20260405001920_AddOptimizationRuns.cs: Added the EF Core migration for the optimizer run and result tables.
-- src/TradingApp.Persistence/Migrations/20260405001920_AddOptimizationRuns.Designer.cs: Added the generated EF Core model snapshot changes for optimizer persistence.
+- src/TradePilot.Application/Abstractions/Repositories/IOptimizationRunRepository.cs: Added the optimization persistence contract for runs, ranked results, and paged history retrieval.
+- src/TradePilot.Application/Optimization/Models/OptimizationRunResponse.cs: Added the full optimizer run response model returned by API commands and queries.
+- src/TradePilot.Application/Optimization/Models/OptimizationResultResponse.cs: Added the ranked-result response model with persisted metrics and strategy JSON.
+- src/TradePilot.Application/Optimization/Models/OptimizationRunSummary.cs: Added the optimizer history summary model with top-result metrics for list views.
+- src/TradePilot.Application/Optimization/OptimizationRunResponseMapper.cs: Added the internal mapper from optimization entities to API-facing response models.
+- src/TradePilot.Application/Optimization/OptimizationJobQueue.cs: Added the channel-backed optimizer work queue for background sweep processing.
+- src/TradePilot.Application/Optimization/RunOptimizationCommand.cs: Added the MediatR command that persists queued runs and enqueues optimizer jobs.
+- src/TradePilot.Application/Optimization/GetOptimizationResultQuery.cs: Added the MediatR query for loading a run and its ranked results.
+- src/TradePilot.Application/Optimization/GetOptimizationListQuery.cs: Added the paged history query for optimizer runs.
+- src/TradePilot.Persistence/Repositories/OptimizationRunRepository.cs: Added the EF Core repository implementation for optimization runs, results, and paged history summaries.
+- src/TradePilot.Api/Models/RunOptimizationRequest.cs: Added the optimizer API request model with bounds and threshold inputs.
+- src/TradePilot.Api/Controllers/OptimizationsController.cs: Added the optimizer REST controller with start, list, and result endpoints.
+- src/TradePilot.Api/Services/OptimizationProcessorService.cs: Added the background processor that executes sweeps, persists results, and broadcasts SignalR progress.
+- src/TradePilot.Persistence/Migrations/20260405001920_AddOptimizationRuns.cs: Added the EF Core migration for the optimizer run and result tables.
+- src/TradePilot.Persistence/Migrations/20260405001920_AddOptimizationRuns.Designer.cs: Added the generated EF Core model snapshot changes for optimizer persistence.
 
 <!-- Phase 3: Frontend - Optimizer Tab & Configuration -->
 - frontend/trading-ui/src/app/core/models/optimizer.model.ts: Added optimizer request, progress, run, result, and history contracts for the Angular client.
@@ -67,17 +67,17 @@ Completed the optimizer feature end to end. This release adds backend sweep orch
 ### Modified
 
 <!-- Phase 1: Backend - Domain Model & Sweep Engine -->
-- src/TradingApp.Application/Trading/Services/SignalController.cs: Updated the signal controller to match the current `ISignalController` interface so backend validation can compile.
-- tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs: Updated signal-controller tests for the current grid-state-aware signature.
-- tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs: Updated signal-controller mock expectations to the current signature.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated signal-controller mock setup to the current signature.
+- src/TradePilot.Application/Trading/Services/SignalController.cs: Updated the signal controller to match the current `ISignalController` interface so backend validation can compile.
+- tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs: Updated signal-controller tests for the current grid-state-aware signature.
+- tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs: Updated signal-controller mock expectations to the current signature.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated signal-controller mock setup to the current signature.
 
 <!-- Phase 2: Backend - Persistence & API -->
-- src/TradingApp.Application/Optimization/Models/SweepConfig.cs: Added `BacktestSymbol` so optimizer runs can backtest normalized Binance symbols while persisting deployable strategy markets.
-- src/TradingApp.Application/Optimization/Services/SweepRunner.cs: Updated sweep execution to use the normalized backtest symbol while keeping generated strategy configs deployable.
-- src/TradingApp.Persistence/TradingAppDbContext.cs: Registered optimizer tables, relationships, indexes, and numeric conversions.
-- src/TradingApp.Persistence/PersistenceServiceExtensions.cs: Registered the optimizer repository in the persistence composition root.
-- src/TradingApp.Api/Program.cs: Registered the optimizer queue, services, and background processor in the API host.
+- src/TradePilot.Application/Optimization/Models/SweepConfig.cs: Added `BacktestSymbol` so optimizer runs can backtest normalized Binance symbols while persisting deployable strategy markets.
+- src/TradePilot.Application/Optimization/Services/SweepRunner.cs: Updated sweep execution to use the normalized backtest symbol while keeping generated strategy configs deployable.
+- src/TradePilot.Persistence/TradePilotDbContext.cs: Registered optimizer tables, relationships, indexes, and numeric conversions.
+- src/TradePilot.Persistence/PersistenceServiceExtensions.cs: Registered the optimizer repository in the persistence composition root.
+- src/TradePilot.Api/Program.cs: Registered the optimizer queue, services, and background processor in the API host.
 
 <!-- Phase 3: Frontend - Optimizer Tab & Configuration -->
 - frontend/trading-ui/src/app/core/services/signalr.service.ts: Added optimizer progress event handling alongside the existing SignalR streams.
@@ -94,7 +94,7 @@ Completed the optimizer feature end to end. This release adds backend sweep orch
 ## Test Results
 
 <!-- Phase 1: Backend - Domain Model & Sweep Engine -->
-- TradingApp.Application.Tests (FullyQualifiedName~Optimization): 26/26 passed via `dotnet test tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj --filter "FullyQualifiedName~Optimization"`
+- TradePilot.Application.Tests (FullyQualifiedName~Optimization): 26/26 passed via `dotnet test tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj --filter "FullyQualifiedName~Optimization"`
 
 <!-- Phase 2: Backend - Persistence & API -->
 - Solution build: passed via `dotnet build`
@@ -113,7 +113,7 @@ Completed the optimizer feature end to end. This release adds backend sweep orch
 - Existing stale signal-controller test call sites blocked the first validation run after phase 1 changes; updated them to the current interface signature so the optimizer slice could be built and tested.
 
 <!-- Phase 2: Backend - Persistence & API -->
-- A running `TradingApp.Api` host process initially locked API output assemblies and blocked `dotnet build`; stopping the running process resolved the build failure and the subsequent build passed cleanly.
+- A running `TradePilot.Api` host process initially locked API output assemblies and blocked `dotnet build`; stopping the running process resolved the build failure and the subsequent build passed cleanly.
 
 <!-- Phase 3: Frontend - Optimizer Tab & Configuration -->
 - `npm run build` completed successfully but still reports existing bundle-budget warnings elsewhere in the Angular app; these warnings were not introduced by the optimizer feature.

@@ -62,7 +62,7 @@ The streaming service seeds price stats from REST once, then mutates them locall
 
 Relevant code:
 
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs`
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs`
 - `frontend/trading-ui/src/app/features/market-data/price-ticker/price-ticker.component.ts`
 
 Current behavior:
@@ -86,9 +86,9 @@ The current API runtime creates one signer from one configured private key at st
 
 Relevant code:
 
-- `src/TradingApp.Api/Program.cs`
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs`
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs`
+- `src/TradePilot.Api/Program.cs`
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs`
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs`
 
 This is consistent with a personal POC, but it directly conflicts with the documented target model:
 
@@ -112,7 +112,7 @@ The orders controller exposes raw debug endpoints for:
 
 Relevant code:
 
-- `src/TradingApp.Api/Controllers/OrdersController.cs`
+- `src/TradePilot.Api/Controllers/OrdersController.cs`
 
 Why this matters:
 
@@ -126,8 +126,8 @@ Running the backend tests surfaced a known high-severity advisory on AutoMapper 
 
 Relevant files:
 
-- `src/TradingApp.Application/TradingApp.Application.csproj`
-- `src/TradingApp.Api/TradingApp.Api.csproj`
+- `src/TradePilot.Application/TradePilot.Application.csproj`
+- `src/TradePilot.Api/TradePilot.Api.csproj`
 
 Why this matters:
 
@@ -146,10 +146,10 @@ Observed state:
 
 Relevant paths:
 
-- `tests/TradingApp.Api.Tests/`
-- `tests/TradingApp.Infrastructure.Tests/`
-- `tests/TradingApp.Application.Tests/`
-- `tests/TradingApp.Domain.Tests/`
+- `tests/TradePilot.Api.Tests/`
+- `tests/TradePilot.Infrastructure.Tests/`
+- `tests/TradePilot.Application.Tests/`
+- `tests/TradePilot.Domain.Tests/`
 - `frontend/trading-ui/src/app/app.component.spec.ts`
 - `frontend/trading-ui/src/app/features/connection/status-card.component.spec.ts`
 

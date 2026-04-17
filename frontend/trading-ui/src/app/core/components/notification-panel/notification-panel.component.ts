@@ -33,7 +33,7 @@ export class NotificationPanelComponent {
       return all;
     }
     if (filter === "System") {
-      return all.filter(n => n.type === "System" || n.type === "Connection");
+      return all.filter(n => n.type === "System" || n.type === "Connection" || n.type === "Error" || n.type === "Action");
     }
     return all.filter(n => n.type === filter);
   });
@@ -66,6 +66,8 @@ export class NotificationPanelComponent {
       case "OrderUpdate": return "receipt_long";
       case "Connection": return "wifi";
       case "System": return "terminal";
+      case "Error": return "error_outline";
+      case "Action": return "check_circle_outline";
     }
   }
 

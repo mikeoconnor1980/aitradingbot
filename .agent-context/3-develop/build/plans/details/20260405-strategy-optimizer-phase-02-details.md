@@ -11,7 +11,7 @@
 - **api-controllers.instructions.md**: MediatR-based controllers, REST conventions
 - **BacktestsController.cs**: Reference pattern for REST endpoints, 202 Accepted for async operations
 - **BacktestProcessorService.cs**: Reference pattern for background job processing with SignalR progress
-- **TradingAppDbContext.cs**: DbSet registration, SQLite model configuration
+- **TradePilotDbContext.cs**: DbSet registration, SQLite model configuration
 
 ---
 
@@ -22,8 +22,8 @@ Create the repository abstraction and EF Core implementation for `OptimizationRu
 - **Complexity**: Medium
 - **Risk Factors**: Must handle the parent-child relationship between `OptimizationRun` and `OptimizationResult`
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Repositories/IOptimizationRunRepository.cs` — new file
-  - `src/TradingApp.Persistence/Repositories/OptimizationRunRepository.cs` — new file
+  - `src/TradePilot.Application/Abstractions/Repositories/IOptimizationRunRepository.cs` — new file
+  - `src/TradePilot.Persistence/Repositories/OptimizationRunRepository.cs` — new file
 - **Success**:
   - Repository methods compile and follow existing `IBacktestRunRepository` pattern
   - Supports: `AddAsync`, `UpdateAsync`, `GetByIdAsync`, `GetPagedListAsync`, `AddResultsAsync`
@@ -31,8 +31,8 @@ Create the repository abstraction and EF Core implementation for `OptimizationRu
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Repositories/IOptimizationRunRepository.cs
-namespace TradingApp.Application.Abstractions.Repositories;
+// src/TradePilot.Application/Abstractions/Repositories/IOptimizationRunRepository.cs
+namespace TradePilot.Application.Abstractions.Repositories;
 
 public interface IOptimizationRunRepository
 {
@@ -46,8 +46,8 @@ public interface IOptimizationRunRepository
 ```
 
 ```csharp
-// src/TradingApp.Persistence/Repositories/OptimizationRunRepository.cs
-// Follow BacktestRunRepository pattern — inject TradingAppDbContext, use EF Core operations
+// src/TradePilot.Persistence/Repositories/OptimizationRunRepository.cs
+// Follow BacktestRunRepository pattern — inject TradePilotDbContext, use EF Core operations
 // GetByIdAsync should NOT eager-load results — results fetched separately via GetResultsByRunIdAsync
 ```
 
@@ -55,12 +55,12 @@ public interface IOptimizationRunRepository
 
 ### Task 2.2: Register `OptimizationRun` and `OptimizationResult` in DbContext {#task-22-register-entities-in-dbcontext}
 
-Add DbSet properties and entity configuration to `TradingAppDbContext`.
+Add DbSet properties and entity configuration to `TradePilotDbContext`.
 
 - **Complexity**: Low
 - **Risk Factors**: SQLite decimal conversion (follow existing Candle pattern)
 - **Files**:
-  - `src/TradingApp.Persistence/TradingAppDbContext.cs` — modification
+  - `src/TradePilot.Persistence/TradePilotDbContext.cs` — modification
 - **Success**:
   - DbSets for `OptimizationRun` and `OptimizationResult` registered
   - Entity configuration in `OnModelCreating` with appropriate column types and indexes
@@ -69,7 +69,7 @@ Add DbSet properties and entity configuration to `TradingAppDbContext`.
 
 #### Implementation Details
 
-Add to TradingAppDbContext:
+Add to TradePilotDbContext:
 
 ```csharp
 public DbSet<OptimizationRun> OptimizationRuns => Set<OptimizationRun>();
@@ -117,9 +117,9 @@ Create the command that validates input, creates the `OptimizationRun` entity, p
 - **Complexity**: Medium
 - **Risk Factors**: Must serialize `SweepConfig` and `FitnessThresholds` to JSON for persistence
 - **Files**:
-  - `src/TradingApp.Application/Optimization/RunOptimizationCommand.cs` — new file
-  - `src/TradingApp.Application/Optimization/Models/OptimizationRunResponse.cs` — new file
-  - `src/TradingApp.Application/Optimization/Models/OptimizationJobQueue.cs` — new file
+  - `src/TradePilot.Application/Optimization/RunOptimizationCommand.cs` — new file
+  - `src/TradePilot.Application/Optimization/Models/OptimizationRunResponse.cs` — new file
+  - `src/TradePilot.Application/Optimization/Models/OptimizationJobQueue.cs` — new file
 - **Success**:
   - Command persists `OptimizationRun` with status `Queued`
   - Returns `OptimizationRunResponse` with Id, Status
@@ -128,13 +128,13 @@ Create the command that validates input, creates the `OptimizationRun` entity, p
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Optimization/Models/OptimizationJobQueue.cs
+// src/TradePilot.Application/Optimization/Models/OptimizationJobQueue.cs
 // Follow BacktestJobQueue pattern — System.Threading.Channels.Channel<OptimizationJob>
 public sealed record OptimizationJob(Guid RunId, SweepConfig Config);
 ```
 
 ```csharp
-// src/TradingApp.Application/Optimization/RunOptimizationCommand.cs
+// src/TradePilot.Application/Optimization/RunOptimizationCommand.cs
 public sealed record RunOptimizationCommand(SweepConfig Config) : IRequest<OptimizationRunResponse>;
 
 public sealed class RunOptimizationCommandHandler : IRequestHandler<RunOptimizationCommand, OptimizationRunResponse>
@@ -156,8 +156,8 @@ Retrieve a full optimization run with its top results.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Optimization/GetOptimizationResultQuery.cs` — new file
-  - `src/TradingApp.Application/Optimization/Models/OptimizationResultResponse.cs` — new file
+  - `src/TradePilot.Application/Optimization/GetOptimizationResultQuery.cs` — new file
+  - `src/TradePilot.Application/Optimization/Models/OptimizationResultResponse.cs` — new file
 - **Success**:
   - Returns run metadata + list of ranked results with all metrics
 
@@ -186,7 +186,7 @@ Paginated list of optimization run summaries.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Optimization/GetOptimizationListQuery.cs` — new file
+  - `src/TradePilot.Application/Optimization/GetOptimizationListQuery.cs` — new file
 - **Success**:
   - Returns paged list of run summaries (no results detail — just metadata)
 
@@ -199,7 +199,7 @@ Background service that dequeues optimization jobs, invokes `SweepRunner`, persi
 - **Complexity**: High
 - **Risk Factors**: Must handle cancellation, error states, and progress broadcasting safely
 - **Files**:
-  - `src/TradingApp.Api/Services/OptimizationProcessorService.cs` — new file
+  - `src/TradePilot.Api/Services/OptimizationProcessorService.cs` — new file
 - **Success**:
   - Reads from `OptimizationJobQueue` channel
   - Calls `SweepRunner.RunAsync` with progress callback
@@ -213,7 +213,7 @@ Background service that dequeues optimization jobs, invokes `SweepRunner`, persi
 Follow `BacktestProcessorService` pattern exactly:
 
 ```csharp
-// src/TradingApp.Api/Services/OptimizationProcessorService.cs
+// src/TradePilot.Api/Services/OptimizationProcessorService.cs
 public sealed class OptimizationProcessorService : BackgroundService
 {
     // Inject: IServiceScopeFactory, OptimizationJobQueue, IHubContext<MarketDataHub>, ILogger
@@ -290,8 +290,8 @@ REST controller for optimization operations.
 - **Complexity**: Low
 - **Risk Factors**: None — follows BacktestsController pattern exactly
 - **Files**:
-  - `src/TradingApp.Api/Controllers/OptimizationsController.cs` — new file
-  - `src/TradingApp.Api/Models/RunOptimizationRequest.cs` — new file
+  - `src/TradePilot.Api/Controllers/OptimizationsController.cs` — new file
+  - `src/TradePilot.Api/Models/RunOptimizationRequest.cs` — new file
 - **Success**:
   - `POST /api/optimizations` — start a new optimization run → 202 Accepted
   - `GET /api/optimizations` — paginated list of runs
@@ -300,7 +300,7 @@ REST controller for optimization operations.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Models/RunOptimizationRequest.cs
+// src/TradePilot.Api/Models/RunOptimizationRequest.cs
 public sealed class RunOptimizationRequest
 {
     [Required] public string Symbol { get; set; } = string.Empty;
@@ -325,7 +325,7 @@ public sealed class RunOptimizationRequest
 ```
 
 ```csharp
-// src/TradingApp.Api/Controllers/OptimizationsController.cs
+// src/TradePilot.Api/Controllers/OptimizationsController.cs
 [ApiController]
 [Route("api/optimizations")]
 public sealed class OptimizationsController : ControllerBase
@@ -362,7 +362,7 @@ Register all new services in the DI container.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — modification
+  - `src/TradePilot.Api/Program.cs` — modification
 - **Success**: All services resolvable
 
 #### Registration

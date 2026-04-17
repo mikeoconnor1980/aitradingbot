@@ -49,7 +49,7 @@ Enable traders to describe strategies in plain English via a text input in the S
 
 ## Objectives
 
-- Create TradingApp.AI project with LLM client infrastructure (OpenAI-compatible HTTP client)
+- Create TradePilot.AI project with LLM client infrastructure (OpenAI-compatible HTTP client)
 - Implement strategy interpreter service with prompt engineering for NL → StrategyConfig mapping
 - Add interpret API endpoint with rate limiting and input validation
 - Build frontend NL input UI with assumptions display, confidence badge, and form population
@@ -67,17 +67,17 @@ Enable traders to describe strategies in plain English via a text input in the S
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — IOptions configuration pattern
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — typed HTTP client interface
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — typed HTTP client implementation
-- `src/TradingApp.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs` — MediatR command + handler pattern
-- `src/TradingApp.Application/StrategyAuthoring/Models/StrategyConfig.cs` — canonical config schema
-- `src/TradingApp.Application/StrategyAuthoring/Models/SourceMetadata.cs` — source tracking record
-- `src/TradingApp.Api/Controllers/StrategiesController.cs` — controller with CRUD pattern
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — exception to HTTP mapping
-- `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` — DI extension method pattern
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — controller test base class
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — unit test pattern
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — IOptions configuration pattern
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — typed HTTP client interface
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — typed HTTP client implementation
+- `src/TradePilot.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs` — MediatR command + handler pattern
+- `src/TradePilot.Application/StrategyAuthoring/Models/StrategyConfig.cs` — canonical config schema
+- `src/TradePilot.Application/StrategyAuthoring/Models/SourceMetadata.cs` — source tracking record
+- `src/TradePilot.Api/Controllers/StrategiesController.cs` — controller with CRUD pattern
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — exception to HTTP mapping
+- `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` — DI extension method pattern
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — controller test base class
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — unit test pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/strategy-builder-page.component.ts` — form builder
 - `frontend/trading-ui/src/app/features/strategy-builder/services/strategy-api.service.ts` — API service pattern
 
@@ -85,8 +85,8 @@ Enable traders to describe strategies in plain English via a text input in the S
 
 **Complexity**: Medium | **Risk**: Low
 
-- [x] Task 1.1: Create TradingApp.AI project and add to solution
-  - Details: .agent-context/3-develop/build/plans/details/20260403-natural-language-interpreter-phase-01-details.md#task-11-create-tradingapp-ai-project
+- [x] Task 1.1: Create TradePilot.AI project and add to solution
+  - Details: .agent-context/3-develop/build/plans/details/20260403-natural-language-interpreter-phase-01-details.md#task-11-create-TradePilot-ai-project
 - [x] Task 1.2: Create LlmOptions configuration class
   - Details: .agent-context/3-develop/build/plans/details/20260403-natural-language-interpreter-phase-01-details.md#task-12-create-llmoptions-configuration
 - [x] Task 1.3: Create ILlmClient interface and OpenAI-compatible implementation

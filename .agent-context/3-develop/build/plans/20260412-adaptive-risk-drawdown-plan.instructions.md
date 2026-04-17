@@ -50,16 +50,16 @@ As a **trader**, I want **the system to automatically reduce my risk percentage 
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` — daily-loss circuit breaker pattern (model for drawdown CB)
-- `src/TradingApp.Application/Abstractions/Services/IRiskEngine.cs` — interface with default-body methods for backward compat
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` — static resolver, 2 call sites in GridController/SignalController
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — equity flow, UpdatePortfolioState call
-- `src/TradingApp.Application/Trading/Models/MarketContext.cs` — mutable context carrying AccountEquity
-- `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — system-wide risk config record
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — inline fluent entity config in OnModelCreating
-- `src/TradingApp.Api/Controllers/RiskController.cs` — direct injection (no MediatR), risk endpoint pattern
+- `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` — daily-loss circuit breaker pattern (model for drawdown CB)
+- `src/TradePilot.Application/Abstractions/Services/IRiskEngine.cs` — interface with default-body methods for backward compat
+- `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` — static resolver, 2 call sites in GridController/SignalController
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — equity flow, UpdatePortfolioState call
+- `src/TradePilot.Application/Trading/Models/MarketContext.cs` — mutable context carrying AccountEquity
+- `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` — system-wide risk config record
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — inline fluent entity config in OnModelCreating
+- `src/TradePilot.Api/Controllers/RiskController.cs` — direct injection (no MediatR), risk endpoint pattern
 - `frontend/trading-ui/src/app/features/dashboard/account-summary/portfolio-heat-indicator/` — tiered threshold indicator
-- `tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — CB test pattern
+- `tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — CB test pattern
 
 ### [x] Phase 1: Configuration & Domain Model
 

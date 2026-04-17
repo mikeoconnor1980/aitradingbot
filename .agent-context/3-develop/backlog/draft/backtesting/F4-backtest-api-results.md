@@ -37,7 +37,7 @@ The backtest replay engine (F3) runs in-process but has no external interface. W
 
 #### Run Backtest Endpoint — `POST /api/backtests`
 
-- [ ] A `POST /api/backtests` endpoint exists in `TradingApp.Api`
+- [ ] A `POST /api/backtests` endpoint exists in `TradePilot.Api`
 - [ ] The endpoint accepts a JSON request body with: `symbol` (string, required), `intervals` (string array, required), `startDate` (ISO 8601 string, required), `endDate` (ISO 8601 string, required), `strategyConfig` (strongly-typed object, required)
 - [ ] The `strategyConfig` is a strongly-typed DTO with fields: `gridLevels` (int), `gridSpacing` (decimal), `takeProfitPercent` (decimal), `breakdownThreshold` (decimal), `makerFee` (decimal), `takerFee` (decimal), `slippage` (decimal), `positionSize` (decimal), `leverage` (decimal), `stopLossPercent` (decimal)
 - [ ] The endpoint validates inputs:
@@ -235,16 +235,16 @@ The backtest replay engine (F3) runs in-process but has no external interface. W
 
 | Component | Layer | Action |
 |-----------|-------|--------|
-| `BacktestController` | `TradingApp.Api` | API controller exposing all three endpoints |
-| `BacktestRequest` | `TradingApp.Application` | Request DTO with strongly-typed `GridStrategyConfig` |
-| `GridStrategyConfig` | `TradingApp.Application` | Strongly-typed strategy config DTO with validation |
-| `BacktestResult` | `TradingApp.Application` | Response DTO with summary metrics and trade log (defined in F3) |
-| `BacktestTrade` | `TradingApp.Application` | Individual trade DTO (defined in F3) |
-| `IBacktestRunner` | `TradingApp.Application` | Backtest orchestrator interface (defined in F3) |
-| `BacktestRequestValidator` | `TradingApp.Application` | Validates request parameters before execution |
-| `IBacktestResultRepository` | `TradingApp.Application` | Repository interface for persisting/retrieving results |
-| `BacktestResultRepository` | `TradingApp.Persistence` | SQLite implementation of result persistence |
-| `CandleCoverageReport` | `TradingApp.Application` | DTO for validation endpoint response |
+| `BacktestController` | `TradePilot.Api` | API controller exposing all three endpoints |
+| `BacktestRequest` | `TradePilot.Application` | Request DTO with strongly-typed `GridStrategyConfig` |
+| `GridStrategyConfig` | `TradePilot.Application` | Strongly-typed strategy config DTO with validation |
+| `BacktestResult` | `TradePilot.Application` | Response DTO with summary metrics and trade log (defined in F3) |
+| `BacktestTrade` | `TradePilot.Application` | Individual trade DTO (defined in F3) |
+| `IBacktestRunner` | `TradePilot.Application` | Backtest orchestrator interface (defined in F3) |
+| `BacktestRequestValidator` | `TradePilot.Application` | Validates request parameters before execution |
+| `IBacktestResultRepository` | `TradePilot.Application` | Repository interface for persisting/retrieving results |
+| `BacktestResultRepository` | `TradePilot.Persistence` | SQLite implementation of result persistence |
+| `CandleCoverageReport` | `TradePilot.Application` | DTO for validation endpoint response |
 
 ### Request DTO
 

@@ -93,17 +93,17 @@ Cross-cutting hardening pass that standardises error handling, retry logic, and 
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception-to-HTTP-status mapping pattern
-- `src/TradingApp.Api/Infrastructure/Envelope.cs` — Error response envelope shape
-- `src/TradingApp.Api/Program.cs` — DI composition root, HttpClient registration, filter registration
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — REST client, error wrapping pattern
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` — BackgroundService with exponential backoff reconnect
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — Signing rejection detection via string match
-- `src/TradingApp.Api/Controllers/AccountController.cs` — Controller with shadow error handling (to be refactored)
-- `src/TradingApp.Application/Abstractions/Exceptions/DomainException.cs` — Typed domain exception pattern
-- `tests/TradingApp.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP message handler test helper
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory integration test pattern
-- `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Controller integration test pattern
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Global exception-to-HTTP-status mapping pattern
+- `src/TradePilot.Api/Infrastructure/Envelope.cs` — Error response envelope shape
+- `src/TradePilot.Api/Program.cs` — DI composition root, HttpClient registration, filter registration
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — REST client, error wrapping pattern
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` — BackgroundService with exponential backoff reconnect
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — Signing rejection detection via string match
+- `src/TradePilot.Api/Controllers/AccountController.cs` — Controller with shadow error handling (to be refactored)
+- `src/TradePilot.Application/Abstractions/Exceptions/DomainException.cs` — Typed domain exception pattern
+- `tests/TradePilot.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP message handler test helper
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory integration test pattern
+- `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Controller integration test pattern
 - `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts` — Error banner + snackbar pattern
 - `frontend/trading-ui/src/app/core/services/signalr.service.ts` — SignalR connection lifecycle pattern
 - `frontend/trading-ui/src/app/core/services/api-rest-client.service.ts` — REST client service pattern

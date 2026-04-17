@@ -8,7 +8,7 @@
 
 - **csharp.instructions.md** — `async/await` with `CancellationToken`, connection string via configuration
 - **dotnet-architecture.instructions.md** — DI registration via extension methods, startup hooks
-- **03-infrastructure-architecture.md** — Phased deployment, SQLite file path at `Data/tradingapp.db`
+- **03-infrastructure-architecture.md** — Phased deployment, SQLite file path at `Data/TradePilot.db`
 - **ADR 3** — SQLite for POC, connection string in appsettings.json
 
 ## Design References
@@ -18,15 +18,15 @@
 
 ### Task 2.1: Add Persistence project references to Api and Worker {#task-21-add-persistence-project-references-to-api-and-worker}
 
-Add project references from both host projects to `TradingApp.Persistence` so they can call `AddPersistence()` and resolve the DbContext.
+Add project references from both host projects to `TradePilot.Persistence` so they can call `AddPersistence()` and resolve the DbContext.
 
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/TradingApp.Api.csproj` — Modify: add Persistence project reference
-  - `src/TradingApp.Worker/TradingApp.Worker.csproj` — Modify: add Persistence project reference
+  - `src/TradePilot.Api/TradePilot.Api.csproj` — Modify: add Persistence project reference
+  - `src/TradePilot.Worker/TradePilot.Worker.csproj` — Modify: add Persistence project reference
 - **Success**:
-  - Both projects reference `TradingApp.Persistence`
+  - Both projects reference `TradePilot.Persistence`
   - Solution builds successfully
 - **Dependencies**: Phase 1 complete
 
@@ -37,19 +37,19 @@ Add the `ConnectionStrings:DefaultConnection` section to all appsettings files f
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Api/appsettings.json` — Modify: add ConnectionStrings section
-  - `src/TradingApp.Api/appsettings.Development.json` — Modify: add ConnectionStrings section (same path for dev)
-  - `src/TradingApp.Worker/appsettings.json` — Modify: add ConnectionStrings section
-  - `src/TradingApp.Worker/appsettings.Development.json` — Modify: add ConnectionStrings section (same path for dev)
+  - `src/TradePilot.Api/appsettings.json` — Modify: add ConnectionStrings section
+  - `src/TradePilot.Api/appsettings.Development.json` — Modify: add ConnectionStrings section (same path for dev)
+  - `src/TradePilot.Worker/appsettings.json` — Modify: add ConnectionStrings section
+  - `src/TradePilot.Worker/appsettings.Development.json` — Modify: add ConnectionStrings section (same path for dev)
 - **Success**:
-  - All 4 appsettings files contain `"ConnectionStrings": { "DefaultConnection": "Data Source=Data/tradingapp.db" }`
+  - All 4 appsettings files contain `"ConnectionStrings": { "DefaultConnection": "Data Source=Data/TradePilot.db" }`
   - Configuration resolves correctly at runtime
 - **Dependencies**: None
 
 #### Implementation Details
 
 ```json
-// src/TradingApp.Api/appsettings.json — add ConnectionStrings section
+// src/TradePilot.Api/appsettings.json — add ConnectionStrings section
 {
   "Logging": {
     "LogLevel": {
@@ -58,7 +58,7 @@ Add the `ConnectionStrings:DefaultConnection` section to all appsettings files f
     }
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=Data/tradingapp.db"
+    "DefaultConnection": "Data Source=Data/TradePilot.db"
   },
   "Hyperliquid": {
     "BaseUrl": "https://api.hyperliquid-testnet.xyz",
@@ -69,7 +69,7 @@ Add the `ConnectionStrings:DefaultConnection` section to all appsettings files f
 ```
 
 ```json
-// src/TradingApp.Worker/appsettings.json — add ConnectionStrings section
+// src/TradePilot.Worker/appsettings.json — add ConnectionStrings section
 {
   "Logging": {
     "LogLevel": {
@@ -78,7 +78,7 @@ Add the `ConnectionStrings:DefaultConnection` section to all appsettings files f
     }
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=Data/tradingapp.db"
+    "DefaultConnection": "Data Source=Data/TradePilot.db"
   }
 }
 ```
@@ -87,8 +87,8 @@ The Development appsettings files should also have the same ConnectionStrings se
 
 ##### Pattern References
 
-- `src/TradingApp.Api/appsettings.json` — Existing configuration structure
-- `src/TradingApp.Worker/appsettings.json` — Existing configuration structure
+- `src/TradePilot.Api/appsettings.json` — Existing configuration structure
+- `src/TradePilot.Worker/appsettings.json` — Existing configuration structure
 
 ### Task 2.3: Register persistence services and add startup migration to Api {#task-23-register-persistence-services-and-add-startup-migration-to-api}
 
@@ -97,22 +97,22 @@ Call `AddPersistence()` in `Program.cs` and add the auto-migration startup hook 
 - **Complexity**: Medium
 - **Risk Factors**: Must ensure `Data/` directory creation happens before `MigrateAsync()`; must not interfere with existing startup flow
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — Modify: add `AddPersistence()` call and migration startup hook
+  - `src/TradePilot.Api/Program.cs` — Modify: add `AddPersistence()` call and migration startup hook
 - **Success**:
   - `builder.Services.AddPersistence(builder.Configuration)` is called during service registration
   - After `builder.Build()` and before `app.Run()`, migrations are applied
   - `Data/` directory is created if it doesn't exist
-  - API starts successfully and `Data/tradingapp.db` is created with the `Candles` table
+  - API starts successfully and `Data/TradePilot.db` is created with the `Candles` table
 - **Dependencies**: Task 2.1 (project reference), Task 2.2 (connection string)
 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modifications
+// src/TradePilot.Api/Program.cs — modifications
 
 // Add these usings at the top:
 using Microsoft.EntityFrameworkCore;
-using TradingApp.Persistence;
+using TradePilot.Persistence;
 
 // Add this line after existing service registrations, before var app = builder.Build():
 // ... existing registrations ...
@@ -123,7 +123,7 @@ var app = builder.Build();
 // Add migration startup hook AFTER builder.Build() and BEFORE existing middleware:
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<TradingAppDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
     var connectionString = db.Database.GetConnectionString();
     if (connectionString is not null)
     {
@@ -148,7 +148,7 @@ app.Logger.LogInformation(
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — Existing inline DI registration and startup pipeline
+- `src/TradePilot.Api/Program.cs` — Existing inline DI registration and startup pipeline
 - EF Core documentation — `MigrateAsync()` for startup migration in development/POC environments
 
 ### Task 2.4: Register persistence services and add startup migration to Worker {#task-24-register-persistence-services-and-add-startup-migration-to-worker}
@@ -158,7 +158,7 @@ Call `AddPersistence()` in the Worker's `Program.cs` and add the same auto-migra
 - **Complexity**: Low
 - **Risk Factors**: None — Worker is currently a 3-line bare host
 - **Files**:
-  - `src/TradingApp.Worker/Program.cs` — Modify: add persistence registration and migration
+  - `src/TradePilot.Worker/Program.cs` — Modify: add persistence registration and migration
 - **Success**:
   - `builder.Services.AddPersistence(builder.Configuration)` is called
   - Migrations are applied on startup
@@ -168,9 +168,9 @@ Call `AddPersistence()` in the Worker's `Program.cs` and add the same auto-migra
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Worker/Program.cs — complete replacement (currently only 3 lines)
+// src/TradePilot.Worker/Program.cs — complete replacement (currently only 3 lines)
 using Microsoft.EntityFrameworkCore;
-using TradingApp.Persistence;
+using TradePilot.Persistence;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -180,7 +180,7 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<TradingAppDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
     var connectionString = db.Database.GetConnectionString();
     if (connectionString is not null)
     {
@@ -199,8 +199,8 @@ app.Run();
 
 ##### Pattern References
 
-- `src/TradingApp.Worker/Program.cs` — Current bare host (3 lines)
-- `src/TradingApp.Api/Program.cs` — Migration pattern from Task 2.3
+- `src/TradePilot.Worker/Program.cs` — Current bare host (3 lines)
+- `src/TradePilot.Api/Program.cs` — Migration pattern from Task 2.3
 
 ### Task 2.5: Add database files to `.gitignore` {#task-25-add-database-files-to-gitignore}
 
@@ -238,35 +238,35 @@ Full verification that all changes compile, existing tests still pass, new tests
 - **Risk Factors**: None (verification step)
 - **Files**: None (verification step)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with 0 errors
-  - `dotnet test TradingApp.sln` passes all tests
-  - `dotnet run --project src/TradingApp.Api` starts without errors and creates `Data/tradingapp.db`
-  - SQLite database contains `Candles` table with correct schema (verify via `sqlite3 Data/tradingapp.db ".schema Candles"` or EF Core logging)
+  - `dotnet build TradePilot.sln` succeeds with 0 errors
+  - `dotnet test TradePilot.sln` passes all tests
+  - `dotnet run --project src/TradePilot.Api` starts without errors and creates `Data/TradePilot.db`
+  - SQLite database contains `Candles` table with correct schema (verify via `sqlite3 Data/TradePilot.db ".schema Candles"` or EF Core logging)
 - **Dependencies**: All previous tasks in Phase 2
 
 #### Implementation Details
 
 ```powershell
 # Build entire solution
-dotnet build TradingApp.sln
+dotnet build TradePilot.sln
 
 # Run all tests
-dotnet test TradingApp.sln
+dotnet test TradePilot.sln
 
 # Verify API startup creates the database
-dotnet run --project src/TradingApp.Api
+dotnet run --project src/TradePilot.Api
 
 # In a separate terminal, verify the database file was created
-Test-Path src/TradingApp.Api/Data/tradingapp.db
+Test-Path src/TradePilot.Api/Data/TradePilot.db
 ```
 
 ## Phase Success Criteria
 
-- Both `TradingApp.Api` and `TradingApp.Worker` reference `TradingApp.Persistence`
+- Both `TradePilot.Api` and `TradePilot.Worker` reference `TradePilot.Persistence`
 - All 4 appsettings files contain `ConnectionStrings:DefaultConnection`
 - Both Program.cs files call `AddPersistence()` and run `MigrateAsync()` on startup
 - `Data/` directory is created automatically on first startup
-- `Data/tradingapp.db` is excluded from git
-- `dotnet build TradingApp.sln` succeeds
-- `dotnet test TradingApp.sln` — all tests pass (existing + new)
-- Api starts and creates `Data/tradingapp.db` with `Candles` table
+- `Data/TradePilot.db` is excluded from git
+- `dotnet build TradePilot.sln` succeeds
+- `dotnet test TradePilot.sln` — all tests pass (existing + new)
+- Api starts and creates `Data/TradePilot.db` with `Candles` table

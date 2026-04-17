@@ -14,7 +14,7 @@
 
 ## Design References
 
-- Existing `DomainException` and `NotFoundException` in `TradingApp.Application.Abstractions.Exceptions` establish the exception pattern
+- Existing `DomainException` and `NotFoundException` in `TradePilot.Application.Abstractions.Exceptions` establish the exception pattern
 - `HttpGlobalExceptionFilter` establishes the exception-to-HTTP-status mapping pattern
 - `Envelope` establishes the error response shape
 
@@ -25,9 +25,9 @@ Create typed exception classes for Hyperliquid-specific error categories so the 
 - **Complexity**: Medium
 - **Risk Factors**: Must align exception hierarchy with existing `DomainException`/`NotFoundException` pattern
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Exceptions/HyperliquidApiException.cs` — New: Base exception for all Hyperliquid API errors
-  - `src/TradingApp.Application/Abstractions/Exceptions/RateLimitException.cs` — New: 429 rate-limit exception with `RetryAfterSeconds`
-  - `src/TradingApp.Application/Abstractions/Exceptions/SigningException.cs` — New: EIP-712 signing failure exception
+  - `src/TradePilot.Application/Abstractions/Exceptions/HyperliquidApiException.cs` — New: Base exception for all Hyperliquid API errors
+  - `src/TradePilot.Application/Abstractions/Exceptions/RateLimitException.cs` — New: 429 rate-limit exception with `RetryAfterSeconds`
+  - `src/TradePilot.Application/Abstractions/Exceptions/SigningException.cs` — New: EIP-712 signing failure exception
 - **Success**:
   - `HyperliquidApiException` exists with `StatusCode` and `ErrorCategory` properties
   - `RateLimitException` extends `HyperliquidApiException` with `RetryAfterSeconds`
@@ -38,8 +38,8 @@ Create typed exception classes for Hyperliquid-specific error categories so the 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Exceptions/HyperliquidApiException.cs — new file
-namespace TradingApp.Application.Abstractions.Exceptions;
+// src/TradePilot.Application/Abstractions/Exceptions/HyperliquidApiException.cs — new file
+namespace TradePilot.Application.Abstractions.Exceptions;
 
 /// <summary>
 /// Base exception for errors returned by the Hyperliquid exchange API.
@@ -61,8 +61,8 @@ public class HyperliquidApiException : Exception
 ```
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Exceptions/RateLimitException.cs — new file
-namespace TradingApp.Application.Abstractions.Exceptions;
+// src/TradePilot.Application/Abstractions/Exceptions/RateLimitException.cs — new file
+namespace TradePilot.Application.Abstractions.Exceptions;
 
 /// <summary>
 /// Thrown when Hyperliquid returns a 429 Too Many Requests response.
@@ -82,8 +82,8 @@ public sealed class RateLimitException : HyperliquidApiException
 ```
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Exceptions/SigningException.cs — new file
-namespace TradingApp.Application.Abstractions.Exceptions;
+// src/TradePilot.Application/Abstractions/Exceptions/SigningException.cs — new file
+namespace TradePilot.Application.Abstractions.Exceptions;
 
 /// <summary>
 /// Thrown when EIP-712 signing fails or the exchange rejects the signature.
@@ -100,8 +100,8 @@ public sealed class SigningException : HyperliquidApiException
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Exceptions/DomainException.cs` — Established sealed exception pattern
-- `src/TradingApp.Application/Abstractions/Exceptions/NotFoundException.cs` — Two-constructor pattern with sealed class
+- `src/TradePilot.Application/Abstractions/Exceptions/DomainException.cs` — Established sealed exception pattern
+- `src/TradePilot.Application/Abstractions/Exceptions/NotFoundException.cs` — Two-constructor pattern with sealed class
 
 ---
 
@@ -112,7 +112,7 @@ Extend the existing `Envelope` class to include a machine-readable `ErrorCode` a
 - **Complexity**: Medium
 - **Risk Factors**: Additive change to existing shape — frontend must handle the new optional fields. Existing tests that assert on `Envelope` shape must be updated.
 - **Files**:
-  - `src/TradingApp.Api/Infrastructure/Envelope.cs` — Modify: add `ErrorCode` and `CorrelationId` properties
+  - `src/TradePilot.Api/Infrastructure/Envelope.cs` — Modify: add `ErrorCode` and `CorrelationId` properties
 - **Success**:
   - `Envelope` has `ErrorCode` (nullable string) and `CorrelationId` (string) properties
   - Existing constructor still works (backward-compatible)
@@ -122,8 +122,8 @@ Extend the existing `Envelope` class to include a machine-readable `ErrorCode` a
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Infrastructure/Envelope.cs — modification
-namespace TradingApp.Api.Infrastructure;
+// src/TradePilot.Api/Infrastructure/Envelope.cs — modification
+namespace TradePilot.Api.Infrastructure;
 
 public sealed class Envelope
 {
@@ -146,7 +146,7 @@ Note: `System.Diagnostics.Activity` is available from `System.Diagnostics.Diagno
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Infrastructure/Envelope.cs` — Current implementation with `ErrorMessage` + `Timestamp` only
+- `src/TradePilot.Api/Infrastructure/Envelope.cs` — Current implementation with `ErrorMessage` + `Timestamp` only
 
 ---
 
@@ -157,7 +157,7 @@ Create ASP.NET Core middleware that ensures every request has a correlation ID �
 - **Complexity**: Medium
 - **Risk Factors**: Must be registered early in the pipeline (before controllers) to ensure all log entries are enriched
 - **Files**:
-  - `src/TradingApp.Api/Infrastructure/CorrelationIdMiddleware.cs` — New: middleware class
+  - `src/TradePilot.Api/Infrastructure/CorrelationIdMiddleware.cs` — New: middleware class
 - **Success**:
   - Incoming requests with `X-Correlation-ID` header reuse that value
   - Requests without the header get an auto-generated correlation ID
@@ -168,10 +168,10 @@ Create ASP.NET Core middleware that ensures every request has a correlation ID �
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Infrastructure/CorrelationIdMiddleware.cs — new file
+// src/TradePilot.Api/Infrastructure/CorrelationIdMiddleware.cs — new file
 using System.Diagnostics;
 
-namespace TradingApp.Api.Infrastructure;
+namespace TradePilot.Api.Infrastructure;
 
 public sealed class CorrelationIdMiddleware
 {
@@ -205,7 +205,7 @@ public sealed class CorrelationIdMiddleware
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — Middleware registration pattern (`app.UseCors()`, `app.MapControllers()`)
+- `src/TradePilot.Api/Program.cs` — Middleware registration pattern (`app.UseCors()`, `app.MapControllers()`)
 
 ---
 
@@ -216,7 +216,7 @@ Update the global exception filter to handle the new typed exceptions with appro
 - **Complexity**: Medium
 - **Risk Factors**: Changing exception mappings affects all error responses — must update tests to match. Removing `InvalidOperationException → 502` means those will now fall to the default 500 handler.
 - **Files**:
-  - `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Modify: add new exception cases, pass correlation ID and error code to Envelope
+  - `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Modify: add new exception cases, pass correlation ID and error code to Envelope
 - **Success**:
   - `RateLimitException` maps to 429 with `error_code: "rate_limit"`
   - `SigningException` maps to 500 with `error_code: "signing_error"`
@@ -229,14 +229,14 @@ Update the global exception filter to handle the new typed exceptions with appro
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs — modification
+// src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs — modification
 using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using TradingApp.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Exceptions;
 
-namespace TradingApp.Api.Infrastructure.Filters;
+namespace TradePilot.Api.Infrastructure.Filters;
 
 public sealed class HttpGlobalExceptionFilter : IExceptionFilter
 {
@@ -328,7 +328,7 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Current implementation with 6-case switch expression
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Current implementation with 6-case switch expression
 
 ---
 
@@ -339,8 +339,8 @@ Remove the per-endpoint try/catch blocks from `AccountController` and let except
 - **Complexity**: Medium
 - **Risk Factors**: Existing tests assert on the anonymous error shape (`body.GetProperty("error")`). Tests must be updated to assert on `Envelope` shape (`body.GetProperty("errorMessage")`).
 - **Files**:
-  - `src/TradingApp.Api/Controllers/AccountController.cs` — Modify: remove try/catch, change base class to `ApiController`, add `ProducesResponseType` attributes
-  - `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Modify: update error assertions to use `Envelope` shape
+  - `src/TradePilot.Api/Controllers/AccountController.cs` — Modify: remove try/catch, change base class to `ApiController`, add `ProducesResponseType` attributes
+  - `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Modify: update error assertions to use `Envelope` shape
 - **Success**:
   - `AccountController` extends `ApiController` (not `ControllerBase`)
   - No try/catch blocks in controller methods
@@ -353,7 +353,7 @@ Remove the per-endpoint try/catch blocks from `AccountController` and let except
 The controller methods should become thin calls that let exceptions propagate:
 
 ```csharp
-// src/TradingApp.Api/Controllers/AccountController.cs — modification (example endpoint)
+// src/TradePilot.Api/Controllers/AccountController.cs — modification (example endpoint)
 // Before:
 // try {
 //     var summary = await _accountService.GetAccountSummaryAsync(cancellationToken);
@@ -377,7 +377,7 @@ public async Task<IActionResult> GetAccountSummary(CancellationToken cancellatio
 
 Test update pattern:
 ```csharp
-// tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs — modification
+// tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs — modification
 // Before:
 // body.GetProperty("error").GetString().Should().Be("Hyperliquid API is unavailable");
 
@@ -388,8 +388,8 @@ body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/MarketDataController.cs` — Controller that correctly extends `ApiController` with no try/catch
-- `src/TradingApp.Api/Controllers/OrdersController.cs` — Controller that throws exceptions for filter handling
+- `src/TradePilot.Api/Controllers/MarketDataController.cs` — Controller that correctly extends `ApiController` with no try/catch
+- `src/TradePilot.Api/Controllers/OrdersController.cs` — Controller that throws exceptions for filter handling
 
 ---
 
@@ -400,18 +400,18 @@ Register the correlation ID middleware in `Program.cs` and ensure all existing a
 - **Complexity**: Low
 - **Risk Factors**: Middleware order matters — correlation ID must be registered before CORS and controllers
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — Modify: register `CorrelationIdMiddleware`
-  - `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Already updated in Task 1.5
+  - `src/TradePilot.Api/Program.cs` — Modify: register `CorrelationIdMiddleware`
+  - `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Already updated in Task 1.5
 - **Success**:
   - `CorrelationIdMiddleware` is registered in the pipeline before `UseCors()`
-  - `dotnet build TradingApp.sln` passes
+  - `dotnet build TradePilot.sln` passes
   - `dotnet test` passes for all test projects
 - **Dependencies**: Task 1.3, Task 1.5
 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modification
+// src/TradePilot.Api/Program.cs — modification
 // ... existing code ...
 var app = builder.Build();
 
@@ -426,12 +426,12 @@ app.MapHub<MarketDataHub>("/hubs/marketdata");
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — Current middleware pipeline order
+- `src/TradePilot.Api/Program.cs` — Current middleware pipeline order
 
 ## Phase Success Criteria
 
 - All API error responses return `Envelope` with `ErrorMessage`, `ErrorCode`, `CorrelationId`, and `Timestamp`
 - No controller has shadow try/catch blocks — all errors flow through `HttpGlobalExceptionFilter`
 - Log entries include `CorrelationId` structured field via middleware log scope
-- `dotnet build TradingApp.sln` succeeds
+- `dotnet build TradePilot.sln` succeeds
 - `dotnet test` passes for all projects including updated `AccountControllerTests`

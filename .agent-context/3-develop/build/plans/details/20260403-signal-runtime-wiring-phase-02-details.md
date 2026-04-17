@@ -20,7 +20,7 @@ Create a new interface for signal-mode post-evaluation processing, mirroring the
 - **Complexity**: Low
 - **Risk Factors**: None — new file
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/ISignalController.cs` — new file
+  - `src/TradePilot.Application/Abstractions/Services/ISignalController.cs` — new file
 - **Success**:
   - Interface compiles and follows the same pattern as `IGridController`
 - **Dependencies**: None
@@ -28,11 +28,11 @@ Create a new interface for signal-mode post-evaluation processing, mirroring the
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/ISignalController.cs — new file
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Trading;
+// src/TradePilot.Application/Abstractions/Services/ISignalController.cs — new file
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Trading;
 
-namespace TradingApp.Application.Abstractions.Services;
+namespace TradePilot.Application.Abstractions.Services;
 
 /// <summary>
 /// Processes signal-mode strategy evaluation results and emits trading signals
@@ -52,7 +52,7 @@ public interface ISignalController
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Services/IGridController.cs` — same return type and parameter pattern; `ISignalController` omits `GridState` since signal-mode has no grid lifecycle
+- `src/TradePilot.Application/Abstractions/Services/IGridController.cs` — same return type and parameter pattern; `ISignalController` omits `GridState` since signal-mode has no grid lifecycle
 
 ### Task 2.2: Create `SignalController` implementation that emits `OpenPosition` and `TakeProfit` signals {#task-22-create-signalcontroller-implementation}
 
@@ -64,7 +64,7 @@ Create the signal-mode controller that:
 - **Complexity**: High
 - **Risk Factors**: Exit logic (SL/TP) must mirror `GridController`'s open-position branch to maintain parity; `PositionSizeValue` semantics differ between grid (notional per level) and signal (total position notional)
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/SignalController.cs` — new file
+  - `src/TradePilot.Application/Trading/Services/SignalController.cs` — new file
 - **Success**:
   - `OpenPosition` signal emitted with correct sizing when `SetupDetected = true` and no position
   - `TakeProfit` signal emitted for SL/TP when position is open
@@ -75,13 +75,13 @@ Create the signal-mode controller that:
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/SignalController.cs — new file
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Trading;
+// src/TradePilot.Application/Trading/Services/SignalController.cs — new file
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Trading;
 
-namespace TradingApp.Application.Trading.Services;
+namespace TradePilot.Application.Trading.Services;
 
 /// <summary>
 /// Processes signal-mode strategy evaluation and emits OpenPosition or TakeProfit signals.
@@ -217,9 +217,9 @@ public sealed class SignalController : ISignalController
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — exit condition evaluation (SL/TP) logic in `positionState.IsOpen` branch; `TradingSignal` construction with `Parameters` dictionary
-- `src/TradingApp.Application/Trading/Models/TradingSignal.cs` — signal shape
-- `src/TradingApp.Application/Backtesting/Models/CancellationReason.cs` — `StopLossTriggered`, `TakeProfitTriggered` enum values
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — exit condition evaluation (SL/TP) logic in `positionState.IsOpen` branch; `TradingSignal` construction with `Parameters` dictionary
+- `src/TradePilot.Application/Trading/Models/TradingSignal.cs` — signal shape
+- `src/TradePilot.Application/Backtesting/Models/CancellationReason.cs` — `StopLossTriggered`, `TakeProfitTriggered` enum values
 
 ### Task 2.3: Update `StrategyScheduler` to accept optional `ISignalController` and branch on `StrategyMode` {#task-23-update-strategyschedule-to-branch-on-strategymode}
 
@@ -228,7 +228,7 @@ Add an optional `ISignalController?` parameter to `StrategyScheduler`'s construc
 - **Complexity**: Medium
 - **Risk Factors**: Constructor change requires updating all call sites (`BacktestRunner`, any live host). Optional parameter with `null` default preserves backward compatibility.
 - **Files**:
-  - `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — modification
+  - `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — modification
 - **Success**:
   - Signal-mode strategies route through `ISignalController.ProcessAsync`
   - Grid-mode strategies continue routing through `IGridController.ProcessAsync`
@@ -241,7 +241,7 @@ Add an optional `ISignalController?` parameter to `StrategyScheduler`'s construc
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Scheduling/StrategyScheduler.cs — modification
+// src/TradePilot.Application/Scheduling/StrategyScheduler.cs — modification
 
 // Add field after existing _positionManager field:
     private readonly ISignalController? _signalController;
@@ -291,8 +291,8 @@ Add an optional `ISignalController?` parameter to `StrategyScheduler`'s construc
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — existing constructor pattern, `HandleCandleClosedAsync` pipeline
-- `src/TradingApp.Application/Abstractions/Services/IGridController.cs` — `ProcessAsync` signature for comparison
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — existing constructor pattern, `HandleCandleClosedAsync` pipeline
+- `src/TradePilot.Application/Abstractions/Services/IGridController.cs` — `ProcessAsync` signature for comparison
 
 ### Task 2.4: Register `ISignalController` in DI (`Program.cs`) {#task-24-register-isignalcontroller-in-di}
 
@@ -301,7 +301,7 @@ Register the `SignalController` implementation in the API's DI container alongsi
 - **Complexity**: Low
 - **Risk Factors**: None — additive registration
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — modification
+  - `src/TradePilot.Api/Program.cs` — modification
 - **Success**:
   - `ISignalController` resolves to `SignalController` from DI
 - **Dependencies**:
@@ -310,7 +310,7 @@ Register the `SignalController` implementation in the API's DI container alongsi
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modification
+// src/TradePilot.Api/Program.cs — modification
 // Add after the existing IGridController registration line:
 // builder.Services.AddScoped<IGridController, GridController>();
 builder.Services.AddScoped<ISignalController, SignalController>();
@@ -318,7 +318,7 @@ builder.Services.AddScoped<ISignalController, SignalController>();
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — existing flat registration pattern (`AddScoped<IGridController, GridController>()` on line ~96)
+- `src/TradePilot.Api/Program.cs` — existing flat registration pattern (`AddScoped<IGridController, GridController>()` on line ~96)
 
 ### Task 2.5: Add `SignalController` unit tests {#task-25-add-signalcontroller-unit-tests}
 
@@ -333,7 +333,7 @@ Create a comprehensive test class for `SignalController` covering:
 - **Complexity**: Medium
 - **Risk Factors**: Must match `GridController` test patterns for consistency
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs` — new file
 - **Success**:
   - All `SignalController` behavior paths are tested
   - Tests follow `Given_When_Then` naming and FluentAssertions
@@ -343,13 +343,13 @@ Create a comprehensive test class for `SignalController` covering:
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Application.Trading.Services;
-using TradingApp.Domain.Entities;
+// tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Application.Trading.Services;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.Trading.Services;
+namespace TradePilot.Application.Tests.Trading.Services;
 
 [TestClass]
 public sealed class SignalControllerTests
@@ -515,8 +515,8 @@ public sealed class SignalControllerTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — `_sut` pattern, `CreateContext` helper, signal assertion pattern
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — `StrategyConfig` inline construction
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — `_sut` pattern, `CreateContext` helper, signal assertion pattern
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — `StrategyConfig` inline construction
 
 ### Task 2.6: Add scheduler signal-mode branching tests {#task-26-add-scheduler-signal-mode-branching-tests}
 
@@ -527,7 +527,7 @@ Add tests to `StrategySchedulerTests` that verify:
 - **Complexity**: Medium
 - **Risk Factors**: Must mock both controllers and verify correct routing
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — modification
+  - `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — modification
 - **Success**:
   - Signal-mode test: `_signalControllerMock.Verify(ProcessAsync, Times.Once)` and `_gridControllerMock.Verify(ProcessAsync, Times.Never)`
   - Grid-mode test: `_gridControllerMock.Verify(ProcessAsync, Times.Once)` and `_signalControllerMock.Verify(ProcessAsync, Times.Never)`
@@ -537,7 +537,7 @@ Add tests to `StrategySchedulerTests` that verify:
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs — modification
+// tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs — modification
 // Add new mock field:
     private Mock<ISignalController> _signalControllerMock = default!;
 
@@ -638,17 +638,17 @@ Add tests to `StrategySchedulerTests` that verify:
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — existing mock setup and verify patterns
-- `src/TradingApp.Application/Abstractions/Services/ISignalController.cs` — `ProcessAsync` signature (from Task 2.1)
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — existing mock setup and verify patterns
+- `src/TradePilot.Application/Abstractions/Services/ISignalController.cs` — `ProcessAsync` signature (from Task 2.1)
 
 ### Task 2.7: Run all tests to verify no regression {#task-27-run-all-tests}
 
-Run the full `TradingApp.Application.Tests` project to verify no regressions.
+Run the full `TradePilot.Application.Tests` project to verify no regressions.
 
 - **Complexity**: Low
 - **Risk Factors**: None — verification step
 - **Files**:
-  - All test files in `tests/TradingApp.Application.Tests/`
+  - All test files in `tests/TradePilot.Application.Tests/`
 - **Success**:
   - All existing tests pass
   - All new Phase 2 tests pass

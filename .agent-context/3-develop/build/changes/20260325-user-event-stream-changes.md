@@ -13,21 +13,21 @@ Subscribe to per-wallet WebSocket events from Hyperliquid for real-time fill and
 ### Added
 
 <!-- Phase 1: Backend — User Event WebSocket Client & Models -->
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidUserEventSubscription.cs: userEvents subscription request type with `user` field
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidUserEventSubscribeRequest.cs: subscription request envelope (method + subscription)
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidUserEventsMessage.cs: inbound user events message envelope with channel/data
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidUserEventsData.cs: data payload with fills and orderUpdates arrays
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidUserFill.cs: single fill record from WebSocket (coin, px, sz, side, time, fee, oid, hash, closedPnl, dir)
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidOrderUpdate.cs: single order update record (order, status, statusTimestamp)
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidOrderInfo.cs: order detail within an order update (coin, side, limitPx, sz, oid, timestamp, origSz)
-- src/TradingApp.Application/MarketData/Models/FillEventDto.cs: SignalR payload DTO for fill events (Timestamp, Asset, Side, Size, Price, Fee, OrderId)
-- src/TradingApp.Application/MarketData/Models/OrderUpdateDto.cs: SignalR payload DTO for order updates (Timestamp, OrderId, Asset, Status, FilledSize, RemainingSize)
-- src/TradingApp.Application/Abstractions/Services/IHyperliquidUserEventClient.cs: interface for user event WebSocket client with connect/subscribe/receive/handler registration
-- src/TradingApp.Infrastructure/Services/HyperliquidUserEventClient.cs: WebSocket client implementation managing its own connection, subscribe, receive loop, fill/order update dispatch
-- tests/TradingApp.Infrastructure.Tests/Services/HyperliquidUserEventClientTests.cs: unit tests covering initial state, handler registration, and subscribe pre-condition validation
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidUserEventSubscription.cs: userEvents subscription request type with `user` field
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidUserEventSubscribeRequest.cs: subscription request envelope (method + subscription)
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidUserEventsMessage.cs: inbound user events message envelope with channel/data
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidUserEventsData.cs: data payload with fills and orderUpdates arrays
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidUserFill.cs: single fill record from WebSocket (coin, px, sz, side, time, fee, oid, hash, closedPnl, dir)
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidOrderUpdate.cs: single order update record (order, status, statusTimestamp)
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidOrderInfo.cs: order detail within an order update (coin, side, limitPx, sz, oid, timestamp, origSz)
+- src/TradePilot.Application/MarketData/Models/FillEventDto.cs: SignalR payload DTO for fill events (Timestamp, Asset, Side, Size, Price, Fee, OrderId)
+- src/TradePilot.Application/MarketData/Models/OrderUpdateDto.cs: SignalR payload DTO for order updates (Timestamp, OrderId, Asset, Status, FilledSize, RemainingSize)
+- src/TradePilot.Application/Abstractions/Services/IHyperliquidUserEventClient.cs: interface for user event WebSocket client with connect/subscribe/receive/handler registration
+- src/TradePilot.Infrastructure/Services/HyperliquidUserEventClient.cs: WebSocket client implementation managing its own connection, subscribe, receive loop, fill/order update dispatch
+- tests/TradePilot.Infrastructure.Tests/Services/HyperliquidUserEventClientTests.cs: unit tests covering initial state, handler registration, and subscribe pre-condition validation
 
 <!-- Phase 2: Backend — Stream Service & SignalR Relay -->
-- src/TradingApp.Api/Services/UserEventStreamService.cs: BackgroundService with exponential backoff reconnection (1s/60s/20 retries), SignalR broadcast for fills, order updates, and connection status
+- src/TradePilot.Api/Services/UserEventStreamService.cs: BackgroundService with exponential backoff reconnection (1s/60s/20 retries), SignalR broadcast for fills, order updates, and connection status
 
 <!-- Phase 3: Frontend — Shared State Service & SignalR Integration -->
 - frontend/trading-ui/src/app/core/models/fill-event.model.ts: TypeScript interface for fill event SignalR payload
@@ -43,8 +43,8 @@ Subscribe to per-wallet WebSocket events from Hyperliquid for real-time fill and
 ### Modified
 
 <!-- Phase 2: Backend — Stream Service & SignalR Relay -->
-- src/TradingApp.Api/Program.cs: Added `IHyperliquidUserEventClient` singleton and `UserEventStreamService` hosted service registrations
-- tests/TradingApp.Api.Tests/Hubs/MarketDataHubTests.cs: Added `IHyperliquidUserEventClient` mock to existing test; added new hub integration test `GivenSignalRHub_WhenUserEventStreamRegistered_ThenConnectionStillSucceeds`
+- src/TradePilot.Api/Program.cs: Added `IHyperliquidUserEventClient` singleton and `UserEventStreamService` hosted service registrations
+- tests/TradePilot.Api.Tests/Hubs/MarketDataHubTests.cs: Added `IHyperliquidUserEventClient` mock to existing test; added new hub integration test `GivenSignalRHub_WhenUserEventStreamRegistered_ThenConnectionStillSucceeds`
 
 <!-- Phase 3: Frontend — Shared State Service & SignalR Integration -->
 - frontend/trading-ui/src/app/core/services/signalr.service.ts: Added ReceiveFillEvent, ReceiveOrderUpdate, ReceiveUserConnectionStatus handlers; updated _emitConnectionStatus() to aggregate user event stream status
@@ -59,13 +59,13 @@ Subscribe to per-wallet WebSocket events from Hyperliquid for real-time fill and
 
 <!-- Phase 1: Backend — User Event WebSocket Client & Models -->
 - HyperliquidUserEventClientTests: 5/5 passed (new)
-- TradingApp.Infrastructure.Tests: 30/30 passed
-- TradingApp.Api.Tests: 41/41 passed
+- TradePilot.Infrastructure.Tests: 30/30 passed
+- TradePilot.Api.Tests: 41/41 passed
 
 <!-- Phase 2: Backend — Stream Service & SignalR Relay -->
 - UserEventStreamServiceTests: 3/3 passed (new)
 - MarketDataHubTests.GivenSignalRHub_WhenUserEventStreamRegistered_ThenConnectionStillSucceeds: 1/1 passed (new)
-- TradingApp.Api.Tests: 45/45 passed
+- TradePilot.Api.Tests: 45/45 passed
 
 <!-- Phase 3: Frontend — Shared State Service & SignalR Integration -->
 - Angular build: succeeded (budget warning pre-existing, not introduced by this feature)

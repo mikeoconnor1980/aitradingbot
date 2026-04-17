@@ -24,9 +24,9 @@
 Create `AtrCalculator` as a sealed static class using Wilder-smoothed true range. Takes tuples of `(high, low, close)` to avoid dependency on `Candle` entity.
 
 - **Complexity**: Medium
-- **Risk Factors**: Input type design — must take primitive tuples, not domain entities, to keep `TradingApp.Indicators` dependency-free
+- **Risk Factors**: Input type design — must take primitive tuples, not domain entities, to keep `TradePilot.Indicators` dependency-free
 - **Files**:
-  - `src/TradingApp.Indicators/AtrCalculator.cs` — new file
+  - `src/TradePilot.Indicators/AtrCalculator.cs` — new file
 - **Success**:
   - `AtrCalculator.Calculate(bars, period)` returns Wilder-smoothed ATR
   - Returns `null` when insufficient data (fewer than `period + 1` bars)
@@ -36,8 +36,8 @@ Create `AtrCalculator` as a sealed static class using Wilder-smoothed true range
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Indicators/AtrCalculator.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/AtrCalculator.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// Calculates Average True Range (ATR) using Wilder smoothing.
@@ -89,7 +89,7 @@ public static class AtrCalculator
 ##### Pattern References
 
 - Current `BacktestMarketContextBuilder.CalculateAtr()` — the algorithm being replaced
-- `src/TradingApp.Indicators/EmaCalculator.cs` (Phase 1) — consistent API design pattern
+- `src/TradePilot.Indicators/EmaCalculator.cs` (Phase 1) — consistent API design pattern
 
 ---
 
@@ -100,7 +100,7 @@ Comprehensive unit tests verifying ATR against known reference values.
 - **Complexity**: Medium
 - **Risk Factors**: Need known OHLC dataset with verified Wilder-smoothed ATR
 - **Files**:
-  - `tests/TradingApp.Indicators.Tests/AtrCalculatorTests.cs` — new file
+  - `tests/TradePilot.Indicators.Tests/AtrCalculatorTests.cs` — new file
 - **Success**:
   - Tests verify Wilder-smoothed ATR against known dataset
   - Tests verify null return for insufficient data
@@ -111,10 +111,10 @@ Comprehensive unit tests verifying ATR against known reference values.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Indicators.Tests/AtrCalculatorTests.cs — new file
-using TradingApp.Indicators;
+// tests/TradePilot.Indicators.Tests/AtrCalculatorTests.cs — new file
+using TradePilot.Indicators;
 
-namespace TradingApp.Indicators.Tests;
+namespace TradePilot.Indicators.Tests;
 
 [TestClass]
 public sealed class AtrCalculatorTests
@@ -183,7 +183,7 @@ public sealed class AtrCalculatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Indicators.Tests/EmaCalculatorTests.cs` (Phase 1) — consistent test pattern
+- `tests/TradePilot.Indicators.Tests/EmaCalculatorTests.cs` (Phase 1) — consistent test pattern
 
 ---
 
@@ -194,8 +194,8 @@ Create `MacdCalculator` as a sealed static class. Returns a result record with M
 - **Complexity**: High
 - **Risk Factors**: Depends on `EmaCalculator.CalculateSeries()` for the EMA series computation. MACD signal line is an EMA of the MACD line series, which requires collecting non-null MACD values.
 - **Files**:
-  - `src/TradingApp.Indicators/MacdCalculator.cs` — new file
-  - `src/TradingApp.Indicators/MacdResult.cs` — new file
+  - `src/TradePilot.Indicators/MacdCalculator.cs` — new file
+  - `src/TradePilot.Indicators/MacdResult.cs` — new file
 - **Success**:
   - `MacdCalculator.Calculate(closes, fastPeriod, slowPeriod, signalPeriod)` returns `MacdResult` with Line, Signal, Histogram
   - Returns `null` when insufficient data
@@ -205,8 +205,8 @@ Create `MacdCalculator` as a sealed static class. Returns a result record with M
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Indicators/MacdResult.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/MacdResult.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// MACD calculation result containing line, signal, and histogram values.
@@ -215,8 +215,8 @@ public sealed record MacdResult(decimal Line, decimal Signal, decimal Histogram)
 ```
 
 ```csharp
-// src/TradingApp.Indicators/MacdCalculator.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/MacdCalculator.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// Calculates Moving Average Convergence Divergence (MACD).
@@ -273,7 +273,7 @@ public static class MacdCalculator
 
 ##### Pattern References
 
-- `src/TradingApp.Indicators/EmaCalculator.cs` (Phase 1) — `CalculateSeries()` used internally
+- `src/TradePilot.Indicators/EmaCalculator.cs` (Phase 1) — `CalculateSeries()` used internally
 - TradingView `ta.macd()` — standard 12/26/9 parameters
 
 ---
@@ -285,7 +285,7 @@ Comprehensive unit tests verifying MACD against reference values.
 - **Complexity**: Medium
 - **Risk Factors**: Requires a dataset large enough for EMA(26) + signal(9) warmup (at least 34+ closes)
 - **Files**:
-  - `tests/TradingApp.Indicators.Tests/MacdCalculatorTests.cs` — new file
+  - `tests/TradePilot.Indicators.Tests/MacdCalculatorTests.cs` — new file
 - **Success**:
   - Tests verify MACD structural properties (histogram = line - signal, positive line in uptrend) and null handling
   - Tests verify null return for insufficient data
@@ -296,10 +296,10 @@ Comprehensive unit tests verifying MACD against reference values.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Indicators.Tests/MacdCalculatorTests.cs — new file
-using TradingApp.Indicators;
+// tests/TradePilot.Indicators.Tests/MacdCalculatorTests.cs — new file
+using TradePilot.Indicators;
 
-namespace TradingApp.Indicators.Tests;
+namespace TradePilot.Indicators.Tests;
 
 [TestClass]
 public sealed class MacdCalculatorTests
@@ -371,7 +371,7 @@ public sealed class MacdCalculatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Indicators.Tests/EmaCalculatorTests.cs` (Phase 1) — consistent test pattern
+- `tests/TradePilot.Indicators.Tests/EmaCalculatorTests.cs` (Phase 1) — consistent test pattern
 
 ---
 
@@ -382,8 +382,8 @@ Create `BollingerBandsCalculator` as a sealed static class. Returns a result rec
 - **Complexity**: Medium
 - **Risk Factors**: None — straightforward SMA + standard deviation calculation
 - **Files**:
-  - `src/TradingApp.Indicators/BollingerBandsCalculator.cs` — new file
-  - `src/TradingApp.Indicators/BollingerBandsResult.cs` — new file
+  - `src/TradePilot.Indicators/BollingerBandsCalculator.cs` — new file
+  - `src/TradePilot.Indicators/BollingerBandsResult.cs` — new file
 - **Success**:
   - `BollingerBandsCalculator.Calculate(closes, period, multiplier)` returns `BollingerBandsResult`
   - Returns `null` when insufficient data
@@ -393,8 +393,8 @@ Create `BollingerBandsCalculator` as a sealed static class. Returns a result rec
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Indicators/BollingerBandsResult.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/BollingerBandsResult.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// Bollinger Bands calculation result containing upper, middle, and lower band values.
@@ -403,8 +403,8 @@ public sealed record BollingerBandsResult(decimal Upper, decimal Middle, decimal
 ```
 
 ```csharp
-// src/TradingApp.Indicators/BollingerBandsCalculator.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/BollingerBandsCalculator.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// Calculates Bollinger Bands: Middle = SMA(period), Upper/Lower = Middle ± (multiplier × StdDev).
@@ -456,7 +456,7 @@ public static class BollingerBandsCalculator
 
 ##### Pattern References
 
-- `src/TradingApp.Indicators/MacdResult.cs` (Task 2.3) — result record pattern
+- `src/TradePilot.Indicators/MacdResult.cs` (Task 2.3) — result record pattern
 - TradingView `ta.bb()` — standard 20/2 parameters
 
 ---
@@ -468,7 +468,7 @@ Comprehensive unit tests verifying Bollinger Bands against known reference value
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward SMA + standard deviation
 - **Files**:
-  - `tests/TradingApp.Indicators.Tests/BollingerBandsCalculatorTests.cs` — new file
+  - `tests/TradePilot.Indicators.Tests/BollingerBandsCalculatorTests.cs` — new file
 - **Success**:
   - Tests verify upper, middle, and lower bands against known data
   - Tests verify middle equals SMA
@@ -480,10 +480,10 @@ Comprehensive unit tests verifying Bollinger Bands against known reference value
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Indicators.Tests/BollingerBandsCalculatorTests.cs — new file
-using TradingApp.Indicators;
+// tests/TradePilot.Indicators.Tests/BollingerBandsCalculatorTests.cs — new file
+using TradePilot.Indicators;
 
-namespace TradingApp.Indicators.Tests;
+namespace TradePilot.Indicators.Tests;
 
 [TestClass]
 public sealed class BollingerBandsCalculatorTests
@@ -565,7 +565,7 @@ public sealed class BollingerBandsCalculatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Indicators.Tests/EmaCalculatorTests.cs` (Phase 1) — consistent test pattern
+- `tests/TradePilot.Indicators.Tests/EmaCalculatorTests.cs` (Phase 1) — consistent test pattern
 
 ---
 
@@ -577,15 +577,15 @@ Build the full solution and run all tests to verify Phase 2 changes.
 - **Risk Factors**: None
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln --configuration Release` succeeds with no errors
-  - `dotnet test TradingApp.sln --configuration Release --no-build` — all tests pass
+  - `dotnet build TradePilot.sln --configuration Release` succeeds with no errors
+  - `dotnet test TradePilot.sln --configuration Release --no-build` — all tests pass
   - All new calculator tests pass
   - Existing tests remain unaffected
 - **Dependencies**: Tasks 2.1–2.6
 
 ## Phase Success Criteria
 
-- `AtrCalculator.cs`, `MacdCalculator.cs`, `MacdResult.cs`, `BollingerBandsCalculator.cs`, `BollingerBandsResult.cs` exist in `src/TradingApp.Indicators/`
-- Corresponding test files exist in `tests/TradingApp.Indicators.Tests/`
+- `AtrCalculator.cs`, `MacdCalculator.cs`, `MacdResult.cs`, `BollingerBandsCalculator.cs`, `BollingerBandsResult.cs` exist in `src/TradePilot.Indicators/`
+- Corresponding test files exist in `tests/TradePilot.Indicators.Tests/`
 - All calculator tests pass with values matching expected reference data
 - Full solution builds and all tests pass

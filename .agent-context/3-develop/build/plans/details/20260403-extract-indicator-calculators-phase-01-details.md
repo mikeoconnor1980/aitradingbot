@@ -21,24 +21,24 @@
 
 ### Task 1.1: Create Indicator Projects {#task-11-create-indicator-projects}
 
-Create the `TradingApp.Indicators` class library project and `TradingApp.Indicators.Tests` test project.
+Create the `TradePilot.Indicators` class library project and `TradePilot.Indicators.Tests` test project.
 
 - **Complexity**: Low
 - **Risk Factors**: None — follows established project patterns
 - **Files**:
-  - `src/TradingApp.Indicators/TradingApp.Indicators.csproj` — new file
-  - `tests/TradingApp.Indicators.Tests/TradingApp.Indicators.Tests.csproj` — new file
-  - `tests/TradingApp.Indicators.Tests/Usings.cs` — new file
+  - `src/TradePilot.Indicators/TradePilot.Indicators.csproj` — new file
+  - `tests/TradePilot.Indicators.Tests/TradePilot.Indicators.Tests.csproj` — new file
+  - `tests/TradePilot.Indicators.Tests/Usings.cs` — new file
 - **Success**:
   - Both projects build successfully
-  - `TradingApp.Indicators.csproj` has ZERO project references and ZERO package references
-  - `TradingApp.Indicators.Tests.csproj` references only `TradingApp.Indicators`
+  - `TradePilot.Indicators.csproj` has ZERO project references and ZERO package references
+  - `TradePilot.Indicators.Tests.csproj` references only `TradePilot.Indicators`
 - **Dependencies**: None
 
 #### Implementation Details
 
 ```xml
-<!-- src/TradingApp.Indicators/TradingApp.Indicators.csproj — new file -->
+<!-- src/TradePilot.Indicators/TradePilot.Indicators.csproj — new file -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -51,7 +51,7 @@ Create the `TradingApp.Indicators` class library project and `TradingApp.Indicat
 ```
 
 ```xml
-<!-- tests/TradingApp.Indicators.Tests/TradingApp.Indicators.Tests.csproj — new file -->
+<!-- tests/TradePilot.Indicators.Tests/TradePilot.Indicators.Tests.csproj — new file -->
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -72,37 +72,37 @@ Create the `TradingApp.Indicators` class library project and `TradingApp.Indicat
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\TradingApp.Indicators\TradingApp.Indicators.csproj" />
+    <ProjectReference Include="..\..\src\TradePilot.Indicators\TradePilot.Indicators.csproj" />
   </ItemGroup>
 
 </Project>
 ```
 
 ```csharp
-// tests/TradingApp.Indicators.Tests/Usings.cs — new file
+// tests/TradePilot.Indicators.Tests/Usings.cs — new file
 global using FluentAssertions;
 global using Microsoft.VisualStudio.TestTools.UnitTesting;
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Domain/TradingApp.Domain.csproj` — minimal csproj template with no dependencies
-- `tests/TradingApp.Domain.Tests/TradingApp.Domain.Tests.csproj` — test project template with standard packages
-- `tests/TradingApp.Application.Tests/Usings.cs` — global usings pattern
+- `src/TradePilot.Domain/TradePilot.Domain.csproj` — minimal csproj template with no dependencies
+- `tests/TradePilot.Domain.Tests/TradePilot.Domain.Tests.csproj` — test project template with standard packages
+- `tests/TradePilot.Application.Tests/Usings.cs` — global usings pattern
 
 ---
 
 ### Task 1.2: Add Projects to Solution {#task-12-add-projects-to-solution}
 
-Add both new projects to `TradingApp.sln` using `dotnet sln add` commands.
+Add both new projects to `TradePilot.sln` using `dotnet sln add` commands.
 
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `TradingApp.sln` — modification
+  - `TradePilot.sln` — modification
 - **Success**:
   - Both projects appear in Solution Explorer under correct folders (src / tests)
-  - `dotnet build TradingApp.sln` succeeds
+  - `dotnet build TradePilot.sln` succeeds
 - **Dependencies**: Task 1.1
 
 #### Implementation Details
@@ -110,13 +110,13 @@ Add both new projects to `TradingApp.sln` using `dotnet sln add` commands.
 Run these commands:
 
 ```powershell
-dotnet sln TradingApp.sln add src/TradingApp.Indicators/TradingApp.Indicators.csproj --solution-folder src
-dotnet sln TradingApp.sln add tests/TradingApp.Indicators.Tests/TradingApp.Indicators.Tests.csproj --solution-folder tests
+dotnet sln TradePilot.sln add src/TradePilot.Indicators/TradePilot.Indicators.csproj --solution-folder src
+dotnet sln TradePilot.sln add tests/TradePilot.Indicators.Tests/TradePilot.Indicators.Tests.csproj --solution-folder tests
 ```
 
 ##### Pattern References
 
-- `TradingApp.sln` — existing solution structure with `src` folder GUID `{8EFC91D1-C9F7-4A74-84FE-088136B3CBA1}` and `tests` folder GUID `{267CC078-C992-4791-BACE-16A1B052B962}`
+- `TradePilot.sln` — existing solution structure with `src` folder GUID `{8EFC91D1-C9F7-4A74-84FE-088136B3CBA1}` and `tests` folder GUID `{267CC078-C992-4791-BACE-16A1B052B962}`
 
 ---
 
@@ -127,7 +127,7 @@ Create `EmaCalculator` as a sealed static class with SMA-seeded EMA calculation.
 - **Complexity**: Medium
 - **Risk Factors**: Algorithm correctness — must match TradingView EMA precisely. SMA seed must use first `period` values, not just first close.
 - **Files**:
-  - `src/TradingApp.Indicators/EmaCalculator.cs` — new file
+  - `src/TradePilot.Indicators/EmaCalculator.cs` — new file
 - **Success**:
   - `EmaCalculator.Calculate(closes, period)` returns SMA-seeded EMA
   - Returns `null` when insufficient data (fewer than `period` values)
@@ -137,8 +137,8 @@ Create `EmaCalculator` as a sealed static class with SMA-seeded EMA calculation.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Indicators/EmaCalculator.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/EmaCalculator.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// Calculates Exponential Moving Average (EMA) using SMA-seeded initialisation.
@@ -216,7 +216,7 @@ public static class EmaCalculator
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static class pattern
+- `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static class pattern
 - Current `BacktestMarketContextBuilder.CalculateEma()` — the algorithm being replaced
 
 ---
@@ -228,7 +228,7 @@ Comprehensive unit tests verifying EMA against known reference values.
 - **Complexity**: Medium
 - **Risk Factors**: Reference values must be verified against TradingView or a known correct implementation
 - **Files**:
-  - `tests/TradingApp.Indicators.Tests/EmaCalculatorTests.cs` — new file
+  - `tests/TradePilot.Indicators.Tests/EmaCalculatorTests.cs` — new file
 - **Success**:
   - Tests verify SMA-seeded behaviour
   - Tests verify against known reference data
@@ -240,10 +240,10 @@ Comprehensive unit tests verifying EMA against known reference values.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Indicators.Tests/EmaCalculatorTests.cs — new file
-using TradingApp.Indicators;
+// tests/TradePilot.Indicators.Tests/EmaCalculatorTests.cs — new file
+using TradePilot.Indicators;
 
-namespace TradingApp.Indicators.Tests;
+namespace TradePilot.Indicators.Tests;
 
 [TestClass]
 public sealed class EmaCalculatorTests
@@ -322,7 +322,7 @@ public sealed class EmaCalculatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — pure calculation test pattern with `BeApproximately`
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — pure calculation test pattern with `BeApproximately`
 
 ---
 
@@ -333,7 +333,7 @@ Create `RsiCalculator` as a sealed static class using Wilder smoothing.
 - **Complexity**: Medium
 - **Risk Factors**: Algorithm correctness — Wilder smoothing differs from simple RSI. Must seed with SMA of first `period` gains/losses, then apply exponential smoothing.
 - **Files**:
-  - `src/TradingApp.Indicators/RsiCalculator.cs` — new file
+  - `src/TradePilot.Indicators/RsiCalculator.cs` — new file
 - **Success**:
   - `RsiCalculator.Calculate(closes, period)` returns Wilder-smoothed RSI
   - Returns `null` when insufficient data (fewer than `period + 1` values, since RSI needs deltas)
@@ -343,8 +343,8 @@ Create `RsiCalculator` as a sealed static class using Wilder smoothing.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Indicators/RsiCalculator.cs — new file
-namespace TradingApp.Indicators;
+// src/TradePilot.Indicators/RsiCalculator.cs — new file
+namespace TradePilot.Indicators;
 
 /// <summary>
 /// Calculates Relative Strength Index (RSI) using Wilder smoothing.
@@ -429,7 +429,7 @@ Comprehensive unit tests verifying RSI against known reference values.
 - **Complexity**: Medium
 - **Risk Factors**: Reference values must match Wilder smoothed RSI (TradingView)
 - **Files**:
-  - `tests/TradingApp.Indicators.Tests/RsiCalculatorTests.cs` — new file
+  - `tests/TradePilot.Indicators.Tests/RsiCalculatorTests.cs` — new file
 - **Success**:
   - Tests verify Wilder-smoothed RSI against known datasets
   - Tests verify null return for insufficient data
@@ -440,10 +440,10 @@ Comprehensive unit tests verifying RSI against known reference values.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Indicators.Tests/RsiCalculatorTests.cs — new file
-using TradingApp.Indicators;
+// tests/TradePilot.Indicators.Tests/RsiCalculatorTests.cs — new file
+using TradePilot.Indicators;
 
-namespace TradingApp.Indicators.Tests;
+namespace TradePilot.Indicators.Tests;
 
 [TestClass]
 public sealed class RsiCalculatorTests
@@ -522,7 +522,7 @@ public sealed class RsiCalculatorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — `BeApproximately` assertion pattern
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — `BeApproximately` assertion pattern
 
 ---
 
@@ -534,17 +534,17 @@ Build the full solution and run all tests to verify Phase 1 changes.
 - **Risk Factors**: None
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln --configuration Release` succeeds with no errors
-  - `dotnet test TradingApp.sln --configuration Release --no-build` — all tests pass
-  - New `TradingApp.Indicators.Tests` tests all pass
+  - `dotnet build TradePilot.sln --configuration Release` succeeds with no errors
+  - `dotnet test TradePilot.sln --configuration Release --no-build` — all tests pass
+  - New `TradePilot.Indicators.Tests` tests all pass
   - Existing tests remain unaffected (no code was changed, only new projects added)
 - **Dependencies**: Tasks 1.1–1.6
 
 ## Phase Success Criteria
 
-- `src/TradingApp.Indicators/` project exists with `EmaCalculator.cs` and `RsiCalculator.cs`
-- `tests/TradingApp.Indicators.Tests/` project exists with `EmaCalculatorTests.cs` and `RsiCalculatorTests.cs`
-- Both projects registered in `TradingApp.sln` under correct solution folders
-- `TradingApp.Indicators.csproj` has zero dependencies
+- `src/TradePilot.Indicators/` project exists with `EmaCalculator.cs` and `RsiCalculator.cs`
+- `tests/TradePilot.Indicators.Tests/` project exists with `EmaCalculatorTests.cs` and `RsiCalculatorTests.cs`
+- Both projects registered in `TradePilot.sln` under correct solution folders
+- `TradePilot.Indicators.csproj` has zero dependencies
 - All EMA and RSI tests pass with values matching TradingView reference data
 - Full solution builds and all tests pass

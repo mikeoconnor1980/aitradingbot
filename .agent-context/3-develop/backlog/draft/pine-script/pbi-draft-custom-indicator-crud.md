@@ -94,7 +94,7 @@ Without persistence and management, users would need to re-paste Pine Script eve
 
 ### Bounded Context
 
-**Context:** Domain entity in `TradingApp.Domain`, CRUD operations in `TradingApp.Application/PineScript`, API controller in `TradingApp.Api/Controllers`, persistence in `TradingApp.Persistence`.
+**Context:** Domain entity in `TradePilot.Domain`, CRUD operations in `TradePilot.Application/PineScript`, API controller in `TradePilot.Api/Controllers`, persistence in `TradePilot.Persistence`.
 
 ### New/Modified Components
 
@@ -111,7 +111,7 @@ Without persistence and management, users would need to re-paste Pine Script eve
 | `GetCustomIndicatorsQuery` | Application/PineScript/Queries | **New** — MediatR query (list, by-id) |
 | `ValidatePineScriptQuery` | Application/PineScript/Queries | **New** — MediatR query (validate-only) |
 | `IndicatorController` | Api/Controllers | **New** — REST controller |
-| `TradingAppDbContext` | Persistence | **Modified** — Add `DbSet<CustomIndicator>` |
+| `TradePilotDbContext` | Persistence | **Modified** — Add `DbSet<CustomIndicator>` |
 | EF Migration | Persistence/Migrations | **New** — Add `CustomIndicators` table |
 
 #### Frontend

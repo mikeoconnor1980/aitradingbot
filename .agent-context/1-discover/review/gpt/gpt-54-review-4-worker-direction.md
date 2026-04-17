@@ -35,11 +35,11 @@ The most important architectural promise appears to have held.
 
 Relevant code:
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs`
-- `src/TradingApp.Application/Scheduling/CandleClock.cs`
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs`
-- `src/TradingApp.Application/Trading/Services/GridController.cs`
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs`
+- `src/TradePilot.Application/Scheduling/CandleClock.cs`
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs`
+- `src/TradePilot.Application/Trading/Services/GridController.cs`
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
 
 This is the right shape:
 
@@ -64,10 +64,10 @@ This is enough to treat the system seriously as a research platform.
 
 Relevant code:
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs`
-- `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs`
-- `src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs`
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs`
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs`
+- `src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs`
+- `src/TradePilot.Infrastructure/Services/HyperliquidSigner.cs`
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs`
 
 The project has already done the hard work of separating REST, WebSocket, signing, and API-facing service boundaries. That is a good base for a future live execution engine.
 
@@ -93,7 +93,7 @@ The biggest issue is that the live runtime does not exist yet in a meaningful fo
 
 Relevant code:
 
-- `src/TradingApp.Worker/Program.cs`
+- `src/TradePilot.Worker/Program.cs`
 
 Current state:
 
@@ -110,7 +110,7 @@ This means the project currently has a strong research engine and a weak live ex
 
 Relevant code:
 
-- `src/TradingApp.Application/Trading/Services/PassThroughRiskEngine.cs`
+- `src/TradePilot.Application/Trading/Services/PassThroughRiskEngine.cs`
 
 The risk engine currently approves everything.
 
@@ -128,7 +128,7 @@ Before the Worker becomes real, the project needs actual risk enforcement around
 
 Relevant code:
 
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs`
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs`
 
 The existing position manager is clearly tied to the backtest execution context.
 
@@ -140,8 +140,8 @@ This is one of the most important implementation gaps to close before broad Work
 
 Relevant code:
 
-- `src/TradingApp.Api/Program.cs`
-- `src/TradingApp.Api/Infrastructure/IdentityService.cs`
+- `src/TradePilot.Api/Program.cs`
+- `src/TradePilot.Api/Infrastructure/IdentityService.cs`
 
 The current runtime still creates one signer from one configured private key at startup.
 
@@ -151,8 +151,8 @@ That is a legitimate POC shortcut, but it conflicts directly with the intended p
 
 Relevant code:
 
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs`
-- `src/TradingApp.Api/Services/UserEventStreamService.cs`
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs`
+- `src/TradePilot.Api/Services/UserEventStreamService.cs`
 
 These services are useful, but their purpose is still mainly to support UI updates and connection visibility.
 

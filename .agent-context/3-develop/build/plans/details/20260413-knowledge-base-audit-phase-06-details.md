@@ -93,7 +93,7 @@ Record the chosen business model decision.
 > **Decision: Option C (Split Architecture) — CHOSEN**
 >
 > Evidence:
-> - Worker is `TradingApp.ExecutionAgent` (Windows Service, `SelfContained=true`, `RuntimeIdentifier=win-x64`)
+> - Worker is `TradePilot.ExecutionAgent` (Windows Service, `SelfContained=true`, `RuntimeIdentifier=win-x64`)
 > - API control plane comment: "The control plane does not hold private keys. Wallet addresses are stored in the database; private keys live only on the execution agent (Worker)."
 > - Worker `appsettings.json` has `Agent.ControlPlaneUrl` pointing at the API
 > - `AgentController` + `AgentCommandStore` implement the heartbeat/command protocol
@@ -184,7 +184,7 @@ Add risk check integration note.
 
 #### Changes Required
 
-1. Add note that `MacroEventRiskCheck` in `TradingApp.Persistence.Services` integrates into the live trading `LiveRiskEngine` pipeline, blocking order placement during high-importance event windows.
+1. Add note that `MacroEventRiskCheck` in `TradePilot.Persistence.Services` integrates into the live trading `LiveRiskEngine` pipeline, blocking order placement during high-importance event windows.
 
 ---
 

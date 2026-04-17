@@ -56,23 +56,23 @@ Scale out of winning signal-based positions at configurable R-multiple milestone
 
 ### Project Patterns
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitConfig.cs` — Current single-rule exit config (extend with PartialCloses list)
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — Exit rule structure
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — TP/SL trigger lifecycle including R-multiple price calc
-- `src/TradingApp.Application/Trading/Models/ProtectionOrderState.cs` — Single TP/SL order tracking (extend for multiple TPs)
-- `src/TradingApp.Application/Trading/Services/SignalController.cs` — Signal-mode exit evaluation (extend for partial TP signals)
-- `src/TradingApp.Application/Trading/Services/LivePositionManager.cs` — Signal → order execution
-- `src/TradingApp.Application/Trading/Services/FillProcessor.cs` — Fill fan-out and lifecycle transitions
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — Trigger fill simulation
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — R-metric tracking, CloseCompatibleTrades
-- `src/TradingApp.Application/Optimization/Models/ParameterBounds.cs` — Optimizer parameter bounds
-- `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` — Candidate generation
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitConfig.cs` — Current single-rule exit config (extend with PartialCloses list)
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — Exit rule structure
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — TP/SL trigger lifecycle including R-multiple price calc
+- `src/TradePilot.Application/Trading/Models/ProtectionOrderState.cs` — Single TP/SL order tracking (extend for multiple TPs)
+- `src/TradePilot.Application/Trading/Services/SignalController.cs` — Signal-mode exit evaluation (extend for partial TP signals)
+- `src/TradePilot.Application/Trading/Services/LivePositionManager.cs` — Signal → order execution
+- `src/TradePilot.Application/Trading/Services/FillProcessor.cs` — Fill fan-out and lifecycle transitions
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — Trigger fill simulation
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — R-metric tracking, CloseCompatibleTrades
+- `src/TradePilot.Application/Optimization/Models/ParameterBounds.cs` — Optimizer parameter bounds
+- `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` — Candidate generation
 - `frontend/trading-ui/src/app/features/strategy-builder/components/exit-rules-card/` — Exit config UI component
 - `frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts` — Frontend strategy models
 - `frontend/trading-ui/src/app/features/strategy-builder/components/entry-conditions-card/` — FormArray add/remove pattern reference
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — Exit config validation tests
-- `tests/TradingApp.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs` — Trigger fill simulation tests
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — R-multiple computation tests
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — Exit config validation tests
+- `tests/TradePilot.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs` — Trigger fill simulation tests
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — R-multiple computation tests
 
 ### [ ] Phase 1: Domain Models, Validation & Serialization
 
@@ -188,7 +188,7 @@ Scale out of winning signal-based positions at configurable R-multiple milestone
 - Hyperliquid supports multiple reduce-only trigger orders for same asset simultaneously
 - `BacktestRunner.CloseCompatibleTrades` already handles partial FIFO fill matching — minimal change needed
 - Depends on P2 R-Multiple Exit Types & Trade Tracking being complete
-- Phase 3 includes changes to `TradingApp.Worker` (`TradingSession` fill callback) in addition to `TradingApp.Application`
+- Phase 3 includes changes to `TradePilot.Worker` (`TradingSession` fill callback) in addition to `TradePilot.Application`
 
 ## Dependencies
 

@@ -19,7 +19,7 @@
 
 | Action | File |
 |--------|------|
-| New | `src/TradingApp.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs` |
+| New | `src/TradePilot.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs` |
 
 ### Implementation Details
 
@@ -80,7 +80,7 @@ private static CandleDto MapToDto(Candle candle) => new()
 
 ### Pattern Reference
 
-Follow the exact pattern of `GetCandlesQuery` / `GetCandlesQueryHandler` in `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` — sealed record extending `Query<T>`, sealed handler extending `QueryHandler<TQuery, TResult>`.
+Follow the exact pattern of `GetCandlesQuery` / `GetCandlesQueryHandler` in `src/TradePilot.Application/MarketData/Queries/GetCandlesQuery.cs` — sealed record extending `Query<T>`, sealed handler extending `QueryHandler<TQuery, TResult>`.
 
 ### Success Criteria
 
@@ -100,7 +100,7 @@ Follow the exact pattern of `GetCandlesQuery` / `GetCandlesQueryHandler` in `src
 
 | Action | File |
 |--------|------|
-| Modified | `src/TradingApp.Api/Controllers/MarketDataController.cs` |
+| Modified | `src/TradePilot.Api/Controllers/MarketDataController.cs` |
 
 ### Implementation Details
 
@@ -147,7 +147,7 @@ Follow the exact same pattern as the existing `GetCandlesAsync` endpoint directl
 
 | Action | File |
 |--------|------|
-| New | `tests/TradingApp.Application.Tests/MarketData/Queries/GetHistoricalCandlesQueryHandlerTests.cs` |
+| New | `tests/TradePilot.Application.Tests/MarketData/Queries/GetHistoricalCandlesQueryHandlerTests.cs` |
 
 ### Implementation Details
 
@@ -180,7 +180,7 @@ Follow existing test patterns. Use `NSubstitute` for mocking `ICandleRepository`
 
 | Action | File |
 |--------|------|
-| New or Modified | `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` (add tests for new endpoint) |
+| New or Modified | `tests/TradePilot.Api.Tests/Controllers/MarketDataControllerTests.cs` (add tests for new endpoint) |
 
 ### Implementation Details
 
@@ -210,8 +210,8 @@ Follow existing controller test patterns in the project. Use `WebApplicationFact
 
 ### Implementation Details
 
-1. Run `dotnet build TradingApp.sln` — must compile with zero errors
-2. Run `dotnet test TradingApp.sln` — all existing and new tests must pass
+1. Run `dotnet build TradePilot.sln` — must compile with zero errors
+2. Run `dotnet test TradePilot.sln` — all existing and new tests must pass
 3. Fix any compilation or test failures before proceeding to Phase 2
 
 ### Success Criteria

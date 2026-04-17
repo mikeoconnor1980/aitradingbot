@@ -20,9 +20,9 @@ Create three record types representing the per-candle evaluation, order event, a
 - **Complexity**: Medium
 - **Risk Factors**: Model must capture all fields specified in PBI requirements (candle OHLCV, indicator snapshot, grid state, etc.)
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/CandleEvaluationEntry.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Models/OrderEventEntry.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Models/GridCycleEntry.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/CandleEvaluationEntry.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/OrderEventEntry.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/GridCycleEntry.cs` — new file
 - **Success**:
   - All three record types exist with complete required fields
   - Records compile and are referenced by the collector interface (Task 1.3)
@@ -31,8 +31,8 @@ Create three record types representing the per-candle evaluation, order event, a
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/CandleEvaluationEntry.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/CandleEvaluationEntry.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 /// <summary>
 /// Per-candle audit entry capturing the full evaluation state at each 15m candle.
@@ -61,8 +61,8 @@ public sealed record CandleEvaluationEntry
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/OrderEventEntry.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/OrderEventEntry.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 /// <summary>
 /// Order lifecycle event captured during backtest execution.
@@ -85,8 +85,8 @@ public sealed record OrderEventEntry
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/GridCycleEntry.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/GridCycleEntry.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 /// <summary>
 /// Summary of a completed grid cycle for audit purposes.
@@ -110,9 +110,9 @@ public sealed record GridCycleEntry
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Models/BacktestTrade.cs` — sealed class with `required` init properties (same pattern)
-- `src/TradingApp.Application/Backtesting/Models/EquitySnapshot.cs` — record pattern for small data carriers
-- `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` — indicator fields to mirror
+- `src/TradePilot.Application/Backtesting/Models/BacktestTrade.cs` — sealed class with `required` init properties (same pattern)
+- `src/TradePilot.Application/Backtesting/Models/EquitySnapshot.cs` — record pattern for small data carriers
+- `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` — indicator fields to mirror
 
 ---
 
@@ -123,8 +123,8 @@ Create two enums for the order event type classification and cancellation reason
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward enum definitions
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/OrderEventType.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Models/CancellationReason.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/OrderEventType.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/CancellationReason.cs` — new file
 - **Success**:
   - Enums compile and are referenced by `OrderEventEntry`
 - **Dependencies**: None
@@ -132,8 +132,8 @@ Create two enums for the order event type classification and cancellation reason
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/OrderEventType.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/OrderEventType.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public enum OrderEventType
 {
@@ -145,8 +145,8 @@ public enum OrderEventType
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/CancellationReason.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/CancellationReason.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public enum CancellationReason
 {
@@ -159,8 +159,8 @@ public enum CancellationReason
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/TradeType.cs` — existing enum pattern in same layer
-- `src/TradingApp.Application/Trading/Models/OrderSide.cs` — existing enum pattern
+- `src/TradePilot.Application/Trading/Models/TradeType.cs` — existing enum pattern in same layer
+- `src/TradePilot.Application/Trading/Models/OrderSide.cs` — existing enum pattern
 
 ---
 
@@ -171,9 +171,9 @@ Create the `IBacktestAuditCollector` interface and two implementations: `Backtes
 - **Complexity**: Medium
 - **Risk Factors**: Interface design must capture all three log types without coupling to specific pipeline internals
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/IBacktestAuditCollector.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Services/BacktestAuditCollector.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Services/NullBacktestAuditCollector.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Services/IBacktestAuditCollector.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Services/BacktestAuditCollector.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Services/NullBacktestAuditCollector.cs` — new file
 - **Success**:
   - Interface defines methods for all three log types
   - `BacktestAuditCollector` stores entries in thread-safe lists and exposes results
@@ -183,10 +183,10 @@ Create the `IBacktestAuditCollector` interface and two implementations: `Backtes
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/IBacktestAuditCollector.cs — new file
-using TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Services/IBacktestAuditCollector.cs — new file
+using TradePilot.Application.Backtesting.Models;
 
-namespace TradingApp.Application.Backtesting.Services;
+namespace TradePilot.Application.Backtesting.Services;
 
 /// <summary>
 /// Collects audit/debug data during a backtest run.
@@ -201,10 +201,10 @@ public interface IBacktestAuditCollector
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/BacktestAuditCollector.cs — new file
-using TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Services/BacktestAuditCollector.cs — new file
+using TradePilot.Application.Backtesting.Models;
 
-namespace TradingApp.Application.Backtesting.Services;
+namespace TradePilot.Application.Backtesting.Services;
 
 /// <summary>
 /// Collects all audit log entries in-memory during a backtest run.
@@ -240,10 +240,10 @@ public sealed class BacktestAuditCollector : IBacktestAuditCollector
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/NullBacktestAuditCollector.cs — new file
-using TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Services/NullBacktestAuditCollector.cs — new file
+using TradePilot.Application.Backtesting.Models;
 
-namespace TradingApp.Application.Backtesting.Services;
+namespace TradePilot.Application.Backtesting.Services;
 
 /// <summary>
 /// No-op audit collector used when audit logging is disabled or in live trading.
@@ -262,7 +262,7 @@ public sealed class NullBacktestAuditCollector : IBacktestAuditCollector
 ##### Pattern References
 
 - Null object pattern following `NullLogger<T>` from Microsoft.Extensions.Logging
-- `src/TradingApp.Application/Backtesting/BacktestExecutionContextAccessor.cs` — similar accessor pattern for sharing state across the pipeline
+- `src/TradePilot.Application/Backtesting/BacktestExecutionContextAccessor.cs` — similar accessor pattern for sharing state across the pipeline
 
 ---
 
@@ -273,7 +273,7 @@ Add the `EnableAuditLog` boolean property to `BacktestConfig` with a default of 
 - **Complexity**: Low
 - **Risk Factors**: None — additive change with default preserving existing behavior
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs` — modification
+  - `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs` — modification
 - **Success**:
   - `BacktestConfig.EnableAuditLog` exists and defaults to `true`
   - Existing code that creates `BacktestConfig` instances continues to work (default value)
@@ -282,7 +282,7 @@ Add the `EnableAuditLog` boolean property to `BacktestConfig` with a default of 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs — modification
+// src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs — modification
 // Add after the existing StrategyConfigJson property:
 
     public required string StrategyConfigJson { get; init; }
@@ -292,7 +292,7 @@ Add the `EnableAuditLog` boolean property to `BacktestConfig` with a default of 
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs` — existing property patterns (non-required with default for `WarmupPeriod`)
+- `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs` — existing property patterns (non-required with default for `WarmupPeriod`)
 
 ---
 
@@ -303,22 +303,22 @@ Write unit tests verifying `BacktestAuditCollector` correctly accumulates entrie
 - **Complexity**: Medium
 - **Risk Factors**: None — pure unit tests
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestAuditCollectorTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestAuditCollectorTests.cs` — new file
 - **Success**:
   - Tests cover: adding entries to each log type, entries accessible via read-only properties, null entry rejection
   - Tests cover: `NullBacktestAuditCollector` does not throw
-  - All tests pass: `dotnet test tests/TradingApp.Application.Tests --filter "FullyQualifiedName~BacktestAuditCollectorTests"`
+  - All tests pass: `dotnet test tests/TradePilot.Application.Tests --filter "FullyQualifiedName~BacktestAuditCollectorTests"`
 - **Dependencies**: Task 1.1, Task 1.2, Task 1.3
 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Backtesting/Services/BacktestAuditCollectorTests.cs — new file
+// tests/TradePilot.Application.Tests/Backtesting/Services/BacktestAuditCollectorTests.cs — new file
 using FluentAssertions;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Application.Backtesting.Services;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Application.Backtesting.Services;
 
-namespace TradingApp.Application.Tests.Backtesting.Services;
+namespace TradePilot.Application.Tests.Backtesting.Services;
 
 [TestClass]
 public sealed class BacktestAuditCollectorTests
@@ -463,11 +463,11 @@ public sealed class BacktestAuditCollectorTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — pure unit tests with no mocks, private factory helpers
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — pure unit tests with no mocks, private factory helpers
 
 ## Phase Success Criteria
 
 - All 5 new model files compile without errors
 - `IBacktestAuditCollector`, `BacktestAuditCollector`, and `NullBacktestAuditCollector` exist with correct interface implementations
 - `BacktestConfig.EnableAuditLog` defaults to `true`
-- All unit tests pass: `dotnet test tests/TradingApp.Application.Tests --filter "FullyQualifiedName~BacktestAuditCollectorTests"`
+- All unit tests pass: `dotnet test tests/TradePilot.Application.Tests --filter "FullyQualifiedName~BacktestAuditCollectorTests"`

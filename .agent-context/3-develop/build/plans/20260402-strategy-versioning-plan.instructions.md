@@ -50,22 +50,22 @@ Every strategy save creates a new revision with source metadata (save origin, op
 - No JSON diff utility exists — custom `StrategyDiffService` needed
 - No strategy detail page in frontend — revision panel goes on builder page in edit mode
 - `IsRunning` property will be added to Strategy entity (stub, always false) for 409 restore guard
-- Repositories share scoped `TradingAppDbContext` — atomicity achieved by adding revision to tracking before existing `SaveChangesAsync` call
+- Repositories share scoped `TradePilotDbContext` — atomicity achieved by adding revision to tracking before existing `SaveChangesAsync` call
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/Strategy.cs` — Entity pattern: sealed class, static factory, private setters, Unix ms timestamps
-- `src/TradingApp.Application/StrategyAuthoring/Commands/UpdateStrategyCommand.cs` — CQRS command handler pattern (revision hook point)
-- `src/TradingApp.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs` — Create command pattern (initial revision hook)
-- `src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs` — Paginated query handler pattern
-- `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — Paginated repository pattern
-- `src/TradingApp.Application/Abstractions/Models/PagedResult.cs` — Pagination envelope
-- `src/TradingApp.Api/Controllers/StrategiesController.cs` — Controller pattern with MediatR dispatch
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Exception-to-HTTP mapping
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — Inline EF entity configuration
-- `tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs` — Integration test pattern
-- `tests/TradingApp.Domain.Tests/Entities/StrategyTests.cs` — Entity test pattern
-- `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — Persistence test pattern
+- `src/TradePilot.Domain/Entities/Strategy.cs` — Entity pattern: sealed class, static factory, private setters, Unix ms timestamps
+- `src/TradePilot.Application/StrategyAuthoring/Commands/UpdateStrategyCommand.cs` — CQRS command handler pattern (revision hook point)
+- `src/TradePilot.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs` — Create command pattern (initial revision hook)
+- `src/TradePilot.Application/Backtesting/GetBacktestListQuery.cs` — Paginated query handler pattern
+- `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — Paginated repository pattern
+- `src/TradePilot.Application/Abstractions/Models/PagedResult.cs` — Pagination envelope
+- `src/TradePilot.Api/Controllers/StrategiesController.cs` — Controller pattern with MediatR dispatch
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Exception-to-HTTP mapping
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — Inline EF entity configuration
+- `tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs` — Integration test pattern
+- `tests/TradePilot.Domain.Tests/Entities/StrategyTests.cs` — Entity test pattern
+- `tests/TradePilot.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — Persistence test pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/components/json-preview-card/` — Toggle panel pattern
 - `frontend/trading-ui/src/app/features/strategy-builder/services/strategy-api.service.ts` — API service pattern
 

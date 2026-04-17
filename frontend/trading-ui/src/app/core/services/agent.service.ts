@@ -1,8 +1,9 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
-import { BehaviorSubject, Observable, catchError, map, of, tap } from "rxjs";
+import { BehaviorSubject, Observable, catchError, map, of, shareReplay, tap } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { ExecutionLogEntry } from "../models/execution-log.model";
+import { InstallerInfo } from "../models/installer-info.model";
 import { PlaceOrderRequest, PlaceOrderResponse } from "../models/place-order.model";
 import { PlaceTriggerOrderRequest, PlaceTriggerOrderResponse } from "../models/trigger-order.model";
 
@@ -206,5 +207,20 @@ export class AgentService {
     return this._http
       .get<ExecutionLogEntry[]>(`${this._baseUrl}/agent/${agentId}/execution-logs`, { params })
       .pipe(catchError(() => of<ExecutionLogEntry[]>([])));
+  }
+
+  private _installerInfo$: Observable<InstallerInfo> | null = null;
+
+  public getInstallerInfo(): Observable<InstallerInfo> {
+    if (!this._installerInfo$) {
+      this._installerInfo$ = this._http
+        .get<InstallerInfo>(`${this._baseUrl}/agent/installer/info`)
+        .pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    }
+    return this._installerInfo$;
+  }
+
+  public getInstallerDownloadUrl(format: "exe" | "zip"): string {
+    return `${this._baseUrl}/agent/installer/download?format=${format}`;
   }
 }

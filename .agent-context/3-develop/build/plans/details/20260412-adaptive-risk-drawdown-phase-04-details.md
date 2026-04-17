@@ -26,8 +26,8 @@ Add a new `GET /api/risk/drawdown-state` endpoint to `RiskController` that retur
 - **Complexity**: Medium
 - **Risk Factors**: `LiveRiskEngine` is singleton in Worker but scoped in Api — the Api needs access to the live drawdown state. If the API runs separately from the Worker, it may not have real-time drawdown state. The implementing agent should verify if `IRiskEngine` is available in the API DI container and what its lifetime is.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/DrawdownStateResponse.cs` — new file
-  - `src/TradingApp.Api/Controllers/RiskController.cs` — add endpoint
+  - `src/TradePilot.Application/Trading/Models/DrawdownStateResponse.cs` — new file
+  - `src/TradePilot.Api/Controllers/RiskController.cs` — add endpoint
 - **Success**:
   - `DrawdownStateResponse` DTO with `DrawdownPercent`, `HighWaterMark`, `ScalingFactor`, `IsCircuitBreakerActive`
   - `GET /api/risk/drawdown-state` endpoint returns the current state
@@ -37,8 +37,8 @@ Add a new `GET /api/risk/drawdown-state` endpoint to `RiskController` that retur
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/DrawdownStateResponse.cs — new file
-namespace TradingApp.Application.Trading.Models;
+// src/TradePilot.Application/Trading/Models/DrawdownStateResponse.cs — new file
+namespace TradePilot.Application.Trading.Models;
 
 public sealed record DrawdownStateResponse
 {
@@ -50,7 +50,7 @@ public sealed record DrawdownStateResponse
 ```
 
 ```csharp
-// src/TradingApp.Api/Controllers/RiskController.cs — add endpoint
+// src/TradePilot.Api/Controllers/RiskController.cs — add endpoint
 // NOTE: The API and Worker are separate processes. LiveRiskEngine is NOT available in the API.
 // Compute drawdown state on-demand from the strategy's persisted HWM + exchange equity.
 // Inject IStrategyRepository (or the existing repository pattern) in the constructor.
@@ -87,8 +87,8 @@ Note: The implementing agent should inspect `RiskController`'s existing construc
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Controllers/RiskController.cs` — existing `GetPortfolioHeatAsync` endpoint
-- `src/TradingApp.Application/Trading/Models/PortfolioHeatResponse.cs` — existing response DTO pattern
+- `src/TradePilot.Api/Controllers/RiskController.cs` — existing `GetPortfolioHeatAsync` endpoint
+- `src/TradePilot.Application/Trading/Models/PortfolioHeatResponse.cs` — existing response DTO pattern
 
 ---
 

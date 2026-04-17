@@ -6,7 +6,7 @@
       "type": "shell",
       "command": "dotnet run",
       "options": {
-        "cwd": "${workspaceFolder}/src/TradingApp.Api"
+        "cwd": "${workspaceFolder}/src/TradePilot.Api"
       },
       "isBackground": true,
       "problemMatcher": {
@@ -51,7 +51,7 @@
       "type": "shell",
       "command": "dotnet run",
       "options": {
-        "cwd": "${workspaceFolder}/src/TradingApp.Worker"
+        "cwd": "${workspaceFolder}/src/TradePilot.Worker"
       },
       "isBackground": true,
       "problemMatcher": {

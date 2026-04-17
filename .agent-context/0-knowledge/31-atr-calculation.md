@@ -39,11 +39,11 @@ decaying older values slowly.
 
 | Component | Path | Purpose |
 |---|---|---|
-| `IncrementalAtr` | `src/TradingApp.Indicators/Incremental/IncrementalAtr.cs` | O(1) per-bar ATR calculator, used in live and backtest context builders |
-| `AtrCalculator` | `src/TradingApp.Indicators/AtrCalculator.cs` | Batch calculator — same Wilder smoothing, used in tests to verify incremental version |
-| `LiveMarketContextBuilder` | `src/TradingApp.Application/Trading/Services/LiveMarketContextBuilder.cs` | Feeds `IncrementalAtr(14)` on every candle close, outputs to `IndicatorSnapshot.Atr` |
-| `BacktestMarketContextBuilder` | `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` | Same pattern as live — feeds `IncrementalAtr(14)`, identical output |
-| `IndicatorSnapshot` | `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` | Carries `Atr` decimal property to strategy evaluation |
+| `IncrementalAtr` | `src/TradePilot.Indicators/Incremental/IncrementalAtr.cs` | O(1) per-bar ATR calculator, used in live and backtest context builders |
+| `AtrCalculator` | `src/TradePilot.Indicators/AtrCalculator.cs` | Batch calculator — same Wilder smoothing, used in tests to verify incremental version |
+| `LiveMarketContextBuilder` | `src/TradePilot.Application/Trading/Services/LiveMarketContextBuilder.cs` | Feeds `IncrementalAtr(14)` on every candle close, outputs to `IndicatorSnapshot.Atr` |
+| `BacktestMarketContextBuilder` | `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` | Same pattern as live — feeds `IncrementalAtr(14)`, identical output |
+| `IndicatorSnapshot` | `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` | Carries `Atr` decimal property to strategy evaluation |
 
 ## Configuration
 
@@ -109,8 +109,8 @@ stop-outs in volatile markets and tightening protection in calm markets.
 
 | Test File | Coverage |
 |---|---|
-| `tests/TradingApp.Indicators.Tests/IncrementalAtrTests.cs` | Matches batch calculator, null for insufficient data, step-by-step verification |
-| `tests/TradingApp.Indicators.Tests/AtrCalculatorTests.cs` | Known value checks, edge cases (empty bars, minimal data), series consistency |
+| `tests/TradePilot.Indicators.Tests/IncrementalAtrTests.cs` | Matches batch calculator, null for insufficient data, step-by-step verification |
+| `tests/TradePilot.Indicators.Tests/AtrCalculatorTests.cs` | Known value checks, edge cases (empty bars, minimal data), series consistency |
 
 ## Future Recommendations
 

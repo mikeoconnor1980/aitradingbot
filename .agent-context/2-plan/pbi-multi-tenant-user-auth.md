@@ -116,7 +116,7 @@ Without multi-tenant authentication, only a single hardcoded dev user can use th
 
 ### Domain Entities
 
-**User** (new entity — `src/TradingApp.Domain/Entities/User.cs`)
+**User** (new entity — `src/TradePilot.Domain/Entities/User.cs`)
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -127,7 +127,7 @@ Without multi-tenant authentication, only a single hardcoded dev user can use th
 | CreatedAtUtc | long | Unix milliseconds |
 | IsActive | bool | Soft-delete flag |
 
-**UserWalletAddress** (new entity — `src/TradingApp.Domain/Entities/UserWalletAddress.cs`)
+**UserWalletAddress** (new entity — `src/TradePilot.Domain/Entities/UserWalletAddress.cs`)
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -180,7 +180,7 @@ Response: { walletAddress: string, exchange: "Hyperliquid" }
 5. **New: `JwtTokenService`** — generates and validates JWT tokens (Infrastructure layer)
 6. **Modified: `IdentityService`** — resolves `AppIdentity` from `HttpContext.User` JWT claims instead of returning hardcoded stub
 7. **Modified: `Program.cs`** — add `AddAuthentication().AddJwtBearer()`, `UseAuthentication()`, `UseAuthorization()`
-8. **Modified: `TradingAppDbContext`** — add `DbSet<User>`, `DbSet<UserWalletAddress>`
+8. **Modified: `TradePilotDbContext`** — add `DbSet<User>`, `DbSet<UserWalletAddress>`
 9. **New: EF migration** — `Users` and `UserWalletAddresses` tables
 10. **Modified: All controllers** — add `[Authorize]` attribute (via base `ApiController` or individually)
 

@@ -40,7 +40,7 @@ As a trader, I want to run an AI review on my trading strategy JSON from the str
 
 ### Discovery References
 
-- `StrategyInterpreter` in `TradingApp.AI` is the exact pattern precedent for the new `StrategyReviewer` service
+- `StrategyInterpreter` in `TradePilot.AI` is the exact pattern precedent for the new `StrategyReviewer` service
 - `InterpretStrategyCommand` is the CQRS precedent for the new `RequestStrategyReviewCommand`
 - `ConfirmDialogComponent` is the modal dialog pattern for the review modal
 - `PreviewSummaryCardComponent` is the collapsible side-panel card pattern for the review summary
@@ -48,20 +48,20 @@ As a trader, I want to run an AI review on my trading strategy JSON from the str
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/StrategyRevision.cs` - Immutable revision entity with factory method and private constructor
-- `src/TradingApp.AI/Services/StrategyInterpreter.cs` - AI service consuming ILlmClient with system prompt
-- `src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs` - Server-side prompt as static class
-- `src/TradingApp.AI/AiServiceExtensions.cs` - DI registration for AI services and LLM options
-- `src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` - CQRS command delegating to AI service
-- `src/TradingApp.Application/StrategyAuthoring/Queries/GetStrategyVersionsQuery.cs` - Query with ownership check and paged results
-- `src/TradingApp.Api/Controllers/StrategiesController.cs` - Controller with MediatR dispatch and rate limiting
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` - Inline EF entity configuration in OnModelCreating
-- `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` - Repository DI registration
+- `src/TradePilot.Domain/Entities/StrategyRevision.cs` - Immutable revision entity with factory method and private constructor
+- `src/TradePilot.AI/Services/StrategyInterpreter.cs` - AI service consuming ILlmClient with system prompt
+- `src/TradePilot.AI/Prompts/StrategyInterpreterPrompt.cs` - Server-side prompt as static class
+- `src/TradePilot.AI/AiServiceExtensions.cs` - DI registration for AI services and LLM options
+- `src/TradePilot.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` - CQRS command delegating to AI service
+- `src/TradePilot.Application/StrategyAuthoring/Queries/GetStrategyVersionsQuery.cs` - Query with ownership check and paged results
+- `src/TradePilot.Api/Controllers/StrategiesController.cs` - Controller with MediatR dispatch and rate limiting
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` - Inline EF entity configuration in OnModelCreating
+- `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` - Repository DI registration
 - `frontend/trading-ui/src/app/features/strategy-builder/strategy-builder-page.component.ts` - Strategy editor page
 - `frontend/trading-ui/src/app/features/strategy-builder/services/strategy-api.service.ts` - Strategy API service
 - `frontend/trading-ui/src/app/features/order-entry/confirm-dialog/confirm-dialog.component.ts` - Modal dialog pattern
-- `tests/TradingApp.AI.Tests/Services/StrategyInterpreterTests.cs` - AI service unit test pattern
-- `tests/TradingApp.Api.Tests/Controllers/InterpretStrategyTests.cs` - API integration test with LLM mock and rate limiting
+- `tests/TradePilot.AI.Tests/Services/StrategyInterpreterTests.cs` - AI service unit test pattern
+- `tests/TradePilot.Api.Tests/Controllers/InterpretStrategyTests.cs` - API integration test with LLM mock and rate limiting
 
 ### [x] Phase 1: Domain, Persistence & Configuration
 
@@ -194,7 +194,7 @@ As a trader, I want to run an AI review on my trading strategy JSON from the str
 
 - `marked` npm package for frontend markdown rendering
 - Existing `@angular/material` expansion panel module (`MatExpansionModule`)
-- Existing `OpenAiCompatibleLlmClient` infrastructure in `TradingApp.AI`
+- Existing `OpenAiCompatibleLlmClient` infrastructure in `TradePilot.AI`
 - EF Core migrations tooling
 
 ## Success Criteria

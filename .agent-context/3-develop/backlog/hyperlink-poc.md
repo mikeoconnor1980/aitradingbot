@@ -166,7 +166,7 @@ Acceptance criteria:
 
 ```
 src/
-  TradingApp.HyperliquidPoc.Api/        # .NET Web API + SignalR hub
+  TradePilot.HyperliquidPoc.Api/        # .NET Web API + SignalR hub
     Controllers/
       AccountController.cs               # GET account, positions, orders
       MarketDataController.cs            # GET markets, candles, prices

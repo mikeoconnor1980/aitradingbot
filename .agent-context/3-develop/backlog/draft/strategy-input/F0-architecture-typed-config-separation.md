@@ -36,11 +36,11 @@ Foundation for everything that follows. Without this, every downstream feature i
 
 ### Functional Requirements
 
-#### Config Type Hierarchy (TradingApp.Domain)
+#### Config Type Hierarchy (TradePilot.Domain)
 
-- [ ] `IStrategyConfig` marker interface in `TradingApp.Domain` — enables polymorphic strategy config passing through the pipeline; new strategy types implement this interface
-- [ ] `GridStrategyConfig` record implementing `IStrategyConfig` in `TradingApp.Domain` — strategy parameters only: GridLevels, GridSpacing, TakeProfitPercent, StopLossPercent, BreakdownThreshold, EntryMode, ManualAnchorPrice
-- [ ] `ExecutionConfig` record in `TradingApp.Domain` — execution parameters only: FeeModel (contains MakerFee, TakerFee, Slippage), PositionSize, Leverage
+- [ ] `IStrategyConfig` marker interface in `TradePilot.Domain` — enables polymorphic strategy config passing through the pipeline; new strategy types implement this interface
+- [ ] `GridStrategyConfig` record implementing `IStrategyConfig` in `TradePilot.Domain` — strategy parameters only: GridLevels, GridSpacing, TakeProfitPercent, StopLossPercent, BreakdownThreshold, EntryMode, ManualAnchorPrice
+- [ ] `ExecutionConfig` record in `TradePilot.Domain` — execution parameters only: FeeModel (contains MakerFee, TakerFee, Slippage), PositionSize, Leverage
 - [ ] Old `GridStrategyConfig` class in `Backtesting/Models/` removed (no legacy conversion needed — old DB records will be cleaned out)
 
 #### Interface Refactoring
@@ -87,7 +87,7 @@ Foundation for everything that follows. Without this, every downstream feature i
 | ExecutionConfig ↔ FeeModel | `ExecutionConfig` contains `FeeModel` | `FeeModel` retains its calculation methods (`CalculateFee`, `ApplySlippage`). `ExecutionConfig` adds `PositionSize` and `Leverage`. Single source of truth — `BacktestConfig.FeeModel` removed. |
 | Fee duplication | Eliminated | Fees previously existed in both `BacktestConfig.FeeModel` AND `GridStrategyConfig` JSON. Now only in `ExecutionConfig.FeeModel`. |
 | InitialCapital placement | Stays on `BacktestConfig` | Backtest-specific concept (live trading uses account balance). Keeps `ExecutionConfig` reusable across live and backtest contexts. |
-| Config namespace | `TradingApp.Domain` | `IStrategyConfig`, `GridStrategyConfig`, `ExecutionConfig` are core domain concepts. Domain layer is dependency-free and referenced by all other layers. |
+| Config namespace | `TradePilot.Domain` | `IStrategyConfig`, `GridStrategyConfig`, `ExecutionConfig` are core domain concepts. Domain layer is dependency-free and referenced by all other layers. |
 | Legacy DB records | Clean out | No conversion utility needed. Old backtest records deleted before migration. |
 | API versioning | Clean break | Single deployment (frontend + backend). No external consumers. No backward compatibility shim. |
 | Validation | API boundary only | FluentValidation on `RunBacktestRequest` DTO in controller layer. Config records are simple data carriers. Full validation pipeline deferred to F1. |
@@ -116,7 +116,7 @@ Foundation for everything that follows. Without this, every downstream feature i
 - [ ] **Given** `GridStrategyEngine`, `GridController`, and `BacktestProcessorService` source, **When** inspected, **Then** no `JsonSerializer.Deserialize<GridStrategyConfig>` calls exist
 - [ ] **Given** `BacktestConfig`, **When** inspected, **Then** separate `Strategy` (`IStrategyConfig`) and `Execution` (`ExecutionConfig`) properties exist, and no standalone `FeeModel` property
 - [ ] **Given** `BacktestRun` entity, **When** inspected, **Then** `StrategyConfigJson` and `ExecutionConfigJson` are stored as separate columns
-- [ ] **Given** `GridStrategyConfig`, **When** inspected, **Then** it implements `IStrategyConfig` and lives in `TradingApp.Domain`
+- [ ] **Given** `GridStrategyConfig`, **When** inspected, **Then** it implements `IStrategyConfig` and lives in `TradePilot.Domain`
 - [ ] **Given** `ExecutionConfig`, **When** inspected, **Then** it contains a `FeeModel` property plus `PositionSize` and `Leverage`
 - [ ] **Given** a backtest with `{ gridLevels: 10, gridSpacing: 0.5, ... }`, **When** run before and after refactoring, **Then** results are identical
 - [ ] **Given** all existing tests, **When** run, **Then** all pass

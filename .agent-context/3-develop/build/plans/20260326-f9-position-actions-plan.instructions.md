@@ -64,21 +64,21 @@ As a **trader**, I want to **set TP/SL, partially close, reverse, and inspect po
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Controllers/OrdersController.cs` — Order endpoints; direct service injection (ADR-14)
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — Order request DTO (extend for trigger orders)
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — Order placement pipeline (signing, mid-price, slippage)
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — EIP-712 `BuildOrderAction` (add trigger branch)
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — Wire format models (`HyperliquidOrderType`)
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Position mapping (`MapToPositions`)
-- `src/TradingApp.Api/Models/PositionDto.cs` — Position DTO (extend for detail panel)
+- `src/TradePilot.Api/Controllers/OrdersController.cs` — Order endpoints; direct service injection (ADR-14)
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — Order request DTO (extend for trigger orders)
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — Order placement pipeline (signing, mid-price, slippage)
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — EIP-712 `BuildOrderAction` (add trigger branch)
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — Wire format models (`HyperliquidOrderType`)
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Position mapping (`MapToPositions`)
+- `src/TradePilot.Api/Models/PositionDto.cs` — Position DTO (extend for detail panel)
 - `frontend/.../positions-table/positions-table.component.ts` — Row-level loading, close emit
 - `frontend/.../dashboard/dashboard.component.ts` — Position action orchestration, optimistic UI
 - `frontend/.../orders-table/modify-order-modal/modify-order.modal.component.ts` — Form modal pattern
 - `frontend/.../order-entry/confirm-dialog/confirm-dialog.component.ts` — Confirmation dialog (reuse for reverse)
 - `frontend/.../core/models/position.model.ts` — Angular position model
 - `frontend/.../core/models/place-order.model.ts` — Angular place order request model
-- `tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs` — Controller test pattern
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Service unit test pattern
+- `tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs` — Controller test pattern
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Service unit test pattern
 
 ### [ ] Phase 1: Backend — Trigger Order Support & Position Enrichment
 

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <UserSecretsId>f1e65898-3404-42c8-852d-f1ecf27f92b3</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TradePilot.AI\TradePilot.AI.csproj" />
+    <ProjectReference Include="..\TradePilot.Application\TradePilot.Application.csproj" />
+    <ProjectReference Include="..\TradePilot.Infrastructure\TradePilot.Infrastructure.csproj" />
+    <ProjectReference Include="..\TradePilot.Persistence\TradePilot.Persistence.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Azure.SignalR" Version="1.25.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

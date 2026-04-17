@@ -27,9 +27,9 @@ Fix component locations, signer pattern, and add new components.
 
 #### Changes Required
 
-1. **Fix `IHyperliquidAccountService` location**: Moved to `src/TradingApp.Application/Abstractions/Services/IHyperliquidAccountService.cs`
+1. **Fix `IHyperliquidAccountService` location**: Moved to `src/TradePilot.Application/Abstractions/Services/IHyperliquidAccountService.cs`
 
-2. **Fix `HyperliquidAccountService` location**: Moved to `src/TradingApp.Infrastructure/Services/HyperliquidAccountService.cs`
+2. **Fix `HyperliquidAccountService` location**: Moved to `src/TradePilot.Infrastructure/Services/HyperliquidAccountService.cs`
 
 3. **Fix `IHyperliquidSigner` interface**: `SignTypedData` exists only on concrete `HyperliquidSigner`; interface exposes only `SignHash(byte[])` and `WalletAddress`.
 

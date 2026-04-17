@@ -28,7 +28,7 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 
 ### Acceptance Criteria
 
-- [ ] **Given** the application starts, **When** the persistence layer initializes, **Then** the `TradingAppDbContext` connects to a SQLite database at the configured path
+- [ ] **Given** the application starts, **When** the persistence layer initializes, **Then** the `TradePilotDbContext` connects to a SQLite database at the configured path
 - [ ] **Given** no database file exists, **When** migrations are applied, **Then** the `Candles` table is created with the correct schema including the composite unique index
 - [ ] **Given** a batch of candle data, **When** `BulkInsertAsync` is called, **Then** all candles are persisted to the database
 - [ ] **Given** a batch containing duplicate candles, **When** `BulkInsertAsync` is called, **Then** duplicates are silently skipped and new candles are inserted without error
@@ -39,7 +39,7 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 - [ ] **Given** the `Candle` entity, **When** inspecting its properties, **Then** all price and volume fields use `decimal` type
 - [ ] **Given** the unique index on (`Symbol`, `Interval`, `Timestamp`), **When** two candles with the same key are inserted, **Then** the second insert is rejected at the database level
 - [ ] **Given** a large batch of 1000+ candles, **When** `BulkInsertAsync` is called, **Then** candles are inserted in batches of 500 per transaction
-- [ ] **Given** both `TradingApp.Api` and `TradingApp.Worker` hosts, **When** the persistence layer is registered, **Then** both hosts can resolve `TradingAppDbContext` and `ICandleRepository`
+- [ ] **Given** both `TradePilot.Api` and `TradePilot.Worker` hosts, **When** the persistence layer is registered, **Then** both hosts can resolve `TradePilotDbContext` and `ICandleRepository`
 
 ## Objectives
 
@@ -62,14 +62,14 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Interface location pattern for dependency-inverted services
-- `src/TradingApp.Application/MarketData/Models/CandleDto.cs` — Existing DTO pattern (sealed class, init-only props)
-- `src/TradingApp.Application/MarketData/Queries/GetCandlesQuery.cs` — CQRS query/handler co-location pattern
-- `src/TradingApp.Api/Program.cs` — DI registration pattern (inline, first extension method will be `AddPersistence`)
-- `src/TradingApp.Worker/Program.cs` — Bare host (3 lines, needs persistence wiring)
-- `tests/TradingApp.Infrastructure.Tests/Services/NonceProviderTests.cs` — Unit test pattern (MSTest sealed class, Given_When_Then)
-- `tests/TradingApp.Api.Tests/Services/HyperliquidAccountServiceTests.cs` — Unit test with mocks pattern ([TestInitialize] setup)
-- `src/TradingApp.Api/Services/MarketDataStreamService.cs` — `IServiceScopeFactory.CreateScope()` pattern for scoped services
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Interface location pattern for dependency-inverted services
+- `src/TradePilot.Application/MarketData/Models/CandleDto.cs` — Existing DTO pattern (sealed class, init-only props)
+- `src/TradePilot.Application/MarketData/Queries/GetCandlesQuery.cs` — CQRS query/handler co-location pattern
+- `src/TradePilot.Api/Program.cs` — DI registration pattern (inline, first extension method will be `AddPersistence`)
+- `src/TradePilot.Worker/Program.cs` — Bare host (3 lines, needs persistence wiring)
+- `tests/TradePilot.Infrastructure.Tests/Services/NonceProviderTests.cs` — Unit test pattern (MSTest sealed class, Given_When_Then)
+- `tests/TradePilot.Api.Tests/Services/HyperliquidAccountServiceTests.cs` — Unit test with mocks pattern ([TestInitialize] setup)
+- `src/TradePilot.Api/Services/MarketDataStreamService.cs` — `IServiceScopeFactory.CreateScope()` pattern for scoped services
 
 ### [x] Phase 1: Domain Entity, Persistence Layer & Tests
 
@@ -81,8 +81,8 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 - [x] Task 1.2: Add EF Core NuGet packages to Persistence project
   - Details: .agent-context/3-develop/build/plans/details/20260327-candle-data-persistence-phase-01-details.md#task-12-add-ef-core-nuget-packages-to-persistence-project
 
-- [x] Task 1.3: Create `TradingAppDbContext` with Candle entity configuration
-  - Details: .agent-context/3-develop/build/plans/details/20260327-candle-data-persistence-phase-01-details.md#task-13-create-tradingappdbcontext-with-candle-entity-configuration
+- [x] Task 1.3: Create `TradePilotDbContext` with Candle entity configuration
+  - Details: .agent-context/3-develop/build/plans/details/20260327-candle-data-persistence-phase-01-details.md#task-13-create-TradePilotdbcontext-with-candle-entity-configuration
 
 - [x] Task 1.4: Create `ICandleRepository` interface
   - Details: .agent-context/3-develop/build/plans/details/20260327-candle-data-persistence-phase-01-details.md#task-14-create-icandlerepository-interface
@@ -96,7 +96,7 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 - [x] Task 1.7: Generate the initial EF Core migration
   - Details: .agent-context/3-develop/build/plans/details/20260327-candle-data-persistence-phase-01-details.md#task-17-generate-the-initial-ef-core-migration
 
-- [x] Task 1.8: Create `TradingApp.Persistence.Tests` project and `CandleRepository` integration tests
+- [x] Task 1.8: Create `TradePilot.Persistence.Tests` project and `CandleRepository` integration tests
   - Details: .agent-context/3-develop/build/plans/details/20260327-candle-data-persistence-phase-01-details.md#task-18-create-persistence-tests-project-and-candlerepository-integration-tests
 
 - [x] Task 1.9: Create `Candle` domain entity tests
@@ -142,7 +142,7 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 - SQLite decimal columns need `HasConversion<double>()` for server-side range query support; C# entity model keeps `decimal`
 - SQLite parameter limit is 32,766 on modern versions (bundled via `Microsoft.Data.Sqlite`); 500 rows × 9 columns = 4,500 params is safe
 - In-memory SQLite testing requires open connection + `EnsureCreated()` (not `MigrateAsync()`)
-- New test project `TradingApp.Persistence.Tests` establishes the persistence integration test pattern
+- New test project `TradePilot.Persistence.Tests` establishes the persistence integration test pattern
 
 ## Dependencies
 
@@ -153,12 +153,12 @@ Introduce the `Candle` domain entity, set up EF Core with SQLite in the Persiste
 
 ## Success Criteria
 
-- `dotnet build TradingApp.sln` succeeds with no errors
+- `dotnet build TradePilot.sln` succeeds with no errors
 - All existing tests continue to pass
 - All new persistence integration tests pass (bulk insert, duplicate handling, range queries, latest timestamp)
 - All new domain entity tests pass (factory method validation, property types)
-- API starts successfully and creates `Data/tradingapp.db` with `Candles` table
-- Worker starts successfully and can resolve `TradingAppDbContext` and `ICandleRepository`
+- API starts successfully and creates `Data/TradePilot.db` with `Candles` table
+- Worker starts successfully and can resolve `TradePilotDbContext` and `ICandleRepository`
 
 ## Agent Log
 

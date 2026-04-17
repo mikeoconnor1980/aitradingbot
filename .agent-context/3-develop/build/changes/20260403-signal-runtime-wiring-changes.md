@@ -16,32 +16,32 @@ Implements signal-mode runtime wiring through scheduler, execution, and backtest
 - None.
 
 <!-- Phase 2: Signal Controller and Execution Branch -->
-- src/TradingApp.Application/Abstractions/Services/ISignalController.cs: Defines the signal-mode controller contract parallel to the grid controller contract.
-- src/TradingApp.Application/Trading/Services/SignalController.cs: Implements signal-mode entry and exit signal emission.
-- tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs: Covers signal controller entry, stop-loss, take-profit, and no-op paths.
+- src/TradePilot.Application/Abstractions/Services/ISignalController.cs: Defines the signal-mode controller contract parallel to the grid controller contract.
+- src/TradePilot.Application/Trading/Services/SignalController.cs: Implements signal-mode entry and exit signal emission.
+- tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs: Covers signal controller entry, stop-loss, take-profit, and no-op paths.
 
 <!-- Phase 3: Backtest Signal Execution and Trade Pairing -->
-- tests/TradingApp.Application.Tests/Trading/Services/BacktestPositionManagerTests.cs: Adds focused tests for signal-mode OpenPosition handling in the backtest position manager.
+- tests/TradePilot.Application.Tests/Trading/Services/BacktestPositionManagerTests.cs: Adds focused tests for signal-mode OpenPosition handling in the backtest position manager.
 
 ### Modified
 
 <!-- Phase 1: Indicator Context Wiring in StrategyScheduler -->
-- src/TradingApp.Application/Scheduling/StrategyScheduler.cs: Extracted signal-mode indicator requirements and switched scheduler context creation to the 4-argument market-context builder overload.
-- tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs: Updated builder mocking to the 4-argument overload and added signal-mode coverage for indicator requirement forwarding, grid-mode null requirements, and populated indicator context.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated market-context builder mocks to cover both 3-argument warmup usage and 4-argument scheduler usage after the scheduler wiring change.
+- src/TradePilot.Application/Scheduling/StrategyScheduler.cs: Extracted signal-mode indicator requirements and switched scheduler context creation to the 4-argument market-context builder overload.
+- tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs: Updated builder mocking to the 4-argument overload and added signal-mode coverage for indicator requirement forwarding, grid-mode null requirements, and populated indicator context.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated market-context builder mocks to cover both 3-argument warmup usage and 4-argument scheduler usage after the scheduler wiring change.
 
 <!-- Phase 2: Signal Controller and Execution Branch -->
-- src/TradingApp.Application/Scheduling/StrategyScheduler.cs: Routes signal-mode evaluations through ISignalController while preserving grid-mode flow.
-- src/TradingApp.Api/Program.cs: Registers ISignalController with SignalController in DI.
-- tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs: Verifies signal-mode uses ISignalController and grid-mode still uses IGridController.
+- src/TradePilot.Application/Scheduling/StrategyScheduler.cs: Routes signal-mode evaluations through ISignalController while preserving grid-mode flow.
+- src/TradePilot.Api/Program.cs: Registers ISignalController with SignalController in DI.
+- tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs: Verifies signal-mode uses ISignalController and grid-mode still uses IGridController.
 
 <!-- Phase 3: Backtest Signal Execution and Trade Pairing -->
-- src/TradingApp.Application/Trading/Models/TradeType.cs: Added the SignalEntry trade type for signal-mode entries.
-- src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs: Added OpenPosition handling that places market buys as SignalEntry trades.
-- src/TradingApp.Application/Trading/Services/SignalController.cs: Added a stable signal-mode cycle id to entry and exit signals so backtest pairing is consistent.
-- src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs: Injects ISignalController, wires it into StrategyScheduler, pairs SignalEntry with TakeProfit, and keeps signal-mode exits out of grid-cycle accounting.
-- tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated runner construction for ISignalController and added trade-pairing coverage for SignalEntry.
-- tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Upgraded the fixture to the composite runtime path and added passing and non-passing signal-mode backtest coverage.
+- src/TradePilot.Application/Trading/Models/TradeType.cs: Added the SignalEntry trade type for signal-mode entries.
+- src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs: Added OpenPosition handling that places market buys as SignalEntry trades.
+- src/TradePilot.Application/Trading/Services/SignalController.cs: Added a stable signal-mode cycle id to entry and exit signals so backtest pairing is consistent.
+- src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs: Injects ISignalController, wires it into StrategyScheduler, pairs SignalEntry with TakeProfit, and keeps signal-mode exits out of grid-cycle accounting.
+- tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs: Updated runner construction for ISignalController and added trade-pairing coverage for SignalEntry.
+- tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs: Upgraded the fixture to the composite runtime path and added passing and non-passing signal-mode backtest coverage.
 
 ### Removed
 
@@ -69,13 +69,13 @@ Implements signal-mode runtime wiring through scheduler, execution, and backtest
 <!-- Phase 2: Signal Controller and Execution Branch -->
 - SignalControllerTests: 12/12 passed
 - StrategySchedulerTests: 18/18 passed
-- TradingApp.Application.Tests: 151/151 passed
+- TradePilot.Application.Tests: 151/151 passed
 - Architecture Tests: NOT RUN
 
 <!-- Phase 3: Backtest Signal Execution and Trade Pairing -->
 - BacktestPositionManagerTests + BacktestRunnerTests + RealBacktestRunnerTests: 34/34 passed
-- TradingApp.Application.Tests: 156/156 passed
-- TradingApp.Api.Tests: 182/182 passed
+- TradePilot.Application.Tests: 156/156 passed
+- TradePilot.Api.Tests: 182/182 passed
 - Solution test suite: 504/504 passed
 - Architecture Tests: NOT RUN
 
@@ -111,11 +111,11 @@ Implements signal-mode runtime wiring through scheduler, execution, and backtest
 - Review the new signal-mode scheduler tests to confirm the asserted indicator requirement shape matches the intended extractor contract for RSI and remains stable if additional condition types are added in later phases.
 
 <!-- Phase 2: Signal Controller and Execution Branch -->
-- Review src/TradingApp.Application/Scheduling/StrategyScheduler.cs to confirm the intentional fallback behavior: signal-mode only branches to ISignalController when one is supplied, otherwise grid controller remains the default path.
+- Review src/TradePilot.Application/Scheduling/StrategyScheduler.cs to confirm the intentional fallback behavior: signal-mode only branches to ISignalController when one is supplied, otherwise grid controller remains the default path.
 
 <!-- Phase 3: Backtest Signal Execution and Trade Pairing -->
-- Review src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs to confirm the intentional separation between signal-mode trade pairing and grid-cycle metrics.
-- Review tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs for the RSI candle sequence used to prove the full signal-mode backtest path end to end.
+- Review src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs to confirm the intentional separation between signal-mode trade pairing and grid-cycle metrics.
+- Review tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs for the RSI candle sequence used to prove the full signal-mode backtest path end to end.
 
 ## Release Summary
 

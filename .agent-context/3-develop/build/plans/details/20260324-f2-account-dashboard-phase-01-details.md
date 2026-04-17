@@ -53,9 +53,9 @@ Create DTOs for the three API response types: account summary, position, and ord
 - **Complexity**: Low
 - **Risk Factors**: Hyperliquid API field names may differ from PBI spec — verify at implementation time
 - **Files**:
-  - `src/TradingApp.HyperliquidPoc.Api/Models/AccountSummaryDto.cs` — new file
-  - `src/TradingApp.HyperliquidPoc.Api/Models/PositionDto.cs` — new file
-  - `src/TradingApp.HyperliquidPoc.Api/Models/OpenOrderDto.cs` — new file
+  - `src/TradePilot.HyperliquidPoc.Api/Models/AccountSummaryDto.cs` — new file
+  - `src/TradePilot.HyperliquidPoc.Api/Models/PositionDto.cs` — new file
+  - `src/TradePilot.HyperliquidPoc.Api/Models/OpenOrderDto.cs` — new file
 - **Success**:
   - All three DTO classes exist with properties matching PBI requirements
   - DTOs compile without errors
@@ -63,8 +63,8 @@ Create DTOs for the three API response types: account summary, position, and ord
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Models/AccountSummaryDto.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Models;
+// src/TradePilot.HyperliquidPoc.Api/Models/AccountSummaryDto.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Models;
 
 public sealed class AccountSummaryDto
 {
@@ -77,8 +77,8 @@ public sealed class AccountSummaryDto
 ```
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Models/PositionDto.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Models;
+// src/TradePilot.HyperliquidPoc.Api/Models/PositionDto.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Models;
 
 public sealed class PositionDto
 {
@@ -94,8 +94,8 @@ public sealed class PositionDto
 ```
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Models/OpenOrderDto.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Models;
+// src/TradePilot.HyperliquidPoc.Api/Models/OpenOrderDto.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Models;
 
 public sealed class OpenOrderDto
 {
@@ -111,7 +111,7 @@ public sealed class OpenOrderDto
 
 ##### Pattern References
 
-- F1 `HealthResponse` model (assumed to exist in `src/TradingApp.HyperliquidPoc.Api/Models/` or similar) — same DTO style
+- F1 `HealthResponse` model (assumed to exist in `src/TradePilot.HyperliquidPoc.Api/Models/` or similar) — same DTO style
 - `.github/instructions/csharp.instructions.md` — sealed classes, `{ get; set; }` properties
 
 ---
@@ -123,9 +123,9 @@ Create a service that calls the Hyperliquid REST API for account state, position
 - **Complexity**: Medium
 - **Risk Factors**: Hyperliquid response shape for `clearinghouseState` and `openOrders` needs to be matched exactly; may need intermediate deserialization models
 - **Files**:
-  - `src/TradingApp.HyperliquidPoc.Api/Services/IHyperliquidAccountService.cs` — new file
-  - `src/TradingApp.HyperliquidPoc.Api/Services/HyperliquidAccountService.cs` — new file
-  - `src/TradingApp.HyperliquidPoc.Api/Models/Hyperliquid/` — new directory for raw Hyperliquid response models (if needed)
+  - `src/TradePilot.HyperliquidPoc.Api/Services/IHyperliquidAccountService.cs` — new file
+  - `src/TradePilot.HyperliquidPoc.Api/Services/HyperliquidAccountService.cs` — new file
+  - `src/TradePilot.HyperliquidPoc.Api/Models/Hyperliquid/` — new directory for raw Hyperliquid response models (if needed)
 - **Success**:
   - `IHyperliquidAccountService` defines three async methods: `GetAccountSummaryAsync`, `GetPositionsAsync`, `GetOpenOrdersAsync`
   - `HyperliquidAccountService` calls Hyperliquid's `POST /info` endpoint with correct request bodies
@@ -139,10 +139,10 @@ Create a service that calls the Hyperliquid REST API for account state, position
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Services/IHyperliquidAccountService.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Services;
+// src/TradePilot.HyperliquidPoc.Api/Services/IHyperliquidAccountService.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Services;
 
-using TradingApp.HyperliquidPoc.Api.Models;
+using TradePilot.HyperliquidPoc.Api.Models;
 
 public interface IHyperliquidAccountService
 {
@@ -153,11 +153,11 @@ public interface IHyperliquidAccountService
 ```
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Services/HyperliquidAccountService.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Services;
+// src/TradePilot.HyperliquidPoc.Api/Services/HyperliquidAccountService.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Services;
 
 using System.Text.Json;
-using TradingApp.HyperliquidPoc.Api.Models;
+using TradePilot.HyperliquidPoc.Api.Models;
 
 public sealed class HyperliquidAccountService : IHyperliquidAccountService
 {
@@ -234,7 +234,7 @@ Create a controller exposing the three account data endpoints.
 - **Complexity**: Low
 - **Risk Factors**: None — straightforward controller implementation
 - **Files**:
-  - `src/TradingApp.HyperliquidPoc.Api/Controllers/AccountController.cs` — new file
+  - `src/TradePilot.HyperliquidPoc.Api/Controllers/AccountController.cs` — new file
 - **Success**:
   - `GET /api/account` returns `AccountSummaryDto` with 200 OK
   - `GET /api/positions` returns `IReadOnlyList<PositionDto>` with 200 OK
@@ -247,12 +247,12 @@ Create a controller exposing the three account data endpoints.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Controllers/AccountController.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Controllers;
+// src/TradePilot.HyperliquidPoc.Api/Controllers/AccountController.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Controllers;
 
 using Microsoft.AspNetCore.Mvc;
-using TradingApp.HyperliquidPoc.Api.Models;
-using TradingApp.HyperliquidPoc.Api.Services;
+using TradePilot.HyperliquidPoc.Api.Models;
+using TradePilot.HyperliquidPoc.Api.Services;
 
 [ApiController]
 [Route("api")]
@@ -344,7 +344,7 @@ Register `IHyperliquidAccountService` / `HyperliquidAccountService` in the DI co
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.HyperliquidPoc.Api/Program.cs` — modification
+  - `src/TradePilot.HyperliquidPoc.Api/Program.cs` — modification
 - **Success**:
   - `IHyperliquidAccountService` is registered as scoped/transient in the DI container
   - Application starts without DI resolution errors
@@ -354,7 +354,7 @@ Register `IHyperliquidAccountService` / `HyperliquidAccountService` in the DI co
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.HyperliquidPoc.Api/Program.cs — modification
+// src/TradePilot.HyperliquidPoc.Api/Program.cs — modification
 // Add after existing F1 service registrations:
 
 // ... existing code ...
@@ -375,9 +375,9 @@ Create integration tests for the three endpoints. Use `WebApplicationFactory<Pro
 - **Complexity**: Medium
 - **Risk Factors**: Need to establish test project and `WebApplicationFactory` setup if not already done by F1
 - **Files**:
-  - `tests/TradingApp.HyperliquidPoc.Api.Tests/TradingApp.HyperliquidPoc.Api.Tests.csproj` — new project (if not created by F1)
-  - `tests/TradingApp.HyperliquidPoc.Api.Tests/Controllers/AccountControllerTests.cs` — new file
-  - `tests/TradingApp.HyperliquidPoc.Api.Tests/TestWebApplicationFactory.cs` — new file (if not created by F1)
+  - `tests/TradePilot.HyperliquidPoc.Api.Tests/TradePilot.HyperliquidPoc.Api.Tests.csproj` — new project (if not created by F1)
+  - `tests/TradePilot.HyperliquidPoc.Api.Tests/Controllers/AccountControllerTests.cs` — new file
+  - `tests/TradePilot.HyperliquidPoc.Api.Tests/TestWebApplicationFactory.cs` — new file (if not created by F1)
 - **Success**:
   - Tests cover happy path for all 3 endpoints (200 OK with correct DTO shapes)
   - Tests cover error scenario (service throws `HttpRequestException` → 503 response)
@@ -389,15 +389,15 @@ Create integration tests for the three endpoints. Use `WebApplicationFactory<Pro
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.HyperliquidPoc.Api.Tests/TestWebApplicationFactory.cs — new file (if not from F1)
-namespace TradingApp.HyperliquidPoc.Api.Tests;
+// tests/TradePilot.HyperliquidPoc.Api.Tests/TestWebApplicationFactory.cs — new file (if not from F1)
+namespace TradePilot.HyperliquidPoc.Api.Tests;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
-using TradingApp.HyperliquidPoc.Api.Services;
+using TradePilot.HyperliquidPoc.Api.Services;
 
 public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
@@ -432,15 +432,15 @@ public sealed class TestWebApplicationFactory : WebApplicationFactory<Program>
 ```
 
 ```csharp
-// tests/TradingApp.HyperliquidPoc.Api.Tests/Controllers/AccountControllerTests.cs — new file
-namespace TradingApp.HyperliquidPoc.Api.Tests.Controllers;
+// tests/TradePilot.HyperliquidPoc.Api.Tests/Controllers/AccountControllerTests.cs — new file
+namespace TradePilot.HyperliquidPoc.Api.Tests.Controllers;
 
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using TradingApp.HyperliquidPoc.Api.Models;
+using TradePilot.HyperliquidPoc.Api.Models;
 
 [TestClass]
 public sealed class AccountControllerTests
@@ -597,7 +597,7 @@ Build the solution and run all backend tests to verify Phase 1 is complete.
 - **Files**: None — verification step only
 - **Success**:
   - `dotnet build` completes without errors
-  - `dotnet test tests/TradingApp.HyperliquidPoc.Api.Tests` — all tests pass
+  - `dotnet test tests/TradePilot.HyperliquidPoc.Api.Tests` — all tests pass
 - **Dependencies**:
   - Tasks 1.1–1.5 (all Phase 1 tasks)
 
@@ -605,16 +605,16 @@ Build the solution and run all backend tests to verify Phase 1 is complete.
 
 ```bash
 # Build the solution
-dotnet build TradingApp.HyperliquidPoc.sln
+dotnet build TradePilot.HyperliquidPoc.sln
 
 # Run the account controller tests
-dotnet test tests/TradingApp.HyperliquidPoc.Api.Tests --filter "FullyQualifiedName~AccountController"
+dotnet test tests/TradePilot.HyperliquidPoc.Api.Tests --filter "FullyQualifiedName~AccountController"
 
 # Run all test projects (if architecture tests exist from F1)
-dotnet test TradingApp.HyperliquidPoc.sln
+dotnet test TradePilot.HyperliquidPoc.sln
 ```
 
-> **Note:** If `Program` class is not visible to the test project, may need to add `[assembly: InternalsVisibleTo("TradingApp.HyperliquidPoc.Api.Tests")]` or make `Program` public.
+> **Note:** If `Program` class is not visible to the test project, may need to add `[assembly: InternalsVisibleTo("TradePilot.HyperliquidPoc.Api.Tests")]` or make `Program` public.
 
 ##### Pattern References
 

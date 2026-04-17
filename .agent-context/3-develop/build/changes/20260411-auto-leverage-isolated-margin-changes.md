@@ -13,50 +13,50 @@ Implements auto-derived leverage for risk-based sizing, isolated margin enforcem
 ### Added
 
 <!-- Phase 1: Domain Model, Leverage Calculator & Defaults -->
-- src/TradingApp.Application/Trading/Services/LeverageCalculator.cs: Added the pure leverage calculation utility with clamp and fallback behavior.
-- tests/TradingApp.Application.Tests/Trading/Services/LeverageCalculatorTests.cs: Added MSTest coverage for leverage calculation, clamping, and maintenance-margin derivation.
+- src/TradePilot.Application/Trading/Services/LeverageCalculator.cs: Added the pure leverage calculation utility with clamp and fallback behavior.
+- tests/TradePilot.Application.Tests/Trading/Services/LeverageCalculatorTests.cs: Added MSTest coverage for leverage calculation, clamping, and maintenance-margin derivation.
 
 ### Modified
 
 <!-- Phase 1: Domain Model, Leverage Calculator & Defaults -->
-- src/TradingApp.Application/StrategyAuthoring/Models/RiskConfig.cs: Added the AutoLeverage flag to the risk configuration record.
-- src/TradingApp.Application/Agent/Models/OrderCommandPayload.cs: Changed SetLeveragePayload.IsCross default to false.
-- src/TradingApp.Api/Models/SetLeverageRequest.cs: Changed SetLeverageRequest.IsCross default to false.
-- src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs: Added auto-leverage warning and error rules on top of the existing risk-based validation.
-- src/TradingApp.Api/Models/RunBacktestRequest.cs: Added AutoLeverage to the backtest risk DTO.
-- src/TradingApp.Api/Controllers/BacktestsController.cs: Mapped RiskConfigRequest.AutoLeverage into the domain RiskConfig.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs: Added regression tests for auto-leverage warning and error behavior.
-- tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs: Added controller mapping coverage for AutoLeverage.
+- src/TradePilot.Application/StrategyAuthoring/Models/RiskConfig.cs: Added the AutoLeverage flag to the risk configuration record.
+- src/TradePilot.Application/Agent/Models/OrderCommandPayload.cs: Changed SetLeveragePayload.IsCross default to false.
+- src/TradePilot.Api/Models/SetLeverageRequest.cs: Changed SetLeverageRequest.IsCross default to false.
+- src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs: Added auto-leverage warning and error rules on top of the existing risk-based validation.
+- src/TradePilot.Api/Models/RunBacktestRequest.cs: Added AutoLeverage to the backtest risk DTO.
+- src/TradePilot.Api/Controllers/BacktestsController.cs: Mapped RiskConfigRequest.AutoLeverage into the domain RiskConfig.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs: Added regression tests for auto-leverage warning and error behavior.
+- tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs: Added controller mapping coverage for AutoLeverage.
 
 <!-- Phase 2: Execution Engine SetLeverage -->
-- src/TradingApp.Application/Abstractions/Services/IExecutionEngine.cs: Added the SetLeverageAsync contract to the execution boundary interface.
-- src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs: Added signed updateLeverage submission, asset metadata caching with max leverage, and leverage clamping with warning logs.
-- src/TradingApp.Api/Services/HyperliquidExecutionEngine.cs: Added SetLeverageAsync delegation to IHyperliquidOrderService with correct isolated-to-cross inversion.
-- src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Added leverage tracking per asset and exposed recorded leverage state for later backtest liquidation work.
-- src/TradingApp.Worker/Services/AgentCheckInService.cs: Replaced the SetLeverage stub with a real IExecutionEngine call and success logging.
-- tests/TradingApp.Infrastructure.Tests/Services/LiveExecutionEngineTests.cs: Added verification for updateLeverage payload shape, max leverage clamping, and warning logging.
-- tests/TradingApp.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs: Added leverage recording coverage for the simulated engine.
-- tests/TradingApp.Api.Tests/Services/HyperliquidExecutionEngineTests.cs: Added delegation coverage for SetLeverageAsync.
+- src/TradePilot.Application/Abstractions/Services/IExecutionEngine.cs: Added the SetLeverageAsync contract to the execution boundary interface.
+- src/TradePilot.Infrastructure/Services/LiveExecutionEngine.cs: Added signed updateLeverage submission, asset metadata caching with max leverage, and leverage clamping with warning logs.
+- src/TradePilot.Api/Services/HyperliquidExecutionEngine.cs: Added SetLeverageAsync delegation to IHyperliquidOrderService with correct isolated-to-cross inversion.
+- src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Added leverage tracking per asset and exposed recorded leverage state for later backtest liquidation work.
+- src/TradePilot.Worker/Services/AgentCheckInService.cs: Replaced the SetLeverage stub with a real IExecutionEngine call and success logging.
+- tests/TradePilot.Infrastructure.Tests/Services/LiveExecutionEngineTests.cs: Added verification for updateLeverage payload shape, max leverage clamping, and warning logging.
+- tests/TradePilot.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs: Added leverage recording coverage for the simulated engine.
+- tests/TradePilot.Api.Tests/Services/HyperliquidExecutionEngineTests.cs: Added delegation coverage for SetLeverageAsync.
 
 <!-- Phase 3: Grid Pipeline Integration -->
-- src/TradingApp.Application/Trading/Models/MarketContext.cs: Added nullable MaxLeverage to the runtime market context.
-- src/TradingApp.Application/Trading/Services/LiveMarketContextBuilder.cs: Populated MaxLeverage from Hyperliquid meta data with in-memory caching for live contexts.
-- src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs: Populated MaxLeverage with the conservative fallback for backtest contexts.
-- src/TradingApp.Application/Trading/Services/GridController.cs: Computed leverage during deploy processing and added leverage plus isIsolated to the DeployGrid signal.
-- src/TradingApp.Application/Trading/Services/LivePositionManager.cs: Applied exchange leverage before placing ladder orders and added tolerant signal-parameter parsing.
-- src/TradingApp.Api/Services/IHyperliquidOrderService.cs: Changed UpdateLeverageAsync default isCross value to false.
-- src/TradingApp.Api/Services/HyperliquidOrderService.cs: Changed UpdateLeverageAsync implementation default isCross value to false.
-- src/TradingApp.Worker/Program.cs: Passed IHyperliquidRestClient into the live market-context builder registration.
-- tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs: Added coverage for auto leverage, manual leverage fallback, AutoLeverage ignore behavior outside risk-based sizing, and isolated-margin signaling.
-- tests/TradingApp.Application.Tests/Trading/Services/LivePositionManagerTests.cs: Added coverage for SetLeverageAsync ordering and backward-compatible behavior when leverage is missing.
+- src/TradePilot.Application/Trading/Models/MarketContext.cs: Added nullable MaxLeverage to the runtime market context.
+- src/TradePilot.Application/Trading/Services/LiveMarketContextBuilder.cs: Populated MaxLeverage from Hyperliquid meta data with in-memory caching for live contexts.
+- src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs: Populated MaxLeverage with the conservative fallback for backtest contexts.
+- src/TradePilot.Application/Trading/Services/GridController.cs: Computed leverage during deploy processing and added leverage plus isIsolated to the DeployGrid signal.
+- src/TradePilot.Application/Trading/Services/LivePositionManager.cs: Applied exchange leverage before placing ladder orders and added tolerant signal-parameter parsing.
+- src/TradePilot.Api/Services/IHyperliquidOrderService.cs: Changed UpdateLeverageAsync default isCross value to false.
+- src/TradePilot.Api/Services/HyperliquidOrderService.cs: Changed UpdateLeverageAsync implementation default isCross value to false.
+- src/TradePilot.Worker/Program.cs: Passed IHyperliquidRestClient into the live market-context builder registration.
+- tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs: Added coverage for auto leverage, manual leverage fallback, AutoLeverage ignore behavior outside risk-based sizing, and isolated-margin signaling.
+- tests/TradePilot.Application.Tests/Trading/Services/LivePositionManagerTests.cs: Added coverage for SetLeverageAsync ordering and backward-compatible behavior when leverage is missing.
 
 <!-- Phase 4: Backtest Liquidation Simulation -->
-- src/TradingApp.Application/Backtesting/Models/CancellationReason.cs: Added a dedicated liquidation close reason for backtest exit classification.
-- src/TradingApp.Application/Backtesting/Models/SimulatedOrder.cs: Added trigger-order metadata so the simulated engine can model stop-loss and take-profit trigger behavior.
-- src/TradingApp.Application/Backtesting/Models/SimulatedPosition.cs: Added leverage, margin-used, and liquidation-price state to the simulated position snapshot.
-- src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Implemented trigger-order execution, leverage context tracking, margin calculation, liquidation-price calculation, and liquidation force-close behavior.
-- src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs: Classified liquidation exits distinctly in grid-cycle tracking instead of folding them into stop-loss handling.
-- tests/TradingApp.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs: Added margin-tracking, long-stop-loss, long-liquidation, leverage-one, and short-liquidation coverage.
+- src/TradePilot.Application/Backtesting/Models/CancellationReason.cs: Added a dedicated liquidation close reason for backtest exit classification.
+- src/TradePilot.Application/Backtesting/Models/SimulatedOrder.cs: Added trigger-order metadata so the simulated engine can model stop-loss and take-profit trigger behavior.
+- src/TradePilot.Application/Backtesting/Models/SimulatedPosition.cs: Added leverage, margin-used, and liquidation-price state to the simulated position snapshot.
+- src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs: Implemented trigger-order execution, leverage context tracking, margin calculation, liquidation-price calculation, and liquidation force-close behavior.
+- src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs: Classified liquidation exits distinctly in grid-cycle tracking instead of folding them into stop-loss handling.
+- tests/TradePilot.Application.Tests/Backtesting/Services/SimulatedExecutionEngineTests.cs: Added margin-tracking, long-stop-loss, long-liquidation, leverage-one, and short-liquidation coverage.
 
 ### Removed
 
@@ -65,31 +65,31 @@ Implements auto-derived leverage for risk-based sizing, isolated margin enforcem
 <!-- Phase 1: Domain Model, Leverage Calculator & Defaults -->
 - Targeted LeverageCalculatorTests and BusinessRuleValidatorTests: 26/26 passed.
 - Targeted BacktestsControllerTests mapping scope: 2/2 passed.
-- TradingApp.Application.Tests: 443/443 passed.
-- TradingApp.Api.Tests: 205/205 passed.
-- dotnet build TradingApp.sln: PASSED.
+- TradePilot.Application.Tests: 443/443 passed.
+- TradePilot.Api.Tests: 205/205 passed.
+- dotnet build TradePilot.sln: PASSED.
 - Architecture Tests: FAILED - no dedicated architecture tests found in the repository.
 
 <!-- Phase 2: Execution Engine SetLeverage -->
 - LiveExecutionEngineTests: 10/10 passed.
 - SimulatedExecutionEngineTests: 11/11 passed.
 - HyperliquidExecutionEngineTests: 10/10 passed.
-- TradingApp.Domain.Tests: PASSED.
-- TradingApp.Application.Tests: PASSED.
-- TradingApp.AI.Tests: PASSED.
-- TradingApp.Infrastructure.Tests: PASSED.
-- TradingApp.Api.Tests: 206/206 passed.
+- TradePilot.Domain.Tests: PASSED.
+- TradePilot.Application.Tests: PASSED.
+- TradePilot.AI.Tests: PASSED.
+- TradePilot.Infrastructure.Tests: PASSED.
+- TradePilot.Api.Tests: 206/206 passed.
 - Architecture Tests: FAILED - no dedicated architecture test project or architecture test classes were found in the repository.
 
 <!-- Phase 3: Grid Pipeline Integration -->
 - GridControllerTests + LivePositionManagerTests: 58/58 passed.
-- TradingApp.Application.Tests: 454/454 passed.
+- TradePilot.Application.Tests: 454/454 passed.
 - Architecture Tests: FAILED - no dedicated architecture test project or architecture test classes were found.
-- dotnet build TradingApp.sln: PASSED.
+- dotnet build TradePilot.sln: PASSED.
 
 <!-- Phase 4: Backtest Liquidation Simulation -->
 - SimulatedExecutionEngineTests: 22/22 passed.
-- TradingApp.Application.Tests: 459/459 passed.
+- TradePilot.Application.Tests: 459/459 passed.
 - Solution Build: PASSED.
 - Solution Tests: 987/987 passed.
 - Architecture Tests: FAILED - no dedicated architecture test project or architecture-focused test classes were found under tests/.
@@ -103,11 +103,11 @@ Implements auto-derived leverage for risk-based sizing, isolated margin enforcem
 
 <!-- Phase 2: Execution Engine SetLeverage -->
 - The dedicated test runner surfaced generic project-build failures for the infrastructure scope; direct dotnet test output showed the underlying tests were passing.
-- A lingering testhost process locked tests/TradingApp.Api.Tests output assemblies and caused transient MSBuild copy failures during solution build and broad test runs; resolved by terminating stale testhost processes and rerunning build/test with no-build where appropriate.
+- A lingering testhost process locked tests/TradePilot.Api.Tests output assemblies and caused transient MSBuild copy failures during solution build and broad test runs; resolved by terminating stale testhost processes and rerunning build/test with no-build where appropriate.
 - No architecture test project or architecture-focused test classes were present, so that verification step could not be executed beyond confirming absence.
 
 <!-- Phase 3: Grid Pipeline Integration -->
-- A stale testhost process locked tests/TradingApp.Api.Tests output assemblies and caused the first solution build to fail with MSBuild copy errors; this was resolved by terminating testhost and rerunning the build.
+- A stale testhost process locked tests/TradePilot.Api.Tests output assemblies and caused the first solution build to fail with MSBuild copy errors; this was resolved by terminating testhost and rerunning the build.
 - Existing package vulnerability warnings remain in Infrastructure test/build output (NU1901, NU1902), and an existing ASP.NET forwarded headers deprecation warning remains during solution build.
 
 <!-- Phase 4: Backtest Liquidation Simulation -->
@@ -137,23 +137,23 @@ Implements auto-derived leverage for risk-based sizing, isolated margin enforcem
 ## Review Hints
 
 <!-- Phase 1: Domain Model, Leverage Calculator & Defaults -->
-- Review src/TradingApp.Application/Trading/Services/LeverageCalculator.cs for the fallback, clamping, and formula alignment with the plan.
-- Review src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs for the interaction between RiskBased validation and the new AutoLeverage warning and error rules.
-- Review src/TradingApp.Api/Controllers/BacktestsController.cs and src/TradingApp.Api/Models/RunBacktestRequest.cs to confirm AutoLeverage is preserved through backtest request mapping.
+- Review src/TradePilot.Application/Trading/Services/LeverageCalculator.cs for the fallback, clamping, and formula alignment with the plan.
+- Review src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs for the interaction between RiskBased validation and the new AutoLeverage warning and error rules.
+- Review src/TradePilot.Api/Controllers/BacktestsController.cs and src/TradePilot.Api/Models/RunBacktestRequest.cs to confirm AutoLeverage is preserved through backtest request mapping.
 
 <!-- Phase 2: Execution Engine SetLeverage -->
-- Review src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs for the asset metadata cache shape, NormalizeCoin handling, and leverage clamp path.
-- Review src/TradingApp.Worker/Services/AgentCheckInService.cs for the SetLeverage command flow and the IsCross to isIsolated inversion.
-- Review tests/TradingApp.Infrastructure.Tests/Services/LiveExecutionEngineTests.cs because that file carries the main acceptance proof for signed updateLeverage payload generation and clamp behavior.
+- Review src/TradePilot.Infrastructure/Services/LiveExecutionEngine.cs for the asset metadata cache shape, NormalizeCoin handling, and leverage clamp path.
+- Review src/TradePilot.Worker/Services/AgentCheckInService.cs for the SetLeverage command flow and the IsCross to isIsolated inversion.
+- Review tests/TradePilot.Infrastructure.Tests/Services/LiveExecutionEngineTests.cs because that file carries the main acceptance proof for signed updateLeverage payload generation and clamp behavior.
 
 <!-- Phase 3: Grid Pipeline Integration -->
-- Review src/TradingApp.Application/Trading/Services/LiveMarketContextBuilder.cs for the live metadata-cache behavior and the synchronous Build path calling the shared async metadata loader.
-- Review src/TradingApp.Application/Trading/Services/GridController.cs for the exact leverage-selection rules between auto and manual modes.
-- Review src/TradingApp.Application/Trading/Services/LivePositionManager.cs to confirm leverage is set after order cancellation and before any grid-order placement.
+- Review src/TradePilot.Application/Trading/Services/LiveMarketContextBuilder.cs for the live metadata-cache behavior and the synchronous Build path calling the shared async metadata loader.
+- Review src/TradePilot.Application/Trading/Services/GridController.cs for the exact leverage-selection rules between auto and manual modes.
+- Review src/TradePilot.Application/Trading/Services/LivePositionManager.cs to confirm leverage is set after order cancellation and before any grid-order placement.
 
 <!-- Phase 4: Backtest Liquidation Simulation -->
-- Review src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs for the gap-handling rule that lets stop-loss fill first unless price has already opened beyond the stop and reached liquidation in the same candle.
-- Review src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs to confirm liquidation exits should be reported as Liquidation at the grid-cycle level rather than StopLoss.
+- Review src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs for the gap-handling rule that lets stop-loss fill first unless price has already opened beyond the stop and reached liquidation in the same candle.
+- Review src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs to confirm liquidation exits should be reported as Liquidation at the grid-cycle level rather than StopLoss.
 
 ## Release Summary
 

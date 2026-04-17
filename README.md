@@ -20,7 +20,7 @@ cd frontend/trading-ui && npm install && cd ../..
 
 ### 2. Configure your Hyperliquid private key
 
-Add your wallet private key to `src/TradingApp.Api/appsettings.Development.json`:
+Add your wallet private key to `src/TradePilot.Api/appsettings.Development.json`:
 
 ```json
 {
@@ -61,7 +61,7 @@ export Hyperliquid__PrivateKey=YOUR_PRIVATE_KEY_HERE
 ### 3. Start the backend
 
 ```bash
-dotnet run --project src/TradingApp.Api
+dotnet run --project src/TradePilot.Api
 ```
 
 The API starts at `http://localhost:5062`.
@@ -73,16 +73,16 @@ EF Core migration files are committed to source control, but the local SQLite da
 When you start the API, it automatically applies pending migrations to your local database on startup. In most cases your local setup is simply:
 
 ```bash
-dotnet run --project src/TradingApp.Api
+dotnet run --project src/TradePilot.Api
 ```
 
 If you need to apply migrations manually, run:
 
 ```bash
-dotnet ef database update --project src/TradingApp.Persistence --startup-project src/TradingApp.Api
+dotnet ef database update --project src/TradePilot.Persistence --startup-project src/TradePilot.Api
 ```
 
-Local runtime database files under `data/` are intentionally ignored by git. Do not commit `data/*.db` files; commit the migration files under `src/TradingApp.Persistence/Migrations/` instead.
+Local runtime database files under `data/` are intentionally ignored by git. Do not commit `data/*.db` files; commit the migration files under `src/TradePilot.Persistence/Migrations/` instead.
 
 ### 4. Start the frontend
 
@@ -109,12 +109,12 @@ npx ng lint
 
 | Project | Role |
 |---------|------|
-| `TradingApp.Api` | ASP.NET Core Web API host |
-| `TradingApp.Application` | CQRS commands/queries, interfaces |
-| `TradingApp.Infrastructure` | Hyperliquid client, signing |
-| `TradingApp.Domain` | Core domain entities |
-| `TradingApp.Persistence` | EF Core context (scaffolded) |
-| `TradingApp.Worker` | Background strategy execution |
+| `TradePilot.Api` | ASP.NET Core Web API host |
+| `TradePilot.Application` | CQRS commands/queries, interfaces |
+| `TradePilot.Infrastructure` | Hyperliquid client, signing |
+| `TradePilot.Domain` | Core domain entities |
+| `TradePilot.Persistence` | EF Core context (scaffolded) |
+| `TradePilot.Worker` | Background strategy execution |
 | `frontend/trading-ui` | Angular 19 dashboard |
 
 ## API Endpoints

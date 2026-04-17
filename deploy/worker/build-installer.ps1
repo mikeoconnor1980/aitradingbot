@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds the TradingApp Execution Agent installer package.
+    Builds the TradePilot Execution Agent installer package.
 
 .DESCRIPTION
     Publishes the Worker project as a self-contained single-file executable,
@@ -27,9 +27,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = (Resolve-Path "$PSScriptRoot\..\..\").Path
-$workerProject = Join-Path $repoRoot "src\TradingApp.Worker\TradingApp.Worker.csproj"
+$workerProject = Join-Path $repoRoot "src\TradePilot.Worker\TradePilot.Worker.csproj"
 $publishDir = Join-Path $repoRoot "artifacts\publish\worker"
-$packageDir = Join-Path $repoRoot "artifacts\installer\TradingApp-ExecutionAgent"
+$packageDir = Join-Path $repoRoot "artifacts\installer\TradePilot-ExecutionAgent"
 $scriptDir = $PSScriptRoot
 
 Write-Host ""
@@ -169,7 +169,7 @@ if (-not $NoInnoSetup) {
         if ($LASTEXITCODE -ne 0) {
             Write-Warning "Inno Setup compilation failed (exit code $LASTEXITCODE). Skipping installer EXE."
         } else {
-            $installerName = "TradingApp-ExecutionAgent-v$version-Setup.exe"
+            $installerName = "TradePilot-ExecutionAgent-v$version-Setup.exe"
             $installerDir = Join-Path $repoRoot "artifacts\installer"
             $installerPath = Join-Path $installerDir $installerName
 
@@ -197,7 +197,7 @@ if (-not $NoInnoSetup) {
 
 # --- 7. Create ZIP ---
 if (-not $NoZip) {
-    $zipName = "TradingApp-ExecutionAgent-v$version-win-x64.zip"
+    $zipName = "TradePilot-ExecutionAgent-v$version-win-x64.zip"
     $zipPath = Join-Path (Split-Path $packageDir -Parent) $zipName
 
     if (Test-Path $zipPath) {

@@ -11,7 +11,7 @@ As a trader, I want the Market Data price chart to display historical candles fr
 
 ## Problem Statement
 
-The Market Data page's PriceChartComponent currently fetches candles exclusively from the Hyperliquid REST API via `GET /api/market/candles`, which only returns approximately 10 days of 15-minute candles. The project already has a SQLite database (`data/tradingapp.db`) with a `Candles` table containing historical data back to 2019 (ingested from Binance), but this data is not surfaced in the chart. Traders need access to longer price history for analysis and strategy evaluation.
+The Market Data page's PriceChartComponent currently fetches candles exclusively from the Hyperliquid REST API via `GET /api/market/candles`, which only returns approximately 10 days of 15-minute candles. The project already has a SQLite database (`data/TradePilot.db`) with a `Candles` table containing historical data back to 2019 (ingested from Binance), but this data is not surfaced in the chart. Traders need access to longer price history for analysis and strategy evaluation.
 
 ## Requirements
 

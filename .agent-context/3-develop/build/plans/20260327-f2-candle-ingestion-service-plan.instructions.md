@@ -54,7 +54,7 @@ Build a candle ingestion service that batch-fetches historical OHLCV candle data
 
 ### Discovery References
 
-- F1 (Candle Data Persistence) is **not yet implemented**. This plan assumes F1 delivers: `Candle` entity, `ICandleRepository` (with `BulkInsertAsync`, `GetLatestTimestampAsync`), `TradingAppDbContext`, `AddPersistence()` extension
+- F1 (Candle Data Persistence) is **not yet implemented**. This plan assumes F1 delivers: `Candle` entity, `ICandleRepository` (with `BulkInsertAsync`, `GetLatestTimestampAsync`), `TradePilotDbContext`, `AddPersistence()` extension
 - Existing Polly resilience pipeline on `IHyperliquidRestClient` handles HTTP-level retry (429/5xx) with exponential backoff — F2's retry logic handles ingestion-level retry per interval
 - `CandleSnapshotPayload` already carries both `StartTime` and `EndTime` as `long` fields — no wire model changes needed
 - `HyperliquidAssetMapper.ToCoin()` strips `-PERP` suffix but does not validate against known symbols; `IsValidTimeframe()` validates intervals
@@ -63,18 +63,18 @@ Build a candle ingestion service that batch-fetches historical OHLCV candle data
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Interface placement pattern for cross-layer services
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — REST client implementation with `PostInfoAsync<T>` and candle mapping
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Static validation: `ToCoin()`, `IsValidTimeframe()`, `GetIntervalMs()`
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — Wire model for candle API response
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — Options class with `SectionName` constant + data annotations
-- `src/TradingApp.Application/Abstractions/Commands/Command.cs` — `Command<T>` base record for MediatR commands
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — Base controller with `IMediator` + `IdentityService`
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Exception-to-HTTP status mapping
-- `src/TradingApp.Api/Controllers/MarketDataController.cs` — MediatR controller pattern for market data endpoints
-- `src/TradingApp.Api/Program.cs` — DI composition root, options binding, Polly pipeline
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — Integration test base with `WebApplicationFactory`
-- `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` — Controller integration test pattern
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Interface placement pattern for cross-layer services
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — REST client implementation with `PostInfoAsync<T>` and candle mapping
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Static validation: `ToCoin()`, `IsValidTimeframe()`, `GetIntervalMs()`
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — Wire model for candle API response
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — Options class with `SectionName` constant + data annotations
+- `src/TradePilot.Application/Abstractions/Commands/Command.cs` — `Command<T>` base record for MediatR commands
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — Base controller with `IMediator` + `IdentityService`
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Exception-to-HTTP status mapping
+- `src/TradePilot.Api/Controllers/MarketDataController.cs` — MediatR controller pattern for market data endpoints
+- `src/TradePilot.Api/Program.cs` — DI composition root, options binding, Polly pipeline
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — Integration test base with `WebApplicationFactory`
+- `tests/TradePilot.Api.Tests/Controllers/MarketDataControllerTests.cs` — Controller integration test pattern
 
 ### [x] Phase 1: REST Client Overload & Configuration
 
@@ -147,7 +147,7 @@ Build a candle ingestion service that batch-fetches historical OHLCV candle data
 
 ### Scoping Notes
 
-- F1 (Candle Data Persistence) must be implemented before this plan can be executed — `Candle` entity, `ICandleRepository`, `TradingAppDbContext`, and `AddPersistence()` must exist
+- F1 (Candle Data Persistence) must be implemented before this plan can be executed — `Candle` entity, `ICandleRepository`, `TradePilotDbContext`, and `AddPersistence()` must exist
 - The existing Polly resilience pipeline handles HTTP-level retries on `IHyperliquidRestClient`; F2 adds ingestion-level retry per interval (retrying the entire fetch loop for a failed interval)
 - The concurrency guard uses a `static SemaphoreSlim` on the ingestion service (registered as scoped), with `IngestionAlreadyRunningException` for 409 Conflict responses
 - `HyperliquidAssetMapper.ToCoin()` accepts both raw coin symbols (`BTC`) and display names (`BTC-PERP`); the F2 validation step validates intervals via `IsValidTimeframe()` and symbol validation by attempting `ToCoin()` within a try-catch
@@ -156,9 +156,9 @@ Build a candle ingestion service that batch-fetches historical OHLCV candle data
 
 ## Dependencies
 
-- F1 — Candle Data Persistence (`Candle` entity, `ICandleRepository`, `TradingAppDbContext`)
-- Microsoft.Extensions.Options (already in `TradingApp.Application.csproj`)
-- MediatR 14.1.0 (already in `TradingApp.Application.csproj`)
+- F1 — Candle Data Persistence (`Candle` entity, `ICandleRepository`, `TradePilotDbContext`)
+- Microsoft.Extensions.Options (already in `TradePilot.Application.csproj`)
+- MediatR 14.1.0 (already in `TradePilot.Application.csproj`)
 - Polly resilience pipeline (already configured in `Program.cs`)
 
 ## Success Criteria

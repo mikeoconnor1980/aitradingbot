@@ -83,7 +83,7 @@ The existing `pbi-draft-ta-indicators-core.md` proposes a shared `IndicatorCalcu
 
 ### Bounded Context
 
-**Context:** Application layer — `TradingApp.Application/PineScript/Services` for computation orchestration, `TradingApp.Application/Trading` for `MarketContext` extension.
+**Context:** Application layer — `TradePilot.Application/PineScript/Services` for computation orchestration, `TradePilot.Application/Trading` for `MarketContext` extension.
 
 ### New/Modified Components
 

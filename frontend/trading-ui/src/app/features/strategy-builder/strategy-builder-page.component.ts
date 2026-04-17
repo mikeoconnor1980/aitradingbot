@@ -12,7 +12,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { ActivatedRoute, Router } from "@angular/router";
 import { debounceTime, map, of, startWith, switchMap, tap } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AiReviewCardComponent } from "./components/ai-review-card/ai-review-card.component";
@@ -81,7 +81,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   private readonly _strategyMapper = inject(StrategyMapperService);
   private readonly _strategyValidator = inject(StrategyValidationService);
   private readonly _conditionFactory = inject(ConditionFactoryService);
-  private readonly _notifications = inject(NotificationService);
+  private readonly _notifications = inject(NotificationFacade);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
   private _savedFormSnapshot = "";

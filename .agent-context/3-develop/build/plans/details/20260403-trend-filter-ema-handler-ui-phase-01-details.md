@@ -19,8 +19,8 @@ Add new enum values to support all trend filter types and operators required by 
 - **Complexity**: Low
 - **Risk Factors**: None — additive enum changes
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterType.cs` — add `SmaCross`, `PriceAboveEma`
-  - `src/TradingApp.Application/StrategyAuthoring/Models/TrendOperator.cs` — add `CrossAbove`, `CrossBelow`, `Above`, `Below`
+  - `src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterType.cs` — add `SmaCross`, `PriceAboveEma`
+  - `src/TradePilot.Application/StrategyAuthoring/Models/TrendOperator.cs` — add `CrossAbove`, `CrossBelow`, `Above`, `Below`
 - **Success**:
   - `TrendFilterType` has values: `EmaCross`, `EmaSingle`, `SmaCross`, `PriceAboveEma`
   - `TrendOperator` has values: `Gt`, `Lt`, `Gte`, `Lte`, `CrossAbove`, `CrossBelow`, `Above`, `Below`
@@ -29,8 +29,8 @@ Add new enum values to support all trend filter types and operators required by 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterType.cs — modification
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterType.cs — modification
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public enum TrendFilterType
 {
@@ -42,8 +42,8 @@ public enum TrendFilterType
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/TrendOperator.cs — modification
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/TrendOperator.cs — modification
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public enum TrendOperator
 {
@@ -72,7 +72,7 @@ Add nullable `Period` property to `TrendFilterConfig` for `PriceAboveEma` type (
 - **Complexity**: Low
 - **Risk Factors**: Must ensure backward compatibility — existing configs without `Period` deserialize to `null`
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterConfig.cs` — add `Period` property
+  - `src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterConfig.cs` — add `Period` property
 - **Success**:
   - `TrendFilterConfig.Period` is `int?` (nullable), defaults to `null`
   - Existing JSON configs without `Period` deserialize correctly
@@ -81,8 +81,8 @@ Add nullable `Period` property to `TrendFilterConfig` for `PriceAboveEma` type (
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/TrendFilterConfig.cs — modification
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/TrendFilterConfig.cs — modification
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public sealed record TrendFilterConfig
 {
@@ -111,7 +111,7 @@ Add `DistanceType` and `DistanceValue` properties to `PriceVsEmaParams` for the 
 - **Complexity**: Low
 - **Risk Factors**: None — additive, nullable fields for backward compatibility
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs` — add fields
+  - `src/TradePilot.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs` — add fields
 - **Success**:
   - `PriceVsEmaParams` has `DistanceType` (string, default empty) and `DistanceValue` (decimal?, nullable)
   - Existing JSON with only `Period` and `Operator` still deserializes correctly
@@ -119,8 +119,8 @@ Add `DistanceType` and `DistanceValue` properties to `PriceVsEmaParams` for the 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs — modification
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/PriceVsEmaParams.cs — modification
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public sealed record PriceVsEmaParams : IEntryConditionParams
 {
@@ -145,7 +145,7 @@ Add `SetSma`, `GetSma`, and `GetPreviousSma` methods to `IndicatorContext`, foll
 - **Complexity**: Low
 - **Risk Factors**: None — additive methods
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — add SMA methods
+  - `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — add SMA methods
 - **Success**:
   - `SetSma(int period, decimal currentValue, decimal? previousValue)` stores values
   - `GetSma(int period)` returns current SMA value
@@ -155,7 +155,7 @@ Add `SetSma`, `GetSma`, and `GetPreviousSma` methods to `IndicatorContext`, foll
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/IndicatorContext.cs — add methods
+// src/TradePilot.Application/Trading/Models/IndicatorContext.cs — add methods
 // Add after existing SetMacd/GetMacd methods:
 
 public void SetSma(int period, decimal currentValue, decimal? previousValue = null)
@@ -189,7 +189,7 @@ Add `"SMA"` case to `BuildIndicatorContext` and implement `CalculateSma` / `Calc
 - **Complexity**: Medium
 - **Risk Factors**: SMA calculation correctness — must average last N closes
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — add SMA case and calculation methods
+  - `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — add SMA case and calculation methods
 - **Success**:
   - `BuildIndicatorContext` handles `"SMA"` requirement type
   - `CalculateSma(period)` correctly averages last `period` closes
@@ -199,7 +199,7 @@ Add `"SMA"` case to `BuildIndicatorContext` and implement `CalculateSma` / `Calc
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs
+// src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs
 // Add to BuildIndicatorContext switch:
 case "SMA":
     context.SetSma(
@@ -264,7 +264,7 @@ Extend `IndicatorExtractor.Extract()` to also extract EMA/SMA requirements from 
 - **Complexity**: Medium
 - **Risk Factors**: Must handle all TrendFilterType variants correctly
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — add TrendFilter extraction
+  - `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — add TrendFilter extraction
 - **Success**:
   - `EmaCross` extracts two EMA requirements (FastPeriod, SlowPeriod)
   - `SmaCross` extracts two SMA requirements (FastPeriod, SlowPeriod)
@@ -275,7 +275,7 @@ Extend `IndicatorExtractor.Extract()` to also extract EMA/SMA requirements from 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs — modification
+// src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs — modification
 public static IReadOnlyList<IndicatorRequirement> Extract(StrategyConfig config)
 {
     ArgumentNullException.ThrowIfNull(config);
@@ -344,7 +344,7 @@ Update `ValidateTrendFilter` to conditionally validate based on filter type. `Pr
 - **Complexity**: Medium
 - **Risk Factors**: Must not break existing EmaCross validation
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — update `ValidateTrendFilter` and `ValidateEntryConditions`
+  - `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — update `ValidateTrendFilter` and `ValidateEntryConditions`
 - **Success**:
   - `PriceAboveEma` filter validates `Period > 0` (not FastPeriod/SlowPeriod)
   - `EmaCross`/`SmaCross` still validate `FastPeriod > 0` and `SlowPeriod > 0`
@@ -354,7 +354,7 @@ Update `ValidateTrendFilter` to conditionally validate based on filter type. `Pr
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs
+// src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs
 // Replace ValidateTrendFilter method:
 private static void ValidateTrendFilter(TrendFilterConfig? filter, ValidationResult result)
 {
@@ -449,10 +449,10 @@ Write unit tests for all Phase 1 model and infrastructure changes.
 - **Complexity**: Medium
 - **Risk Factors**: Must cover SMA correctness, IndicatorExtractor TrendFilter extraction, and validator conditional logic
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs` — add SMA tests
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs` — add TrendFilter extraction tests
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — add PriceAboveEma validation tests
-  - `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — add SMA test
+  - `tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs` — add SMA tests
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs` — add TrendFilter extraction tests
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs` — add PriceAboveEma validation tests
+  - `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — add SMA test
 - **Success**:
   - All new tests pass
   - No regressions in existing tests
@@ -462,7 +462,7 @@ Write unit tests for all Phase 1 model and infrastructure changes.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs — add tests
+// tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs — add tests
 [TestMethod]
 public void GivenSmaSet_WhenGetSma_ThenReturnsValue()
 {
@@ -483,7 +483,7 @@ public void GivenSmaNotSet_WhenGetSma_ThenReturnsNull()
 ```
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs — add tests
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Services/IndicatorExtractorTests.cs — add tests
 [TestMethod]
 public void GivenConfigWithEmaCrossTrendFilter_WhenExtract_ThenReturnsTwoEmaRequirements()
 {
@@ -614,7 +614,7 @@ public void GivenTrendFilterAndConditionShareEmaPeriod_WhenExtract_ThenDeduplica
 ```
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs — add tests
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/BusinessRuleValidatorTests.cs — add tests
 [TestMethod]
 public void GivenPriceAboveEmaWithPeriodZero_WhenValidated_ThenError()
 {
@@ -694,9 +694,9 @@ Build the solution and run all affected test projects to verify Phase 1 changes 
 - **Risk Factors**: None
 - **Files**: N/A (build and test commands)
 - **Success**:
-  - `dotnet build TradingApp.sln --configuration Release` succeeds
-  - `dotnet test tests/TradingApp.Application.Tests/TradingApp.Application.Tests.csproj --configuration Release --no-build` all pass
-  - `dotnet test tests/TradingApp.Domain.Tests/TradingApp.Domain.Tests.csproj --configuration Release --no-build` all pass
+  - `dotnet build TradePilot.sln --configuration Release` succeeds
+  - `dotnet test tests/TradePilot.Application.Tests/TradePilot.Application.Tests.csproj --configuration Release --no-build` all pass
+  - `dotnet test tests/TradePilot.Domain.Tests/TradePilot.Domain.Tests.csproj --configuration Release --no-build` all pass
 
 ## Phase Success Criteria
 

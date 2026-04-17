@@ -13,22 +13,22 @@ Implements end-to-end order placement on Hyperliquid testnet via Angular UI → 
 ### Added
 
 <!-- Phase 1: EIP-712 Signing & Nonce Infrastructure -->
-- src/TradingApp.Application/Abstractions/Services/INonceProvider.cs: Added nonce provider abstraction with monotonic nonce contract
-- src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs: Added EIP-712 typed-data builder, action hash computation, and order action builder
-- src/TradingApp.Infrastructure/Services/NonceProvider.cs: Added lock-free thread-safe nonce generator using UTC milliseconds
-- tests/TradingApp.Infrastructure.Tests/Services/HyperliquidEip712Tests.cs: Added unit tests for typed-data construction and action hash behavior
-- tests/TradingApp.Infrastructure.Tests/Services/NonceProviderTests.cs: Added unit tests for sequential and concurrent nonce uniqueness/monotonicity
+- src/TradePilot.Application/Abstractions/Services/INonceProvider.cs: Added nonce provider abstraction with monotonic nonce contract
+- src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs: Added EIP-712 typed-data builder, action hash computation, and order action builder
+- src/TradePilot.Infrastructure/Services/NonceProvider.cs: Added lock-free thread-safe nonce generator using UTC milliseconds
+- tests/TradePilot.Infrastructure.Tests/Services/HyperliquidEip712Tests.cs: Added unit tests for typed-data construction and action hash behavior
+- tests/TradePilot.Infrastructure.Tests/Services/NonceProviderTests.cs: Added unit tests for sequential and concurrent nonce uniqueness/monotonicity
 
 <!-- Phase 2: Order Placement Backend -->
-- src/TradingApp.Api/Models/PlaceOrderRequest.cs: Added order placement request DTO with validation attributes
-- src/TradingApp.Api/Models/PlaceOrderResponse.cs: Added order placement response DTO
-- src/TradingApp.Api/Models/TestSignResponse.cs: Added test-sign diagnostic response DTO including signature fields
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidExchangeResponse.cs: Added typed wire models for Hyperliquid exchange response payloads
-- src/TradingApp.Api/Services/IHyperliquidOrderService.cs: Added order service interface contract
-- src/TradingApp.Api/Services/HyperliquidOrderService.cs: Added order orchestration service for action building, signing, submission, mapping, and latency logging
-- src/TradingApp.Api/Controllers/OrdersController.cs: Added orders API controller with POST endpoints for place-order and test-sign
-- tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Added unit tests for order service behavior and error paths
-- tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs: Added integration tests for OrdersController endpoints and validation/error mapping
+- src/TradePilot.Api/Models/PlaceOrderRequest.cs: Added order placement request DTO with validation attributes
+- src/TradePilot.Api/Models/PlaceOrderResponse.cs: Added order placement response DTO
+- src/TradePilot.Api/Models/TestSignResponse.cs: Added test-sign diagnostic response DTO including signature fields
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidExchangeResponse.cs: Added typed wire models for Hyperliquid exchange response payloads
+- src/TradePilot.Api/Services/IHyperliquidOrderService.cs: Added order service interface contract
+- src/TradePilot.Api/Services/HyperliquidOrderService.cs: Added order orchestration service for action building, signing, submission, mapping, and latency logging
+- src/TradePilot.Api/Controllers/OrdersController.cs: Added orders API controller with POST endpoints for place-order and test-sign
+- tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Added unit tests for order service behavior and error paths
+- tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs: Added integration tests for OrdersController endpoints and validation/error mapping
 
 <!-- Phase 3: Angular Order Entry UI -->
 - frontend/trading-ui/src/app/core/models/place-order.model.ts: Added request/response/signature interfaces for order placement and test-sign payloads
@@ -42,16 +42,16 @@ Implements end-to-end order placement on Hyperliquid testnet via Angular UI → 
 ### Modified
 
 <!-- Phase 1: EIP-712 Signing & Nonce Infrastructure -->
-- src/TradingApp.Infrastructure/TradingApp.Infrastructure.csproj: Added MessagePack and Nethereum.ABI package references
-- src/TradingApp.Application/TradingApp.Application.csproj: Added Nethereum.ABI package reference
-- src/TradingApp.Application/Abstractions/Services/IHyperliquidSigner.cs: Added generic typed-data signing method contract
-- src/TradingApp.Infrastructure/Services/HyperliquidSigner.cs: Retained EthECKey instance and implemented typed-data signing
-- tests/TradingApp.Infrastructure.Tests/Services/HyperliquidSignerTests.cs: Added typed-data signing tests for signature shape and determinism
+- src/TradePilot.Infrastructure/TradePilot.Infrastructure.csproj: Added MessagePack and Nethereum.ABI package references
+- src/TradePilot.Application/TradePilot.Application.csproj: Added Nethereum.ABI package reference
+- src/TradePilot.Application/Abstractions/Services/IHyperliquidSigner.cs: Added generic typed-data signing method contract
+- src/TradePilot.Infrastructure/Services/HyperliquidSigner.cs: Retained EthECKey instance and implemented typed-data signing
+- tests/TradePilot.Infrastructure.Tests/Services/HyperliquidSignerTests.cs: Added typed-data signing tests for signature shape and determinism
 
 <!-- Phase 2: Order Placement Backend -->
-- src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs: Added PostExchangeAsync generic method to REST abstraction
-- src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs: Implemented PostExchangeAsync transport for signed exchange actions
-- src/TradingApp.Api/Program.cs: Registered INonceProvider as singleton and IHyperliquidOrderService as scoped
+- src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs: Added PostExchangeAsync generic method to REST abstraction
+- src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs: Implemented PostExchangeAsync transport for signed exchange actions
+- src/TradePilot.Api/Program.cs: Registered INonceProvider as singleton and IHyperliquidOrderService as scoped
 
 <!-- Phase 3: Angular Order Entry UI -->
 - frontend/trading-ui/src/app/app.routes.ts: Added lazy-loaded /order-entry route
@@ -65,15 +65,15 @@ Implements end-to-end order placement on Hyperliquid testnet via Angular UI → 
 ## Test Results
 
 <!-- Phase 1: EIP-712 Signing & Nonce Infrastructure -->
-- TradingApp.Infrastructure.Tests: 22/22 passed
-- TradingApp.Api.Tests: 19/19 passed
-- TradingApp.Application.Tests: 0/0 discovered
-- TradingApp.Domain.Tests: 0/0 discovered
+- TradePilot.Infrastructure.Tests: 22/22 passed
+- TradePilot.Api.Tests: 19/19 passed
+- TradePilot.Application.Tests: 0/0 discovered
+- TradePilot.Domain.Tests: 0/0 discovered
 
 <!-- Phase 2: Order Placement Backend -->
 - HyperliquidOrderServiceTests + OrdersControllerTests (targeted): 9/9 passed
-- TradingApp.Infrastructure.Tests: 22/22 passed
-- TradingApp.Api.Tests: 28/28 passed
+- TradePilot.Infrastructure.Tests: 22/22 passed
+- TradePilot.Api.Tests: 28/28 passed
 
 <!-- Phase 3: Angular Order Entry UI -->
 - Angular Build (npx ng build): PASSED

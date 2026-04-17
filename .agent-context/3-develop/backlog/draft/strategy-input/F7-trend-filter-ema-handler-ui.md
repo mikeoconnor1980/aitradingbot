@@ -149,7 +149,7 @@ Signal-mode strategies from F5/F6 can evaluate RSI conditions but have no trend 
 
 ### Bounded Contexts
 
-Evaluation logic lives in **TradingApp.Application** (condition evaluator, handlers, trend filter evaluator). Indicator calculation in **TradingApp.Domain** or shared infrastructure. UI components in **frontend/trading-ui** strategy builder module.
+Evaluation logic lives in **TradePilot.Application** (condition evaluator, handlers, trend filter evaluator). Indicator calculation in **TradePilot.Domain** or shared infrastructure. UI components in **frontend/trading-ui** strategy builder module.
 
 ### Integration Events (if relevant)
 

@@ -19,7 +19,7 @@ Add a new `SignalEntry` value to the `TradeType` enum so signal-mode entry fills
 - **Complexity**: Low
 - **Risk Factors**: Enum addition is additive; existing `switch` statements that don't handle it will fall through to `default` — verify no `default: throw` patterns exist
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/TradeType.cs` — modification
+  - `src/TradePilot.Application/Trading/Models/TradeType.cs` — modification
 - **Success**:
   - `TradeType.SignalEntry` exists and compiles
   - No existing code breaks (all `switch` statements handle the new value gracefully or have no `default: throw`)
@@ -28,8 +28,8 @@ Add a new `SignalEntry` value to the `TradeType` enum so signal-mode entry fills
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/TradeType.cs — modification
-namespace TradingApp.Application.Trading.Models;
+// src/TradePilot.Application/Trading/Models/TradeType.cs — modification
+namespace TradePilot.Application.Trading.Models;
 
 public enum TradeType
 {
@@ -43,7 +43,7 @@ public enum TradeType
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/TradeType.cs` — existing enum with 4 values
+- `src/TradePilot.Application/Trading/Models/TradeType.cs` — existing enum with 4 values
 
 ### Task 3.2: Add `OpenPosition` signal handling in `BacktestPositionManager` {#task-32-add-openposition-signal-handling}
 
@@ -52,7 +52,7 @@ Add a new `case "OpenPosition"` branch in `BacktestPositionManager.ExecuteSignal
 - **Complexity**: Medium
 - **Risk Factors**: Must use `TradeType.SignalEntry` (not `GridFill`) so trade pairing works correctly; must handle `TakeProfit` signals for signal-mode exits (already handled by existing `PlaceTakeProfitAsync`)
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — modification
+  - `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — modification
 - **Success**:
   - `OpenPosition` signal places a market order via `SimulatedExecutionEngine` with `TradeType.SignalEntry`
   - Existing `DeployGrid`, `TakeProfit`, `CancelGrid` handling unchanged
@@ -62,7 +62,7 @@ Add a new `case "OpenPosition"` branch in `BacktestPositionManager.ExecuteSignal
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs — modification
+// src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs — modification
 
 // Add new case in ExecuteSignalsAsync switch statement:
         foreach (var signal in approvedSignals)
@@ -125,8 +125,8 @@ Add a new `case "OpenPosition"` branch in `BacktestPositionManager.ExecuteSignal
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — `DeployGridAsync` method (market order placement pattern), `PlaceAndLogOrderAsync` helper, `GetDecimal` / `GetString` parameter accessors
-- `src/TradingApp.Application/Trading/Models/OrderRequest.cs` — `OrderRequest` shape
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — `DeployGridAsync` method (market order placement pattern), `PlaceAndLogOrderAsync` helper, `GetDecimal` / `GetString` parameter accessors
+- `src/TradePilot.Application/Trading/Models/OrderRequest.cs` — `OrderRequest` shape
 
 ### Task 3.3: Update `BacktestRunner.RecordFill` and `IsCompatibleExit` for `SignalEntry` to `TakeProfit` pairing {#task-33-update-recordfill-and-iscompatibleexit}
 
@@ -135,7 +135,7 @@ Update the `RecordFill` and `IsCompatibleExit` methods in `BacktestRunner` to ha
 - **Complexity**: Medium
 - **Risk Factors**: `RecordFill` uses `is TradeType.GridFill or TradeType.HedgeOpen` pattern for entries — must add `SignalEntry`. `IsCompatibleExit` must pair `SignalEntry` with `TakeProfit`. `ApplyGridFillState` must not crash on the new enum value.
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — modification (3 methods)
+  - `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — modification (3 methods)
 - **Success**:
   - `SignalEntry` fills are recorded as open trades in the trade log
   - `TakeProfit` fills correctly close `SignalEntry` trades (FIFO pairing)
@@ -146,7 +146,7 @@ Update the `RecordFill` and `IsCompatibleExit` methods in `BacktestRunner` to ha
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs — modification
+// src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs — modification
 
 // 1. Update RecordFill — add SignalEntry to the entry-trade guard:
 // BEFORE:
@@ -179,7 +179,7 @@ Update the `RecordFill` and `IsCompatibleExit` methods in `BacktestRunner` to ha
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — `RecordFill` (line ~310), `IsCompatibleExit` (line ~450), `ApplyGridFillState` (line ~465)
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — `RecordFill` (line ~310), `IsCompatibleExit` (line ~450), `ApplyGridFillState` (line ~465)
 
 ### Task 3.4: Update `BacktestRunner` to pass `ISignalController` into `StrategyScheduler` {#task-34-update-backtestrunner-to-pass-isignalcontroller}
 
@@ -188,9 +188,9 @@ Update `BacktestRunner` to accept `ISignalController` via constructor injection 
 - **Complexity**: Medium
 - **Risk Factors**: Constructor change to `BacktestRunner` requires updating DI registration and test setup
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — modification
-  - `src/TradingApp.Api/Program.cs` — modification (if `BacktestRunner` is DI-registered)
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — modification (update `Setup()` to add `Mock<ISignalController>` and pass to constructor)
+  - `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — modification
+  - `src/TradePilot.Api/Program.cs` — modification (if `BacktestRunner` is DI-registered)
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — modification (update `Setup()` to add `Mock<ISignalController>` and pass to constructor)
 - **Important**: Existing `BacktestRunnerTests.Setup()` constructs `BacktestRunner` with 7 parameters. Adding the required `ISignalController` parameter will break compilation. The test setup must be updated to: (1) add a `Mock<ISignalController>` field, (2) pass `.Object` as the 8th constructor parameter, (3) update the `IMarketContextBuilder` mock to also handle the 4-arg `Build` overload (since Phase 1 changed the scheduler to always call 4-arg).
 - **Success**:
   - `BacktestRunner` passes `ISignalController` to `StrategyScheduler` constructor
@@ -201,7 +201,7 @@ Update `BacktestRunner` to accept `ISignalController` via constructor injection 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs — modification
+// src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs — modification
 
 // Add field:
     private readonly ISignalController _signalController;
@@ -245,8 +245,8 @@ Update `BacktestRunner` to accept `ISignalController` via constructor injection 
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — existing constructor pattern (line ~28), `StrategyScheduler` construction (line ~70)
-- `src/TradingApp.Api/Program.cs` — DI registration pattern
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — existing constructor pattern (line ~28), `StrategyScheduler` construction (line ~70)
+- `src/TradePilot.Api/Program.cs` — DI registration pattern
 
 ### Task 3.5: Add `BacktestPositionManager` tests for `OpenPosition` signal handling {#task-35-add-backtestpositionmanager-openposition-tests}
 
@@ -255,7 +255,7 @@ Add tests to verify that `BacktestPositionManager` correctly handles `OpenPositi
 - **Complexity**: Medium
 - **Risk Factors**: Need to mock `SimulatedExecutionEngine` via `BacktestExecutionContextAccessor` — follow existing test patterns
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/BacktestPositionManagerTests.cs` — new or modification (check if exists)
+  - `tests/TradePilot.Application.Tests/Trading/Services/BacktestPositionManagerTests.cs` — new or modification (check if exists)
 - **Success**:
   - Test verifies `OpenPosition` signal places a market buy order with `TradeType.SignalEntry`
   - Test verifies `OpenPosition` signal with zero size does not place an order
@@ -266,7 +266,7 @@ Add tests to verify that `BacktestPositionManager` correctly handles `OpenPositi
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/BacktestPositionManagerTests.cs — new file or modification
+// tests/TradePilot.Application.Tests/Trading/Services/BacktestPositionManagerTests.cs — new file or modification
 
 [TestClass]
 public sealed class BacktestPositionManagerTests
@@ -345,8 +345,8 @@ public sealed class BacktestPositionManagerTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — `BacktestExecutionContextAccessor` usage, `SimulatedExecutionEngine` construction with `FeeModel`
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — `ExecuteSignalsAsync` method
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — `BacktestExecutionContextAccessor` usage, `SimulatedExecutionEngine` construction with `FeeModel`
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — `ExecuteSignalsAsync` method
 
 ### Task 3.6: Add end-to-end backtest test for signal-mode strategy {#task-36-add-e2e-backtest-signal-mode-test}
 
@@ -355,7 +355,7 @@ Add a backtest test that verifies a signal-mode strategy with RSI conditions can
 - **Complexity**: High
 - **Risk Factors**: Requires mocking `ICandleRepository` with sufficient candle history for RSI(14) warmup; must verify trade log contains at least one completed trade
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — modification
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — modification
 - **Success**:
   - Signal-mode backtest with passing RSI conditions records at least one `SignalEntry` trade
   - Signal-mode backtest with non-passing RSI conditions records zero trades
@@ -366,7 +366,7 @@ Add a backtest test that verifies a signal-mode strategy with RSI conditions can
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs — modification
+// tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs — modification
 // Add new test methods:
 
     [TestMethod]
@@ -460,7 +460,7 @@ Note: The implementing agent will need to adapt the candle data setup helpers (`
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — existing backtest test structure, `BacktestConfig` construction, candle data setup via `ICandleRepository` mock
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — existing backtest test structure, `BacktestConfig` construction, candle data setup via `ICandleRepository` mock
 
 ### Task 3.7: Run full test suite to verify no regression {#task-37-run-full-test-suite}
 

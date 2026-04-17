@@ -1,9 +1,9 @@
-# TradingApp Execution Agent
+# TradePilot Execution Agent
 
 A Windows Service that executes trading strategies on Hyperliquid.  
 Your private key **never leaves this machine** — all order signing happens locally.
 
-The agent connects to the TradingApp API (control plane) via periodic heartbeats,
+The agent connects to the TradePilot API (control plane) via periodic heartbeats,
 picks up commands (Start / Stop / PlaceOrder / Cancel) from the dashboard,
 and reports order results back. Trading sessions are started and stopped on-demand.
 
@@ -17,8 +17,8 @@ From the repo root, run:
 
 This publishes a self-contained single-file executable (`win-x64`) and produces:
 
-- **Inno Setup installer** (`artifacts/installer/TradingApp-ExecutionAgent-v{version}-Setup.exe`) — recommended for clients
-- **ZIP archive** (`artifacts/installer/TradingApp-ExecutionAgent-v{version}-win-x64.zip`) — manual install fallback
+- **Inno Setup installer** (`artifacts/installer/TradePilot-ExecutionAgent-v{version}-Setup.exe`) — recommended for clients
+- **ZIP archive** (`artifacts/installer/TradePilot-ExecutionAgent-v{version}-win-x64.zip`) — manual install fallback
 - **SHA256 hash** (`.sha256` file alongside the installer EXE)
 
 Options:
@@ -33,9 +33,9 @@ Install via `winget install JRSoftware.InnoSetup`.
 
 ## Quick Install (Recommended)
 
-Double-click `TradingApp-ExecutionAgent-v{version}-Setup.exe` and follow the wizard:
+Double-click `TradePilot-ExecutionAgent-v{version}-Setup.exe` and follow the wizard:
 
-1. Accept the install location (default: `C:\Program Files\TradingApp\ExecutionAgent`)
+1. Accept the install location (default: `C:\Program Files\TradePilot\ExecutionAgent`)
 2. Enter your Hyperliquid private key when prompted (skipped on upgrade if already set)
 3. Click **Install**
 
@@ -46,7 +46,7 @@ The Windows Service registers automatically with delayed-auto start and failure 
 For automated deployments or auto-update:
 
 ```powershell
-.\TradingApp-ExecutionAgent-v0.1.0-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+.\TradePilot-ExecutionAgent-v0.1.0-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
 ```
 
 ### Manual Install (PowerShell)
@@ -63,14 +63,14 @@ If Inno Setup is not available, extract the ZIP and run:
 
 | Item | Location |
 |------|----------|
-| Service executable | `C:\Program Files\TradingApp\ExecutionAgent\` |
-| Configuration | `C:\Program Files\TradingApp\ExecutionAgent\appsettings.json` |
-| SQLite database | `C:\Program Files\TradingApp\ExecutionAgent\data\` |
-| Logs directory | `C:\Program Files\TradingApp\ExecutionAgent\logs\` |
+| Service executable | `C:\Program Files\TradePilot\ExecutionAgent\` |
+| Configuration | `C:\Program Files\TradePilot\ExecutionAgent\appsettings.json` |
+| SQLite database | `C:\Program Files\TradePilot\ExecutionAgent\data\` |
+| Logs directory | `C:\Program Files\TradePilot\ExecutionAgent\logs\` |
 | Private key | Machine environment variable `Hyperliquid__PrivateKey` |
 
-**Service name:** `TradingApp.ExecutionAgent`  
-**Display name:** `TradingApp Execution Agent`
+**Service name:** `TradePilot.ExecutionAgent`  
+**Display name:** `TradePilot Execution Agent`
 
 ## Configuration
 
@@ -129,12 +129,12 @@ The live risk engine enforces these limits before any order is submitted:
 
 ### Logging
 
-Event Log writes go to the `Application` log under source `TradingApp.ExecutionAgent`.
+Event Log writes go to the `Application` log under source `TradePilot.ExecutionAgent`.
 
 After editing configuration, restart the service:
 
 ```powershell
-Restart-Service -Name 'TradingApp.ExecutionAgent'
+Restart-Service -Name 'TradePilot.ExecutionAgent'
 ```
 
 ## Architecture
@@ -155,15 +155,15 @@ Strategy configuration (market, timeframe, grid parameters) is delivered by the 
 
 ```powershell
 # Check status
-Get-Service -Name 'TradingApp.ExecutionAgent'
+Get-Service -Name 'TradePilot.ExecutionAgent'
 
 # View recent logs
-Get-EventLog -LogName Application -Source 'TradingApp.ExecutionAgent' -Newest 20
+Get-EventLog -LogName Application -Source 'TradePilot.ExecutionAgent' -Newest 20
 
 # Stop / Start / Restart
-Stop-Service -Name 'TradingApp.ExecutionAgent'
-Start-Service -Name 'TradingApp.ExecutionAgent'
-Restart-Service -Name 'TradingApp.ExecutionAgent'
+Stop-Service -Name 'TradePilot.ExecutionAgent'
+Start-Service -Name 'TradePilot.ExecutionAgent'
+Restart-Service -Name 'TradePilot.ExecutionAgent'
 ```
 
 ## Uninstall

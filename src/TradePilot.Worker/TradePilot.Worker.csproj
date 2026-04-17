@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <UserSecretsId>dotnet-TradePilot.Worker-db0632c8-0882-4121-b1a9-e1d6aa94d7d1</UserSecretsId>
+    <AssemblyName>TradePilot.ExecutionAgent</AssemblyName>
+    <Description>TradePilot Execution Agent — client-side Windows Service that executes trades on Hyperliquid</Description>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TradePilot.Worker.Tests" />
+  </ItemGroup>
+
+  <!-- Publish settings: self-contained single-file for client deployment -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishTrimmed>false</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TradePilot.AI\TradePilot.AI.csproj" />
+    <ProjectReference Include="..\TradePilot.Application\TradePilot.Application.csproj" />
+    <ProjectReference Include="..\TradePilot.Infrastructure\TradePilot.Infrastructure.csproj" />
+    <ProjectReference Include="..\TradePilot.Persistence\TradePilot.Persistence.csproj" />
+  </ItemGroup>
+</Project>

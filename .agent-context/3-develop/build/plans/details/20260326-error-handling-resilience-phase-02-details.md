@@ -24,24 +24,24 @@ Add the `Microsoft.Extensions.Http.Resilience` NuGet package and configure a ret
 - **Complexity**: Medium
 - **Risk Factors**: Polly retry wraps the `HttpClient`/`DelegatingHandler` pipeline — the retry happens transparently before `PostInfoAsync`/`PostExchangeAsync` sees the response. If all retries are exhausted, the final response is returned normally and the REST client throws as before. Must verify the 5-second timeout on `HttpClient` is per-attempt (it is by default with the resilience handler).
 - **Files**:
-  - `src/TradingApp.Api/TradingApp.Api.csproj` — Modify: add `Microsoft.Extensions.Http.Resilience` package reference
-  - `src/TradingApp.Api/Program.cs` — Modify: add `.AddResilienceHandler()` to the `AddHttpClient<>` registration
+  - `src/TradePilot.Api/TradePilot.Api.csproj` — Modify: add `Microsoft.Extensions.Http.Resilience` package reference
+  - `src/TradePilot.Api/Program.cs` — Modify: add `.AddResilienceHandler()` to the `AddHttpClient<>` registration
 - **Success**:
   - `Microsoft.Extensions.Http.Resilience` package is referenced
   - Retry pipeline configured: retry on 429 and 5xx, exponential backoff (1s initial, 60s max), max 5 attempts
   - Retry attempts are logged automatically by the resilience pipeline
-  - `dotnet build TradingApp.sln` succeeds
+  - `dotnet build TradePilot.sln` succeeds
 - **Dependencies**: Phase 1 completed
 
 #### Implementation Details
 
 ```xml
-<!-- src/TradingApp.Api/TradingApp.Api.csproj — add package reference -->
+<!-- src/TradePilot.Api/TradePilot.Api.csproj — add package reference -->
 <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="9.*" />
 ```
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modification
+// src/TradePilot.Api/Program.cs — modification
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 
@@ -84,7 +84,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — Current `AddHttpClient<>` registration with 5s timeout, no resilience handler
+- `src/TradePilot.Api/Program.cs` — Current `AddHttpClient<>` registration with 5s timeout, no resilience handler
 
 ---
 
@@ -95,7 +95,7 @@ Update `PostInfoAsync` and `PostExchangeAsync` to throw typed `HyperliquidApiExc
 - **Complexity**: Medium
 - **Risk Factors**: `HttpRequestException` is still thrown by the `HttpClient` itself (e.g., DNS failure, timeout) — those must continue propagating as-is. Only replace the exceptions we explicitly throw after reading the response status code.
 - **Files**:
-  - `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Modify: replace `HttpRequestException` throws with typed exceptions after checking status code
+  - `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Modify: replace `HttpRequestException` throws with typed exceptions after checking status code
 - **Success**:
   - 429 responses throw `RateLimitException` (after Polly retries are exhausted)
   - 4xx responses throw `HyperliquidApiException` with the exchange error message
@@ -107,7 +107,7 @@ Update `PostInfoAsync` and `PostExchangeAsync` to throw typed `HyperliquidApiExc
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs — modification to PostInfoAsync
+// src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs — modification to PostInfoAsync
 // Replace the existing non-success handling block:
 if (!response.IsSuccessStatusCode)
 {
@@ -133,7 +133,7 @@ if (!response.IsSuccessStatusCode)
 ```
 
 ```csharp
-// src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs — modification to PostExchangeAsync
+// src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs — modification to PostExchangeAsync
 // Replace the existing non-success handling block:
 if (!response.IsSuccessStatusCode)
 {
@@ -159,12 +159,12 @@ if (!response.IsSuccessStatusCode)
 
 Add required `using` at top:
 ```csharp
-using TradingApp.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Exceptions;
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Current `PostInfoAsync` and `PostExchangeAsync` error handling
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Current `PostInfoAsync` and `PostExchangeAsync` error handling
 
 ---
 
@@ -175,7 +175,7 @@ Replace the fragile string-matching signing error detection with a catch for `Si
 - **Complexity**: Medium
 - **Risk Factors**: The string match `ex.Message.Contains("signature")` relies on Hyperliquid including "signature" in the error body. The new approach should detect signing errors at the point where we have the most context — either in the REST client (based on status code + error body analysis) or in the order service (wrapping the existing catch).
 - **Files**:
-  - `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — Modify: catch `HyperliquidApiException` and check for signing indicators, throw `SigningException`
+  - `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — Modify: catch `HyperliquidApiException` and check for signing indicators, throw `SigningException`
 - **Success**:
   - Signing rejections are caught and wrapped in `SigningException`
   - `SigningException` maps to a specific error message in the UI via the filter ("Signature rejected — check signing configuration")
@@ -185,7 +185,7 @@ Replace the fragile string-matching signing error detection with a catch for `Si
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Services/HyperliquidOrderService.cs — modification
+// src/TradePilot.Api/Services/HyperliquidOrderService.cs — modification
 // Replace the existing catch block:
 // catch (HttpRequestException ex) when (ex.Message.Contains("signature", StringComparison.OrdinalIgnoreCase))
 
@@ -208,7 +208,7 @@ Note: We keep the string-based detection but wrap it into a typed `SigningExcept
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — Current `HttpRequestException` string match for signing rejection
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — Current `HttpRequestException` string match for signing rejection
 
 ---
 
@@ -219,19 +219,19 @@ Add unit and integration tests for the new typed exceptions and verify the retry
 - **Complexity**: Medium
 - **Risk Factors**: Testing Polly retry behaviour in integration tests requires careful timing. Unit tests for typed exceptions are straightforward.
 - **Files**:
-  - `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Modify: update signing rejection test to use new exception type
-  - `tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs` — Verify: existing 503 tests still pass with `Envelope` shape (updated in Phase 1)
+  - `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Modify: update signing rejection test to use new exception type
+  - `tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs` — Verify: existing 503 tests still pass with `Envelope` shape (updated in Phase 1)
 - **Success**:
   - Signing rejection test asserts on `SigningException` being thrown
   - All existing tests pass
-  - `dotnet build TradingApp.sln` succeeds
+  - `dotnet build TradePilot.sln` succeeds
   - `dotnet test` passes for all test projects
 - **Dependencies**: Tasks 2.1–2.3
 
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs — modification
+// tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs — modification
 // Update the existing GivenSignatureRejection test:
 [TestMethod]
 public async Task GivenSignatureRejection_WhenPlaceOrderAsync_ThenThrowsSigningException()
@@ -260,8 +260,8 @@ public async Task GivenSignatureRejection_WhenPlaceOrderAsync_ThenThrowsSigningE
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Current signing rejection test pattern
-- `tests/TradingApp.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP simulation helper for potential pipeline tests
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Current signing rejection test pattern
+- `tests/TradePilot.Api.Tests/Infrastructure/FakeHttpMessageHandler.cs` — HTTP simulation helper for potential pipeline tests
 
 ## Phase Success Criteria
 
@@ -270,5 +270,5 @@ public async Task GivenSignatureRejection_WhenPlaceOrderAsync_ThenThrowsSigningE
 - REST client throws typed `HyperliquidApiException`/`RateLimitException` instead of generic `HttpRequestException`
 - Signing errors are wrapped in `SigningException`
 - All retry attempts are logged with attempt number, delay, and status code
-- `dotnet build TradingApp.sln` succeeds
+- `dotnet build TradePilot.sln` succeeds
 - `dotnet test` passes for all projects

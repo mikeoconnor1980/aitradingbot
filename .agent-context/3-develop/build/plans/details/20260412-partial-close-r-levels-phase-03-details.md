@@ -27,7 +27,7 @@ Extend `ProtectionOrderState` to track multiple TP trigger order IDs (one per R-
 - **Complexity**: Medium
 - **Risk Factors**: Must not break existing single-TP codepaths. `HasTakeProfit` check must work for both single and multi-TP.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/ProtectionOrderState.cs` — Add multi-TP tracking
+  - `src/TradePilot.Application/Trading/Models/ProtectionOrderState.cs` — Add multi-TP tracking
 - **Success**:
   - Can track N partial TP order IDs with their associated R-levels
   - `HasTakeProfit` returns `true` when any TP triggers are active
@@ -39,7 +39,7 @@ Extend `ProtectionOrderState` to track multiple TP trigger order IDs (one per R-
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/ProtectionOrderState.cs — modification
+// src/TradePilot.Application/Trading/Models/ProtectionOrderState.cs — modification
 
 public sealed class ProtectionOrderState
 {
@@ -91,7 +91,7 @@ public sealed record PartialTpOrder(
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/ProtectionOrderState.cs` — existing single-TP structure
+- `src/TradePilot.Application/Trading/Models/ProtectionOrderState.cs` — existing single-TP structure
 
 ### Task 3.2: Extend `TriggerOrderManager` to place partial TP triggers {#task-32-extend-triggerordermanager-for-partial-tp-triggers}
 
@@ -100,8 +100,8 @@ Modify `PlaceProtectionOrdersAsync` to place multiple TP trigger orders when `Ex
 - **Complexity**: High
 - **Risk Factors**: Must correctly calculate trigger price per tranche. Must handle the case where SL percent changes (ATR trailing) — all TP trigger prices depend on SL distance × R-multiple. Must handle existing single-TP mode when `PartialCloses` is null.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — Modify TP placement logic
-  - `src/TradingApp.Application/Abstractions/Services/ITriggerOrderManager.cs` — Update interface if signature changes
+  - `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — Modify TP placement logic
+  - `src/TradePilot.Application/Abstractions/Services/ITriggerOrderManager.cs` — Update interface if signature changes
 - **Success**:
   - When `PartialCloses` is configured: places N TP triggers (one per tranche) with fractional sizes
   - When `PartialCloses` is null: existing single-TP logic unchanged
@@ -157,7 +157,7 @@ private static decimal CalculateRMultipleTriggerPrice(
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — existing `PlaceProtectionOrdersAsync` and `CalculateTakeProfitPrice`
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — existing `PlaceProtectionOrdersAsync` and `CalculateTakeProfitPrice`
 
 ### Task 3.3: Extend `FillProcessor` for partial TP fill handling {#task-33-extend-fillprocessor-for-partial-tp-fills}
 
@@ -166,7 +166,7 @@ Currently, `FillProcessor` treats any TP fill as a full position close (lifecycl
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly distinguish partial vs full TP fills. Grid lifecycle transitions must only happen when position is fully exited.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/FillProcessor.cs` — Modify TP fill handling
+  - `src/TradePilot.Application/Trading/Services/FillProcessor.cs` — Modify TP fill handling
 - **Success**:
   - Partial TP fill: records fill, removes the specific TP order from `ProtectionOrderState`, does NOT transition lifecycle to Closed
   - Final TP fill (position size = 0): transitions lifecycle to Closed
@@ -195,7 +195,7 @@ if (remainingPosition.Size == 0)
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/FillProcessor.cs` — existing `ProcessTakeProfitFill` logic
+- `src/TradePilot.Application/Trading/Services/FillProcessor.cs` — existing `ProcessTakeProfitFill` logic
 
 ### Task 3.4: Update `TradingSession` fill callback for SL size adjustment {#task-34-update-tradingsession-fill-callback-for-sl-size-adjustment}
 
@@ -204,8 +204,8 @@ After a partial TP fill, the SL trigger order size must be reduced to match the 
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly update the SL trigger order via `ModifyTriggerOrderAsync`. Must handle race conditions between fill callback and next candle evaluation.
 - **Files**:
-  - `src/TradingApp.Worker/Services/TradingSession.cs` — Modify fill callback
-  - `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — Add `UpdateStopLossSizeAsync` method or extend `UpdateProtectionOrdersAsync`
+  - `src/TradePilot.Worker/Services/TradingSession.cs` — Modify fill callback
+  - `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — Add `UpdateStopLossSizeAsync` method or extend `UpdateProtectionOrdersAsync`
 - **Success**:
   - After partial TP fill, SL trigger order size is updated to remaining position size
   - `ModifyTriggerOrderAsync` called with new size and existing SL trigger price
@@ -243,8 +243,8 @@ public async Task UpdateStopLossSizeAsync(
 
 ##### Pattern References
 
-- `src/TradingApp.Worker/Services/TradingSession.cs` — existing fill callback
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — existing `ModifyTriggerOrderAsync` usage
+- `src/TradePilot.Worker/Services/TradingSession.cs` — existing fill callback
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — existing `ModifyTriggerOrderAsync` usage
 
 ### Task 3.5: Add unit tests for live partial close execution {#task-35-add-unit-tests-for-live-partial-close-execution}
 
@@ -253,9 +253,9 @@ Add tests for `TriggerOrderManager`, `FillProcessor`, and related components.
 - **Complexity**: Medium
 - **Risk Factors**: None
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/TriggerOrderManagerTests.cs` — Add or create tests
-  - `tests/TradingApp.Application.Tests/Trading/Services/FillProcessorTests.cs` — Add or create tests
-  - `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Add partial trigger tests if needed
+  - `tests/TradePilot.Application.Tests/Trading/Services/TriggerOrderManagerTests.cs` — Add or create tests
+  - `tests/TradePilot.Application.Tests/Trading/Services/FillProcessorTests.cs` — Add or create tests
+  - `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Add partial trigger tests if needed
 - **Success**:
   - Test: placing 3 partial TP triggers results in 3 `PlaceTriggerOrderAsync` calls with correct sizes
   - Test: removing a filled TP order from `ProtectionOrderState` by order ID
@@ -299,7 +299,7 @@ public async Task GivenPartialCloses_WhenPlacingProtection_ThenPlacesMultipleTpT
 
 ##### Pattern References
 
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — existing trigger order test patterns
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — existing trigger order test patterns
 
 ### Task 3.6: Run architecture tests {#task-36-run-architecture-tests}
 

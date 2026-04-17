@@ -3,6 +3,10 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 
 export type NotificationSeverity = "success" | "error" | "warning" | "info";
 
+/**
+ * Low-level snackbar toast service. Prefer {@link NotificationFacade} for all new code —
+ * it routes to both snackbar and the persistent notification panel.
+ */
 @Injectable({ providedIn: "root" })
 export class NotificationService {
   private readonly _snackBar = inject(MatSnackBar);

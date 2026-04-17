@@ -1,12 +1,12 @@
 import { HttpErrorResponse, HttpInterceptorFn } from "@angular/common/http";
 import { inject } from "@angular/core";
 import { catchError, throwError } from "rxjs";
-import { NotificationService } from "../services/notification.service";
+import { NotificationFacade } from "../services/notification-facade.service";
 import { extractErrorCode, formatErrorPayload } from "../utils/error-utils";
 import { SKIP_ERROR_NOTIFICATION } from "./http-context-tokens";
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const notifications = inject(NotificationService);
+  const notifications = inject(NotificationFacade);
 
   if (req.context.get(SKIP_ERROR_NOTIFICATION)) {
     return next(req);

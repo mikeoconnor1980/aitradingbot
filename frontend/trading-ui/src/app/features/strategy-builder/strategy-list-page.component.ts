@@ -10,7 +10,7 @@ import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { StrategySummaryDto } from "./models/strategy.model";
 import { StrategyApiService } from "./services/strategy-api.service";
@@ -26,7 +26,7 @@ export class StrategyListPageComponent implements OnInit {
   private readonly _router = inject(Router);
   private readonly _dialog = inject(MatDialog);
   private readonly _strategyApi = inject(StrategyApiService);
-  private readonly _notifications = inject(NotificationService);
+  private readonly _notifications = inject(NotificationFacade);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   public readonly displayedColumns = ["name", "market", "timeframe", "direction", "strategyMode", "createdAt", "updatedAt", "actions"];

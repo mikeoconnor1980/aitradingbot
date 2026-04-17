@@ -27,8 +27,8 @@ Replace the single-scalar `SetMacd`/`GetMacd` with separate methods for line, si
 - **Complexity**: Medium
 - **Risk Factors**: Must maintain backward compatibility — `GetMacd()` can continue to return the MACD line for existing callers. `IndicatorContextTests` needs updating.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — modification
-  - `tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs` — modification
+  - `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — modification
+  - `tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs` — modification
 - **Success**:
   - `SetMacd` stores line, signal, and histogram
   - `GetMacd` returns the MACD line (backward compatible)
@@ -109,21 +109,21 @@ Update existing `IndicatorContextTests` to use the new `SetMacd` signature and a
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — existing Set/Get pattern for RSI and EMA
-- `tests/TradingApp.Application.Tests/Trading/Models/IndicatorContextTests.cs` — existing test structure
+- `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — existing Set/Get pattern for RSI and EMA
+- `tests/TradePilot.Application.Tests/Trading/Models/IndicatorContextTests.cs` — existing test structure
 
 ---
 
 ### Task 3.2: Add Indicators Project Reference {#task-32-add-indicators-project-reference}
 
-Add `TradingApp.Indicators` as a project reference to `TradingApp.Application.csproj`.
+Add `TradePilot.Indicators` as a project reference to `TradePilot.Application.csproj`.
 
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/TradingApp.Application.csproj` — modification
+  - `src/TradePilot.Application/TradePilot.Application.csproj` — modification
 - **Success**:
-  - `TradingApp.Application` can reference `TradingApp.Indicators` types
+  - `TradePilot.Application` can reference `TradePilot.Indicators` types
   - No circular dependency
   - Solution builds
 - **Dependencies**: Phase 1 completed
@@ -131,31 +131,31 @@ Add `TradingApp.Indicators` as a project reference to `TradingApp.Application.cs
 #### Implementation Details
 
 ```xml
-<!-- src/TradingApp.Application/TradingApp.Application.csproj — modification -->
+<!-- src/TradePilot.Application/TradePilot.Application.csproj — modification -->
 <!-- Add to existing ItemGroup with ProjectReference -->
 <ItemGroup>
-  <ProjectReference Include="..\TradingApp.Domain\TradingApp.Domain.csproj" />
-  <ProjectReference Include="..\TradingApp.Indicators\TradingApp.Indicators.csproj" />
+  <ProjectReference Include="..\TradePilot.Domain\TradePilot.Domain.csproj" />
+  <ProjectReference Include="..\TradePilot.Indicators\TradePilot.Indicators.csproj" />
 </ItemGroup>
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/TradingApp.Application.csproj` — existing project reference pattern
+- `src/TradePilot.Application/TradePilot.Application.csproj` — existing project reference pattern
 
 ---
 
 ### Task 3.3: Refactor `BacktestMarketContextBuilder` {#task-33-refactor-backtestmarketcontextbuilder}
 
-Replace all private indicator calculation methods with calls to the new static calculators from `TradingApp.Indicators`. Remove the private methods.
+Replace all private indicator calculation methods with calls to the new static calculators from `TradePilot.Indicators`. Remove the private methods.
 
 - **Complexity**: Medium
 - **Risk Factors**: The adapter layer must correctly project `List<Candle>` to `IReadOnlyList<decimal>` (closes) and `IReadOnlyList<(decimal, decimal, decimal)>` (OHLC tuples for ATR). Algorithm changes (SMA-seeded EMA, Wilder-smoothed RSI/ATR) will produce different numeric values — this is intentional per the PBI.
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — modification
+  - `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — modification
 - **Success**:
   - All 5 private methods (`CalculateEma`, `CalculateRsi`, `CalculatePreviousRsi`, `CalculatePreviousEma`, `CalculateAtr`) are removed
-  - All calls delegate to `EmaCalculator`, `RsiCalculator`, `AtrCalculator` from `TradingApp.Indicators`
+  - All calls delegate to `EmaCalculator`, `RsiCalculator`, `AtrCalculator` from `TradePilot.Indicators`
   - `IndicatorSnapshot` values use the new calculators
   - Solution builds
 - **Dependencies**: Task 3.2
@@ -165,14 +165,14 @@ Replace all private indicator calculation methods with calls to the new static c
 **Important**: Verify the current file content matches the expected pre-refactor state before applying the full replacement. The current file has ~200 lines with 5 private calculation methods.
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs — full replacement
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Entities;
-using TradingApp.Indicators;
+// src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs — full replacement
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Entities;
+using TradePilot.Indicators;
 
-namespace TradingApp.Application.Trading.Services;
+namespace TradePilot.Application.Trading.Services;
 
 public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 {
@@ -289,8 +289,8 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — current file being refactored
-- `src/TradingApp.Indicators/EmaCalculator.cs`, `RsiCalculator.cs`, `AtrCalculator.cs`, `MacdCalculator.cs` — new calculator APIs
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — current file being refactored
+- `src/TradePilot.Indicators/EmaCalculator.cs`, `RsiCalculator.cs`, `AtrCalculator.cs`, `MacdCalculator.cs` — new calculator APIs
 
 ---
 
@@ -301,7 +301,7 @@ This task is covered within Task 3.3 (the `case "MACD":` branch is included in t
 - **Complexity**: Low (included in Task 3.3)
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — covered by Task 3.3
+  - `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — covered by Task 3.3
 - **Success**:
   - `case "MACD":` branch exists in `BuildIndicatorContext`
   - Uses `MacdCalculator.Calculate()` and calls `context.SetMacd()` with line, signal, histogram
@@ -317,7 +317,7 @@ Update `BacktestMarketContextBuilderIndicatorTests` to work with the refactored 
 - **Complexity**: Low
 - **Risk Factors**: Algorithm changes produce different numeric values. Existing tests only check non-null, so they should pass. If any assertion checks specific values, update them.
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — verification/modification
+  - `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — verification/modification
 - **Success**:
   - All existing `BacktestMarketContextBuilderIndicatorTests` pass
   - No changes needed if tests only assert structural properties (non-null)
@@ -335,7 +335,7 @@ No changes expected to the test file itself. This task is primarily a verificati
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — current test file
+- `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — current test file
 
 ---
 
@@ -346,7 +346,7 @@ Add a test that verifies `BacktestMarketContextBuilder` correctly populates MACD
 - **Complexity**: Medium
 - **Risk Factors**: Need enough candles for MACD warmup (~35+ for standard 12/26/9)
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — modification
+  - `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — modification
 - **Success**:
   - New test verifies MACD line, signal, and histogram are non-null
   - New test verifies histogram = line - signal
@@ -356,7 +356,7 @@ Add a test that verifies `BacktestMarketContextBuilder` correctly populates MACD
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs — addition
+// tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs — addition
 
 [TestMethod]
 public void GivenMacdRequirement_WhenBuild_ThenMacdValuesArePopulated()
@@ -425,7 +425,7 @@ public void GivenMacdRequirement_WhenBuild_ThenPreviousMacdValuesArePopulated()
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — existing test structure with `CreateCandles` helper
+- `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — existing test structure with `CreateCandles` helper
 
 ---
 
@@ -437,8 +437,8 @@ Build the full solution and run ALL tests to verify Phase 3 changes and ensure n
 - **Risk Factors**: Algorithm corrections (EMA, RSI, ATR) change numeric outputs. Existing tests that check structural properties (non-null) should still pass. Any test pinning specific indicator values will need updating.
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln --configuration Release` succeeds with no errors
-  - `dotnet test TradingApp.sln --configuration Release --no-build` — ALL tests pass across ALL projects
+  - `dotnet build TradePilot.sln --configuration Release` succeeds with no errors
+  - `dotnet test TradePilot.sln --configuration Release --no-build` — ALL tests pass across ALL projects
   - Zero test failures
 - **Dependencies**: Tasks 3.1–3.6
 
@@ -446,8 +446,8 @@ Build the full solution and run ALL tests to verify Phase 3 changes and ensure n
 
 - `IndicatorContext` exposes MACD line, signal, and histogram via `GetMacd()`, `GetMacdSignal()`, `GetMacdHistogram()` (+ previous variants)
 - `BacktestMarketContextBuilder` has zero private indicator calculation methods
-- `BacktestMarketContextBuilder` uses `EmaCalculator`, `RsiCalculator`, `AtrCalculator`, `MacdCalculator` from `TradingApp.Indicators`
+- `BacktestMarketContextBuilder` uses `EmaCalculator`, `RsiCalculator`, `AtrCalculator`, `MacdCalculator` from `TradePilot.Indicators`
 - MACD case added to `BuildIndicatorContext` switch
 - All existing tests pass (structural assertions unaffected by algorithm corrections)
 - New MACD integration tests pass
-- Full solution builds and all tests pass: `dotnet build TradingApp.sln && dotnet test TradingApp.sln`
+- Full solution builds and all tests pass: `dotnet build TradePilot.sln && dotnet test TradePilot.sln`

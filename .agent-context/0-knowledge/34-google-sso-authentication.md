@@ -26,10 +26,10 @@ The Google auth flow reuses the existing JWT infrastructure entirely — once a 
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| `GoogleTokenValidator` | `src/TradingApp.Infrastructure/Services/GoogleTokenValidator.cs` | Validates Google ID tokens using `Google.Apis.Auth` |
-| `IGoogleTokenValidator` | `src/TradingApp.Application/Abstractions/Auth/IGoogleTokenValidator.cs` | Interface + `GoogleUserInfo` record |
-| `GoogleAuthOptions` | `src/TradingApp.Application/Abstractions/Auth/GoogleAuthOptions.cs` | Config binding for `Google:ClientId` |
-| `AuthController.GoogleSignIn` | `src/TradingApp.Api/Controllers/AuthController.cs` | `POST /api/auth/google` endpoint |
+| `GoogleTokenValidator` | `src/TradePilot.Infrastructure/Services/GoogleTokenValidator.cs` | Validates Google ID tokens using `Google.Apis.Auth` |
+| `IGoogleTokenValidator` | `src/TradePilot.Application/Abstractions/Auth/IGoogleTokenValidator.cs` | Interface + `GoogleUserInfo` record |
+| `GoogleAuthOptions` | `src/TradePilot.Application/Abstractions/Auth/GoogleAuthOptions.cs` | Config binding for `Google:ClientId` |
+| `AuthController.GoogleSignIn` | `src/TradePilot.Api/Controllers/AuthController.cs` | `POST /api/auth/google` endpoint |
 | `GoogleAuthService` | `frontend/trading-ui/src/app/core/services/google-auth.service.ts` | Wraps GIS SDK `initialize()` and `renderButton()` |
 | `AuthService.googleSignIn()` | `frontend/trading-ui/src/app/core/services/auth.service.ts` | POSTs Google ID token to backend |
 
@@ -137,7 +137,7 @@ export const environment = {
 
 ### Step 4: Configure the Application
 
-1. **Backend** — open `src/TradingApp.Api/appsettings.Development.json`:
+1. **Backend** — open `src/TradePilot.Api/appsettings.Development.json`:
    ```json
    {
      "Google": {
@@ -164,12 +164,12 @@ export const environment = {
 Run the EF Core migration to add the new columns to the Users table:
 
 ```bash
-dotnet ef database update --project src/TradingApp.Persistence --startup-project src/TradingApp.Api
+dotnet ef database update --project src/TradePilot.Persistence --startup-project src/TradePilot.Api
 ```
 
 ### Step 6: Verify
 
-1. Start the API: `dotnet run --project src/TradingApp.Api`
+1. Start the API: `dotnet run --project src/TradePilot.Api`
 2. Start the UI: `cd frontend/trading-ui && ng serve`
 3. Navigate to `http://localhost:4200/login`
 4. The Google "Sign in with Google" button should appear below the login form

@@ -125,7 +125,7 @@ The PRD assumption (A-4) states that shared market data and per-wallet events ma
 
 ### Jobs
 
-The user event WebSocket listener runs as a background task within the `TradingApp.Worker` project, managed alongside the existing market data WebSocket from F4.
+The user event WebSocket listener runs as a background task within the `TradePilot.Worker` project, managed alongside the existing market data WebSocket from F4.
 
 ---
 

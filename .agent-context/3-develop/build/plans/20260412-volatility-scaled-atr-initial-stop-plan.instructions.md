@@ -60,19 +60,19 @@ As a **trader**, I want **my initial stop-loss distance to adapt to current mark
 
 ### Project Patterns
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleType.cs` - Enum to extend with `AtrInitial`
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` - Config record, add `AtrPeriod` field
-- `src/TradingApp.Application/Trading/Services/StopLossDistanceResolver.cs` - SL% resolver, add `AtrInitial` case
-- `src/TradingApp.Application/Trading/Services/GridController.cs` - Grid exit evaluation, add `AtrInitial` branch
-- `src/TradingApp.Application/Trading/Services/SignalController.cs` - Signal exit evaluation, add `AtrInitial` branch
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` - Exchange trigger orders, add `AtrInitial` case
-- `src/TradingApp.Application/Trading/Models/GridState.cs` - Grid state, add `AtrAtEntry` field
-- `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` - Validation, extend for `AtrInitial`
-- `src/TradingApp.Application/Optimization/Models/ParameterBounds.cs` - Optimizer bounds, add ATR fields
-- `src/TradingApp.Application/Optimization/Services/StrategyConfigGenerator.cs` - Config generator, add `AtrInitial` support
-- `tests/TradingApp.Application.Tests/Trading/Services/TriggerOrderManagerTests.cs` - Test pattern for SL calculations
-- `tests/TradingApp.Application.Tests/Trading/Services/PositionSizeResolverTests.cs` - Test pattern for sizing
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` - Test pattern for grid lifecycle
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleType.cs` - Enum to extend with `AtrInitial`
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` - Config record, add `AtrPeriod` field
+- `src/TradePilot.Application/Trading/Services/StopLossDistanceResolver.cs` - SL% resolver, add `AtrInitial` case
+- `src/TradePilot.Application/Trading/Services/GridController.cs` - Grid exit evaluation, add `AtrInitial` branch
+- `src/TradePilot.Application/Trading/Services/SignalController.cs` - Signal exit evaluation, add `AtrInitial` branch
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` - Exchange trigger orders, add `AtrInitial` case
+- `src/TradePilot.Application/Trading/Models/GridState.cs` - Grid state, add `AtrAtEntry` field
+- `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` - Validation, extend for `AtrInitial`
+- `src/TradePilot.Application/Optimization/Models/ParameterBounds.cs` - Optimizer bounds, add ATR fields
+- `src/TradePilot.Application/Optimization/Services/StrategyConfigGenerator.cs` - Config generator, add `AtrInitial` support
+- `tests/TradePilot.Application.Tests/Trading/Services/TriggerOrderManagerTests.cs` - Test pattern for SL calculations
+- `tests/TradePilot.Application.Tests/Trading/Services/PositionSizeResolverTests.cs` - Test pattern for sizing
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` - Test pattern for grid lifecycle
 
 ### [x] Phase 1: Domain Model, Configuration & Validation
 

@@ -13,8 +13,8 @@ All three phases completed for backend trigger-order support, frontend order-ent
 ### Added
 
 <!-- Phase 1: Backend — Trigger Order Infrastructure & API -->
-- src/TradingApp.Api/Models/PlaceTriggerOrderRequest.cs: Added standalone trigger-order placement request model with DataAnnotations validation.
-- src/TradingApp.Api/Models/ModifyTriggerOrderDto.cs: Added trigger-order modification DTO with DataAnnotations validation.
+- src/TradePilot.Api/Models/PlaceTriggerOrderRequest.cs: Added standalone trigger-order placement request model with DataAnnotations validation.
+- src/TradePilot.Api/Models/ModifyTriggerOrderDto.cs: Added trigger-order modification DTO with DataAnnotations validation.
 
 <!-- Phase 3: Frontend — Positions Table SL/TP Management -->
 - frontend/trading-ui/src/app/core/models/trigger-order.model.ts: Added trigger-order request and modify model types for the new orders trigger API calls.
@@ -25,18 +25,18 @@ All three phases completed for backend trigger-order support, frontend order-ent
 ### Modified
 
 <!-- Phase 1: Backend — Trigger Order Infrastructure & API -->
-- src/TradingApp.Api/Models/PlaceOrderRequest.cs: Added optional stop loss and take profit price fields for companion trigger orders.
-- src/TradingApp.Api/Models/OpenOrderDto.cs: Added trigger metadata fields for trigger price, TP/SL type, and reduce-only state.
-- src/TradingApp.Api/Models/PositionDto.cs: Added stop loss and take profit price and order-id fields for enriched position responses.
-- src/TradingApp.Api/Services/IHyperliquidOrderService.cs: Added trigger-order placement and modification service contracts.
-- src/TradingApp.Api/Services/HyperliquidOrderService.cs: Implemented trigger-order placement/modification and companion SL/TP submission after successful main orders.
-- src/TradingApp.Api/Services/HyperliquidAccountService.cs: Parsed trigger-order details from open orders and enriched positions with correlated SL/TP orders.
-- src/TradingApp.Api/Controllers/OrdersController.cs: Added POST, PUT, and DELETE trigger-order endpoints with response metadata and trigger-order lookup logic.
-- src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs: Added trigger-order action builder matching Hyperliquid trigger wire format.
-- src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs: Extended modify action typing to support trigger order modifications.
-- tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Added trigger-order unit coverage for happy path, unknown asset, exchange rejection, and trigger modify flows.
-- tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs: Added controller integration coverage for trigger-order endpoints.
-- tests/TradingApp.Api.Tests/Services/HyperliquidAccountServiceTests.cs: Added coverage for trigger-order parsing and position enrichment from open trigger orders.
+- src/TradePilot.Api/Models/PlaceOrderRequest.cs: Added optional stop loss and take profit price fields for companion trigger orders.
+- src/TradePilot.Api/Models/OpenOrderDto.cs: Added trigger metadata fields for trigger price, TP/SL type, and reduce-only state.
+- src/TradePilot.Api/Models/PositionDto.cs: Added stop loss and take profit price and order-id fields for enriched position responses.
+- src/TradePilot.Api/Services/IHyperliquidOrderService.cs: Added trigger-order placement and modification service contracts.
+- src/TradePilot.Api/Services/HyperliquidOrderService.cs: Implemented trigger-order placement/modification and companion SL/TP submission after successful main orders.
+- src/TradePilot.Api/Services/HyperliquidAccountService.cs: Parsed trigger-order details from open orders and enriched positions with correlated SL/TP orders.
+- src/TradePilot.Api/Controllers/OrdersController.cs: Added POST, PUT, and DELETE trigger-order endpoints with response metadata and trigger-order lookup logic.
+- src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs: Added trigger-order action builder matching Hyperliquid trigger wire format.
+- src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs: Extended modify action typing to support trigger order modifications.
+- tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs: Added trigger-order unit coverage for happy path, unknown asset, exchange rejection, and trigger modify flows.
+- tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs: Added controller integration coverage for trigger-order endpoints.
+- tests/TradePilot.Api.Tests/Services/HyperliquidAccountServiceTests.cs: Added coverage for trigger-order parsing and position enrichment from open trigger orders.
 
 <!-- Phase 2: Frontend — Order Entry with SL/TP -->
 - frontend/trading-ui/src/app/core/models/place-order.model.ts: Added optional stop-loss and take-profit request fields.
@@ -71,11 +71,11 @@ All three phases completed for backend trigger-order support, frontend order-ent
 
 <!-- Phase 1: Backend — Trigger Order Infrastructure & API -->
 - OrdersControllerTests + HyperliquidOrderServiceTests + HyperliquidAccountServiceTests: 35/35 passed.
-- TradingApp.Domain.Tests: 15/15 passed.
-- TradingApp.Application.Tests: 61/61 passed.
-- TradingApp.Infrastructure.Tests: 51/51 passed.
-- TradingApp.Persistence.Tests: 20/20 passed.
-- TradingApp.Api.Tests: 138/138 passed.
+- TradePilot.Domain.Tests: 15/15 passed.
+- TradePilot.Application.Tests: 61/61 passed.
+- TradePilot.Infrastructure.Tests: 51/51 passed.
+- TradePilot.Persistence.Tests: 20/20 passed.
+- TradePilot.Api.Tests: 138/138 passed.
 - Architecture Tests: NOT RUN — not required by the phase details file.
 
 <!-- Phase 2: Frontend — Order Entry with SL/TP -->
@@ -91,7 +91,7 @@ All three phases completed for backend trigger-order support, frontend order-ent
 ## Issues
 
 <!-- Phase 1: Backend — Trigger Order Infrastructure & API -->
-- Running the targeted Debug test/build flow initially failed because the active TradingApp.Api dev process held a lock on Debug output assemblies. Validation was completed in Release configuration instead.
+- Running the targeted Debug test/build flow initially failed because the active TradePilot.Api dev process held a lock on Debug output assemblies. Validation was completed in Release configuration instead.
 - Build and test runs surfaced an existing NU1903 warning for AutoMapper 12.0.1 vulnerability metadata. This was unrelated to Phase 1 and did not block compilation or tests.
 
 <!-- Phase 2: Frontend — Order Entry with SL/TP -->

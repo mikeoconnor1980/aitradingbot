@@ -9,7 +9,7 @@ import { ModifyOrderDto } from "../../core/models/modify-order.model";
 import { CloseAllProgress, PlaceOrderRequest } from "../../core/models/place-order.model";
 import { ModifyTriggerOrderDto, PlaceTriggerOrderRequest } from "../../core/models/trigger-order.model";
 import { Observable, Subject, forkJoin, interval, of, timer } from "rxjs";
-import { catchError, last, startWith, switchMap, tap } from "rxjs/operators";
+import { catchError, last, map, startWith, switchMap, tap } from "rxjs/operators";
 import { HttpContext } from "@angular/common/http";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { AccountSummary } from "../../core/models/account-summary.model";
@@ -18,7 +18,7 @@ import { OpenOrder } from "../../core/models/open-order.model";
 import { PortfolioHeat } from "../../core/models/portfolio-heat.model";
 import { Position } from "../../core/models/position.model";
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { OrderService } from "../../core/services/order.service";
 import { AccountStateService } from "../../core/services/account-state.service";
 import { AgentService } from "../../core/services/agent.service";
@@ -61,7 +61,7 @@ export class DashboardComponent implements OnInit {
   private readonly _layout = inject(LayoutService);
   private readonly _apiService = inject(HyperliquidApiService);
   private readonly _orderService = inject(OrderService);
-  private readonly _notifications = inject(NotificationService);
+  private readonly _notifications = inject(NotificationFacade);
   private readonly _accountState = inject(AccountStateService);
   private readonly _agentService = inject(AgentService);
   private readonly _subscriptionService = inject(SubscriptionService);
@@ -173,9 +173,15 @@ export class DashboardComponent implements OnInit {
       this._pendingOrderIds.add(order.orderId);
       this.orders = this.orders.filter((item) => item.orderId !== order.orderId);
 
-      const cancel$ = order.orderType === 'trigger'
-        ? this._orderService.cancelTriggerOrder(order.orderId)
-        : this._orderService.cancelOrder(order.orderId);
+      const agentId = this._agentService.selectedAgentId;
+      const cancel$ = agentId
+        ? (order.orderType === 'trigger'
+          ? this._agentService.cancelTriggerOrderViaAgent(agentId, order.orderId, order.asset)
+          : this._agentService.cancelOrderViaAgent(agentId, order.orderId, order.asset)
+        ).pipe(map(() => {}))
+        : (order.orderType === 'trigger'
+          ? this._orderService.cancelTriggerOrder(order.orderId)
+          : this._orderService.cancelOrder(order.orderId));
 
       cancel$.subscribe({
         next: () => {
@@ -221,7 +227,12 @@ export class DashboardComponent implements OnInit {
       this.ordersTable?.setGlobalLoading(true);
       this.orders = [];
 
-      const cancelRequests = uniqueAssets.map(asset => this._orderService.cancelAllOrders(asset));
+      const agentId = this._agentService.selectedAgentId;
+      const cancelRequests = uniqueAssets.map(asset =>
+        agentId
+          ? this._agentService.cancelAllOrdersViaAgent(agentId, asset).pipe(map(() => {}))
+          : this._orderService.cancelAllOrders(asset)
+      );
       forkJoin(cancelRequests).subscribe({
         next: () => {
           this.ordersTable?.setGlobalLoading(false);
@@ -264,8 +275,13 @@ export class DashboardComponent implements OnInit {
       this.ordersTable?.setLoading(order.orderId, true);
       this._pendingOrderIds.add(order.orderId);
 
+      const agentId = this._agentService.selectedAgentId;
       const modify$ = order.orderType === 'trigger'
-        ? this._orderService.modifyTriggerOrder(order.orderId, { triggerPrice: result.price, size: result.size })
+        ? (agentId
+          ? this._agentService.modifyTriggerOrderViaAgent(
+              agentId, order.orderId, order.asset, order.side,
+              result.price, result.size, order.tpslType ?? 'sl').pipe(map(() => {}))
+          : this._orderService.modifyTriggerOrder(order.orderId, { triggerPrice: result.price, size: result.size }))
         : this._orderService.modifyOrder(order.orderId, result);
 
       modify$.subscribe({

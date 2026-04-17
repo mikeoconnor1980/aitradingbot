@@ -33,7 +33,7 @@ Current design:
 - email and password registration and login
 - JWT access tokens and refresh tokens
 - Google sign-in via Google Identity Services token validation
-- auth contracts under `TradingApp.Application/Abstractions/Auth/`
+- auth contracts under `TradePilot.Application/Abstractions/Auth/`
 - concrete implementations such as `JwtTokenService`, `AspNetPasswordHasher`, and `GoogleTokenValidator`
 
 Rationale:
@@ -65,7 +65,7 @@ The original "single worker iterates all subscribers" idea no longer describes t
 
 ## ADR 11 - CQRS Bus
 
-MediatR remains the in-process CQRS mechanism for most application features. Commands and queries are defined in `TradingApp.Application`, and the API registers handlers by scanning the Application assembly.
+MediatR remains the in-process CQRS mechanism for most application features. Commands and queries are defined in `TradePilot.Application`, and the API registers handlers by scanning the Application assembly.
 
 ## ADR 12 - Ethereum-Compatible Signing Library
 
@@ -91,10 +91,10 @@ Trigger orders such as stop loss and take profit orders are not persisted as fir
 
 ## ADR 17 - Business Model Option C Is the Chosen Deployment Model
 
-TradingApp adopted the split architecture:
+TradePilot adopted the split architecture:
 
 - control plane in the API and Angular UI
-- execution on the subscriber machine through `TradingApp.ExecutionAgent`
+- execution on the subscriber machine through `TradePilot.ExecutionAgent`
 - heartbeat and command polling between agent and control plane
 - no cloud-side custody of private keys
 
@@ -166,7 +166,7 @@ This supports repeatable research and comparison rather than one-off manual tuni
 
 ## ADR 23 - Indicators Live in a Separate Project
 
-`TradingApp.Indicators` is a standalone library for indicator calculations.
+`TradePilot.Indicators` is a standalone library for indicator calculations.
 
 Rationale:
 

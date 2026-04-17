@@ -12,7 +12,7 @@ lastUpdated: "2026-04-03T15:02:13Z"
 
 ## Overview
 
-Extract all indicator calculations from `BacktestMarketContextBuilder` private methods into a dedicated `TradingApp.Indicators` project as standalone, pure-math static classes. Fix incorrect RSI (Wilder smoothing), EMA (SMA seed), and ATR (Wilder smoothing) algorithms. Add MACD and Bollinger Bands calculators. Extend `IndicatorContext` for MACD multi-output. Refactor `BacktestMarketContextBuilder` to delegate to new calculators.
+Extract all indicator calculations from `BacktestMarketContextBuilder` private methods into a dedicated `TradePilot.Indicators` project as standalone, pure-math static classes. Fix incorrect RSI (Wilder smoothing), EMA (SMA seed), and ATR (Wilder smoothing) algorithms. Add MACD and Bollinger Bands calculators. Extend `IndicatorContext` for MACD multi-output. Refactor `BacktestMarketContextBuilder` to delegate to new calculators.
 
 ## PBI Details
 
@@ -23,11 +23,11 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 
 ### User Story
 
-> As a **developer**, I want **indicator calculations (EMA, RSI, ATR, MACD, Bollinger Bands) extracted into a dedicated `TradingApp.Indicators` project as standalone, pure-math static classes** so that **calculations are independently testable, reusable across live and backtest contexts, and new indicators can be added without modifying existing services**.
+> As a **developer**, I want **indicator calculations (EMA, RSI, ATR, MACD, Bollinger Bands) extracted into a dedicated `TradePilot.Indicators` project as standalone, pure-math static classes** so that **calculations are independently testable, reusable across live and backtest contexts, and new indicators can be added without modifying existing services**.
 
 ### Acceptance Criteria
 
-- [ ] **Given** the `TradingApp.Indicators` project exists, **When** I inspect its dependencies, **Then** it has no references to `TradingApp.Application`, `TradingApp.Domain`, or any infrastructure projects
+- [ ] **Given** the `TradePilot.Indicators` project exists, **When** I inspect its dependencies, **Then** it has no references to `TradePilot.Application`, `TradePilot.Domain`, or any infrastructure projects
 - [ ] **Given** a known set of closing prices, **When** `EmaCalculator.Calculate()` is called with period 9, **Then** the result matches the TradingView EMA(9) value for the same data (SMA-seeded)
 - [ ] **Given** a known set of closing prices, **When** `RsiCalculator.Calculate()` is called with period 14, **Then** the result matches the TradingView RSI(14) value (Wilder smoothing)
 - [ ] **Given** a set of candles, **When** `AtrCalculator.Calculate()` is called with period 14, **Then** it returns the correct ATR using Wilder-smoothed true range calculation
@@ -39,8 +39,8 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 
 ## Objectives
 
-- Create `TradingApp.Indicators` class library with zero dependencies
-- Create `TradingApp.Indicators.Tests` test project with reference-verified tests
+- Create `TradePilot.Indicators` class library with zero dependencies
+- Create `TradePilot.Indicators.Tests` test project with reference-verified tests
 - Implement correct EMA (SMA-seeded), RSI (Wilder-smoothed), ATR (Wilder-smoothed) calculators
 - Implement MACD calculator returning line, signal, and histogram
 - Implement Bollinger Bands calculator returning upper, middle, and lower bands
@@ -58,25 +58,25 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/BacktestMarketContextBuilder.cs` — current indicator calculation methods to extract
-- `src/TradingApp.Application/Trading/Models/IndicatorContext.cs` — keyed dictionary for indicator values
-- `src/TradingApp.Application/Trading/Models/IndicatorSnapshot.cs` — legacy fixed-property record
-- `src/TradingApp.Application/StrategyAuthoring/Models/IndicatorRequirement.cs` — requirement record
-- `src/TradingApp.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static class pattern for new calculators
-- `src/TradingApp.Domain/TradingApp.Domain.csproj` — minimal csproj template (no deps)
-- `tests/TradingApp.Domain.Tests/TradingApp.Domain.Tests.csproj` — test project template
-- `tests/TradingApp.Application.Tests/Usings.cs` — global usings pattern
-- `tests/TradingApp.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — existing tests to update
-- `TradingApp.sln` — solution file for project registration
+- `src/TradePilot.Application/Trading/Services/BacktestMarketContextBuilder.cs` — current indicator calculation methods to extract
+- `src/TradePilot.Application/Trading/Models/IndicatorContext.cs` — keyed dictionary for indicator values
+- `src/TradePilot.Application/Trading/Models/IndicatorSnapshot.cs` — legacy fixed-property record
+- `src/TradePilot.Application/StrategyAuthoring/Models/IndicatorRequirement.cs` — requirement record
+- `src/TradePilot.Application/StrategyAuthoring/Services/IndicatorExtractor.cs` — static class pattern for new calculators
+- `src/TradePilot.Domain/TradePilot.Domain.csproj` — minimal csproj template (no deps)
+- `tests/TradePilot.Domain.Tests/TradePilot.Domain.Tests.csproj` — test project template
+- `tests/TradePilot.Application.Tests/Usings.cs` — global usings pattern
+- `tests/TradePilot.Application.Tests/Trading/Services/BacktestMarketContextBuilderIndicatorTests.cs` — existing tests to update
+- `TradePilot.sln` — solution file for project registration
 
 ### [x] Phase 1: Project Scaffolding + EMA and RSI Calculators with Tests
 
 **Complexity**: Medium | **Risk**: Medium
 
-- [x] Task 1.1: Create `TradingApp.Indicators` project and `TradingApp.Indicators.Tests` project
+- [x] Task 1.1: Create `TradePilot.Indicators` project and `TradePilot.Indicators.Tests` project
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-11-create-indicator-projects
 
-- [x] Task 1.2: Add both projects to `TradingApp.sln`
+- [x] Task 1.2: Add both projects to `TradePilot.sln`
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-01-details.md#task-12-add-projects-to-solution
 
 - [x] Task 1.3: Implement `EmaCalculator` with SMA-seeded algorithm
@@ -126,7 +126,7 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 - [x] Task 3.1: Extend `IndicatorContext` with MACD line, signal, and histogram storage
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-31-extend-indicatorcontext-for-macd
 
-- [x] Task 3.2: Add `TradingApp.Indicators` project reference to `TradingApp.Application`
+- [x] Task 3.2: Add `TradePilot.Indicators` project reference to `TradePilot.Application`
   - Details: .agent-context/3-develop/build/plans/details/20260403-extract-indicator-calculators-phase-03-details.md#task-32-add-indicators-project-reference
 
 - [x] Task 3.3: Refactor `BacktestMarketContextBuilder` to delegate to new calculators
@@ -170,11 +170,11 @@ Extract all indicator calculations from `BacktestMarketContextBuilder` private m
 
 ## Success Criteria
 
-- `TradingApp.Indicators` project exists with zero project/package dependencies (pure SDK project)
+- `TradePilot.Indicators` project exists with zero project/package dependencies (pure SDK project)
 - All 5 calculators (EMA, RSI, ATR, MACD, Bollinger Bands) pass tests verified against TradingView reference values
-- `BacktestMarketContextBuilder` has no private indicator calculation methods — all delegate to `TradingApp.Indicators`
+- `BacktestMarketContextBuilder` has no private indicator calculation methods — all delegate to `TradePilot.Indicators`
 - `IndicatorContext` exposes MACD line, signal, and histogram via separate storage keys
-- Solution builds and all tests pass (`dotnet build TradingApp.sln && dotnet test TradingApp.sln`)
+- Solution builds and all tests pass (`dotnet build TradePilot.sln && dotnet test TradePilot.sln`)
 
 ## Agent Log
 

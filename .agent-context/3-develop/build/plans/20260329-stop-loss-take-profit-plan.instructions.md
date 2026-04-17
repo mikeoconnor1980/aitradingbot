@@ -58,18 +58,18 @@ Add Stop Loss (SL) and Take Profit (TP) functionality to the trading platform �
 
 ### Project Patterns
 
-- `src/TradingApp.Api/Services/HyperliquidOrderService.cs` — Order submission pattern with `SubmitExchangeActionAsync` (signing + submit)
-- `src/TradingApp.Api/Services/HyperliquidAccountService.cs` — Position/order mapping with `MapToPositions`, `MapToOpenOrders`, `GetOrderType`
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — `BuildOrderAction` dictionary-based action construction for MessagePack compatibility
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — Typed modify action model (`HyperliquidOrderType`)
-- `src/TradingApp.Api/Controllers/OrdersController.cs` — Direct service injection controller pattern (no MediatR)
-- `src/TradingApp.Api/Models/PlaceOrderRequest.cs` — DataAnnotations-based request validation
+- `src/TradePilot.Api/Services/HyperliquidOrderService.cs` — Order submission pattern with `SubmitExchangeActionAsync` (signing + submit)
+- `src/TradePilot.Api/Services/HyperliquidAccountService.cs` — Position/order mapping with `MapToPositions`, `MapToOpenOrders`, `GetOrderType`
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidEip712.cs` — `BuildOrderAction` dictionary-based action construction for MessagePack compatibility
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidModifyAction.cs` — Typed modify action model (`HyperliquidOrderType`)
+- `src/TradePilot.Api/Controllers/OrdersController.cs` — Direct service injection controller pattern (no MediatR)
+- `src/TradePilot.Api/Models/PlaceOrderRequest.cs` — DataAnnotations-based request validation
 - `frontend/trading-ui/src/app/features/order-entry/order-entry.component.ts` — Typed reactive form with conditional validators
 - `frontend/trading-ui/src/app/features/dashboard/positions-table/positions-table.component.ts` — Presentation component with expandable rows
 - `frontend/trading-ui/src/app/features/dashboard/orders-table/modify-order-modal/modify-order.modal.component.ts` — MatDialog modal pattern
 - `frontend/trading-ui/src/app/features/dashboard/dashboard.component.ts` — Smart container opening dialogs, handling API calls
-- `tests/TradingApp.Api.Tests/Controllers/OrdersControllerTests.cs` — Controller integration test pattern (BaseControllerTests)
-- `tests/TradingApp.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Service unit test pattern
+- `tests/TradePilot.Api.Tests/Controllers/OrdersControllerTests.cs` — Controller integration test pattern (BaseControllerTests)
+- `tests/TradePilot.Api.Tests/Services/HyperliquidOrderServiceTests.cs` — Service unit test pattern
 
 ### [x] Phase 1: Backend — Trigger Order Infrastructure & API
 

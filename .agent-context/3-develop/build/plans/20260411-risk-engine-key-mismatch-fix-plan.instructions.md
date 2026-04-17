@@ -47,15 +47,15 @@ Additionally, `CheckOpenOrderLimit` uses `"levels"` but `GridController` emits `
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` — Risk engine with `CheckOrderSize` and `CheckOpenOrderLimit`
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — Emits `DeployGrid` signals with `"notionalPerLevel"` and `"gridLevels"`
-- `src/TradingApp.Application/Trading/Services/SignalController.cs` — Emits `OpenPosition` signals with `"notional"`
-- `src/TradingApp.Application/Trading/Services/LivePositionManager.cs` — Reads `"notionalPerLevel"` and `"gridLevels"` from signals
-- `src/TradingApp.Application/Trading/Services/BacktestPositionManager.cs` — Reads `"notionalPerLevel"` and `"gridLevels"` from signals
-- `tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — Existing risk engine tests
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — Asserts `"notionalPerLevel"` on DeployGrid output
-- `tests/TradingApp.Application.Tests/Trading/Services/SignalControllerTests.cs` — Asserts `"notional"` on OpenPosition output
-- `tests/TradingApp.Application.Tests/Trading/Services/LivePositionManagerTests.cs` — Uses `"notionalPerLevel"` in signal construction
+- `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` — Risk engine with `CheckOrderSize` and `CheckOpenOrderLimit`
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — Emits `DeployGrid` signals with `"notionalPerLevel"` and `"gridLevels"`
+- `src/TradePilot.Application/Trading/Services/SignalController.cs` — Emits `OpenPosition` signals with `"notional"`
+- `src/TradePilot.Application/Trading/Services/LivePositionManager.cs` — Reads `"notionalPerLevel"` and `"gridLevels"` from signals
+- `src/TradePilot.Application/Trading/Services/BacktestPositionManager.cs` — Reads `"notionalPerLevel"` and `"gridLevels"` from signals
+- `tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — Existing risk engine tests
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — Asserts `"notionalPerLevel"` on DeployGrid output
+- `tests/TradePilot.Application.Tests/Trading/Services/SignalControllerTests.cs` — Asserts `"notional"` on OpenPosition output
+- `tests/TradePilot.Application.Tests/Trading/Services/LivePositionManagerTests.cs` — Uses `"notionalPerLevel"` in signal construction
 
 ### [x] Phase 1: Fix Key Mismatches Across Pipeline and Tests
 
@@ -117,7 +117,7 @@ Additionally, `CheckOpenOrderLimit` uses `"levels"` but `GridController` emits `
 - All existing tests pass with corrected key names
 - New acceptance criteria tests verify `CheckOrderSize` blocks oversized signals end-to-end
 - `CheckOpenOrderLimit` uses the correct `"gridLevels"` key
-- `dotnet build TradingApp.sln` succeeds
+- `dotnet build TradePilot.sln` succeeds
 - `dotnet test` passes all tests
 
 ## Agent Log

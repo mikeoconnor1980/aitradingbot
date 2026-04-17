@@ -21,7 +21,7 @@ Create a composite strategy engine that routes by `StrategyMode`: grid mode dele
 - **Complexity**: Medium
 - **Risk Factors**: Must preserve grid path exactly; must correctly map `ConditionEvaluationResult` to `StrategyEvaluation`; `IStrategyConfig` may not be `StrategyConfig` — must handle cast gracefully
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs` — **New**
+  - `src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs` — **New**
 - **Success**:
   - Grid mode → delegates to `GridStrategyEngine`, returns its result unchanged
   - Signal mode → calls `IConditionEvaluator.Evaluate()`, maps to `StrategyEvaluation`
@@ -32,14 +32,14 @@ Create a composite strategy engine that routes by `StrategyMode`: grid mode dele
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs — new file
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Domain.Trading;
+// src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs — new file
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Domain.Trading;
 
-namespace TradingApp.Application.Trading.Services;
+namespace TradePilot.Application.Trading.Services;
 
 /// <summary>
 /// Routes strategy evaluation by StrategyMode:
@@ -97,8 +97,8 @@ public sealed class CompositeStrategyEngine : IStrategyEngine
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs` — existing engine that handles grid mode; reused directly
-- `src/TradingApp.Application/Abstractions/Services/IStrategyEngine.cs` — interface implemented by the composite
+- `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs` — existing engine that handles grid mode; reused directly
+- `src/TradePilot.Application/Abstractions/Services/IStrategyEngine.cs` — interface implemented by the composite
 
 ---
 
@@ -109,7 +109,7 @@ Update `Program.cs` to register `CompositeStrategyEngine` as `IStrategyEngine`, 
 - **Complexity**: Low
 - **Risk Factors**: Must register `IConditionHandler` implementations as `IEnumerable<IConditionHandler>` for the evaluator to resolve; `GridStrategyEngine` must be registered as concrete (not via interface) for `CompositeStrategyEngine` to inject
 - **Files**:
-  - `src/TradingApp.Api/Program.cs` — **Modified**
+  - `src/TradePilot.Api/Program.cs` — **Modified**
 - **Success**:
   - `IStrategyEngine` → `CompositeStrategyEngine`
   - `GridStrategyEngine` registered as concrete scoped service
@@ -121,7 +121,7 @@ Update `Program.cs` to register `CompositeStrategyEngine` as `IStrategyEngine`, 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Api/Program.cs — modification
+// src/TradePilot.Api/Program.cs — modification
 // Replace:
 //   builder.Services.AddScoped<IStrategyEngine, GridStrategyEngine>();
 // With:
@@ -133,12 +133,12 @@ builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();
 
 Add the necessary `using` statements at the top:
 ```csharp
-using TradingApp.Application.StrategyAuthoring.Services;
+using TradePilot.Application.StrategyAuthoring.Services;
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Program.cs` — existing flat DI registration pattern (lines 88–103)
+- `src/TradePilot.Api/Program.cs` — existing flat DI registration pattern (lines 88–103)
 
 ---
 
@@ -149,8 +149,8 @@ Remove the `SIGNAL_MODE_NOT_SUPPORTED` info message from `CrossFieldValidator.Em
 - **Complexity**: Low
 - **Risk Factors**: Must update `CrossFieldValidatorTests` that assert this message
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — **Modified**
-  - `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — **Modified**
+  - `src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — **Modified**
+  - `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs` — **Modified**
 - **Success**:
   - `SIGNAL_MODE_NOT_SUPPORTED` info message no longer emitted for `StrategyMode.Signal`
   - Test asserting this message is removed or updated
@@ -160,7 +160,7 @@ Remove the `SIGNAL_MODE_NOT_SUPPORTED` info message from `CrossFieldValidator.Em
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs — modification
+// src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs — modification
 // Remove the signal mode info block from EmitV1InfoMessages:
 
 // DELETE this block:
@@ -177,14 +177,14 @@ Remove the `SIGNAL_MODE_NOT_SUPPORTED` info message from `CrossFieldValidator.Em
 ```
 
 ```csharp
-// tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs — modification
+// tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/CrossFieldValidatorTests.cs — modification
 // Remove or update the test that asserts SIGNAL_MODE_NOT_SUPPORTED is emitted.
 // Search for test methods containing "SIGNAL_MODE_NOT_SUPPORTED" and update them.
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — lines 68–77 contain the block to remove
+- `src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — lines 68–77 contain the block to remove
 
 ---
 
@@ -195,7 +195,7 @@ Write tests for `CompositeStrategyEngine` routing behavior and verify end-to-end
 - **Complexity**: Medium
 - **Risk Factors**: Must verify grid path is completely preserved; must mock `IConditionEvaluator` for unit tests
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs` — **New**
+  - `tests/TradePilot.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs` — **New**
 - **Success**:
   - Grid mode → delegates to `GridStrategyEngine` (unchanged behavior)
   - Signal mode → delegates to `IConditionEvaluator`, maps result
@@ -206,14 +206,14 @@ Write tests for `CompositeStrategyEngine` routing behavior and verify end-to-end
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Services;
-using TradingApp.Application.Trading.Models;
-using TradingApp.Application.Trading.Services;
-using TradingApp.Domain.Entities;
+// tests/TradePilot.Application.Tests/Trading/Services/CompositeStrategyEngineTests.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Services;
+using TradePilot.Application.Trading.Models;
+using TradePilot.Application.Trading.Services;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Tests.Trading.Services;
+namespace TradePilot.Application.Tests.Trading.Services;
 
 [TestClass]
 public sealed class CompositeStrategyEngineTests
@@ -366,8 +366,8 @@ public sealed class CompositeStrategyEngineTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — private static factory helpers, MSTest structure
-- `tests/TradingApp.Application.Tests/Scheduling/StrategySchedulerTests.cs` — Moq mocking pattern for IStrategyEngine
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — private static factory helpers, MSTest structure
+- `tests/TradePilot.Application.Tests/Scheduling/StrategySchedulerTests.cs` — Moq mocking pattern for IStrategyEngine
 
 ---
 
@@ -379,14 +379,14 @@ Build the full solution and run all test projects to verify everything works end
 - **Risk Factors**: `RealBacktestRunnerTests` must still pass — they use the real `GridStrategyEngine` but now DI wires `CompositeStrategyEngine` as `IStrategyEngine`. Since `RealBacktestRunnerTests` constructs `GridStrategyEngine` directly (not via DI), they should be unaffected.
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
+  - `dotnet build TradePilot.sln` succeeds
   - All test projects pass
   - Specifically verify `RealBacktestRunnerTests`, `GridControllerTests`, `StrategySchedulerTests` still pass
   - Verify `CrossFieldValidatorTests` pass with updated assertions
 
 ```bash
-dotnet build TradingApp.sln
-dotnet test TradingApp.sln
+dotnet build TradePilot.sln
+dotnet test TradePilot.sln
 ```
 
 ## Phase Success Criteria

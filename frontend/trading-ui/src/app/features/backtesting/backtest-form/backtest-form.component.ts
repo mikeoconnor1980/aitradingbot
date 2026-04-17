@@ -11,7 +11,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSelectModule } from "@angular/material/select";
 import { catchError, distinctUntilChanged, map, of, startWith, switchMap } from "rxjs";
 import { BacktestEntryConditionConfig, BacktestRequest, BacktestResult, BacktestRsiParams, BacktestStrategyConfig } from "../../../core/models/backtest.model";
-import { NotificationService } from "../../../core/services/notification.service";
+import { NotificationFacade } from "../../../core/services/notification-facade.service";
 import { EntryConditionConfig, RsiParams, StrategyConfig, StrategyDto, StrategySummaryDto } from "../../strategy-builder/models/strategy.model";
 import { StrategyApiService } from "../../strategy-builder/services/strategy-api.service";
 
@@ -91,7 +91,7 @@ function dateRangeValidator(control: AbstractControl): ValidationErrors | null {
 })
 export class BacktestFormComponent implements OnInit, OnChanges {
   private readonly _strategyApi = inject(StrategyApiService);
-  private readonly _notificationService = inject(NotificationService);
+  private readonly _notificationService = inject(NotificationFacade);
   private readonly _destroyRef = inject(DestroyRef);
 
   @Input()

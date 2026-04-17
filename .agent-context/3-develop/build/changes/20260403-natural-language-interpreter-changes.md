@@ -13,34 +13,34 @@ Implemented a full natural-language strategy interpretation flow across the AI c
 ### Added
 
 <!-- Phase 1: LLM Client Infrastructure -->
-- src/TradingApp.AI/TradingApp.AI.csproj: New AI class library project for LLM infrastructure.
-- src/TradingApp.AI/AiServiceExtensions.cs: Added DI extension for LLM options binding and typed HttpClient registration.
-- src/TradingApp.AI/Models/ChatChoice.cs: Added OpenAI-compatible response choice model.
-- src/TradingApp.AI/Models/ChatChoiceMessage.cs: Added OpenAI-compatible response message model.
-- src/TradingApp.AI/Models/ChatCompletionRequest.cs: Added OpenAI-compatible chat completion request model.
-- src/TradingApp.AI/Models/ChatCompletionResponse.cs: Added OpenAI-compatible chat completion response root model.
-- src/TradingApp.AI/Models/ChatMessage.cs: Added request message payload model.
-- src/TradingApp.AI/Models/ResponseFormat.cs: Added JSON response format model for structured output requests.
-- src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs: Implemented the LLM client over an OpenAI-compatible chat completions endpoint.
-- src/TradingApp.Application/Abstractions/Configuration/LlmOptions.cs: Added typed LLM configuration options with data annotation validation.
-- src/TradingApp.Application/Abstractions/Services/ILlmClient.cs: Added application-layer LLM client contract.
-- tests/TradingApp.AI.Tests/TradingApp.AI.Tests.csproj: New MSTest project for AI-layer unit tests.
-- tests/TradingApp.AI.Tests/Usings.cs: Added test project global usings.
-- tests/TradingApp.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs: Added unit tests for payload construction, response parsing, error handling, and cancellation behavior.
+- src/TradePilot.AI/TradePilot.AI.csproj: New AI class library project for LLM infrastructure.
+- src/TradePilot.AI/AiServiceExtensions.cs: Added DI extension for LLM options binding and typed HttpClient registration.
+- src/TradePilot.AI/Models/ChatChoice.cs: Added OpenAI-compatible response choice model.
+- src/TradePilot.AI/Models/ChatChoiceMessage.cs: Added OpenAI-compatible response message model.
+- src/TradePilot.AI/Models/ChatCompletionRequest.cs: Added OpenAI-compatible chat completion request model.
+- src/TradePilot.AI/Models/ChatCompletionResponse.cs: Added OpenAI-compatible chat completion response root model.
+- src/TradePilot.AI/Models/ChatMessage.cs: Added request message payload model.
+- src/TradePilot.AI/Models/ResponseFormat.cs: Added JSON response format model for structured output requests.
+- src/TradePilot.AI/Services/OpenAiCompatibleLlmClient.cs: Implemented the LLM client over an OpenAI-compatible chat completions endpoint.
+- src/TradePilot.Application/Abstractions/Configuration/LlmOptions.cs: Added typed LLM configuration options with data annotation validation.
+- src/TradePilot.Application/Abstractions/Services/ILlmClient.cs: Added application-layer LLM client contract.
+- tests/TradePilot.AI.Tests/TradePilot.AI.Tests.csproj: New MSTest project for AI-layer unit tests.
+- tests/TradePilot.AI.Tests/Usings.cs: Added test project global usings.
+- tests/TradePilot.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs: Added unit tests for payload construction, response parsing, error handling, and cancellation behavior.
 
 <!-- Phase 2: Strategy Interpreter Service -->
-- src/TradingApp.Application/Abstractions/Services/IStrategyInterpreter.cs: Added the application-layer contract for natural-language strategy interpretation.
-- src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs: Added the CQRS command and handler that delegates interpretation to the interpreter service.
-- src/TradingApp.Application/StrategyAuthoring/Models/AssumptionDto.cs: Added the assumption DTO used to describe inferred values and reasons.
-- src/TradingApp.Application/StrategyAuthoring/Models/StrategyIntentDto.cs: Added the DTO returned from interpretation containing config, confidence, assumptions, and clarification.
-- src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs: Added the schema-aware interpreter system prompt.
-- src/TradingApp.AI/Services/StrategyInterpreter.cs: Added the interpreter implementation that calls the LLM, parses structured JSON, and stamps natural-language source metadata.
-- tests/TradingApp.AI.Tests/Services/StrategyInterpreterTests.cs: Added interpreter service tests covering valid signal and grid responses and graceful failure cases.
-- tests/TradingApp.Application.Tests/StrategyAuthoring/Commands/InterpretStrategyCommandHandlerTests.cs: Added a focused delegation test for the new command handler.
+- src/TradePilot.Application/Abstractions/Services/IStrategyInterpreter.cs: Added the application-layer contract for natural-language strategy interpretation.
+- src/TradePilot.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs: Added the CQRS command and handler that delegates interpretation to the interpreter service.
+- src/TradePilot.Application/StrategyAuthoring/Models/AssumptionDto.cs: Added the assumption DTO used to describe inferred values and reasons.
+- src/TradePilot.Application/StrategyAuthoring/Models/StrategyIntentDto.cs: Added the DTO returned from interpretation containing config, confidence, assumptions, and clarification.
+- src/TradePilot.AI/Prompts/StrategyInterpreterPrompt.cs: Added the schema-aware interpreter system prompt.
+- src/TradePilot.AI/Services/StrategyInterpreter.cs: Added the interpreter implementation that calls the LLM, parses structured JSON, and stamps natural-language source metadata.
+- tests/TradePilot.AI.Tests/Services/StrategyInterpreterTests.cs: Added interpreter service tests covering valid signal and grid responses and graceful failure cases.
+- tests/TradePilot.Application.Tests/StrategyAuthoring/Commands/InterpretStrategyCommandHandlerTests.cs: Added a focused delegation test for the new command handler.
 
 <!-- Phase 3: API Endpoint and Rate Limiting -->
-- src/TradingApp.Api/Models/InterpretStrategyRequest.cs: Added the sealed request DTO with DataAnnotations validation for required, non-whitespace, and max-length text input.
-- tests/TradingApp.Api.Tests/Controllers/InterpretStrategyTests.cs: Added controller integration tests covering success, validation failures, and 10-per-minute rate limiting behavior.
+- src/TradePilot.Api/Models/InterpretStrategyRequest.cs: Added the sealed request DTO with DataAnnotations validation for required, non-whitespace, and max-length text input.
+- tests/TradePilot.Api.Tests/Controllers/InterpretStrategyTests.cs: Added controller integration tests covering success, validation failures, and 10-per-minute rate limiting behavior.
 
 <!-- Phase 4: Frontend - NL Interpretation UI -->
 - frontend/trading-ui/src/app/features/strategy-builder/models/strategy-intent.model.ts: Added frontend DTOs for interpretation results and assumptions.
@@ -65,19 +65,19 @@ Implemented a full natural-language strategy interpretation flow across the AI c
 ### Modified
 
 <!-- Phase 1: LLM Client Infrastructure -->
-- TradingApp.sln: Added TradingApp.AI and TradingApp.AI.Tests to the solution and nested them under src/tests folders.
-- src/TradingApp.Api/TradingApp.Api.csproj: Added project reference to TradingApp.AI.
-- src/TradingApp.Api/Program.cs: Registered AI services in the API composition root.
-- src/TradingApp.Api/appsettings.json: Added default non-sensitive LLM configuration section.
+- TradePilot.sln: Added TradePilot.AI and TradePilot.AI.Tests to the solution and nested them under src/tests folders.
+- src/TradePilot.Api/TradePilot.Api.csproj: Added project reference to TradePilot.AI.
+- src/TradePilot.Api/Program.cs: Registered AI services in the API composition root.
+- src/TradePilot.Api/appsettings.json: Added default non-sensitive LLM configuration section.
 
 <!-- Phase 2: Strategy Interpreter Service -->
-- src/TradingApp.Application/StrategyAuthoring/Models/SourceMetadata.cs: Added nullable SourceText persistence support for original natural-language input.
-- src/TradingApp.AI/AiServiceExtensions.cs: Registered IStrategyInterpreter in the AI DI extension.
+- src/TradePilot.Application/StrategyAuthoring/Models/SourceMetadata.cs: Added nullable SourceText persistence support for original natural-language input.
+- src/TradePilot.AI/AiServiceExtensions.cs: Registered IStrategyInterpreter in the AI DI extension.
 - frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts: Added nullable sourceText to the frontend SourceMetadata model.
 
 <!-- Phase 3: API Endpoint and Rate Limiting -->
-- src/TradingApp.Api/Controllers/StrategiesController.cs: Added the POST interpret endpoint with MediatR dispatch and endpoint-scoped rate limiting.
-- src/TradingApp.Api/Program.cs: Registered the fixed-window interpret rate-limit policy, 429 rejection handling with `Retry-After`, and inserted rate-limiter middleware into the pipeline.
+- src/TradePilot.Api/Controllers/StrategiesController.cs: Added the POST interpret endpoint with MediatR dispatch and endpoint-scoped rate limiting.
+- src/TradePilot.Api/Program.cs: Registered the fixed-window interpret rate-limit policy, 429 rejection handling with `Retry-After`, and inserted rate-limiter middleware into the pipeline.
 
 <!-- Phase 4: Frontend - NL Interpretation UI -->
 - frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts: Added MACD parameter typing and widened condition params for interpreted MACD round-tripping.
@@ -109,21 +109,21 @@ Implemented a full natural-language strategy interpretation flow across the AI c
 ## Test Results
 
 <!-- Phase 1: LLM Client Infrastructure -->
-- TradingApp.AI.Tests: 4/4 passed.
-- TradingApp.sln build: PASSED.
+- TradePilot.AI.Tests: 4/4 passed.
+- TradePilot.sln build: PASSED.
 - Architecture Tests: no existing architecture test project or architecture test suite was found in the workspace to run.
 
 <!-- Phase 2: Strategy Interpreter Service -->
 - StrategyInterpreterTests: 4/4 passed.
 - InterpretStrategyCommandHandlerTests: 1/1 passed.
-- TradingApp.AI.Tests: 8/8 passed.
-- TradingApp.Application.Tests: 199/199 passed.
+- TradePilot.AI.Tests: 8/8 passed.
+- TradePilot.Application.Tests: 199/199 passed.
 - Architecture Tests: FAILED - no architecture test project or suite matching the workspace naming patterns was present to run.
-- TradingApp.sln build: PASSED.
+- TradePilot.sln build: PASSED.
 
 <!-- Phase 3: API Endpoint and Rate Limiting -->
 - InterpretStrategyTests: 4/4 passed.
-- TradingApp.sln build: PASSED.
+- TradePilot.sln build: PASSED.
 - Solution Tests: 559/559 passed.
 - Architecture Tests: FAILED - no architecture test project or suite was present in the workspace to execute.
 
@@ -136,15 +136,15 @@ Implemented a full natural-language strategy interpretation flow across the AI c
 ## Issues
 
 <!-- Phase 1: LLM Client Infrastructure -->
-- `ValidateDataAnnotations()` initially failed to compile in TradingApp.AI because the project was missing `Microsoft.Extensions.Options.DataAnnotations`; added the package and re-ran verification successfully.
+- `ValidateDataAnnotations()` initially failed to compile in TradePilot.AI because the project was missing `Microsoft.Extensions.Options.DataAnnotations`; added the package and re-ran verification successfully.
 - The phase requested existing architecture tests, but no dedicated architecture test project or matching suite was present in the current solution/workspace.
 
 <!-- Phase 2: Strategy Interpreter Service -->
-- The first full solution build failed because a running TradingApp.Api process was locking API output assemblies; stopped the process and re-ran the build successfully.
+- The first full solution build failed because a running TradePilot.Api process was locking API output assemblies; stopped the process and re-ran the build successfully.
 - No architecture test project was present in the workspace, so there was no concrete architecture suite to execute for this phase.
 
 <!-- Phase 3: API Endpoint and Rate Limiting -->
-- A running `TradingApp.Api` process was locking the API build output and caused the first targeted test run to fail; it was stopped and the tests were re-run successfully.
+- A running `TradePilot.Api` process was locking the API build output and caused the first targeted test run to fail; it was stopped and the tests were re-run successfully.
 - The first version of the new controller test class tried to delete the temp SQLite database during MSTest cleanup before the test host had fully released it; removing that cleanup hook resolved the failure.
 - No architecture test project matching the repository naming patterns exists in the workspace, so there was no concrete architecture suite to run for Task 3.5.
 
@@ -181,11 +181,11 @@ Implemented a full natural-language strategy interpretation flow across the AI c
 
 <!-- Phase 1: LLM Client Infrastructure -->
 - Review the `AddAI()` registration to confirm the desired auth and header behavior for both Gemini and Ollama providers, especially if Ollama should omit bearer auth entirely in all environments.
-- Review whether later phases want a shared test HTTP handler utility in TradingApp.AI.Tests or whether the local capturing handler is sufficient for this vertical.
+- Review whether later phases want a shared test HTTP handler utility in TradePilot.AI.Tests or whether the local capturing handler is sufficient for this vertical.
 
 <!-- Phase 2: Strategy Interpreter Service -->
-- Review the prompt contract in `src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs` for how strictly it should constrain unsupported indicators and operator vocabularies before Phase 3 exposes the endpoint publicly.
-- Review the fallback behavior in `src/TradingApp.AI/Services/StrategyInterpreter.cs` to confirm that returning an empty `StrategyConfig` plus clarification is the desired API contract for malformed or unavailable LLM responses.
+- Review the prompt contract in `src/TradePilot.AI/Prompts/StrategyInterpreterPrompt.cs` for how strictly it should constrain unsupported indicators and operator vocabularies before Phase 3 exposes the endpoint publicly.
+- Review the fallback behavior in `src/TradePilot.AI/Services/StrategyInterpreter.cs` to confirm that returning an empty `StrategyConfig` plus clarification is the desired API contract for malformed or unavailable LLM responses.
 
 <!-- Phase 3: API Endpoint and Rate Limiting -->
 - Review whether validation-error response metadata should be standardized across controllers, since this endpoint now documents `ValidationProblemDetails` while other 400-producing actions may still advertise the custom envelope type.
@@ -198,7 +198,7 @@ Implemented a full natural-language strategy interpretation flow across the AI c
 
 Completed all 4 phases and 28 planned tasks for F9.
 
-- Added a new `TradingApp.AI` project with a typed OpenAI-compatible LLM client, configuration binding, and unit tests.
+- Added a new `TradePilot.AI` project with a typed OpenAI-compatible LLM client, configuration binding, and unit tests.
 - Implemented the backend natural-language interpreter contract, prompt, CQRS command flow, source-text persistence, and `POST /api/strategies/interpret` with endpoint-specific rate limiting.
 - Integrated the Angular strategy builder with natural-language input, confidence and assumptions display, overwrite confirmation, and interpreted form population for grid and signal strategies.
 - Verification passed across backend and frontend test/build steps; architecture-test coverage remains unavailable because no matching architecture test project exists in the workspace.

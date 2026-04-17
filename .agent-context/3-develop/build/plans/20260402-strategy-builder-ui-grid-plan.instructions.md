@@ -56,32 +56,32 @@ Build the full Strategy Builder UI layout with grid as the only working template
 
 - F1 provides: `StrategyConfig` record, `IStrategyValidator`, `StrategyJsonOptions.Default`, `POST /api/strategies/validate`
 - `HyperliquidAssetMapper` has static `DisplayToCoin` dictionary and `TimeframeToIntervalMs` — uses `BTC-PERP` display format (PBI wants `BTC-USD`)
-- `IHyperliquidAssetMetadataCache.GetAllAsync()` pools live assets from exchange — available in `TradingApp.Api.Services`
+- `IHyperliquidAssetMetadataCache.GetAllAsync()` pools live assets from exchange — available in `TradePilot.Api.Services`
 - Existing controller pattern: `ApiController` base with `IMediator` + `IdentityService`; `StrategiesController` currently inherits `ControllerBase` directly
 - `HttpGlobalExceptionFilter` already maps `DomainException` → 400, `NotFoundException` → 404
 - Angular: standalone components, `inject()`, `ApiRestClient`, reactive forms with typed `FormGroup`, Angular Material dark theme, `@for`/`@if` control flow
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — Domain entity with static factory method + private setters
-- `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — Repository pattern (scoped, DbContext injected)
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — Inline OnModelCreating, `HasConversion<double>()` for decimals
-- `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` — DI registration for repos
-- `src/TradingApp.Application/Abstractions/Commands/Command.cs` — `CreateCommand : IRequest<Guid>`, `Command : IRequest<Unit>`
-- `src/TradingApp.Application/Abstractions/Commands/CommandHandler.cs` — Base handler classes
-- `src/TradingApp.Application/Abstractions/Queries/Query.cs` — `Query<T> : IRequest<T>`
-- `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — Command + Handler co-located
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — Base controller with `IMediator` + `IdentityService`
-- `src/TradingApp.Api/Controllers/StrategiesController.cs` — Existing stub with `POST /api/strategies/validate`
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — MediatR-based controller extending `ApiController`
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Static reference data source
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — Domain entity with static factory method + private setters
+- `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — Repository pattern (scoped, DbContext injected)
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — Inline OnModelCreating, `HasConversion<double>()` for decimals
+- `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` — DI registration for repos
+- `src/TradePilot.Application/Abstractions/Commands/Command.cs` — `CreateCommand : IRequest<Guid>`, `Command : IRequest<Unit>`
+- `src/TradePilot.Application/Abstractions/Commands/CommandHandler.cs` — Base handler classes
+- `src/TradePilot.Application/Abstractions/Queries/Query.cs` — `Query<T> : IRequest<T>`
+- `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — Command + Handler co-located
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — Base controller with `IMediator` + `IdentityService`
+- `src/TradePilot.Api/Controllers/StrategiesController.cs` — Existing stub with `POST /api/strategies/validate`
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — MediatR-based controller extending `ApiController`
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Static reference data source
 - `frontend/trading-ui/src/app/core/services/api-rest-client.service.ts` — Base HTTP wrapper
 - `frontend/trading-ui/src/app/core/services/notification.service.ts` — MatSnackBar wrapper
 - `frontend/trading-ui/src/app/features/backtesting/backtest-page.component.ts` — Feature page pattern
 - `frontend/trading-ui/src/app/features/backtesting/backtest-form/backtest-form.component.ts` — Reactive form pattern
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory base
-- `tests/TradingApp.Api.Tests/Controllers/StrategiesControllerTests.cs` — Existing strategy test pattern
-- `tests/TradingApp.Application.Tests/StrategyAuthoring/Validation/SchemaValidatorTests.cs` — Validator test pattern
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — WebApplicationFactory base
+- `tests/TradePilot.Api.Tests/Controllers/StrategiesControllerTests.cs` — Existing strategy test pattern
+- `tests/TradePilot.Application.Tests/StrategyAuthoring/Validation/SchemaValidatorTests.cs` — Validator test pattern
 
 ### [x] Phase 1: Domain Entities and Persistence
 

@@ -76,22 +76,22 @@ Risk Engine / Execution Gate
 
 ```text
 src/
-  TradingApp.Api/
+  TradePilot.Api/
     Controllers/
     Program.cs
 
-  TradingApp.Application/
+  TradePilot.Application/
     Interfaces/
     Services/
     Models/
     Risk/
 
-  TradingApp.Domain/
+  TradePilot.Domain/
     Entities/
     Enums/
     ValueObjects/
 
-  TradingApp.Infrastructure/
+  TradePilot.Infrastructure/
     Data/
     Providers/
       MacroCalendar/
@@ -99,7 +99,7 @@ src/
     BackgroundJobs/
     Configuration/
 
-  TradingApp.Angular/
+  TradePilot.Angular/
     src/app/features/macro-calendar/
 ```
 
@@ -654,13 +654,13 @@ public class MacroSyncResult
 public class MacroCalendarIngestionService : IMacroCalendarIngestionService
 {
     private readonly IMacroCalendarProvider _provider;
-    private readonly TradingAppDbContext _dbContext;
+    private readonly TradePilotDbContext _dbContext;
     private readonly IMacroBlockWindowCalculator _windowCalculator;
     private readonly ILogger<MacroCalendarIngestionService> _logger;
 
     public MacroCalendarIngestionService(
         IMacroCalendarProvider provider,
-        TradingAppDbContext dbContext,
+        TradePilotDbContext dbContext,
         IMacroBlockWindowCalculator windowCalculator,
         ILogger<MacroCalendarIngestionService> logger)
     {
@@ -812,7 +812,7 @@ public class MacroCalendarSyncWorker : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var ingestion = scope.ServiceProvider.GetRequiredService<IMacroCalendarIngestionService>();
-                var db = scope.ServiceProvider.GetRequiredService<TradingAppDbContext>();
+                var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
 
                 var now = DateTime.UtcNow;
                 var fullSyncNeeded = ShouldRunFullSync(now);
@@ -1009,9 +1009,9 @@ public interface IRiskRule
 ```csharp
 public class MacroEventRiskRule : IRiskRule
 {
-    private readonly TradingAppDbContext _dbContext;
+    private readonly TradePilotDbContext _dbContext;
 
-    public MacroEventRiskRule(TradingAppDbContext dbContext)
+    public MacroEventRiskRule(TradePilotDbContext dbContext)
     {
         _dbContext = dbContext;
     }

@@ -56,7 +56,7 @@ Define the versioned, extensible strategy JSON schema and C# models that support
 |----------|--------|-----------|
 | FluentValidation vs DataAnnotations | Keep DataAnnotations (existing pattern) | No FluentValidation in codebase. DataAnnotations for request-level; `IStrategyValidator` for domain-level 3-level pipeline. |
 | RunBacktestRequest shape | Dedicated request DTO | Keep API surface separate from domain models. Updated `StrategyConfigRequest` with nested sub-DTOs maps to `StrategyConfig` in controller. |
-| StrategyConfig location | `TradingApp.Application/StrategyAuthoring/Models/` | Implements `IStrategyConfig` (Domain marker). Concrete type in Application per PBI. |
+| StrategyConfig location | `TradePilot.Application/StrategyAuthoring/Models/` | Implements `IStrategyConfig` (Domain marker). Concrete type in Application per PBI. |
 | ExecutionConfig after F1 | FeeModel only, remove Leverage | Leverage moves to `StrategyConfig.Risk.Leverage`. |
 | EntryCondition params | Typed records + Dictionary fallback | Custom `JsonConverter` using `type` discriminator for polymorphic deserialization. |
 | Exit rule params | Flat nullable fields | `ExitRuleConfig` has nullable `Value` and `Lookback`. No typed params for v1. |
@@ -66,23 +66,23 @@ Define the versioned, extensible strategy JSON schema and C# models that support
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Trading/IStrategyConfig.cs` — Marker interface (stays)
-- `src/TradingApp.Domain/Trading/GridStrategyConfig.cs` — F0 record (to be removed)
-- `src/TradingApp.Domain/Trading/ExecutionConfig.cs` — FeeModel + Leverage (Leverage to be removed)
-- `src/TradingApp.Domain/Trading/EntryModes.cs` — String constants (stays)
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — Type alias + cast pattern
-- `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs` — Cast pattern
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — Hardcoded GridStrategyConfig
-- `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — Typed to GridStrategyConfig
-- `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — GridStrategyConfig response
-- `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs` — Already uses IStrategyConfig
-- `src/TradingApp.Api/Controllers/BacktestsController.cs` — Manual mapping + ValidateRequest
-- `src/TradingApp.Api/Models/RunBacktestRequest.cs` — Flat StrategyConfigRequest
-- `src/TradingApp.Api/Services/BacktestProcessorService.cs` — Deserializes GridStrategyConfig
-- `src/TradingApp.Api/Program.cs` — DI registration, no global JSON options
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — DefaultConfig inline
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — CreateConfig helpers
-- `tests/TradingApp.Api.Tests/Controllers/BacktestsControllerTests.cs` — Full API tests
+- `src/TradePilot.Domain/Trading/IStrategyConfig.cs` — Marker interface (stays)
+- `src/TradePilot.Domain/Trading/GridStrategyConfig.cs` — F0 record (to be removed)
+- `src/TradePilot.Domain/Trading/ExecutionConfig.cs` — FeeModel + Leverage (Leverage to be removed)
+- `src/TradePilot.Domain/Trading/EntryModes.cs` — String constants (stays)
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — Type alias + cast pattern
+- `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs` — Cast pattern
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — Hardcoded GridStrategyConfig
+- `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — Typed to GridStrategyConfig
+- `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — GridStrategyConfig response
+- `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs` — Already uses IStrategyConfig
+- `src/TradePilot.Api/Controllers/BacktestsController.cs` — Manual mapping + ValidateRequest
+- `src/TradePilot.Api/Models/RunBacktestRequest.cs` — Flat StrategyConfigRequest
+- `src/TradePilot.Api/Services/BacktestProcessorService.cs` — Deserializes GridStrategyConfig
+- `src/TradePilot.Api/Program.cs` — DI registration, no global JSON options
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — DefaultConfig inline
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestRunnerTests.cs` — CreateConfig helpers
+- `tests/TradePilot.Api.Tests/Controllers/BacktestsControllerTests.cs` — Full API tests
 
 ### [x] Phase 1: Foundation — Schema Models, Enums & JSON Serialization
 

@@ -1,0 +1,3 @@
+namespace TradePilot.Application.StrategyAuthoring.Models;
+
+public interface IEntryConditionParams;

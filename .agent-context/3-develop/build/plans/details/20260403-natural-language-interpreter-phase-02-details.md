@@ -25,8 +25,8 @@ Create the DTO returned by the interpreter containing the generated config, conf
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/StrategyIntentDto.cs` — new DTO
-  - `src/TradingApp.Application/StrategyAuthoring/Models/AssumptionDto.cs` — new model
+  - `src/TradePilot.Application/StrategyAuthoring/Models/StrategyIntentDto.cs` — new DTO
+  - `src/TradePilot.Application/StrategyAuthoring/Models/AssumptionDto.cs` — new model
 - **Success**:
   - DTOs compile and can hold interpreter output
   - Assumption model captures field name, assumed value, and reason
@@ -35,8 +35,8 @@ Create the DTO returned by the interpreter containing the generated config, conf
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/StrategyIntentDto.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/StrategyIntentDto.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public sealed class StrategyIntentDto
 {
@@ -48,8 +48,8 @@ public sealed class StrategyIntentDto
 ```
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/AssumptionDto.cs — new file
-namespace TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/StrategyAuthoring/Models/AssumptionDto.cs — new file
+namespace TradePilot.Application.StrategyAuthoring.Models;
 
 public sealed class AssumptionDto
 {
@@ -61,7 +61,7 @@ public sealed class AssumptionDto
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/StrategyDto.cs` — DTO naming and structure convention
+- `src/TradePilot.Application/StrategyAuthoring/Models/StrategyDto.cs` — DTO naming and structure convention
 
 ### Task 2.2: Add SourceText field to SourceMetadata {#task-22-add-sourcetext-to-sourcemetadata}
 
@@ -70,7 +70,7 @@ Add `SourceText` property to `SourceMetadata` to store the original natural lang
 - **Complexity**: Low
 - **Risk Factors**: Existing serialization must not break — `SourceText` is nullable so absence in existing data is safe
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Models/SourceMetadata.cs` — add property
+  - `src/TradePilot.Application/StrategyAuthoring/Models/SourceMetadata.cs` — add property
   - `frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts` — add property
 - **Success**:
   - `SourceText` is nullable and does not break existing serialization/deserialization
@@ -80,7 +80,7 @@ Add `SourceText` property to `SourceMetadata` to store the original natural lang
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Models/SourceMetadata.cs — modification
+// src/TradePilot.Application/StrategyAuthoring/Models/SourceMetadata.cs — modification
 // Add SourceText property to existing record:
 public sealed record SourceMetadata
 {
@@ -102,7 +102,7 @@ export interface SourceMetadata {
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/SourceMetadata.cs` — existing record with `EntryPoint` + `Summary`
+- `src/TradePilot.Application/StrategyAuthoring/Models/SourceMetadata.cs` — existing record with `EntryPoint` + `Summary`
 
 ### Task 2.3: Create IStrategyInterpreter interface and implementation with prompt engineering {#task-23-create-strategy-interpreter}
 
@@ -111,9 +111,9 @@ Create the core interpreter service that takes user text, sends it to the LLM wi
 - **Complexity**: High
 - **Risk Factors**: LLM prompt quality directly affects output accuracy; JSON parsing of LLM output may fail; confidence calculation heuristics need tuning
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/IStrategyInterpreter.cs` — interface (in Application layer per architecture)
-  - `src/TradingApp.AI/Services/StrategyInterpreter.cs` — implementation
-  - `src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs` — system prompt template
+  - `src/TradePilot.Application/Abstractions/Services/IStrategyInterpreter.cs` — interface (in Application layer per architecture)
+  - `src/TradePilot.AI/Services/StrategyInterpreter.cs` — implementation
+  - `src/TradePilot.AI/Prompts/StrategyInterpreterPrompt.cs` — system prompt template
 - **Success**:
   - Given "Buy ETH when RSI drops below 30 with 2% take profit", returns signal mode config with RSI condition
   - Given ambiguous text, returns low confidence with clarification
@@ -124,10 +124,10 @@ Create the core interpreter service that takes user text, sends it to the LLM wi
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/IStrategyInterpreter.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/Abstractions/Services/IStrategyInterpreter.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.Application.Abstractions.Services;
+namespace TradePilot.Application.Abstractions.Services;
 
 public interface IStrategyInterpreter
 {
@@ -136,8 +136,8 @@ public interface IStrategyInterpreter
 ```
 
 ```csharp
-// src/TradingApp.AI/Prompts/StrategyInterpreterPrompt.cs — new file
-namespace TradingApp.AI.Prompts;
+// src/TradePilot.AI/Prompts/StrategyInterpreterPrompt.cs — new file
+namespace TradePilot.AI.Prompts;
 
 internal static class StrategyInterpreterPrompt
 {
@@ -241,15 +241,15 @@ internal static class StrategyInterpreterPrompt
 ```
 
 ```csharp
-// src/TradingApp.AI/Services/StrategyInterpreter.cs — new file
+// src/TradePilot.AI/Services/StrategyInterpreter.cs — new file
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using TradingApp.AI.Prompts;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.StrategyAuthoring.Serialization;
+using TradePilot.AI.Prompts;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Serialization;
 
-namespace TradingApp.AI.Services;
+namespace TradePilot.AI.Services;
 
 internal sealed class StrategyInterpreter : IStrategyInterpreter
 {
@@ -341,10 +341,10 @@ internal sealed class StrategyInterpreter : IStrategyInterpreter
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Serialization/StrategyJsonOptions.cs` — canonical JSON serialization options
-- `src/TradingApp.Application/StrategyAuthoring/Models/StrategyConfig.cs` — target config record
-- `src/TradingApp.Application/StrategyAuthoring/Models/EntryConditionConfig.cs` — polymorphic condition with JSON converter
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — service with ILlmClient injection pattern, error handling
+- `src/TradePilot.Application/StrategyAuthoring/Serialization/StrategyJsonOptions.cs` — canonical JSON serialization options
+- `src/TradePilot.Application/StrategyAuthoring/Models/StrategyConfig.cs` — target config record
+- `src/TradePilot.Application/StrategyAuthoring/Models/EntryConditionConfig.cs` — polymorphic condition with JSON converter
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — service with ILlmClient injection pattern, error handling
 
 ### Task 2.4: Create InterpretStrategyCommand and handler {#task-24-create-interpretstrategycommand}
 
@@ -353,7 +353,7 @@ Create the MediatR command and handler that wraps the interpreter call for the A
 - **Complexity**: Medium
 - **Risk Factors**: None — straightforward delegation
 - **Files**:
-  - `src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` — command + handler
+  - `src/TradePilot.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs` — command + handler
 - **Success**:
   - Command accepts user text, dispatches to IStrategyInterpreter
   - Returns StrategyIntentDto
@@ -362,12 +362,12 @@ Create the MediatR command and handler that wraps the interpreter call for the A
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs — new file
+// src/TradePilot.Application/StrategyAuthoring/Commands/InterpretStrategyCommand.cs — new file
 using MediatR;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.Application.StrategyAuthoring.Commands;
+namespace TradePilot.Application.StrategyAuthoring.Commands;
 
 public sealed record InterpretStrategyCommand(string UserText) : IRequest<StrategyIntentDto>;
 
@@ -392,7 +392,7 @@ internal sealed class InterpretStrategyCommandHandler
 
 ##### Pattern References
 
-- `src/TradingApp.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs` — MediatR command + handler in same file
+- `src/TradePilot.Application/StrategyAuthoring/Commands/CreateStrategyCommand.cs` — MediatR command + handler in same file
 
 ### Task 2.5: Register interpreter in DI {#task-25-register-interpreter-in-di}
 
@@ -401,7 +401,7 @@ Add the `IStrategyInterpreter` registration to `AiServiceExtensions`.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.AI/AiServiceExtensions.cs` — add interpreter registration
+  - `src/TradePilot.AI/AiServiceExtensions.cs` — add interpreter registration
 - **Success**:
   - `IStrategyInterpreter` resolves from DI container
 - **Dependencies**: Task 2.3
@@ -409,14 +409,14 @@ Add the `IStrategyInterpreter` registration to `AiServiceExtensions`.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.AI/AiServiceExtensions.cs — add to existing method
+// src/TradePilot.AI/AiServiceExtensions.cs — add to existing method
 // After the HttpClient registration:
 services.AddScoped<IStrategyInterpreter, StrategyInterpreter>();
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.AI/AiServiceExtensions.cs` — created in Phase 1
+- `src/TradePilot.AI/AiServiceExtensions.cs` — created in Phase 1
 
 ### Task 2.6: Add unit tests for interpreter and command handler {#task-26-add-unit-tests}
 
@@ -425,7 +425,7 @@ Test the `StrategyInterpreter` with mocked `ILlmClient` responses and the comman
 - **Complexity**: Medium
 - **Risk Factors**: Test JSON fixtures must match the LLM response format exactly
 - **Files**:
-  - `tests/TradingApp.AI.Tests/Services/StrategyInterpreterTests.cs` — new test class
+  - `tests/TradePilot.AI.Tests/Services/StrategyInterpreterTests.cs` — new test class
 - **Success**:
   - Given valid LLM JSON response, interpreter returns populated StrategyIntentDto
   - Given malformed LLM response, interpreter returns clarification needed
@@ -438,16 +438,16 @@ Test the `StrategyInterpreter` with mocked `ILlmClient` responses and the comman
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.AI.Tests/Services/StrategyInterpreterTests.cs — new file
+// tests/TradePilot.AI.Tests/Services/StrategyInterpreterTests.cs — new file
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using TradingApp.AI.Services;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.StrategyAuthoring.Models;
+using TradePilot.AI.Services;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.AI.Tests.Services;
+namespace TradePilot.AI.Tests.Services;
 
 [TestClass]
 public sealed class StrategyInterpreterTests
@@ -570,8 +570,8 @@ public sealed class StrategyInterpreterTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/GridControllerTests.cs` — unit test pattern with factory helpers
-- `tests/TradingApp.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs` — created in Phase 1
+- `tests/TradePilot.Application.Tests/Trading/Services/GridControllerTests.cs` — unit test pattern with factory helpers
+- `tests/TradePilot.AI.Tests/Services/OpenAiCompatibleLlmClientTests.cs` — created in Phase 1
 
 ### Task 2.7: Build verification and architecture tests {#task-27-build-verification}
 
@@ -581,8 +581,8 @@ Verify the solution builds and all tests pass.
 - **Risk Factors**: None
 - **Files**: No files to create
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
-  - `dotnet test` passes for TradingApp.AI.Tests
+  - `dotnet build TradePilot.sln` succeeds
+  - `dotnet test` passes for TradePilot.AI.Tests
   - Existing tests still pass
 - **Dependencies**: All previous tasks in phase
 

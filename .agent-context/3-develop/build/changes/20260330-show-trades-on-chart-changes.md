@@ -18,11 +18,11 @@ Implemented live trade markers on the market data price chart with backend asset
 ### Modified
 
 <!-- Phase 1: Backend API Extension -->
-- src/TradingApp.Api/Controllers/AccountController.cs: Added optional asset query parameter support to the fills endpoint and forwarded it to the account service.
-- src/TradingApp.Api/Services/IHyperliquidAccountService.cs: Updated the fills service contract to accept an optional asset filter.
-- src/TradingApp.Api/Services/HyperliquidAccountService.cs: Implemented optional asset filtering with coin mapping and switched asset-filtered requests to all-time fill retrieval.
-- src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs: Removed the hardcoded Take(50) limit from user fills retrieval.
-- tests/TradingApp.Api.Tests/Controllers/AccountControllerTests.cs: Added asset-filter coverage and updated fills endpoint mocks for the new service signature.
+- src/TradePilot.Api/Controllers/AccountController.cs: Added optional asset query parameter support to the fills endpoint and forwarded it to the account service.
+- src/TradePilot.Api/Services/IHyperliquidAccountService.cs: Updated the fills service contract to accept an optional asset filter.
+- src/TradePilot.Api/Services/HyperliquidAccountService.cs: Implemented optional asset filtering with coin mapping and switched asset-filtered requests to all-time fill retrieval.
+- src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs: Removed the hardcoded Take(50) limit from user fills retrieval.
+- tests/TradePilot.Api.Tests/Controllers/AccountControllerTests.cs: Added asset-filter coverage and updated fills endpoint mocks for the new service signature.
 
 <!-- Phase 2: Frontend Chart Integration -->
 - frontend/trading-ui/src/app/core/services/signalr.service.ts: Exposed a new fillEvent$ observable and emitted fill events alongside the existing account-state update.
@@ -40,7 +40,7 @@ Implemented live trade markers on the market data price chart with backend asset
 
 <!-- Phase 1: Backend API Extension -->
 - AccountControllerTests: 10/10 passed
-- TradingApp.Api.Tests: 144/144 passed
+- TradePilot.Api.Tests: 144/144 passed
 - Solution Build: PASSED
 - Architecture Tests: Not run - not required by the phase details
 
@@ -53,7 +53,7 @@ Implemented live trade markers on the market data price chart with backend asset
 ## Issues
 
 <!-- Phase 1: Backend API Extension -->
-- Initial targeted test run failed because a running TradingApp.Api process had backend DLLs locked during test build; the tests passed after the lock cleared and the run was retried.
+- Initial targeted test run failed because a running TradePilot.Api process had backend DLLs locked during test build; the tests passed after the lock cleared and the run was retried.
 - dotnet build and dotnet test reported pre-existing NU1903 warnings for AutoMapper 12.0.1; these warnings were unrelated to this phase and did not block compilation or tests.
 
 <!-- Phase 2: Frontend Chart Integration -->
@@ -87,4 +87,4 @@ Completed both implementation phases for live trade markers on the main market-d
 
 - Backend: Added optional asset filtering to GET /api/account/fills, preserved backward compatibility for empty asset values, and removed the premature Take(50) truncation from Hyperliquid fill retrieval.
 - Frontend: Added marker rendering, tooltip hover details, a Trades visibility toggle, SignalR fill streaming, per-asset fill orchestration, and dedicated PriceChartComponent test coverage.
-- Validation: Backend solution build passed, TradingApp.Api.Tests passed 144/144, Angular unit tests passed 103/103, frontend build passed, and frontend lint passed.
+- Validation: Backend solution build passed, TradePilot.Api.Tests passed 144/144, Angular unit tests passed 103/103, frontend build passed, and frontend lint passed.

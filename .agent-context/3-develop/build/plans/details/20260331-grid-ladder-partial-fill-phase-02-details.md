@@ -10,7 +10,7 @@
 - `.github/instructions/csharp.instructions.md` — sealed classes, guard clauses, naming
 - `.agent-context/0-knowledge/15-grid-controller.md` — Grid lifecycle documentation
 - `.agent-context/0-knowledge/24-backtesting-grid-engine-explained.md` — Grid engine walkthrough (to be updated)
-- `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Existing integration test patterns
+- `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Existing integration test patterns
 
 ## Design References
 
@@ -31,7 +31,7 @@ Add new integration test methods that exercise the corrected multi-level grid li
 - **Complexity**: Medium
 - **Risk Factors**: Candle sequences must be carefully designed so limit buy orders fill at predictable levels; requires understanding of `SimulatedExecutionEngine.ProcessCandle` fill logic
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Add new test methods
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Add new test methods
 - **Success**:
   - Test proves ladder stays active after first fill (multiple levels fill across candles)
   - Test proves TP triggers from partial fill when candle close reaches TP level
@@ -43,7 +43,7 @@ Add new integration test methods that exercise the corrected multi-level grid li
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs — additions
+// tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs — additions
 
     [TestMethod]
     public async Task GivenMultiLevelGrid_WhenPartialFills_ThenLadderRemainsActiveAndAdditionalLevelsFill()
@@ -183,10 +183,10 @@ Add new integration test methods that exercise the corrected multi-level grid li
 
 ##### Pattern References
 
-- Existing integration tests: `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs`
-- `BacktestConfig` model: `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs`
-- `GridCycleEntry` audit model: search for `GridCycleEntry` in `src/TradingApp.Application/Backtesting/`
-- `SimulatedExecutionEngine.ProcessCandle` fill logic: `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
+- Existing integration tests: `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs`
+- `BacktestConfig` model: `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs`
+- `GridCycleEntry` audit model: search for `GridCycleEntry` in `src/TradePilot.Application/Backtesting/`
+- `SimulatedExecutionEngine.ProcessCandle` fill logic: `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
 
 ---
 
@@ -197,7 +197,7 @@ Review and update existing `RealBacktestRunnerTests` methods if their assertions
 - **Complexity**: Low
 - **Risk Factors**: Existing candle sequences may produce different fill counts with the corrected controller. Need to trace through each test's candle data.
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Adjust assertions if needed
+  - `tests/TradePilot.Application.Tests/Backtesting/Services/RealBacktestRunnerTests.cs` — Adjust assertions if needed
 - **Success**:
   - All existing integration tests pass with the corrected controller
   - Assertions accurately reflect expected behavior under the corrected lifecycle
@@ -231,12 +231,12 @@ Build the full solution and run all test projects to verify no regressions.
 - **Risk Factors**: None
 - **Files**: None (verification step)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
-  - `dotnet test tests/TradingApp.Application.Tests` — all tests pass
-  - `dotnet test tests/TradingApp.Domain.Tests` — all tests pass
-  - `dotnet test tests/TradingApp.Api.Tests` — all tests pass
-  - `dotnet test tests/TradingApp.Infrastructure.Tests` — all tests pass
-  - `dotnet test tests/TradingApp.Persistence.Tests` — all tests pass
+  - `dotnet build TradePilot.sln` succeeds
+  - `dotnet test tests/TradePilot.Application.Tests` — all tests pass
+  - `dotnet test tests/TradePilot.Domain.Tests` — all tests pass
+  - `dotnet test tests/TradePilot.Api.Tests` — all tests pass
+  - `dotnet test tests/TradePilot.Infrastructure.Tests` — all tests pass
+  - `dotnet test tests/TradePilot.Persistence.Tests` — all tests pass
   - All 6 PBI acceptance criteria satisfied
 - **Dependencies**: Tasks 2.1, 2.2, 2.3
 

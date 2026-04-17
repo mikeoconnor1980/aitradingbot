@@ -36,8 +36,8 @@ The candle database (F1) is empty after setup. There is no mechanism to populate
 ### Functional Requirements
 
 - [ ] A new `GetCandlesAsync` overload is added to `IHyperliquidRestClient` that accepts both `startTime` and `endTime` parameters (both `long`), enabling forward pagination by time range
-- [ ] An `ICandleIngestionService` interface is defined in `TradingApp.Application` with a method: `IngestAsync(symbol, intervals[], startTime?, endTime?, cancellationToken)` returning an `IngestionResult`
-- [ ] A `CandleIngestionService` implementation exists in `TradingApp.Infrastructure` that uses the new `IHyperliquidRestClient.GetCandlesAsync(asset, timeframe, startTime, endTime)` overload for data fetching
+- [ ] An `ICandleIngestionService` interface is defined in `TradePilot.Application` with a method: `IngestAsync(symbol, intervals[], startTime?, endTime?, cancellationToken)` returning an `IngestionResult`
+- [ ] A `CandleIngestionService` implementation exists in `TradePilot.Infrastructure` that uses the new `IHyperliquidRestClient.GetCandlesAsync(asset, timeframe, startTime, endTime)` overload for data fetching
 - [ ] The service fetches candles from Hyperliquid in batches of up to 500 candles per request, paginating forward by time
 - [ ] The service accepts any symbol known to `HyperliquidAssetMapper` and any interval supported by `HyperliquidAssetMapper.GetIntervalMs` (currently: 5m, 15m, 1h, 4h)
 - [ ] For each interval, the service loops: fetch batch → upsert to DB via `ICandleRepository.BulkInsertAsync` → advance cursor by last candle timestamp → repeat until `endTime` or no more data
@@ -145,14 +145,14 @@ The candle database (F1) is empty after setup. There is no mechanism to populate
 
 | Component | Layer | Action |
 |-----------|-------|--------|
-| `ICandleIngestionService` | `TradingApp.Application` | Interface defining ingestion operations |
-| `CandleIngestionService` | `TradingApp.Infrastructure` | Implementation: pagination, mapping, rate limiting, retry, upsert via repository |
-| `IngestionRequest` | `TradingApp.Application` | Request DTO (symbol, intervals, startTime, endTime) |
-| `IngestionResult` | `TradingApp.Application` | Result DTO (counts, per-interval breakdown with error field, elapsed time) |
-| `CandleIngestionController` | `TradingApp.Api` | API controller exposing the ingestion endpoint with concurrency guard |
-| `IHyperliquidRestClient` | `TradingApp.Infrastructure` | Existing interface — new overload: `GetCandlesAsync(asset, timeframe, startTime, endTime)` for forward pagination |
-| `HyperliquidAssetMapper` | `TradingApp.Infrastructure` | Existing — maps asset names and resolves interval to milliseconds; used for validation |
-| `ICandleRepository` | `TradingApp.Application` | From F1 — used for `BulkInsertAsync` and `GetLatestTimestampAsync` |
+| `ICandleIngestionService` | `TradePilot.Application` | Interface defining ingestion operations |
+| `CandleIngestionService` | `TradePilot.Infrastructure` | Implementation: pagination, mapping, rate limiting, retry, upsert via repository |
+| `IngestionRequest` | `TradePilot.Application` | Request DTO (symbol, intervals, startTime, endTime) |
+| `IngestionResult` | `TradePilot.Application` | Result DTO (counts, per-interval breakdown with error field, elapsed time) |
+| `CandleIngestionController` | `TradePilot.Api` | API controller exposing the ingestion endpoint with concurrency guard |
+| `IHyperliquidRestClient` | `TradePilot.Infrastructure` | Existing interface — new overload: `GetCandlesAsync(asset, timeframe, startTime, endTime)` for forward pagination |
+| `HyperliquidAssetMapper` | `TradePilot.Infrastructure` | Existing — maps asset names and resolves interval to milliseconds; used for validation |
+| `ICandleRepository` | `TradePilot.Application` | From F1 — used for `BulkInsertAsync` and `GetLatestTimestampAsync` |
 
 ### Ingestion Flow
 

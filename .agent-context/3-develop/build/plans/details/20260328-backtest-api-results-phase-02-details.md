@@ -25,9 +25,9 @@ Create the strongly-typed strategy configuration DTO and the backtest result res
 - **Complexity**: Medium
 - **Risk Factors**: Must align `GridStrategyConfig` fields with PBI spec and existing `BacktestConfig.StrategyConfigJson` schema; Response DTO must include all PBI-required fields
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/GridStrategyConfig.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — new file
-  - `src/TradingApp.Application/Backtesting/Models/BacktestTradeResponse.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/GridStrategyConfig.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/BacktestTradeResponse.cs` — new file
 - **Success**:
   - `GridStrategyConfig` has all fields from PBI spec (gridLevels, gridSpacing, takeProfitPercent, etc.)
   - `BacktestRunResponse` has all summary metrics, metadata, strategy config, and trades array
@@ -37,8 +37,8 @@ Create the strongly-typed strategy configuration DTO and the backtest result res
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/GridStrategyConfig.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/GridStrategyConfig.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public sealed class GridStrategyConfig
 {
@@ -56,8 +56,8 @@ public sealed class GridStrategyConfig
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public sealed class BacktestRunResponse
 {
@@ -86,8 +86,8 @@ public sealed class BacktestRunResponse
 ```
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/BacktestTradeResponse.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/BacktestTradeResponse.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public sealed class BacktestTradeResponse
 {
@@ -105,8 +105,8 @@ public sealed class BacktestTradeResponse
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — existing model with aggregate metrics, `required` init properties
-- `src/TradingApp.Application/Backtesting/Models/BacktestTrade.cs` — existing trade model with `EntryTimeUtc` (long), `Side` (OrderSide enum)
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — existing model with aggregate metrics, `required` init properties
+- `src/TradePilot.Application/Backtesting/Models/BacktestTrade.cs` — existing trade model with `EntryTimeUtc` (long), `Side` (OrderSide enum)
 
 ### Task 2.2: Create `CandleCoverageResponse` DTO {#task-22-create-candlecoverageresponse-dto}
 
@@ -115,7 +115,7 @@ Create the DTO for the validate endpoint response showing candle data coverage p
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/CandleCoverageResponse.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/CandleCoverageResponse.cs` — new file
 - **Success**:
   - DTO contains per-interval coverage information (from, to, candleCount)
 - **Dependencies**: None
@@ -123,8 +123,8 @@ Create the DTO for the validate endpoint response showing candle data coverage p
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/Models/CandleCoverageResponse.cs — new file
-namespace TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/Models/CandleCoverageResponse.cs — new file
+namespace TradePilot.Application.Backtesting.Models;
 
 public sealed class CandleCoverageResponse
 {
@@ -141,7 +141,7 @@ public sealed class IntervalCoverage
 
 ##### Pattern References
 
-- `src/TradingApp.Application/MarketData/Models/MarketInfoDto.cs` — DTO pattern in Application layer
+- `src/TradePilot.Application/MarketData/Models/MarketInfoDto.cs` — DTO pattern in Application layer
 
 ### Task 2.3: Create `RunBacktestCommand` and handler {#task-23-create-runbacktestcommand-and-handler}
 
@@ -150,8 +150,8 @@ Create the CQRS command that triggers a backtest run, persists the result, and r
 - **Complexity**: High
 - **Risk Factors**: Complex mapping between API request → BacktestConfig → BacktestResult → BacktestRun entity → BacktestRunResponse; must handle cancellation/timeout correctly; must serialize GridStrategyConfig to JSON for BacktestConfig.StrategyConfigJson
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — modification (add `CandlesReplayed` property)
-  - `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` — new file
+  - `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — modification (add `CandlesReplayed` property)
+  - `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` — new file
 - **Success**:
   - Command carries all request fields
   - Handler calls `IBacktestRunner.RunAsync()` with correct `BacktestConfig`
@@ -163,16 +163,16 @@ Create the CQRS command that triggers a backtest run, persists the result, and r
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/RunBacktestCommand.cs — new file
+// src/TradePilot.Application/Backtesting/RunBacktestCommand.cs — new file
 using System.Diagnostics;
 using System.Text.Json;
-using TradingApp.Application.Abstractions.Commands;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Abstractions.Services;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Domain.Entities;
+using TradePilot.Application.Abstractions.Commands;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Backtesting;
+namespace TradePilot.Application.Backtesting;
 
 public sealed record RunBacktestCommand(
     string Symbol,
@@ -287,15 +287,15 @@ public sealed class RunBacktestCommandHandler : CommandHandler<RunBacktestComman
 }
 ```
 
-> **Action Required**: `BacktestResult` in `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` does **not** currently have a `CandlesReplayed` property. Before creating `RunBacktestCommand.cs`, add `public required int CandlesReplayed { get; init; }` to `BacktestResult` (after the existing `GridCycles` property). The `FeeModel` uses `init` properties with defaults — the handler code above matches this pattern correctly.
+> **Action Required**: `BacktestResult` in `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` does **not** currently have a `CandlesReplayed` property. Before creating `RunBacktestCommand.cs`, add `public required int CandlesReplayed { get; init; }` to `BacktestResult` (after the existing `GridCycles` property). The `FeeModel` uses `init` properties with defaults — the handler code above matches this pattern correctly.
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Candles/IngestCandlesCommand.cs` — CQRS `Command<T>` record + `CommandHandler` in same file
-- `src/TradingApp.Application/Abstractions/Commands/CommandHandler.cs` — `CommandHandler<TCommand, TResult>` abstract base
-- `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs` — config input model
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — result output model (must be modified to add `CandlesReplayed`)
-- `src/TradingApp.Application/Backtesting/Models/FeeModel.cs` — fee model structure
+- `src/TradePilot.Application/Candles/IngestCandlesCommand.cs` — CQRS `Command<T>` record + `CommandHandler` in same file
+- `src/TradePilot.Application/Abstractions/Commands/CommandHandler.cs` — `CommandHandler<TCommand, TResult>` abstract base
+- `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs` — config input model
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — result output model (must be modified to add `CandlesReplayed`)
+- `src/TradePilot.Application/Backtesting/Models/FeeModel.cs` — fee model structure
 
 ### Task 2.4: Create `GetBacktestResultQuery` and handler {#task-24-create-getbacktestresultquery-and-handler}
 
@@ -304,7 +304,7 @@ Create the CQRS query that retrieves a persisted backtest result by ID.
 - **Complexity**: Medium
 - **Risk Factors**: Must deserialize JSON blobs (StrategyConfigJson, TradesJson) back into typed DTOs; must throw NotFoundException for missing IDs
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/GetBacktestResultQuery.cs` — new file
+  - `src/TradePilot.Application/Backtesting/GetBacktestResultQuery.cs` — new file
 - **Success**:
   - Query accepts a `Guid` ID
   - Handler returns `BacktestRunResponse` with all fields populated from the entity
@@ -314,14 +314,14 @@ Create the CQRS query that retrieves a persisted backtest result by ID.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/GetBacktestResultQuery.cs — new file
+// src/TradePilot.Application/Backtesting/GetBacktestResultQuery.cs — new file
 using System.Text.Json;
-using TradingApp.Application.Abstractions.Queries;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Backtesting.Models;
-using TradingApp.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Queries;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Backtesting.Models;
+using TradePilot.Application.Abstractions.Exceptions;
 
-namespace TradingApp.Application.Backtesting;
+namespace TradePilot.Application.Backtesting;
 
 public sealed record GetBacktestResultQuery(Guid Id) : Query<BacktestRunResponse>;
 
@@ -381,8 +381,8 @@ public sealed class GetBacktestResultQueryHandler : QueryHandler<GetBacktestResu
 
 ##### Pattern References
 
-- `src/TradingApp.Application/MarketData/GetMarketInfoQuery.cs` — CQRS `Query<T>` + `QueryHandler` with `NotFoundException` pattern
-- `src/TradingApp.Application/Abstractions/Queries/QueryHandler.cs` — `QueryHandler<TQuery, TResult>` abstract base
+- `src/TradePilot.Application/MarketData/GetMarketInfoQuery.cs` — CQRS `Query<T>` + `QueryHandler` with `NotFoundException` pattern
+- `src/TradePilot.Application/Abstractions/Queries/QueryHandler.cs` — `QueryHandler<TQuery, TResult>` abstract base
 
 ### Task 2.5: Create `GetCandleCoverageQuery` and handler {#task-25-create-getcandlecoveragequery-and-handler}
 
@@ -391,7 +391,7 @@ Create the CQRS query that checks candle data coverage for a symbol across multi
 - **Complexity**: Medium
 - **Risk Factors**: Must query `ICandleRepository` per interval; must handle case where no data exists for an interval
 - **Files**:
-  - `src/TradingApp.Application/Backtesting/GetCandleCoverageQuery.cs` — new file
+  - `src/TradePilot.Application/Backtesting/GetCandleCoverageQuery.cs` — new file
 - **Success**:
   - Query accepts symbol and intervals
   - Handler returns coverage report with per-interval date ranges and candle counts
@@ -401,12 +401,12 @@ Create the CQRS query that checks candle data coverage for a symbol across multi
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Backtesting/GetCandleCoverageQuery.cs — new file
-using TradingApp.Application.Abstractions.Queries;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Application.Backtesting.Models;
+// src/TradePilot.Application/Backtesting/GetCandleCoverageQuery.cs — new file
+using TradePilot.Application.Abstractions.Queries;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Backtesting.Models;
 
-namespace TradingApp.Application.Backtesting;
+namespace TradePilot.Application.Backtesting;
 
 public sealed record GetCandleCoverageQuery(string Symbol, string[] Intervals) : Query<CandleCoverageResponse>;
 
@@ -463,8 +463,8 @@ public sealed class GetCandleCoverageQueryHandler : QueryHandler<GetCandleCovera
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs` — `GetCandlesAsync()`, `GetLatestTimestampAsync()` methods
-- `src/TradingApp.Application/Abstractions/Queries/QueryHandler.cs` — query handler base
+- `src/TradePilot.Application/Abstractions/Repositories/ICandleRepository.cs` — `GetCandlesAsync()`, `GetLatestTimestampAsync()` methods
+- `src/TradePilot.Application/Abstractions/Queries/QueryHandler.cs` — query handler base
 
 ### Task 2.6: Add `OperationCanceledException` handling to `HttpGlobalExceptionFilter` {#task-26-add-operationcanceledexception-handling-to-httpglobalexceptionfilter}
 
@@ -473,7 +473,7 @@ Add handling for `OperationCanceledException` to return HTTP 408 Request Timeout
 - **Complexity**: Low
 - **Risk Factors**: Must not break existing exception handling; must correctly distinguish client disconnect from server timeout
 - **Files**:
-  - `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — modification
+  - `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — modification
 - **Success**:
   - `OperationCanceledException` returns 408 with descriptive message
   - Existing exception handling is unchanged
@@ -484,7 +484,7 @@ Add handling for `OperationCanceledException` to return HTTP 408 Request Timeout
 The existing filter uses a `switch` expression pattern. Add a new arm for `OperationCanceledException` **before** the catch-all `_` arm:
 
 ```csharp
-// src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs — modification
+// src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs — modification
 // Add this arm to the existing switch expression, before the _ catch-all:
 OperationCanceledException => (
     StatusCodes.Status408RequestTimeout,
@@ -493,7 +493,7 @@ OperationCanceledException => (
 
 ##### Pattern References
 
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — existing `switch` expression maps exception types to `(statusCode, envelope)` tuples: `DomainException` → 400, `NotFoundException` → 404, etc.
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — existing `switch` expression maps exception types to `(statusCode, envelope)` tuples: `DomainException` → 400, `NotFoundException` → 404, etc.
 
 ### Task 2.7: Build solution successfully {#task-27-build-solution-successfully}
 
@@ -503,14 +503,14 @@ Verify the solution compiles with all new Application layer code. No separate ha
 - **Risk Factors**: May need to adjust property names or types if existing models differ from expected
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with no errors
+  - `dotnet build TradePilot.sln` succeeds with no errors
   - All existing tests still pass
 - **Dependencies**: All prior tasks in Phase 2
 
 ## Phase Success Criteria
 
-- `GridStrategyConfig`, `BacktestRunResponse`, `BacktestTradeResponse`, `CandleCoverageResponse` DTOs exist in `TradingApp.Application/Backtesting/Models/`
-- `RunBacktestCommand` + handler, `GetBacktestResultQuery` + handler, `GetCandleCoverageQuery` + handler exist in `TradingApp.Application/Backtesting/`
+- `GridStrategyConfig`, `BacktestRunResponse`, `BacktestTradeResponse`, `CandleCoverageResponse` DTOs exist in `TradePilot.Application/Backtesting/Models/`
+- `RunBacktestCommand` + handler, `GetBacktestResultQuery` + handler, `GetCandleCoverageQuery` + handler exist in `TradePilot.Application/Backtesting/`
 - `HttpGlobalExceptionFilter` handles `OperationCanceledException` → 408
 - Solution builds with zero errors
 - All existing tests still pass

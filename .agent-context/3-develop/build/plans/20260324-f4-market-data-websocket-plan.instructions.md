@@ -50,9 +50,9 @@ Establish a persistent WebSocket connection to Hyperliquid, subscribe to the BTC
 
 ### Discovery References
 
-**Architecture Decision — BackgroundService + SignalR co-located in TradingApp.Api:**
+**Architecture Decision — BackgroundService + SignalR co-located in TradePilot.Api:**
 - Worker project is an empty stub; cross-process SignalR (IHubContext) would require Redis backplane
-- For POC, co-locating BackgroundService in TradingApp.Api is the pragmatic choice
+- For POC, co-locating BackgroundService in TradePilot.Api is the pragmatic choice
 - Production migration to Worker + Redis backplane deferred to F8/scaling phase
 
 **Key Constraints (from `.agent-context/0-knowledge/`):**
@@ -67,17 +67,17 @@ Establish a persistent WebSocket connection to Hyperliquid, subscribe to the BTC
 
 ### Project Patterns
 
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Typed HttpClient pattern for Hyperliquid REST API; model for WebSocket client structure
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Interface-in-Application pattern for infrastructure contracts
-- `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` — Options pattern with startup validation
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Coin/timeframe mapping utility
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — Hyperliquid JSON model with `[JsonPropertyName]` attributes
-- `src/TradingApp.Application/MarketData/Models/MarketInfoDto.cs` — Application-layer DTO pattern for market data
-- `src/TradingApp.Api/Program.cs` — DI composition root, CORS config, middleware pipeline
-- `src/TradingApp.Api/Infrastructure/ApiController.cs` — Base controller with MediatR
-- `tests/TradingApp.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — Unit test pattern (MSTest + Moq + FluentAssertions)
-- `tests/TradingApp.Api.Tests/Infrastructure/BaseControllerTests.cs` — Integration test base with WebApplicationFactory
-- `tests/TradingApp.Api.Tests/Controllers/MarketDataControllerTests.cs` — Controller integration test pattern
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Typed HttpClient pattern for Hyperliquid REST API; model for WebSocket client structure
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — Interface-in-Application pattern for infrastructure contracts
+- `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` — Options pattern with startup validation
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Coin/timeframe mapping utility
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — Hyperliquid JSON model with `[JsonPropertyName]` attributes
+- `src/TradePilot.Application/MarketData/Models/MarketInfoDto.cs` — Application-layer DTO pattern for market data
+- `src/TradePilot.Api/Program.cs` — DI composition root, CORS config, middleware pipeline
+- `src/TradePilot.Api/Infrastructure/ApiController.cs` — Base controller with MediatR
+- `tests/TradePilot.Infrastructure.Tests/Services/HyperliquidSignerTests.cs` — Unit test pattern (MSTest + Moq + FluentAssertions)
+- `tests/TradePilot.Api.Tests/Infrastructure/BaseControllerTests.cs` — Integration test base with WebApplicationFactory
+- `tests/TradePilot.Api.Tests/Controllers/MarketDataControllerTests.cs` — Controller integration test pattern
 - `frontend/trading-ui/src/app/core/services/market-data.service.ts` — Angular service pattern with ApiRestClient
 - `frontend/trading-ui/src/app/features/market-data/market-data.component.ts` — Feature component with BehaviorSubject, takeUntilDestroyed
 - `frontend/trading-ui/src/app/app.component.html` — App shell navbar layout
@@ -172,12 +172,12 @@ Establish a persistent WebSocket connection to Hyperliquid, subscribe to the BTC
 
 ### Scoping Notes
 
-- BackgroundService co-located in TradingApp.Api for POC simplicity; migration to Worker with Redis backplane deferred
+- BackgroundService co-located in TradePilot.Api for POC simplicity; migration to Worker with Redis backplane deferred
 - Serilog structured logging assumed available via `ILogger<T>` (Microsoft.Extensions.Logging abstractions already in use)
 - Hyperliquid testnet WebSocket endpoint assumed as `wss://api.hyperliquid-testnet.xyz/ws` (inferred from REST base URL pattern)
 - Exact Hyperliquid trade message format should be verified during implementation; models based on documented API
 - Angular follows actual codebase patterns (`standalone: true`, `inject()` function) not instruction file's `standalone: false`
-- No domain entities created in TradingApp.Domain — all DTOs live in Application layer (consistent with existing patterns)
+- No domain entities created in TradePilot.Domain — all DTOs live in Application layer (consistent with existing patterns)
 - 24h stats seeded from existing REST endpoint (`IHyperliquidRestClient.GetMarketInfoAsync`) at startup
 
 ## Dependencies

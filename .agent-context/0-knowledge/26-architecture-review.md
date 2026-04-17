@@ -29,7 +29,7 @@ This review aligns the risk picture with the implemented split-architecture syst
 The risk profile changed because the architecture changed. The biggest additions are:
 
 - `AgentCommandStore` as the in-memory control mechanism for agent registration, pending commands, and kill-switch state
-- `TradingApp.ExecutionAgent` as the Windows Service delivery target for live execution
+- `TradePilot.ExecutionAgent` as the Windows Service delivery target for live execution
 - `UpdateCheckerService` for agent update distribution and safe apply behavior
 - Azure SignalR publishing for cloud-hosted browser updates
 - execution-agent installer and checksum distribution pipeline

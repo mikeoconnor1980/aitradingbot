@@ -23,7 +23,7 @@ Create a stateless static utility that computes drawdown state from inputs. This
 - **Complexity**: Medium
 - **Risk Factors**: Boundary conditions at tier thresholds must be precise (at threshold = lower tier's factor)
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/DrawdownEvaluator.cs` — new file
+  - `src/TradePilot.Application/Trading/Services/DrawdownEvaluator.cs` — new file
 - **Success**:
   - `EvaluateDrawdown(equity, hwm, tiers)` returns `DrawdownResult` with: `NewHighWaterMark`, `DrawdownPercent`, `ScalingFactor`, `IsHalted`
   - HWM ratchets upward (new equity > old hwm → new hwm = equity)
@@ -36,10 +36,10 @@ Create a stateless static utility that computes drawdown state from inputs. This
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/DrawdownEvaluator.cs — new file
-using TradingApp.Application.StrategyAuthoring.Models;
+// src/TradePilot.Application/Trading/Services/DrawdownEvaluator.cs — new file
+using TradePilot.Application.StrategyAuthoring.Models;
 
-namespace TradingApp.Application.Trading.Services;
+namespace TradePilot.Application.Trading.Services;
 
 public sealed record DrawdownResult
 {
@@ -88,8 +88,8 @@ internal static class DrawdownEvaluator
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` — existing `internal static class` utility pattern
-- `src/TradingApp.Application/Trading/Services/PortfolioHeatCalculator.cs` — stateless calculator pattern
+- `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` — existing `internal static class` utility pattern
+- `src/TradePilot.Application/Trading/Services/PortfolioHeatCalculator.cs` — stateless calculator pattern
 
 ---
 
@@ -100,7 +100,7 @@ Add default-body methods/properties to `IRiskEngine` for drawdown state, maintai
 - **Complexity**: Low
 - **Risk Factors**: Default body methods ensure no breaking changes for existing implementations
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Services/IRiskEngine.cs` — modification
+  - `src/TradePilot.Application/Abstractions/Services/IRiskEngine.cs` — modification
 - **Success**:
   - `UpdateDrawdownState(decimal scalingFactor, bool isHalted)` default no-op method added
   - `DrawdownScalingFactor` property with default return of `1.0m`
@@ -111,7 +111,7 @@ Add default-body methods/properties to `IRiskEngine` for drawdown state, maintai
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Services/IRiskEngine.cs — add these members
+// src/TradePilot.Application/Abstractions/Services/IRiskEngine.cs — add these members
 public interface IRiskEngine
 {
     // ... existing members ...
@@ -129,7 +129,7 @@ public interface IRiskEngine
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Services/IRiskEngine.cs` — existing default-body method pattern (`void UpdatePortfolioState(decimal accountEquity) { }`)
+- `src/TradePilot.Application/Abstractions/Services/IRiskEngine.cs` — existing default-body method pattern (`void UpdatePortfolioState(decimal accountEquity) { }`)
 
 ---
 
@@ -140,7 +140,7 @@ Extend `LiveRiskEngine` to store drawdown state and enforce the drawdown circuit
 - **Complexity**: Medium
 - **Risk Factors**: Must not interfere with existing daily-loss CB; both operate independently
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` — modification
+  - `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` — modification
 - **Success**:
   - `_drawdownScalingFactor` and `_drawdownCircuitBreakerTripped` fields added
   - `UpdateDrawdownState` sets both fields
@@ -153,7 +153,7 @@ Extend `LiveRiskEngine` to store drawdown state and enforce the drawdown circuit
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs — modifications
+// src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs — modifications
 
 // New fields (add alongside existing _circuitBreakerTripped):
 private volatile bool _drawdownCircuitBreakerTripped;
@@ -195,7 +195,7 @@ if (_drawdownCircuitBreakerTripped)
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` — existing `_circuitBreakerTripped` pattern, `ValidateAsync` signal filtering loop
+- `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` — existing `_circuitBreakerTripped` pattern, `ValidateAsync` signal filtering loop
 
 ---
 
@@ -206,7 +206,7 @@ Add a `DrawdownScalingFactor` property to `MarketContext` so GridController and 
 - **Complexity**: Low
 - **Risk Factors**: None — additive property with default value
 - **Files**:
-  - `src/TradingApp.Application/Trading/Models/MarketContext.cs` — modification
+  - `src/TradePilot.Application/Trading/Models/MarketContext.cs` — modification
 - **Success**:
   - `DrawdownScalingFactor` property exists with default value `1.0m`
 - **Dependencies**: None
@@ -214,13 +214,13 @@ Add a `DrawdownScalingFactor` property to `MarketContext` so GridController and 
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Models/MarketContext.cs — add property
+// src/TradePilot.Application/Trading/Models/MarketContext.cs — add property
 public decimal DrawdownScalingFactor { get; set; } = 1.0m;
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Models/MarketContext.cs` — existing mutable property pattern (`AccountEquity`)
+- `src/TradePilot.Application/Trading/Models/MarketContext.cs` — existing mutable property pattern (`AccountEquity`)
 
 ---
 
@@ -231,7 +231,7 @@ After `UpdatePortfolioState` is called, evaluate drawdown using `DrawdownEvaluat
 - **Complexity**: High
 - **Risk Factors**: Singleton `LiveRiskEngine` lifetime vs scoped repository access; HWM persistence timing; must handle null HWM (first run)
 - **Files**:
-  - `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — modification
+  - `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — modification
 - **Success**:
   - `DrawdownEvaluator.Evaluate()` called after `UpdatePortfolioState`
   - `_riskEngine.UpdateDrawdownState(scalingFactor, isHalted)` called with result
@@ -244,7 +244,7 @@ After `UpdatePortfolioState` is called, evaluate drawdown using `DrawdownEvaluat
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Scheduling/StrategyScheduler.cs — modification
+// src/TradePilot.Application/Scheduling/StrategyScheduler.cs — modification
 // In the candle processing flow, after UpdatePortfolioState:
 
 _riskEngine.UpdatePortfolioState(context.AccountEquity);
@@ -271,8 +271,8 @@ Note: The implementing agent should inspect `StrategyScheduler`'s constructor fo
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` — existing `UpdatePortfolioState` call site, `ResolveAccountEquity` flow
-- `src/TradingApp.Application/Trading/Services/DrawdownEvaluator.cs` — new utility from Task 2.1
+- `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` — existing `UpdatePortfolioState` call site, `ResolveAccountEquity` flow
+- `src/TradePilot.Application/Trading/Services/DrawdownEvaluator.cs` — new utility from Task 2.1
 
 ---
 
@@ -283,8 +283,8 @@ Multiply the `PositionSizeResolver.ResolveNotional` result by `context.DrawdownS
 - **Complexity**: Low
 - **Risk Factors**: Must apply AFTER the resolver returns, not before; must not apply when scaling = 0.0 (that case is blocked by CB upstream)
 - **Files**:
-  - `src/TradingApp.Application/Trading/Services/GridController.cs` — modification
-  - `src/TradingApp.Application/Trading/Services/SignalController.cs` — modification
+  - `src/TradePilot.Application/Trading/Services/GridController.cs` — modification
+  - `src/TradePilot.Application/Trading/Services/SignalController.cs` — modification
 - **Success**:
   - Both call sites multiply the resolved notional by `context.DrawdownScalingFactor`
   - When scaling factor is 1.0 (no drawdown), behavior is unchanged
@@ -294,19 +294,19 @@ Multiply the `PositionSizeResolver.ResolveNotional` result by `context.DrawdownS
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Trading/Services/GridController.cs — modification (line ~148)
+// src/TradePilot.Application/Trading/Services/GridController.cs — modification (line ~148)
 var positionSize = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
 positionSize *= context.DrawdownScalingFactor; // Apply drawdown scaling overlay
 
-// src/TradingApp.Application/Trading/Services/SignalController.cs — modification (line ~61)
+// src/TradePilot.Application/Trading/Services/SignalController.cs — modification (line ~61)
 var notional = PositionSizeResolver.ResolveNotional(config.Risk, context.AccountEquity, stopLossPercent);
 notional *= context.DrawdownScalingFactor; // Apply drawdown scaling overlay
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — existing `PositionSizeResolver.ResolveNotional` call
-- `src/TradingApp.Application/Trading/Services/SignalController.cs` — existing `PositionSizeResolver.ResolveNotional` call
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — existing `PositionSizeResolver.ResolveNotional` call
+- `src/TradePilot.Application/Trading/Services/SignalController.cs` — existing `PositionSizeResolver.ResolveNotional` call
 
 ---
 
@@ -317,7 +317,7 @@ Ensure the strategy repository can update the `HighWaterMarkUsd` column. Add a m
 - **Complexity**: Low
 - **Risk Factors**: Existing repository may already support full entity updates; verify no unnecessary overwrites
 - **Files**:
-  - `src/TradingApp.Persistence/Repositories/StrategyRepository.cs` — modification (if needed)
+  - `src/TradePilot.Persistence/Repositories/StrategyRepository.cs` — modification (if needed)
   - or use existing `UpdateAsync` / `SaveChangesAsync` pattern
 - **Success**:
   - HWM can be updated and persisted via the existing strategy repository
@@ -344,7 +344,7 @@ The implementing agent should inspect the existing repository pattern and choose
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/Repositories/` — existing repository update patterns
+- `src/TradePilot.Persistence/Repositories/` — existing repository update patterns
 
 ---
 
@@ -355,8 +355,8 @@ Write comprehensive unit tests for `DrawdownEvaluator`, `LiveRiskEngine` drawdow
 - **Complexity**: High
 - **Risk Factors**: Many boundary conditions at tier thresholds
 - **Files**:
-  - `tests/TradingApp.Application.Tests/Trading/Services/DrawdownEvaluatorTests.cs` — new file
-  - `tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — add drawdown CB tests
+  - `tests/TradePilot.Application.Tests/Trading/Services/DrawdownEvaluatorTests.cs` — new file
+  - `tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — add drawdown CB tests
 - **Success**:
   - DrawdownEvaluator tests cover: HWM ratchet up, HWM stays on decline, each tier boundary, between tiers, no tiers, halt tier, recovery
   - LiveRiskEngine tests cover: drawdown CB blocks entry, drawdown CB passes risk-reducing, daily-loss CB independent from drawdown CB, drawdown CB reset
@@ -366,12 +366,12 @@ Write comprehensive unit tests for `DrawdownEvaluator`, `LiveRiskEngine` drawdow
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/DrawdownEvaluatorTests.cs — new file
+// tests/TradePilot.Application.Tests/Trading/Services/DrawdownEvaluatorTests.cs — new file
 using FluentAssertions;
-using TradingApp.Application.StrategyAuthoring.Models;
-using TradingApp.Application.Trading.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading.Services;
 
-namespace TradingApp.Application.Tests.Trading.Services;
+namespace TradePilot.Application.Tests.Trading.Services;
 
 [TestClass]
 public sealed class DrawdownEvaluatorTests
@@ -468,7 +468,7 @@ public sealed class DrawdownEvaluatorTests
 Additional tests in `LiveRiskEngineTests.cs`:
 
 ```csharp
-// tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs — add tests
+// tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs — add tests
 
 [TestMethod]
 public async Task GivenDrawdownCBTripped_WhenDeployGridSignal_ThenBlocked()
@@ -513,8 +513,8 @@ public async Task GivenDrawdownCBTrippedButDailyLossNot_WhenSignal_ThenBlockedBy
 
 ##### Pattern References
 
-- `tests/TradingApp.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — existing CB test structure
-- `tests/TradingApp.Application.Tests/Trading/Services/PositionSizeResolverTests.cs` — static utility test pattern
+- `tests/TradePilot.Application.Tests/Trading/Services/LiveRiskEngineTests.cs` — existing CB test structure
+- `tests/TradePilot.Application.Tests/Trading/Services/PositionSizeResolverTests.cs` — static utility test pattern
 
 ---
 
@@ -526,8 +526,8 @@ Build the solution and run all tests to verify no regressions.
 - **Risk Factors**: None
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds
-  - `dotnet test TradingApp.sln` — all tests pass including new Phase 2 tests
+  - `dotnet build TradePilot.sln` succeeds
+  - `dotnet test TradePilot.sln` — all tests pass including new Phase 2 tests
 - **Dependencies**: Tasks 2.1–2.8
 
 ## Phase Success Criteria

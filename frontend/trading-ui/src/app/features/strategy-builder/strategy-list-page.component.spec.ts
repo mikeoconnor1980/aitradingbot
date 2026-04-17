@@ -3,7 +3,7 @@ import { MatDialog } from "@angular/material/dialog";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { Router } from "@angular/router";
 import { of } from "rxjs";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { StrategySummaryDto } from "./models/strategy.model";
 import { StrategyListPageComponent } from "./strategy-list-page.component";
 import { StrategyApiService } from "./services/strategy-api.service";
@@ -12,7 +12,7 @@ describe("StrategyListPageComponent", () => {
   let fixture: ComponentFixture<StrategyListPageComponent>;
   let component: StrategyListPageComponent;
   let strategyApiSpy: jasmine.SpyObj<StrategyApiService>;
-  let notificationSpy: jasmine.SpyObj<NotificationService>;
+  let notificationSpy: jasmine.SpyObj<NotificationFacade>;
   let dialogSpy: jasmine.SpyObj<MatDialog>;
 
   const strategy: StrategySummaryDto = {
@@ -35,7 +35,7 @@ describe("StrategyListPageComponent", () => {
 
   beforeEach(async () => {
     strategyApiSpy = jasmine.createSpyObj<StrategyApiService>("StrategyApiService", ["getStrategies", "deleteStrategy"]);
-    notificationSpy = jasmine.createSpyObj<NotificationService>("NotificationService", ["success", "error"]);
+    notificationSpy = jasmine.createSpyObj<NotificationFacade>("NotificationFacade", ["success", "error"]);
     dialogSpy = jasmine.createSpyObj<MatDialog>("MatDialog", ["open"]);
     dialogSpy.open.and.returnValue({ afterClosed: () => of(true) } as never);
     strategyApiSpy.getStrategies.and.returnValue(of([]));
@@ -46,7 +46,7 @@ describe("StrategyListPageComponent", () => {
       providers: [
         { provide: Router, useValue: jasmine.createSpyObj("Router", ["navigate"]) },
         { provide: StrategyApiService, useValue: strategyApiSpy },
-        { provide: NotificationService, useValue: notificationSpy },
+        { provide: NotificationFacade, useValue: notificationSpy },
         { provide: MatDialog, useValue: dialogSpy }
       ]
     }).compileComponents();

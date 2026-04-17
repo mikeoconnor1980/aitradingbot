@@ -137,9 +137,9 @@ export interface IntervalCoverage {
 
 - `frontend/trading-ui/src/app/core/models/candle.model.ts` — TypeScript interface model pattern
 - `frontend/trading-ui/src/app/core/models/place-order.model.ts` — request/response model pattern
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — backend model field names (source of truth for interface shape)
-- `src/TradingApp.Application/Backtesting/Models/BacktestTrade.cs` — trade field names
-- `src/TradingApp.Application/Backtesting/Models/EquitySnapshot.cs` — equity snapshot shape
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — backend model field names (source of truth for interface shape)
+- `src/TradePilot.Application/Backtesting/Models/BacktestTrade.cs` — trade field names
+- `src/TradePilot.Application/Backtesting/Models/EquitySnapshot.cs` — equity snapshot shape
 
 ---
 

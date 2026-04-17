@@ -65,17 +65,17 @@ The PBI draft specifies ProfitFactor "from raw PnL, not R-multiples." However, P
 
 ### Project Patterns
 
-- `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` — Calculator with RMetricsSummary private class
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — Mapper with duplicate ComputeRMetrics and entity ?? rMetrics fallback
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — Entity with MarkCompleted() and Create() factory methods
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — Internal result DTO
-- `src/TradingApp.Application/Backtesting/Models/BacktestRunResponse.cs` — API response model
-- `src/TradingApp.Api/Models/BacktestSummaryDto.cs` — List view DTO
-- `src/TradingApp.Application/Backtesting/Models/BacktestRunSummary.cs` — Query handler result model
-- `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — GetPagedSummariesCoreAsync projection
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — EF entity config with HasConversion<double?>()
-- `src/TradingApp.Api/Services/BacktestProcessorService.cs` — Calls MarkCompleted() with result values
-- `tests/TradingApp.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — Test class with CreateRTrackedTrades helper
+- `src/TradePilot.Application/Backtesting/Services/BacktestMetricsCalculator.cs` — Calculator with RMetricsSummary private class
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — Mapper with duplicate ComputeRMetrics and entity ?? rMetrics fallback
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — Entity with MarkCompleted() and Create() factory methods
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — Internal result DTO
+- `src/TradePilot.Application/Backtesting/Models/BacktestRunResponse.cs` — API response model
+- `src/TradePilot.Api/Models/BacktestSummaryDto.cs` — List view DTO
+- `src/TradePilot.Application/Backtesting/Models/BacktestRunSummary.cs` — Query handler result model
+- `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — GetPagedSummariesCoreAsync projection
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — EF entity config with HasConversion<double?>()
+- `src/TradePilot.Api/Services/BacktestProcessorService.cs` — Calls MarkCompleted() with result values
+- `tests/TradePilot.Application.Tests/Backtesting/Services/BacktestMetricsCalculatorTests.cs` — Test class with CreateRTrackedTrades helper
 - `frontend/trading-ui/src/app/core/models/backtest.model.ts` — BacktestResult interface
 - `frontend/trading-ui/src/app/features/backtesting/backtest-result/backtest-result.component.ts` — Result display component
 - `frontend/trading-ui/src/app/features/backtesting/backtest-result/backtest-result.component.html` — R-Multiple Metrics section template

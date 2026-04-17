@@ -9,7 +9,7 @@ The system is deployed as two operational planes:
 | Plane | Hosting | Purpose |
 |---|---|---|
 | Control Plane | Azure Container Apps + Azure Static Web Apps + Azure SQL + Azure SignalR | API, UI, persistence, and browser-facing real-time features |
-| Execution Plane | Subscriber Windows machine | `TradingApp.ExecutionAgent` Windows Service for local signing and live execution |
+| Execution Plane | Subscriber Windows machine | `TradePilot.ExecutionAgent` Windows Service for local signing and live execution |
 
 ## Azure Resource Inventory
 
@@ -93,13 +93,13 @@ The worker distribution path is operational and should be treated as part of dep
 
 Artifacts include:
 
-- `TradingApp-ExecutionAgent-v{version}-Setup.exe`
-- `TradingApp-ExecutionAgent-v{version}-win-x64.zip`
+- `TradePilot-ExecutionAgent-v{version}-Setup.exe`
+- `TradePilot-ExecutionAgent-v{version}-win-x64.zip`
 - SHA256 checksum files for validation and update verification
 
 ### Worker Build Shape
 
-`TradingApp.ExecutionAgent` is published as:
+`TradePilot.ExecutionAgent` is published as:
 
 - self-contained
 - single-file in Release

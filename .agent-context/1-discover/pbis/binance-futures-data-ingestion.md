@@ -137,11 +137,11 @@ Response: Array of arrays `[openTime, open, high, low, close, volume, closeTime,
 
 | Project | Changes |
 |---------|---------|
-| `TradingApp.Domain` | Add `Source` property to `Candle`; create `FundingRate` entity |
-| `TradingApp.Application` | `BinanceIngestionOptions`, `IngestBinanceCandlesCommand`, `IngestFundingRatesCommand`, `IBinanceRestClient` interface, `IBinanceCandleIngestionService` interface, `IFundingRateRepository` interface |
-| `TradingApp.Infrastructure` | `BinanceRestClient`, `BinanceCandleIngestionService`, `BinanceAssetMapper`, Binance API models |
-| `TradingApp.Persistence` | EF migration for `Source` column + `FundingRate` table, `FundingRateRepository` |
-| `TradingApp.Api` | `BinanceCandlesController` (or extend `CandlesController`) |
+| `TradePilot.Domain` | Add `Source` property to `Candle`; create `FundingRate` entity |
+| `TradePilot.Application` | `BinanceIngestionOptions`, `IngestBinanceCandlesCommand`, `IngestFundingRatesCommand`, `IBinanceRestClient` interface, `IBinanceCandleIngestionService` interface, `IFundingRateRepository` interface |
+| `TradePilot.Infrastructure` | `BinanceRestClient`, `BinanceCandleIngestionService`, `BinanceAssetMapper`, Binance API models |
+| `TradePilot.Persistence` | EF migration for `Source` column + `FundingRate` table, `FundingRateRepository` |
+| `TradePilot.Api` | `BinanceCandlesController` (or extend `CandlesController`) |
 
 ### API Endpoints
 

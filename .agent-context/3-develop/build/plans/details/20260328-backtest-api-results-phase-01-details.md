@@ -19,7 +19,7 @@ Create the domain entity that represents a persisted backtest run with both inpu
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly map all PBI fields; JSON blob columns for trade log and strategy config
 - **Files**:
-  - `src/TradingApp.Domain/Entities/BacktestRun.cs` — new file
+  - `src/TradePilot.Domain/Entities/BacktestRun.cs` — new file
 - **Success**:
   - Entity compiles with all required properties
   - Static `Create()` factory validates required fields
@@ -29,8 +29,8 @@ Create the domain entity that represents a persisted backtest run with both inpu
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Domain/Entities/BacktestRun.cs — new file
-namespace TradingApp.Domain.Entities;
+// src/TradePilot.Domain/Entities/BacktestRun.cs — new file
+namespace TradePilot.Domain.Entities;
 
 public sealed class BacktestRun
 {
@@ -115,8 +115,8 @@ public sealed class BacktestRun
 
 ##### Pattern References
 
-- `src/TradingApp.Domain/Entities/Candle.cs` — sealed class, private constructor, static `Create()`, `ArgumentException` guards, private setters
-- `src/TradingApp.Domain/Entities/FundingRate.cs` — same entity pattern
+- `src/TradePilot.Domain/Entities/Candle.cs` — sealed class, private constructor, static `Create()`, `ArgumentException` guards, private setters
+- `src/TradePilot.Domain/Entities/FundingRate.cs` — same entity pattern
 
 ### Task 1.2: Create `IBacktestRunRepository` interface {#task-12-create-ibacktestrunrepository-interface}
 
@@ -125,7 +125,7 @@ Create the repository interface in the Application layer abstractions.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs` — new file
+  - `src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs` — new file
 - **Success**:
   - Interface declares `AddAsync`, `GetByIdAsync` methods
   - Interface follows existing repository pattern
@@ -134,10 +134,10 @@ Create the repository interface in the Application layer abstractions.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs — new file
-using TradingApp.Domain.Entities;
+// src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs — new file
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Application.Abstractions.Repositories;
+namespace TradePilot.Application.Abstractions.Repositories;
 
 public interface IBacktestRunRepository
 {
@@ -148,7 +148,7 @@ public interface IBacktestRunRepository
 
 ##### Pattern References
 
-- `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs` — repository interface pattern with CancellationToken
+- `src/TradePilot.Application/Abstractions/Repositories/ICandleRepository.cs` — repository interface pattern with CancellationToken
 
 ### Task 1.3: Create `BacktestRunRepository` implementation {#task-13-create-backtestrunrepository-implementation}
 
@@ -157,7 +157,7 @@ Create the EF Core repository implementation in the Persistence layer.
 - **Complexity**: Low
 - **Risk Factors**: None — simple LINQ reads and EF add/save
 - **Files**:
-  - `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs` — new file
+  - `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs` — new file
 - **Success**:
   - Repository reads with `FirstOrDefaultAsync`
   - Repository adds with `AddAsync` + `SaveChangesAsync`
@@ -166,18 +166,18 @@ Create the EF Core repository implementation in the Persistence layer.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs — new file
+// src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs — new file
 using Microsoft.EntityFrameworkCore;
-using TradingApp.Application.Abstractions.Repositories;
-using TradingApp.Domain.Entities;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Domain.Entities;
 
-namespace TradingApp.Persistence.Repositories;
+namespace TradePilot.Persistence.Repositories;
 
 public sealed class BacktestRunRepository : IBacktestRunRepository
 {
-    private readonly TradingAppDbContext _context;
+    private readonly TradePilotDbContext _context;
 
-    public BacktestRunRepository(TradingAppDbContext context)
+    public BacktestRunRepository(TradePilotDbContext context)
     {
         _context = context;
     }
@@ -198,16 +198,16 @@ public sealed class BacktestRunRepository : IBacktestRunRepository
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — constructor injection of `TradingAppDbContext`, LINQ queries
+- `src/TradePilot.Persistence/Repositories/CandleRepository.cs` — constructor injection of `TradePilotDbContext`, LINQ queries
 
-### Task 1.4: Update `TradingAppDbContext` with `BacktestRuns` DbSet {#task-14-update-tradingappdbcontext-with-backtestruns-dbset}
+### Task 1.4: Update `TradePilotDbContext` with `BacktestRuns` DbSet {#task-14-update-TradePilotdbcontext-with-backtestruns-dbset}
 
 Add the new DbSet and configure the entity mapping in the existing DbContext.
 
 - **Complexity**: Medium
 - **Risk Factors**: Must correctly configure all decimal→double conversions for SQLite; must set up JSON blob columns as TEXT
 - **Files**:
-  - `src/TradingApp.Persistence/TradingAppDbContext.cs` — modification
+  - `src/TradePilot.Persistence/TradePilotDbContext.cs` — modification
 - **Success**:
   - `DbSet<BacktestRun> BacktestRuns` property exists
   - All decimal properties have `HasConversion<double>()`
@@ -219,7 +219,7 @@ Add the new DbSet and configure the entity mapping in the existing DbContext.
 
 Add the DbSet property:
 ```csharp
-// src/TradingApp.Persistence/TradingAppDbContext.cs — modification
+// src/TradePilot.Persistence/TradePilotDbContext.cs — modification
 // Add alongside existing DbSets:
 public DbSet<BacktestRun> BacktestRuns => Set<BacktestRun>();
 ```
@@ -247,7 +247,7 @@ modelBuilder.Entity<BacktestRun>(entity =>
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — existing DbSet declarations, `OnModelCreating` with `HasConversion<double>()` for decimal columns, `HasKey()`, `IsRequired()`, `HasMaxLength()`
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — existing DbSet declarations, `OnModelCreating` with `HasConversion<double>()` for decimal columns, `HasKey()`, `IsRequired()`, `HasMaxLength()`
 
 ### Task 1.5: Create EF Core migration {#task-15-create-ef-core-migration}
 
@@ -256,7 +256,7 @@ Generate the EF Core migration for the new `BacktestRuns` table.
 - **Complexity**: Low
 - **Risk Factors**: Must run from correct directory; must verify migration SQL is correct
 - **Files**:
-  - `src/TradingApp.Persistence/Migrations/` — new migration files (auto-generated)
+  - `src/TradePilot.Persistence/Migrations/` — new migration files (auto-generated)
 - **Success**:
   - Migration creates `BacktestRuns` table with all columns
   - Migration compiles and can be applied
@@ -264,7 +264,7 @@ Generate the EF Core migration for the new `BacktestRuns` table.
 
 #### Implementation Details
 
-Run from the `src/TradingApp.Persistence/` directory:
+Run from the `src/TradePilot.Persistence/` directory:
 ```bash
 dotnet ef migrations add AddBacktestRuns
 ```
@@ -290,7 +290,7 @@ Register the new repository in the persistence service extensions.
 - **Complexity**: Low
 - **Risk Factors**: None
 - **Files**:
-  - `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` — modification
+  - `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` — modification
 - **Success**:
   - `IBacktestRunRepository` → `BacktestRunRepository` registered as scoped
 - **Dependencies**: Task 1.2, Task 1.3
@@ -298,14 +298,14 @@ Register the new repository in the persistence service extensions.
 #### Implementation Details
 
 ```csharp
-// src/TradingApp.Persistence/PersistenceServiceExtensions.cs — modification
+// src/TradePilot.Persistence/PersistenceServiceExtensions.cs — modification
 // Add after existing repository registrations:
 services.AddScoped<IBacktestRunRepository, BacktestRunRepository>();
 ```
 
 ##### Pattern References
 
-- `src/TradingApp.Persistence/PersistenceServiceExtensions.cs` — existing `AddScoped<ICandleRepository, CandleRepository>()` registration
+- `src/TradePilot.Persistence/PersistenceServiceExtensions.cs` — existing `AddScoped<ICandleRepository, CandleRepository>()` registration
 
 ### Task 1.7: Write `BacktestRunRepositoryTests` {#task-17-write-backtestrunrepositorytests}
 
@@ -314,7 +314,7 @@ Write repository tests using the SQLite in-memory pattern.
 - **Complexity**: Medium
 - **Risk Factors**: Must follow two-context verify pattern for writes
 - **Files**:
-  - `tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — new file
+  - `tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs` — new file
 - **Success**:
   - Tests verify round-trip persistence (add → get by ID)
   - Tests verify null return for non-existent ID
@@ -325,29 +325,29 @@ Write repository tests using the SQLite in-memory pattern.
 #### Implementation Details
 
 ```csharp
-// tests/TradingApp.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs — new file
+// tests/TradePilot.Persistence.Tests/Repositories/BacktestRunRepositoryTests.cs — new file
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using TradingApp.Domain.Entities;
-using TradingApp.Persistence.Repositories;
+using TradePilot.Domain.Entities;
+using TradePilot.Persistence.Repositories;
 
-namespace TradingApp.Persistence.Tests.Repositories;
+namespace TradePilot.Persistence.Tests.Repositories;
 
 [TestClass]
 public sealed class BacktestRunRepositoryTests
 {
     private SqliteConnection _connection = null!;
-    private DbContextOptions<TradingAppDbContext> _contextOptions = null!;
+    private DbContextOptions<TradePilotDbContext> _contextOptions = null!;
 
     [TestInitialize]
     public void Setup()
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
-        _contextOptions = new DbContextOptionsBuilder<TradingAppDbContext>()
+        _contextOptions = new DbContextOptionsBuilder<TradePilotDbContext>()
             .UseSqlite(_connection)
             .Options;
-        using var context = new TradingAppDbContext(_contextOptions);
+        using var context = new TradePilotDbContext(_contextOptions);
         context.Database.EnsureCreated();
     }
 
@@ -357,7 +357,7 @@ public sealed class BacktestRunRepositoryTests
         _connection.Dispose();
     }
 
-    private TradingAppDbContext CreateContext() => new(_contextOptions);
+    private TradePilotDbContext CreateContext() => new(_contextOptions);
 
     [TestMethod]
     public async Task GivenBacktestRun_WhenAddAsync_ThenCanBeRetrievedById()
@@ -420,7 +420,7 @@ public sealed class BacktestRunRepositoryTests
 
 ##### Pattern References
 
-- `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — SQLite in-memory setup, two-context verify, `[TestInitialize]`/`[TestCleanup]`
+- `tests/TradePilot.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — SQLite in-memory setup, two-context verify, `[TestInitialize]`/`[TestCleanup]`
 
 ### Task 1.8: Build solution and run all tests {#task-18-build-solution-and-run-all-tests}
 
@@ -430,16 +430,16 @@ Verify the entire solution builds and all tests pass.
 - **Risk Factors**: None
 - **Files**: None (verification only)
 - **Success**:
-  - `dotnet build TradingApp.sln` succeeds with no errors
+  - `dotnet build TradePilot.sln` succeeds with no errors
   - `dotnet test` on all test projects passes
 - **Dependencies**: All prior tasks in Phase 1
 
 ## Phase Success Criteria
 
-- `BacktestRun` entity exists in `TradingApp.Domain/Entities/` with static `Create()` factory
-- `IBacktestRunRepository` interface exists in `TradingApp.Application/Abstractions/Repositories/`
-- `BacktestRunRepository` implementation exists in `TradingApp.Persistence/Repositories/`
-- `TradingAppDbContext` has `BacktestRuns` DbSet with correct column configuration
+- `BacktestRun` entity exists in `TradePilot.Domain/Entities/` with static `Create()` factory
+- `IBacktestRunRepository` interface exists in `TradePilot.Application/Abstractions/Repositories/`
+- `BacktestRunRepository` implementation exists in `TradePilot.Persistence/Repositories/`
+- `TradePilotDbContext` has `BacktestRuns` DbSet with correct column configuration
 - EF Core migration for `BacktestRuns` table exists and applies cleanly
 - Repository is registered in DI via `PersistenceServiceExtensions`
 - Repository tests pass (round-trip persistence, null for non-existent ID)

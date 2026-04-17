@@ -8,18 +8,18 @@ Binance is used as a **read-only historical data source** — it is never used f
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `BinanceAssetMapper` | `src/TradingApp.Infrastructure/Binance/BinanceAssetMapper.cs` | Maps display symbols to futures symbols; resolves intervals to ms; handles mark-price prefix |
-| `IBinanceFuturesRestClient` | `src/TradingApp.Application/Abstractions/Services/IBinanceFuturesRestClient.cs` | Interface for Binance Futures REST calls |
-| `BinanceFuturesRestClient` | `src/TradingApp.Infrastructure/Services/BinanceFuturesRestClient.cs` | Typed `HttpClient` implementation; calls `/fapi/v1/klines`, `/fapi/v1/markPriceKlines`, `/fapi/v1/fundingRate` |
-| `IBinanceCandleIngestionService` | `src/TradingApp.Application/Abstractions/Services/IBinanceCandleIngestionService.cs` | Interface for Binance candle ingestion |
-| `BinanceCandleIngestionService` | `src/TradingApp.Infrastructure/Services/BinanceCandleIngestionService.cs` | Paginates klines and mark-price klines; writes to `ICandleRepository` with `Source = "Binance"` |
-| `IFundingRateIngestionService` | `src/TradingApp.Application/Abstractions/Services/IFundingRateIngestionService.cs` | Interface for funding rate ingestion |
-| `FundingRateIngestionService` | `src/TradingApp.Infrastructure/Services/FundingRateIngestionService.cs` | Paginates funding rate history; writes to `IFundingRateRepository` |
-| `BinanceIngestionOptions` | `src/TradingApp.Application/Abstractions/Configuration/BinanceIngestionOptions.cs` | Typed options for ingestion (page size, timeouts, default start date) |
-| `IngestBinanceCandlesCommand` | `src/TradingApp.Application/Candles/Commands/IngestBinanceCandlesCommand.cs` | MediatR command dispatching to `IBinanceCandleIngestionService` |
-| `IngestFundingRatesCommand` | `src/TradingApp.Application/FundingRates/Commands/IngestFundingRatesCommand.cs` | MediatR command dispatching to `IFundingRateIngestionService` |
-| `IFundingRateRepository` | `src/TradingApp.Application/Abstractions/Repositories/IFundingRateRepository.cs` | Repository interface (bulk insert + latest timestamp query) |
-| `FundingRateRepository` | `src/TradingApp.Persistence/Repositories/FundingRateRepository.cs` | EF Core implementation; uses `INSERT OR IGNORE` in batches of 500 |
+| `BinanceAssetMapper` | `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` | Maps display symbols to futures symbols; resolves intervals to ms; handles mark-price prefix |
+| `IBinanceFuturesRestClient` | `src/TradePilot.Application/Abstractions/Services/IBinanceFuturesRestClient.cs` | Interface for Binance Futures REST calls |
+| `BinanceFuturesRestClient` | `src/TradePilot.Infrastructure/Services/BinanceFuturesRestClient.cs` | Typed `HttpClient` implementation; calls `/fapi/v1/klines`, `/fapi/v1/markPriceKlines`, `/fapi/v1/fundingRate` |
+| `IBinanceCandleIngestionService` | `src/TradePilot.Application/Abstractions/Services/IBinanceCandleIngestionService.cs` | Interface for Binance candle ingestion |
+| `BinanceCandleIngestionService` | `src/TradePilot.Infrastructure/Services/BinanceCandleIngestionService.cs` | Paginates klines and mark-price klines; writes to `ICandleRepository` with `Source = "Binance"` |
+| `IFundingRateIngestionService` | `src/TradePilot.Application/Abstractions/Services/IFundingRateIngestionService.cs` | Interface for funding rate ingestion |
+| `FundingRateIngestionService` | `src/TradePilot.Infrastructure/Services/FundingRateIngestionService.cs` | Paginates funding rate history; writes to `IFundingRateRepository` |
+| `BinanceIngestionOptions` | `src/TradePilot.Application/Abstractions/Configuration/BinanceIngestionOptions.cs` | Typed options for ingestion (page size, timeouts, default start date) |
+| `IngestBinanceCandlesCommand` | `src/TradePilot.Application/Candles/Commands/IngestBinanceCandlesCommand.cs` | MediatR command dispatching to `IBinanceCandleIngestionService` |
+| `IngestFundingRatesCommand` | `src/TradePilot.Application/FundingRates/Commands/IngestFundingRatesCommand.cs` | MediatR command dispatching to `IFundingRateIngestionService` |
+| `IFundingRateRepository` | `src/TradePilot.Application/Abstractions/Repositories/IFundingRateRepository.cs` | Repository interface (bulk insert + latest timestamp query) |
+| `FundingRateRepository` | `src/TradePilot.Persistence/Repositories/FundingRateRepository.cs` | EF Core implementation; uses `INSERT OR IGNORE` in batches of 500 |
 
 ---
 
@@ -70,7 +70,7 @@ Candles written to `ICandleRepository` via ingestion are served to the frontend 
 
 | Component | Location |
 |-----------|----------|
-| `GetHistoricalCandlesQuery` + Handler | `src/TradingApp.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs` |
+| `GetHistoricalCandlesQuery` + Handler | `src/TradePilot.Application/MarketData/Queries/GetHistoricalCandlesQuery.cs` |
 | Endpoint | `GET /api/market/candles/history` (`MarketDataController`) |
 
 **Endpoint parameters**: `asset`, `timeframe`, `endTime` (Unix ms, optional), `limit` (default 500, max 5000).
@@ -121,7 +121,7 @@ To add a new interval:
 1. Add entry to `BinanceAssetMapper.IntervalToMs`
 
 To add a new Binance data type (e.g., open interest):
-1. Add response model to `src/TradingApp.Infrastructure/Binance/Models/`
+1. Add response model to `src/TradePilot.Infrastructure/Binance/Models/`
 2. Add method to `IBinanceFuturesRestClient` + implement in `BinanceFuturesRestClient`
 3. Add Application service interface + implementation following the `FundingRateIngestionService` pattern
 4. Add MediatR command + handler

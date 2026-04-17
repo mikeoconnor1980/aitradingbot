@@ -19,7 +19,7 @@ Update the project overview to reflect the current state of the system.
   - `.agent-context/0-knowledge/00-project-overview.md` — update
 - **Success**:
   - Business Model Option C is documented as the chosen model
-  - `TradingApp.Indicators` is mentioned as a core project
+  - `TradePilot.Indicators` is mentioned as a core project
   - Authentication system (JWT + Google SSO) is mentioned
   - Strategy Optimizer feature is mentioned
   - Macro Calendar feature is mentioned
@@ -27,9 +27,9 @@ Update the project overview to reflect the current state of the system.
 
 #### Changes Required
 
-1. **Business model decision**: Replace "No decision has been made" with a clear statement that Option C (Split Architecture) has been chosen. Add evidence: Worker is `TradingApp.ExecutionAgent` (Windows Service), API is control plane, private keys never on server.
+1. **Business model decision**: Replace "No decision has been made" with a clear statement that Option C (Split Architecture) has been chosen. Add evidence: Worker is `TradePilot.ExecutionAgent` (Windows Service), API is control plane, private keys never on server.
 
-2. **Add `TradingApp.Indicators` to project description**: A standalone library containing `AtrCalculator`, `BollingerBandsCalculator`, `EmaCalculator`, `MacdCalculator`, `RsiCalculator`, `SupportResistanceCalculator`, plus incremental variants.
+2. **Add `TradePilot.Indicators` to project description**: A standalone library containing `AtrCalculator`, `BollingerBandsCalculator`, `EmaCalculator`, `MacdCalculator`, `RsiCalculator`, `SupportResistanceCalculator`, plus incremental variants.
 
 3. **Add authentication**: Custom JWT authentication with email/password and Google OAuth is fully implemented. No Azure AD B2C or Auth0.
 
@@ -64,11 +64,11 @@ Realign infrastructure documentation with actual deployment.
 
 #### Changes Required
 
-1. **Remove Phase 1 VPS docker-compose framing**: There is no `docker-compose.yml` in the repo. The only Docker artifact is `src/TradingApp.Api/Dockerfile`. Production deploys to Azure Container Apps via Bicep. Reframe as: "Development uses direct `dotnet run` + `ng serve`; production deploys to Azure."
+1. **Remove Phase 1 VPS docker-compose framing**: There is no `docker-compose.yml` in the repo. The only Docker artifact is `src/TradePilot.Api/Dockerfile`. Production deploys to Azure Container Apps via Bicep. Reframe as: "Development uses direct `dotnet run` + `ng serve`; production deploys to Azure."
 
-2. **Fix SQLite paths**: Actual paths are `src/TradingApp.Api/Data/tradingapp.db` and `src/TradingApp.Worker/Data/tradingapp.db`, not `/data/sqlite/tradingapp.db`.
+2. **Fix SQLite paths**: Actual paths are `src/TradePilot.Api/Data/TradePilot.db` and `src/TradePilot.Worker/Data/TradePilot.db`, not `/data/sqlite/TradePilot.db`.
 
-3. **Azure SignalR not Redis**: Replace "Redis backplane" mentions with Azure SignalR. `AzureSignalRPublisher.cs` in `TradingApp.Infrastructure/Services/` uses `Microsoft.Azure.SignalR.Management` for server-side push.
+3. **Azure SignalR not Redis**: Replace "Redis backplane" mentions with Azure SignalR. `AzureSignalRPublisher.cs` in `TradePilot.Infrastructure/Services/` uses `Microsoft.Azure.SignalR.Management` for server-side push.
 
 4. **Document Bicep infrastructure**: `infrastructure/main.bicep` provisions: Azure Container Apps environment, Azure SQL Server, Azure SignalR, Azure Static Web App, Log Analytics workspace.
 
@@ -97,8 +97,8 @@ Add missing projects and components to the solution layout.
 - **Files**:
   - `.agent-context/0-knowledge/06-project-structure.md` — update
 - **Success**:
-  - `TradingApp.Indicators` project added with description
-  - Worker description corrected (client-side Windows Service `TradingApp.ExecutionAgent`)
+  - `TradePilot.Indicators` project added with description
+  - Worker description corrected (client-side Windows Service `TradePilot.ExecutionAgent`)
   - All new Application layer folders documented
   - All new Infrastructure layer components documented
   - All new API controllers and services documented
@@ -106,11 +106,11 @@ Add missing projects and components to the solution layout.
 
 #### Changes Required
 
-1. **Add `TradingApp.Indicators`** to the project table:
+1. **Add `TradePilot.Indicators`** to the project table:
    - Purpose: Standalone indicator calculation library (ATR, Bollinger, EMA, MACD, RSI, SupportResistance) with batch and incremental variants
-   - Dependencies: No external NuGet; referenced by `TradingApp.Application`
+   - Dependencies: No external NuGet; referenced by `TradePilot.Application`
 
-2. **Fix `TradingApp.Worker` description**: It is `TradingApp.ExecutionAgent` (`AssemblyName=TradingApp.ExecutionAgent`, `SelfContained=true`, `PublishSingleFile=true`, `RuntimeIdentifier=win-x64`). It's a client-side Windows Service deployed via InnoSetup installer.
+2. **Fix `TradePilot.Worker` description**: It is `TradePilot.ExecutionAgent` (`AssemblyName=TradePilot.ExecutionAgent`, `SelfContained=true`, `PublishSingleFile=true`, `RuntimeIdentifier=win-x64`). It's a client-side Windows Service deployed via InnoSetup installer.
 
 3. **Add Application layer folders**:
    - `Agent/` — Control plane command store, heartbeat, command models
@@ -175,7 +175,7 @@ Fix incorrect ADRs and add new ones for decisions made during development.
 
 9. **Add ADR 22: Strategy Optimization System** — Evolutionary sweep runner with fitness scoring, OOS validation; `OptimizationRun`/`OptimizationResult` persisted.
 
-10. **Add ADR 23: Indicators as Separate Project** — `TradingApp.Indicators` is a standalone library with no external NuGet dependencies; Application depends on it.
+10. **Add ADR 23: Indicators as Separate Project** — `TradePilot.Indicators` is a standalone library with no external NuGet dependencies; Application depends on it.
 
 ## Phase Success Criteria
 

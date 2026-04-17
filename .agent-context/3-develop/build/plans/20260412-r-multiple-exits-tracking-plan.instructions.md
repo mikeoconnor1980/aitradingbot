@@ -56,23 +56,23 @@ Express take-profit targets as multiples of R (1R, 2R, 3R) instead of arbitrary 
 
 ### Project Patterns
 
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleType.cs` — Enum to extend with `RMultiple`
-- `src/TradingApp.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — Config record, `Value` field reused for R target
-- `src/TradingApp.Application/Trading/Services/TriggerOrderManager.cs` — `CalculateTakeProfitPrice` to extend
-- `src/TradingApp.Application/Trading/Services/GridController.cs` — Inline TP evaluation to extend
-- `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` — R computation (equity × riskPercent / 100)
-- `src/TradingApp.Application/Trading/Services/StopLossDistanceResolver.cs` — Resolves SL distance %
-- `src/TradingApp.Application/Trading/Models/GridState.cs` — Add InitialR for per-cycle tracking
-- `src/TradingApp.Application/Backtesting/Models/BacktestTrade.cs` — Add R tracking fields
-- `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs` — Add aggregate R metrics
-- `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` — RecordFill/CloseCompatibleTrades for R threading
-- `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` — Compute R aggregate metrics
-- `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — UpdateUnrealisedPnl (MFE/MAE hook)
-- `src/TradingApp.Application/Backtesting/Models/SimulatedPosition.cs` — Position lifecycle
-- `src/TradingApp.Domain/Entities/BacktestRun.cs` — Entity, migration for R aggregate columns
-- `src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs` — Map new fields
-- `src/TradingApp.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — R-multiple validation rules
-- `src/TradingApp.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — Cross-field: RMultiple TP requires RiskBased + SL
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleType.cs` — Enum to extend with `RMultiple`
+- `src/TradePilot.Application/StrategyAuthoring/Models/ExitRuleConfig.cs` — Config record, `Value` field reused for R target
+- `src/TradePilot.Application/Trading/Services/TriggerOrderManager.cs` — `CalculateTakeProfitPrice` to extend
+- `src/TradePilot.Application/Trading/Services/GridController.cs` — Inline TP evaluation to extend
+- `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` — R computation (equity × riskPercent / 100)
+- `src/TradePilot.Application/Trading/Services/StopLossDistanceResolver.cs` — Resolves SL distance %
+- `src/TradePilot.Application/Trading/Models/GridState.cs` — Add InitialR for per-cycle tracking
+- `src/TradePilot.Application/Backtesting/Models/BacktestTrade.cs` — Add R tracking fields
+- `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs` — Add aggregate R metrics
+- `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` — RecordFill/CloseCompatibleTrades for R threading
+- `src/TradePilot.Application/Backtesting/Services/BacktestMetricsCalculator.cs` — Compute R aggregate metrics
+- `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` — UpdateUnrealisedPnl (MFE/MAE hook)
+- `src/TradePilot.Application/Backtesting/Models/SimulatedPosition.cs` — Position lifecycle
+- `src/TradePilot.Domain/Entities/BacktestRun.cs` — Entity, migration for R aggregate columns
+- `src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs` — Map new fields
+- `src/TradePilot.Application/StrategyAuthoring/Validation/BusinessRuleValidator.cs` — R-multiple validation rules
+- `src/TradePilot.Application/StrategyAuthoring/Validation/CrossFieldValidator.cs` — Cross-field: RMultiple TP requires RiskBased + SL
 - `frontend/trading-ui/src/app/features/strategy-builder/models/strategy.model.ts` — TS types
 - `frontend/trading-ui/src/app/core/models/backtest.model.ts` — Backtest TS types
 - `frontend/trading-ui/src/app/features/strategy-builder/components/exit-rules-card/` — Exit rules form

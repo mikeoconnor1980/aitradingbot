@@ -63,26 +63,26 @@ Add Binance USDⓈ-M Futures as a historical market data source for backtesting,
 
 ### Project Patterns
 
-- `src/TradingApp.Domain/Entities/Candle.cs` — Domain entity with sealed class, private ctor, static `Create` factory
-- `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` — REST client interface pattern
-- `src/TradingApp.Application/Abstractions/Services/ICandleIngestionService.cs` — Ingestion service interface
-- `src/TradingApp.Application/Abstractions/Configuration/CandleIngestionOptions.cs` — Options class with SectionName + DataAnnotations
-- `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs` — Repository interface
-- `src/TradingApp.Application/Candles/Commands/IngestCandlesCommand.cs` — MediatR command + handler co-location
-- `src/TradingApp.Application/Candles/Models/IngestionResult.cs` — Result DTO pattern
-- `src/TradingApp.Infrastructure/Services/CandleIngestionService.cs` — Ingestion engine with pagination, retry, gap detection
-- `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` — Typed HttpClient implementation
-- `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Static asset/interval mapper
-- `src/TradingApp.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — Wire model with JsonPropertyName
-- `src/TradingApp.Persistence/Repositories/CandleRepository.cs` — Raw SQL BulkInsertAsync pattern
-- `src/TradingApp.Persistence/TradingAppDbContext.cs` — EF Core DbContext with decimal→double conversion
-- `src/TradingApp.Api/Controllers/CandlesController.cs` — MediatR-dispatching controller on ApiController base
-- `src/TradingApp.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Exception→HTTP status mapping
-- `src/TradingApp.Api/Program.cs` — DI composition root with options binding and Polly pipeline
-- `tests/TradingApp.Api.Tests/Services/CandleIngestionServiceTests.cs` — Service test pattern with Moq strict mocks
-- `tests/TradingApp.Api.Tests/Controllers/CandlesControllerTests.cs` — Controller integration tests via WebApplicationFactory
-- `tests/TradingApp.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — In-memory SQLite repository tests
-- `tests/TradingApp.Domain.Tests/Entities/CandleTests.cs` — Entity factory method tests
+- `src/TradePilot.Domain/Entities/Candle.cs` — Domain entity with sealed class, private ctor, static `Create` factory
+- `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` — REST client interface pattern
+- `src/TradePilot.Application/Abstractions/Services/ICandleIngestionService.cs` — Ingestion service interface
+- `src/TradePilot.Application/Abstractions/Configuration/CandleIngestionOptions.cs` — Options class with SectionName + DataAnnotations
+- `src/TradePilot.Application/Abstractions/Repositories/ICandleRepository.cs` — Repository interface
+- `src/TradePilot.Application/Candles/Commands/IngestCandlesCommand.cs` — MediatR command + handler co-location
+- `src/TradePilot.Application/Candles/Models/IngestionResult.cs` — Result DTO pattern
+- `src/TradePilot.Infrastructure/Services/CandleIngestionService.cs` — Ingestion engine with pagination, retry, gap detection
+- `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` — Typed HttpClient implementation
+- `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` — Static asset/interval mapper
+- `src/TradePilot.Infrastructure/Hyperliquid/Models/HyperliquidCandle.cs` — Wire model with JsonPropertyName
+- `src/TradePilot.Persistence/Repositories/CandleRepository.cs` — Raw SQL BulkInsertAsync pattern
+- `src/TradePilot.Persistence/TradePilotDbContext.cs` — EF Core DbContext with decimal→double conversion
+- `src/TradePilot.Api/Controllers/CandlesController.cs` — MediatR-dispatching controller on ApiController base
+- `src/TradePilot.Api/Infrastructure/Filters/HttpGlobalExceptionFilter.cs` — Exception→HTTP status mapping
+- `src/TradePilot.Api/Program.cs` — DI composition root with options binding and Polly pipeline
+- `tests/TradePilot.Api.Tests/Services/CandleIngestionServiceTests.cs` — Service test pattern with Moq strict mocks
+- `tests/TradePilot.Api.Tests/Controllers/CandlesControllerTests.cs` — Controller integration tests via WebApplicationFactory
+- `tests/TradePilot.Persistence.Tests/Repositories/CandleRepositoryTests.cs` — In-memory SQLite repository tests
+- `tests/TradePilot.Domain.Tests/Entities/CandleTests.cs` — Entity factory method tests
 
 ### [x] Phase 1: Domain & Persistence Foundation (Source Column)
 
@@ -91,7 +91,7 @@ Add Binance USDⓈ-M Futures as a historical market data source for backtesting,
 - [x] Task 1.1: Add `Source` property to `Candle` entity and update `Create` factory
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-11-add-source-property-to-candle-entity
 
-- [x] Task 1.2: Update `TradingAppDbContext` with Source column configuration and new unique index
+- [x] Task 1.2: Update `TradePilotDbContext` with Source column configuration and new unique index
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-01-details.md#task-12-update-dbcontext-configuration
 
 - [x] Task 1.3: Create EF migration `AddSourceToCandles`
@@ -166,7 +166,7 @@ Add Binance USDⓈ-M Futures as a historical market data source for backtesting,
 - [x] Task 4.1: Create `FundingRate` domain entity
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-41-create-fundingrate-entity
 
-- [x] Task 4.2: Update `TradingAppDbContext` and create EF migration for `FundingRates` table
+- [x] Task 4.2: Update `TradePilotDbContext` and create EF migration for `FundingRates` table
   - Details: .agent-context/3-develop/build/plans/details/20260328-binance-futures-data-ingestion-phase-04-details.md#task-42-update-dbcontext-and-create-migration
 
 - [x] Task 4.3: Create `IFundingRateRepository` and `FundingRateRepository`

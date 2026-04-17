@@ -56,7 +56,7 @@ Lowers the barrier to strategy creation. Traders who don't want to learn the for
 - [ ] Uses `ILlmClient` abstraction (Gemini 2.0 Flash primary, Ollama offline fallback)
 - [ ] Prompt engineering: system prompt includes the schema definition, valid condition types, operator enums, and example configs
 - [ ] Confidence calculation: based on how many fields the LLM populated vs. how many were ambiguous
-- [ ] Lives in new **TradingApp.AI** project alongside `ILlmClient` and provider implementations
+- [ ] Lives in new **TradePilot.AI** project alongside `ILlmClient` and provider implementations
 
 #### Interpretation Rules
 
@@ -198,9 +198,9 @@ Lowers the barrier to strategy creation. Traders who don't want to learn the for
 
 ### Bounded Contexts
 
-- **TradingApp.AI** (new project): `ILlmClient`, `GeminiLlmClient`, `OllamaLlmClient`, `IStrategyInterpreter`, `StrategyInterpreter`, `StrategyIntentDto`, prompt templates
-- **TradingApp.Api**: `StrategiesController` interpret endpoint, rate limiting middleware
-- **TradingApp.Domain**: `StrategyConfig.SourceText` field addition
+- **TradePilot.AI** (new project): `ILlmClient`, `GeminiLlmClient`, `OllamaLlmClient`, `IStrategyInterpreter`, `StrategyInterpreter`, `StrategyIntentDto`, prompt templates
+- **TradePilot.Api**: `StrategiesController` interpret endpoint, rate limiting middleware
+- **TradePilot.Domain**: `StrategyConfig.SourceText` field addition
 - **frontend/trading-ui**: NL input component, assumptions panel, confidence badge
 
 ### API Endpoints

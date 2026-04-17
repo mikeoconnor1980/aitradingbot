@@ -139,8 +139,8 @@ Integrating TradingView MCP into the platform would:
 | Area | Deliverable |
 |------|-------------|
 | **MCP server deployment** | `atilaahmettaner/tradingview-mcp` running as an independent HTTP service. Containerised via Docker for local dev (Docker Compose) and production (Azure Container Apps sidecar). Health check endpoint exposed. |
-| **`ITradingViewClient`** | Application-layer contract in `TradingApp.Application/Abstractions/Services/`. Methods: `ScreenCryptoAsync`, `GetTechnicalAnalysisAsync`, `GetMultiTimeframeAnalysisAsync`, `GetMarketSentimentAsync`, `GetFinancialNewsAsync`, `GetMarketSnapshotAsync`. |
-| **`TradingViewMcpClient`** | Infrastructure implementation in `TradingApp.Infrastructure/Services/`. HTTP client calling the MCP server's HTTP transport. Includes retry logic, timeout handling, response deserialization. |
+| **`ITradingViewClient`** | Application-layer contract in `TradePilot.Application/Abstractions/Services/`. Methods: `ScreenCryptoAsync`, `GetTechnicalAnalysisAsync`, `GetMultiTimeframeAnalysisAsync`, `GetMarketSentimentAsync`, `GetFinancialNewsAsync`, `GetMarketSnapshotAsync`. |
+| **`TradingViewMcpClient`** | Infrastructure implementation in `TradePilot.Infrastructure/Services/`. HTTP client calling the MCP server's HTTP transport. Includes retry logic, timeout handling, response deserialization. |
 | **Configuration** | `TradingViewOptions` in `appsettings.json` — MCP server base URL, timeout, cache TTL, enabled flag. |
 | **Shared response cache** | In-memory cache with configurable TTL (default 300s, matching the MCP server's own cache). Prevents redundant calls when multiple users request the same screening or TA data within the TTL window. |
 | **API endpoints** | `TradingViewController` exposing: `POST /api/tradingview/screen` (crypto screening), `GET /api/tradingview/ta/{symbol}` (TA summary), `GET /api/tradingview/snapshot` (market overview). Rate-limited. |
@@ -238,14 +238,14 @@ Integrating TradingView MCP into the platform would:
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `ITradingViewClient` | `TradingApp.Application/Abstractions/Services/` | Application-layer contract for TV data retrieval |
-| `TradingViewMcpClient` | `TradingApp.Infrastructure/Services/` | HTTP client implementation calling the MCP server |
-| `TradingViewOptions` | `TradingApp.Application/Abstractions/Configuration/` | Configuration: base URL, timeout, cache TTL, enabled flag |
-| `TradingViewContext` | `TradingApp.Domain/Models/` | Domain model for TV TA signals on `MarketContext` |
-| `ITradingViewContextProvider` | `TradingApp.Application/Abstractions/Services/` | Pluggable provider for `MarketContextBuilder` |
-| `TradingViewContextProvider` | `TradingApp.Infrastructure/Services/` | Implementation — calls `ITradingViewClient` on candle close |
-| `TradingViewController` | `TradingApp.Api/Controllers/` | REST endpoints for screening, TA, market snapshot |
-| `StrategyInterpreterPrompt` | `TradingApp.AI/Prompts/` | Extended prompt including TV data as grounding context |
+| `ITradingViewClient` | `TradePilot.Application/Abstractions/Services/` | Application-layer contract for TV data retrieval |
+| `TradingViewMcpClient` | `TradePilot.Infrastructure/Services/` | HTTP client implementation calling the MCP server |
+| `TradingViewOptions` | `TradePilot.Application/Abstractions/Configuration/` | Configuration: base URL, timeout, cache TTL, enabled flag |
+| `TradingViewContext` | `TradePilot.Domain/Models/` | Domain model for TV TA signals on `MarketContext` |
+| `ITradingViewContextProvider` | `TradePilot.Application/Abstractions/Services/` | Pluggable provider for `MarketContextBuilder` |
+| `TradingViewContextProvider` | `TradePilot.Infrastructure/Services/` | Implementation — calls `ITradingViewClient` on candle close |
+| `TradingViewController` | `TradePilot.Api/Controllers/` | REST endpoints for screening, TA, market snapshot |
+| `StrategyInterpreterPrompt` | `TradePilot.AI/Prompts/` | Extended prompt including TV data as grounding context |
 
 ### Integration Points
 

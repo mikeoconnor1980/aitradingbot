@@ -15,7 +15,7 @@ import {
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { WarnConfirmDialogComponent, WarnConfirmDialogData } from "../../core/components/warn-confirm-dialog.component";
 import { CandleManagementService } from "../../core/services/candle-management.service";
-import { NotificationService } from "../../core/services/notification.service";
+import { NotificationFacade } from "../../core/services/notification-facade.service";
 
 interface IngestionState {
   isIngesting: boolean;
@@ -44,7 +44,7 @@ export class CandleManagementComponent implements OnInit {
   private static readonly SLOW_INTERVALS = ["5m", "1d"];
 
   private readonly _candleService = inject(CandleManagementService);
-  private readonly _notificationService = inject(NotificationService);
+  private readonly _notificationService = inject(NotificationFacade);
   private readonly _dialog = inject(MatDialog);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
