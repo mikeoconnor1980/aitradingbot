@@ -1,6 +1,6 @@
 # Data Model ERD
 
-This ERD reflects the entities currently mapped in `TradePilotDbContext`. It intentionally removes the earlier aspirational tables and distinguishes between relationships enforced by EF Core foreign keys and relationships that are only tracked by application-level identifiers.
+This ERD reflects the entities currently mapped in `TradingAppDbContext`. It intentionally removes the earlier aspirational tables and distinguishes between relationships enforced by EF Core foreign keys and relationships that are only tracked by application-level identifiers.
 
 ## Relationship Legend
 

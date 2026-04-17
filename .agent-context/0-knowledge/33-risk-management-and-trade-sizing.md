@@ -22,7 +22,7 @@ When `PositionSizeType = RiskBased`, position sizing is derived from R and the s
 | `FixedNotional` | Uses a fixed USD notional |
 | `RiskBased` | Uses stop-loss distance plus `RiskPerTradePercent` to derive notional |
 
-`PositionSizeResolver` in `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` is the shared helper for these calculations.
+`PositionSizeResolver` in `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` is the shared helper for these calculations.
 
 ### ResolveInitialR
 
@@ -36,9 +36,9 @@ The codebase now has three meaningful `IRiskEngine` implementations or modes.
 
 | Engine | Location | Purpose |
 |--------|----------|---------|
-| `LiveRiskEngine` | `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` | Production enforcement for live entries |
-| `BacktestRiskEngine` | `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` | Replay-time enforcement of heat and drawdown limits |
-| `PassThroughRiskEngine` | `src/TradePilot.Application/Trading/Services/PassThroughRiskEngine.cs` | No-op implementation for contexts that do not need enforcement |
+| `LiveRiskEngine` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Production enforcement for live entries |
+| `BacktestRiskEngine` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Replay-time enforcement of heat and drawdown limits |
+| `PassThroughRiskEngine` | `src/TradingApp.Application/Trading/Services/PassThroughRiskEngine.cs` | No-op implementation for contexts that do not need enforcement |
 
 `PassThroughRiskEngine` is useful for non-live or simpler orchestration contexts, but the main live and backtest paths both use active enforcement engines.
 
@@ -65,9 +65,9 @@ Portfolio heat is no longer a proposed idea. It is implemented in both configura
 
 | Element | Location | Purpose |
 |---------|----------|---------|
-| `RiskLimitsConfig.MaxPortfolioHeatPercent` | `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` | Configured maximum total open risk as a percent of equity |
-| `LiveRiskEngine.CheckPortfolioHeat(...)` | `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` | Blocks new live entries that would exceed heat |
-| `BacktestRiskEngine.CheckPortfolioHeat(...)` | `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` | Applies the same concept during replay |
+| `RiskLimitsConfig.MaxPortfolioHeatPercent` | `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` | Configured maximum total open risk as a percent of equity |
+| `LiveRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Blocks new live entries that would exceed heat |
+| `BacktestRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Applies the same concept during replay |
 
 The default configuration in the application settings is 6 percent.
 
@@ -175,7 +175,7 @@ When `PositionSizeType = RiskBased`, position sizing is derived from R and the s
 | `FixedNotional` | Uses a fixed USD notional |
 | `RiskBased` | Uses stop-loss distance plus `RiskPerTradePercent` to derive notional |
 
-`PositionSizeResolver` in `src/TradePilot.Application/Trading/Services/PositionSizeResolver.cs` is the shared helper for these calculations.
+`PositionSizeResolver` in `src/TradingApp.Application/Trading/Services/PositionSizeResolver.cs` is the shared helper for these calculations.
 
 ### ResolveInitialR
 
@@ -189,9 +189,9 @@ The codebase now has three meaningful `IRiskEngine` implementations or modes.
 
 | Engine | Location | Purpose |
 |--------|----------|---------|
-| `LiveRiskEngine` | `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` | Production enforcement for live entries |
-| `BacktestRiskEngine` | `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` | Replay-time enforcement of heat and drawdown limits |
-| `PassThroughRiskEngine` | `src/TradePilot.Application/Trading/Services/PassThroughRiskEngine.cs` | No-op implementation for contexts that do not need enforcement |
+| `LiveRiskEngine` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Production enforcement for live entries |
+| `BacktestRiskEngine` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Replay-time enforcement of heat and drawdown limits |
+| `PassThroughRiskEngine` | `src/TradingApp.Application/Trading/Services/PassThroughRiskEngine.cs` | No-op implementation for contexts that do not need enforcement |
 
 `PassThroughRiskEngine` is useful for non-live or simpler orchestration contexts, but the main live and backtest paths both use active enforcement engines.
 
@@ -218,9 +218,9 @@ Portfolio heat is no longer a proposed idea. It is implemented in both configura
 
 | Element | Location | Purpose |
 |---------|----------|---------|
-| `RiskLimitsConfig.MaxPortfolioHeatPercent` | `src/TradePilot.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` | Configured maximum total open risk as a percent of equity |
-| `LiveRiskEngine.CheckPortfolioHeat(...)` | `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` | Blocks new live entries that would exceed heat |
-| `BacktestRiskEngine.CheckPortfolioHeat(...)` | `src/TradePilot.Application/Backtesting/Services/BacktestRiskEngine.cs` | Applies the same concept during replay |
+| `RiskLimitsConfig.MaxPortfolioHeatPercent` | `src/TradingApp.Application/StrategyAuthoring/Models/RiskLimitsConfig.cs` | Configured maximum total open risk as a percent of equity |
+| `LiveRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Blocks new live entries that would exceed heat |
+| `BacktestRiskEngine.CheckPortfolioHeat(...)` | `src/TradingApp.Application/Backtesting/Services/BacktestRiskEngine.cs` | Applies the same concept during replay |
 
 The default configuration in the application settings is 6 percent.
 

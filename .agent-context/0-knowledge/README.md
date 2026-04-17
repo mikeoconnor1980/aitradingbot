@@ -1,6 +1,6 @@
 # 0-knowledge - Table of Contents
 
-Project knowledge files for TradePilot. These documents are the source of truth for the implemented architecture, domain model, strategy runtime, control plane, and research tooling.
+Project knowledge files for TradingApp. These documents are the source of truth for the implemented architecture, domain model, strategy runtime, control plane, and research tooling.
 
 ---
 
@@ -65,6 +65,7 @@ Project knowledge files for TradePilot. These documents are the source of truth 
 | 29 | [Control Plane → Agent Architecture](29-control-plane-agent-architecture.md) | Heartbeat protocol, command routing, kill switch, and update flow between API and worker |
 | 30 | [Worker Execution Pipeline](30-worker-execution-pipeline.md) | End-to-end live execution flow from trade ticks to fills, persistence, and agent services |
 | 34 | [Google SSO Authentication](34-google-sso-authentication.md) | Google OAuth integration via Google Identity Services |
+| 36 | [Notification Architecture](36-notification-architecture.md) | Unified notification dispatch (backend) and facade (frontend), channel routing, and extension guide |
 
 ## Market Data
 

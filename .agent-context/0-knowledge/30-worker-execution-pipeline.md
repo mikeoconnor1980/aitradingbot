@@ -1,6 +1,6 @@
 # Worker Execution Pipeline
 
-The Worker (TradePilot.ExecutionAgent) is a Windows Service that connects to Hyperliquid
+The Worker (TradingApp.ExecutionAgent) is a Windows Service that connects to Hyperliquid
 via WebSocket, assembles candles from raw trades, evaluates the grid strategy on each
 confirmed candle close, and places/manages orders using locally-signed EIP-712 transactions.
 The private key never leaves the machine.
@@ -307,24 +307,24 @@ of the next. On BTC-PERP this is typically < 1 s; on low-liquidity pairs it can 
 
 | File | Purpose |
 |------|---------|
-| `src/TradePilot.Worker/Program.cs` | Host configuration, DI registrations, Windows Service setup |
-| `src/TradePilot.Worker/Services/AgentCheckInService.cs` | Heartbeat loop, command dispatch, session factory |
-| `src/TradePilot.Worker/Services/TradingSession.cs` | Dual WebSocket management, candle pipeline wiring, reconnect loop |
-| `src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs` | Market data WebSocket, trade tick streaming |
-| `src/TradePilot.Infrastructure/Services/HyperliquidUserEventClient.cs` | Per-wallet user event WebSocket (fills, order updates) |
-| `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` | REST API client (`/info`, `/exchange`, candles, fills) |
-| `src/TradePilot.Infrastructure/Services/LiveExecutionEngine.cs` | EIP-712 signing, order/cancel submission |
-| `src/TradePilot.Application/Scheduling/CandleBuilder.cs` | Trade tick → OHLCV bucket assembly |
-| `src/TradePilot.Application/Scheduling/CandleClock.cs` | Deduplicating candle-close event emitter |
-| `src/TradePilot.Application/Scheduling/StrategyScheduler.cs` | Candle-close handler, market context, evaluation orchestration |
-| `src/TradePilot.Application/Trading/Services/CompositeStrategyEngine.cs` | Mode router (Grid vs Signal) |
-| `src/TradePilot.Application/Trading/Services/GridStrategyEngine.cs` | Grid setup detection with regime gating |
-| `src/TradePilot.Application/Trading/Services/GridController.cs` | Grid lifecycle state machine, signal emission |
-| `src/TradePilot.Application/Trading/Services/LivePositionManager.cs` | Signal → order translation, grid deployment |
-| `src/TradePilot.Application/Trading/Services/LiveRiskEngine.cs` | Pre-order validation, circuit breaker, daily loss |
-| `src/TradePilot.Application/Trading/Services/FillProcessor.cs` | Fill routing to grid state, DB persistence |
-| `src/TradePilot.Application/Trading/Services/StateRecoveryService.cs` | DB + Hyperliquid reconciliation on restart |
-| `src/TradePilot.Application/Trading/Services/InMemoryOrderTracker.cs` | ConcurrentDictionary-backed order correlation |
+| `src/TradingApp.Worker/Program.cs` | Host configuration, DI registrations, Windows Service setup |
+| `src/TradingApp.Worker/Services/AgentCheckInService.cs` | Heartbeat loop, command dispatch, session factory |
+| `src/TradingApp.Worker/Services/TradingSession.cs` | Dual WebSocket management, candle pipeline wiring, reconnect loop |
+| `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` | Market data WebSocket, trade tick streaming |
+| `src/TradingApp.Infrastructure/Services/HyperliquidUserEventClient.cs` | Per-wallet user event WebSocket (fills, order updates) |
+| `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` | REST API client (`/info`, `/exchange`, candles, fills) |
+| `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs` | EIP-712 signing, order/cancel submission |
+| `src/TradingApp.Application/Scheduling/CandleBuilder.cs` | Trade tick → OHLCV bucket assembly |
+| `src/TradingApp.Application/Scheduling/CandleClock.cs` | Deduplicating candle-close event emitter |
+| `src/TradingApp.Application/Scheduling/StrategyScheduler.cs` | Candle-close handler, market context, evaluation orchestration |
+| `src/TradingApp.Application/Trading/Services/CompositeStrategyEngine.cs` | Mode router (Grid vs Signal) |
+| `src/TradingApp.Application/Trading/Services/GridStrategyEngine.cs` | Grid setup detection with regime gating |
+| `src/TradingApp.Application/Trading/Services/GridController.cs` | Grid lifecycle state machine, signal emission |
+| `src/TradingApp.Application/Trading/Services/LivePositionManager.cs` | Signal → order translation, grid deployment |
+| `src/TradingApp.Application/Trading/Services/LiveRiskEngine.cs` | Pre-order validation, circuit breaker, daily loss |
+| `src/TradingApp.Application/Trading/Services/FillProcessor.cs` | Fill routing to grid state, DB persistence |
+| `src/TradingApp.Application/Trading/Services/StateRecoveryService.cs` | DB + Hyperliquid reconciliation on restart |
+| `src/TradingApp.Application/Trading/Services/InMemoryOrderTracker.cs` | ConcurrentDictionary-backed order correlation |
 
 ## Shared vs Per-Session State
 

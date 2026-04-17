@@ -8,8 +8,8 @@ The integration is split across two runtime contexts:
 
 | Host | Role |
 |------|------|
-| `src/TradePilot.Api` | Control plane for account inspection, order endpoints, asset metadata, and user-profile driven network routing |
-| `src/TradePilot.Worker` | Execution agent that owns private-key signing, live strategy execution, and per-wallet user event streams |
+| `src/TradingApp.Api` | Control plane for account inspection, order endpoints, asset metadata, and user-profile driven network routing |
+| `src/TradingApp.Worker` | Execution agent that owns private-key signing, live strategy execution, and per-wallet user event streams |
 
 Core capabilities:
 
@@ -31,7 +31,7 @@ Hyperliquid uses wallet-based signing for exchange actions. The implemented syst
 | Signing contract | `IHyperliquidSigner` exposes only `WalletAddress` and `SignHash(byte[])`; typed-data signing is only available on the concrete signer implementation |
 | Runtime key management | `ISignerProvider` extends the signer with `IsConfigured`, `Configure(key)`, and `Clear()` |
 
-`MutableSignerProvider` in `src/TradePilot.Infrastructure/Services/MutableSignerProvider.cs` is the key runtime pattern. It is thread-safe, can be reconfigured without restart, and is registered as both `ISignerProvider` and `IHyperliquidSigner`.
+`MutableSignerProvider` in `src/TradingApp.Infrastructure/Services/MutableSignerProvider.cs` is the key runtime pattern. It is thread-safe, can be reconfigured without restart, and is registered as both `ISignerProvider` and `IHyperliquidSigner`.
 
 The API host creates the signer provider without a key at startup and logs a warning if no runtime key is configured. The Worker follows the same provider pattern and can optionally bootstrap from `Hyperliquid__PrivateKey`, but the provider remains mutable so the key can be swapped later.
 
@@ -41,9 +41,9 @@ Hyperliquid reads and writes are routed per user rather than through a single gl
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `INetworkProvider` | `src/TradePilot.Application/Abstractions/Services/INetworkProvider.cs` | Abstraction for resolving the effective network |
-| `UserNetworkProvider` | `src/TradePilot.Api/Infrastructure/UserNetworkProvider.cs` | Resolves mainnet vs testnet from the current request context |
-| `NetworkRoutingHandler` | `src/TradePilot.Api/Infrastructure/NetworkRoutingHandler.cs` | `DelegatingHandler` that rewrites outgoing requests to the user-specific base URL |
+| `INetworkProvider` | `src/TradingApp.Application/Abstractions/Services/INetworkProvider.cs` | Abstraction for resolving the effective network |
+| `UserNetworkProvider` | `src/TradingApp.Api/Infrastructure/UserNetworkProvider.cs` | Resolves mainnet vs testnet from the current request context |
+| `NetworkRoutingHandler` | `src/TradingApp.Api/Infrastructure/NetworkRoutingHandler.cs` | `DelegatingHandler` that rewrites outgoing requests to the user-specific base URL |
 
 This lets the API expose account and order features for users on different Hyperliquid networks without duplicating service registrations.
 
@@ -51,24 +51,24 @@ This lets the API expose account and order features for users on different Hyper
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `HyperliquidOptions` | `src/TradePilot.Application/Abstractions/Configuration/HyperliquidOptions.cs` | Base REST/WS configuration |
-| `IHyperliquidSigner` | `src/TradePilot.Application/Abstractions/Services/IHyperliquidSigner.cs` | Minimal signing interface: wallet address plus hash signing |
-| `ISignerProvider` | `src/TradePilot.Application/Abstractions/Services/ISignerProvider.cs` | Runtime-configurable signer abstraction |
-| `MutableSignerProvider` | `src/TradePilot.Infrastructure/Services/MutableSignerProvider.cs` | Thread-safe runtime-swappable signer implementation |
-| `IHyperliquidRestClient` | `src/TradePilot.Application/Abstractions/Services/IHyperliquidRestClient.cs` | Typed Hyperliquid REST boundary |
-| `HyperliquidRestClient` | `src/TradePilot.Infrastructure/Services/HyperliquidRestClient.cs` | Handles `/info` and `/exchange` calls, typed parsing, and API error translation |
-| `IHyperliquidAccountService` | `src/TradePilot.Application/Abstractions/Services/IHyperliquidAccountService.cs` | Account/position abstraction used by API and Worker |
-| `HyperliquidAccountService` | `src/TradePilot.Infrastructure/Services/HyperliquidAccountService.cs` | Account-state implementation backed by REST calls |
-| `IHyperliquidOrderService` | `src/TradePilot.Api/Services/IHyperliquidOrderService.cs` | API surface for direct order actions |
-| `HyperliquidOrderService` | `src/TradePilot.Api/Services/HyperliquidOrderService.cs` | Builds signed exchange actions and companion trigger orders |
-| `IHyperliquidWebSocketClient` | `src/TradePilot.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` | Shared public market-data WebSocket client |
-| `HyperliquidWebSocketClient` | `src/TradePilot.Infrastructure/Services/HyperliquidWebSocketClient.cs` | Public WebSocket implementation |
-| `IHyperliquidUserEventClient` | `src/TradePilot.Application/Abstractions/Services/IHyperliquidUserEventClient.cs` | Per-wallet user event stream abstraction |
-| `HyperliquidUserEventClient` | `src/TradePilot.Infrastructure/Services/HyperliquidUserEventClient.cs` | User WebSocket for fills and order updates |
-| `IHyperliquidAssetMetadataCache` | `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` | Lazy-loaded exchange metadata cache |
-| `HyperliquidAssetMetadataCache` | `src/TradePilot.Api/Services/HyperliquidAssetMetadataCache.cs` | 30-minute TTL cache of asset index, size decimals, and leverage |
-| `HyperliquidExecutionEngine` | `src/TradePilot.Api/Services/HyperliquidExecutionEngine.cs` | API-side `IExecutionEngine` wrapper over the order service |
-| `LiveExecutionEngine` | `src/TradePilot.Infrastructure/Services/LiveExecutionEngine.cs` | Worker-side execution engine that signs and submits live orders |
+| `HyperliquidOptions` | `src/TradingApp.Application/Abstractions/Configuration/HyperliquidOptions.cs` | Base REST/WS configuration |
+| `IHyperliquidSigner` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidSigner.cs` | Minimal signing interface: wallet address plus hash signing |
+| `ISignerProvider` | `src/TradingApp.Application/Abstractions/Services/ISignerProvider.cs` | Runtime-configurable signer abstraction |
+| `MutableSignerProvider` | `src/TradingApp.Infrastructure/Services/MutableSignerProvider.cs` | Thread-safe runtime-swappable signer implementation |
+| `IHyperliquidRestClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidRestClient.cs` | Typed Hyperliquid REST boundary |
+| `HyperliquidRestClient` | `src/TradingApp.Infrastructure/Services/HyperliquidRestClient.cs` | Handles `/info` and `/exchange` calls, typed parsing, and API error translation |
+| `IHyperliquidAccountService` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidAccountService.cs` | Account/position abstraction used by API and Worker |
+| `HyperliquidAccountService` | `src/TradingApp.Infrastructure/Services/HyperliquidAccountService.cs` | Account-state implementation backed by REST calls |
+| `IHyperliquidOrderService` | `src/TradingApp.Api/Services/IHyperliquidOrderService.cs` | API surface for direct order actions |
+| `HyperliquidOrderService` | `src/TradingApp.Api/Services/HyperliquidOrderService.cs` | Builds signed exchange actions and companion trigger orders |
+| `IHyperliquidWebSocketClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidWebSocketClient.cs` | Shared public market-data WebSocket client |
+| `HyperliquidWebSocketClient` | `src/TradingApp.Infrastructure/Services/HyperliquidWebSocketClient.cs` | Public WebSocket implementation |
+| `IHyperliquidUserEventClient` | `src/TradingApp.Application/Abstractions/Services/IHyperliquidUserEventClient.cs` | Per-wallet user event stream abstraction |
+| `HyperliquidUserEventClient` | `src/TradingApp.Infrastructure/Services/HyperliquidUserEventClient.cs` | User WebSocket for fills and order updates |
+| `IHyperliquidAssetMetadataCache` | `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` | Lazy-loaded exchange metadata cache |
+| `HyperliquidAssetMetadataCache` | `src/TradingApp.Api/Services/HyperliquidAssetMetadataCache.cs` | 30-minute TTL cache of asset index, size decimals, and leverage |
+| `HyperliquidExecutionEngine` | `src/TradingApp.Api/Services/HyperliquidExecutionEngine.cs` | API-side `IExecutionEngine` wrapper over the order service |
+| `LiveExecutionEngine` | `src/TradingApp.Infrastructure/Services/LiveExecutionEngine.cs` | Worker-side execution engine that signs and submits live orders |
 
 ## REST Client Behavior
 
@@ -99,7 +99,7 @@ This is registered in both API and Worker hosts. The retry pipeline is attached 
 
 ## Asset Mapping And Metadata
 
-`HyperliquidAssetMapper` in `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` is intentionally lenient.
+`HyperliquidAssetMapper` in `src/TradingApp.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` is intentionally lenient.
 
 | Method | Implemented behavior |
 |--------|----------------------|

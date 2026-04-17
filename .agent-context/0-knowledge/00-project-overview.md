@@ -2,7 +2,7 @@
 
 ## Overview
 
-TradePilot is a multi-tenant algorithmic trading platform for Hyperliquid perpetuals. It combines a deterministic strategy engine, a browser-based control plane, a client-side execution agent, reusable indicator libraries, AI-assisted tooling, and a backtesting and optimization stack built around the same strategy primitives used in live trading.
+TradingApp is a multi-tenant algorithmic trading platform for Hyperliquid perpetuals. It combines a deterministic strategy engine, a browser-based control plane, a client-side execution agent, reusable indicator libraries, AI-assisted tooling, and a backtesting and optimization stack built around the same strategy primitives used in live trading.
 
 The current implementation is centered on BTC perpetual trading, but the project structure is intended to support additional strategies, indicators, assets, and deployment targets over time.
 
@@ -13,7 +13,7 @@ The implemented model is Option C: Split Architecture.
 Under Option C:
 
 - the API and Angular UI act as the control plane
-- the execution agent is the `TradePilot.ExecutionAgent` Windows Service built from `src/TradePilot.Worker`
+- the execution agent is the `TradingApp.ExecutionAgent` Windows Service built from `src/TradingApp.Worker`
 - wallet addresses are stored in the platform database, but private keys never touch the server
 - order signing happens locally on the execution agent through `MutableSignerProvider` and live execution services
 
@@ -33,14 +33,14 @@ The codebase is organized around a few non-negotiable priorities:
 
 | Component | Purpose |
 |-----------|---------|
-| `TradePilot.Domain` | Core entities such as users, strategies, market data, runs, orders, and optimization records |
-| `TradePilot.Application` | CQRS handlers, trading pipeline abstractions, scheduling, macro calendar, subscriptions, and optimization orchestration |
-| `TradePilot.Infrastructure` | Hyperliquid, Binance, auth, SignalR, signing, and external service implementations |
-| `TradePilot.Persistence` | EF Core context, migrations, and repository implementations |
-| `TradePilot.Api` | ASP.NET Core control plane for auth, strategies, market data, backtesting, optimization, profile, and agent coordination |
-| `TradePilot.AI` | Strategy interpretation, AI review, and other OpenAI-compatible LLM integrations |
-| `TradePilot.Indicators` | Standalone technical indicator library with ATR, Bollinger, EMA, MACD, RSI, Support/Resistance, and incremental calculators |
-| `TradePilot.Worker` | Builds the `TradePilot.ExecutionAgent` Windows Service used for client-side execution |
+| `TradingApp.Domain` | Core entities such as users, strategies, market data, runs, orders, and optimization records |
+| `TradingApp.Application` | CQRS handlers, trading pipeline abstractions, scheduling, macro calendar, subscriptions, and optimization orchestration |
+| `TradingApp.Infrastructure` | Hyperliquid, Binance, auth, SignalR, signing, and external service implementations |
+| `TradingApp.Persistence` | EF Core context, migrations, and repository implementations |
+| `TradingApp.Api` | ASP.NET Core control plane for auth, strategies, market data, backtesting, optimization, profile, and agent coordination |
+| `TradingApp.AI` | Strategy interpretation, AI review, and other OpenAI-compatible LLM integrations |
+| `TradingApp.Indicators` | Standalone technical indicator library with ATR, Bollinger, EMA, MACD, RSI, Support/Resistance, and incremental calculators |
+| `TradingApp.Worker` | Builds the `TradingApp.ExecutionAgent` Windows Service used for client-side execution |
 | `frontend/trading-ui` | Angular control plane UI for trading, strategy authoring, auth, optimizer, macro calendar, and agent management |
 
 ## Strategy and Execution Model

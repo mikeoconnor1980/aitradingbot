@@ -7,7 +7,7 @@ Users create and maintain strategy instances through the API and Angular builder
 Each strategy consists of:
 
 - A `Strategy` record in the domain model.
-- A JSON configuration stored in `Strategy.ConfigJson` and deserialized into `TradePilot.Application.StrategyAuthoring.Models.StrategyConfig`.
+- A JSON configuration stored in `Strategy.ConfigJson` and deserialized into `TradingApp.Application.StrategyAuthoring.Models.StrategyConfig`.
 - A revision history in `StrategyRevision`.
 - An optional AI review per revision in `StrategyReview`.
 

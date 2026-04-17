@@ -8,25 +8,25 @@ The macro calendar subsystem tracks upcoming macroeconomic events (CPI, FOMC, No
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| `MacroEvent` | `src/TradePilot.Domain/Entities/MacroEvent.cs` | Domain entity storing event details, importance, block window timestamps |
-| `MacroSyncRun` | `src/TradePilot.Domain/Entities/MacroSyncRun.cs` | Tracks each sync run (success/failure, counts) |
-| `MacroEventImportance` | `src/TradePilot.Domain/Enums/MacroEventImportance.cs` | Unknown, Low, Medium, High, Critical |
-| `MacroEventStatus` | `src/TradePilot.Domain/Enums/MacroEventStatus.cs` | Scheduled, Live, Released, Revised, Cancelled |
-| `IMacroCalendarProvider` | `src/TradePilot.Application/MacroCalendar/Services/IMacroCalendarProvider.cs` | Abstraction for fetching events from any provider |
-| `StubMacroCalendarProvider` | `src/TradePilot.Infrastructure/Providers/MacroCalendar/StubMacroCalendarProvider.cs` | Generates deterministic fake events for development |
-| `IMacroCalendarIngestionService` | `src/TradePilot.Application/MacroCalendar/Services/IMacroCalendarIngestionService.cs` | Sync interface |
-| `MacroCalendarIngestionService` | `src/TradePilot.Persistence/Services/MacroCalendarIngestionService.cs` | Upserts events from provider into database, computes block windows |
-| `IMacroCalendarQueryService` | `src/TradePilot.Application/MacroCalendar/Services/IMacroCalendarQueryService.cs` | Query interface for upcoming events and active blocks |
-| `MacroCalendarQueryService` | `src/TradePilot.Persistence/Services/MacroCalendarQueryService.cs` | EF Core queries against MacroEvents table |
-| `IMacroBlockWindowCalculator` | `src/TradePilot.Application/MacroCalendar/Services/IMacroBlockWindowCalculator.cs` | Determines pre/post block minutes by importance |
-| `MacroBlockWindowCalculator` | `src/TradePilot.Application/MacroCalendar/Services/MacroBlockWindowCalculator.cs` | Reads policy from `MacroCalendarOptions` |
-| `IMacroEventRiskCheck` | `src/TradePilot.Application/MacroCalendar/Services/IMacroEventRiskCheck.cs` | Checks if new entries should be blocked |
-| `MacroEventRiskCheck` | `src/TradePilot.Persistence/Services/MacroEventRiskCheck.cs` | Queries active high-importance block windows |
-| `MacroCalendarSyncWorker` | `src/TradePilot.Api/Services/MacroCalendarSyncWorker.cs` | BackgroundService with full, incremental, and near-event sync modes |
-| `MacroCalendarController` | `src/TradePilot.Api/Controllers/MacroCalendarController.cs` | REST endpoints for events, active blocks, and manual sync |
-| `MacroCalendarOptions` | `src/TradePilot.Application/MacroCalendar/Configuration/MacroCalendarOptions.cs` | Typed options for sync intervals, look-ahead, block policies |
-| `MacroImportanceMapper` | `src/TradePilot.Application/MacroCalendar/Services/MacroImportanceMapper.cs` | Maps raw importance strings to enum |
-| `MacroStatusMapper` | `src/TradePilot.Application/MacroCalendar/Services/MacroStatusMapper.cs` | Maps raw status strings to enum |
+| `MacroEvent` | `src/TradingApp.Domain/Entities/MacroEvent.cs` | Domain entity storing event details, importance, block window timestamps |
+| `MacroSyncRun` | `src/TradingApp.Domain/Entities/MacroSyncRun.cs` | Tracks each sync run (success/failure, counts) |
+| `MacroEventImportance` | `src/TradingApp.Domain/Enums/MacroEventImportance.cs` | Unknown, Low, Medium, High, Critical |
+| `MacroEventStatus` | `src/TradingApp.Domain/Enums/MacroEventStatus.cs` | Scheduled, Live, Released, Revised, Cancelled |
+| `IMacroCalendarProvider` | `src/TradingApp.Application/MacroCalendar/Services/IMacroCalendarProvider.cs` | Abstraction for fetching events from any provider |
+| `StubMacroCalendarProvider` | `src/TradingApp.Infrastructure/Providers/MacroCalendar/StubMacroCalendarProvider.cs` | Generates deterministic fake events for development |
+| `IMacroCalendarIngestionService` | `src/TradingApp.Application/MacroCalendar/Services/IMacroCalendarIngestionService.cs` | Sync interface |
+| `MacroCalendarIngestionService` | `src/TradingApp.Persistence/Services/MacroCalendarIngestionService.cs` | Upserts events from provider into database, computes block windows |
+| `IMacroCalendarQueryService` | `src/TradingApp.Application/MacroCalendar/Services/IMacroCalendarQueryService.cs` | Query interface for upcoming events and active blocks |
+| `MacroCalendarQueryService` | `src/TradingApp.Persistence/Services/MacroCalendarQueryService.cs` | EF Core queries against MacroEvents table |
+| `IMacroBlockWindowCalculator` | `src/TradingApp.Application/MacroCalendar/Services/IMacroBlockWindowCalculator.cs` | Determines pre/post block minutes by importance |
+| `MacroBlockWindowCalculator` | `src/TradingApp.Application/MacroCalendar/Services/MacroBlockWindowCalculator.cs` | Reads policy from `MacroCalendarOptions` |
+| `IMacroEventRiskCheck` | `src/TradingApp.Application/MacroCalendar/Services/IMacroEventRiskCheck.cs` | Checks if new entries should be blocked |
+| `MacroEventRiskCheck` | `src/TradingApp.Persistence/Services/MacroEventRiskCheck.cs` | Queries active high-importance block windows |
+| `MacroCalendarSyncWorker` | `src/TradingApp.Api/Services/MacroCalendarSyncWorker.cs` | BackgroundService with full, incremental, and near-event sync modes |
+| `MacroCalendarController` | `src/TradingApp.Api/Controllers/MacroCalendarController.cs` | REST endpoints for events, active blocks, and manual sync |
+| `MacroCalendarOptions` | `src/TradingApp.Application/MacroCalendar/Configuration/MacroCalendarOptions.cs` | Typed options for sync intervals, look-ahead, block policies |
+| `MacroImportanceMapper` | `src/TradingApp.Application/MacroCalendar/Services/MacroImportanceMapper.cs` | Maps raw importance strings to enum |
+| `MacroStatusMapper` | `src/TradingApp.Application/MacroCalendar/Services/MacroStatusMapper.cs` | Maps raw status strings to enum |
 
 ---
 
@@ -45,7 +45,7 @@ Provider (Stub / Finnhub / etc.)
               → Live-risk integration point for entry blocking
 ```
 
-`MacroEventRiskCheck` lives in `TradePilot.Persistence.Services` and is the macro-event gate used to determine whether a high-importance block window is active. In the checked-in code it is registered on the API side and exposed as the entry-blocking risk-check abstraction. The broader knowledge base should treat it as the live-trading macro gate, while noting that direct worker-side `LiveRiskEngine` consumption is not yet explicitly wired in the current implementation.
+`MacroEventRiskCheck` lives in `TradingApp.Persistence.Services` and is the macro-event gate used to determine whether a high-importance block window is active. In the checked-in code it is registered on the API side and exposed as the entry-blocking risk-check abstraction. The broader knowledge base should treat it as the live-trading macro gate, while noting that direct worker-side `LiveRiskEngine` consumption is not yet explicitly wired in the current implementation.
 
 ---
 
