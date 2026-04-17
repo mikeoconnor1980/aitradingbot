@@ -27,22 +27,28 @@ public sealed class AgentController : ControllerBase
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    private readonly ILogger<AgentController> _logger;
     private readonly AgentCommandStore _store;
     private readonly AgentUpdateOptions _updateOptions;
     private readonly HyperliquidOptions _hyperliquidOptions;
+    private readonly TelegramOptions _telegramOptions;
     private readonly TradingAppDbContext _db;
     private readonly ISignalRPublisher _signalRPublisher;
 
     public AgentController(
+        ILogger<AgentController> logger,
         AgentCommandStore store,
         IOptions<AgentUpdateOptions> updateOptions,
         IOptions<HyperliquidOptions> hyperliquidOptions,
+        IOptions<TelegramOptions> telegramOptions,
         TradingAppDbContext db,
         ISignalRPublisher signalRPublisher)
     {
+        _logger = logger;
         _store = store;
         _updateOptions = updateOptions.Value;
         _hyperliquidOptions = hyperliquidOptions.Value;
+        _telegramOptions = telegramOptions.Value;
         _db = db;
         _signalRPublisher = signalRPublisher;
     }
@@ -108,6 +114,7 @@ public sealed class AgentController : ControllerBase
                 MustShutdown = true,
                 ShutdownReason = killReason,
                 NetworkConfig = BuildNetworkConfig(),
+                NotificationConfig = await BuildNotificationConfigAsync(heartbeat.WalletAddress),
             });
         }
 
@@ -125,6 +132,7 @@ public sealed class AgentController : ControllerBase
             UpdateDownloadUrl = updateAvailable ? _updateOptions.DownloadUrl : null,
             UpdateSha256Hash = updateAvailable ? _updateOptions.Sha256Hash : null,
             NetworkConfig = BuildNetworkConfig(),
+            NotificationConfig = await BuildNotificationConfigAsync(heartbeat.WalletAddress),
         });
     }
 
@@ -136,6 +144,32 @@ public sealed class AgentController : ControllerBase
     public IActionResult ListAgents()
     {
         return Ok(_store.GetAllAgents());
+    }
+
+    /// <summary>
+    /// Relay a real-time event from the Worker agent to connected SignalR clients.
+    /// Used when the Worker doesn't have a direct Azure SignalR connection.
+    /// </summary>
+    [HttpPost("relay")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Relay([FromBody] SignalRRelayEnvelope envelope)
+    {
+        if (envelope.Fill is { } fill)
+        {
+            await _signalRPublisher.BroadcastFillEventAsync(fill);
+        }
+
+        if (envelope.OrderUpdate is { } orderUpdate)
+        {
+            await _signalRPublisher.BroadcastOrderUpdateAsync(orderUpdate);
+        }
+
+        if (envelope.UserConnectionStatus is { } status)
+        {
+            await _signalRPublisher.BroadcastUserConnectionStatusAsync(status);
+        }
+
+        return NoContent();
     }
 
     /// <summary>
@@ -306,6 +340,63 @@ public sealed class AgentController : ControllerBase
         WsBaseUrl = _hyperliquidOptions.WsBaseUrl,
         Network = _hyperliquidOptions.Network,
     };
+
+    private async Task<NotificationConfig?> BuildNotificationConfigAsync(string? walletAddress)
+    {
+        if (string.IsNullOrWhiteSpace(_telegramOptions.BotToken))
+        {
+            _logger.LogWarning("Telegram bot token not configured — skipping notification config");
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(walletAddress))
+        {
+            _logger.LogWarning("No wallet address in heartbeat — skipping notification config");
+            return null;
+        }
+
+        // Find a wallet registration whose owner has a linked Telegram chat ID.
+        // The same wallet may be registered to multiple users; pick the one with Telegram linked.
+        var chatId = await _db.UserWalletAddresses
+            .Where(w => w.WalletAddress == walletAddress && w.IsActive)
+            .Join(_db.Users, w => w.UserId, u => u.Id, (w, u) => new { u.Id, u.TelegramChatId })
+            .Where(x => x.TelegramChatId != null)
+            .Select(x => x.TelegramChatId)
+            .FirstOrDefaultAsync();
+
+        if (chatId is null)
+        {
+            // Single-tenant fallback: find any user with a Telegram chat ID linked (POC — only one user).
+            chatId = await _db.Users
+                .Where(u => u.TelegramChatId != null)
+                .Select(u => u.TelegramChatId)
+                .FirstOrDefaultAsync();
+
+            if (chatId is null)
+            {
+                _logger.LogWarning(
+                    "No Telegram-linked user found for wallet {WalletAddress} and no fallback user exists",
+                    walletAddress);
+                return null;
+            }
+
+            _logger.LogInformation(
+                "No Telegram-linked wallet owner for {WalletAddress} — using single-tenant fallback (ChatId={ChatId})",
+                walletAddress, chatId);
+        }
+        else
+        {
+            _logger.LogDebug(
+                "Notification config built for wallet {WalletAddress}: ChatId={ChatId}",
+                walletAddress, chatId);
+        }
+
+        return new NotificationConfig
+        {
+            TelegramChatId = chatId,
+            TelegramBotToken = _telegramOptions.BotToken,
+        };
+    }
 }
 
 public sealed class PendingCommandDto

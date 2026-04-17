@@ -23,6 +23,7 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 
     private ClientWebSocket? _webSocket;
     private Func<FillEventDto, Task>? _fillHandler;
+    private Func<IReadOnlyList<FillEventDto>, Task>? _fillBatchHandler;
     private Func<OrderUpdateDto, Task>? _orderUpdateHandler;
     private Func<WebSocketConnectionState, Task>? _stateHandler;
 
@@ -101,6 +102,8 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 
     public void OnFillReceived(Func<FillEventDto, Task> handler) => _fillHandler = handler;
 
+    public void OnFillBatchReceived(Func<IReadOnlyList<FillEventDto>, Task> handler) => _fillBatchHandler = handler;
+
     public void OnOrderUpdateReceived(Func<OrderUpdateDto, Task> handler) => _orderUpdateHandler = handler;
 
     public void OnConnectionStateChanged(Func<WebSocketConnectionState, Task> handler) => _stateHandler = handler;
@@ -109,6 +112,10 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
     {
         var buffer = new byte[ReceiveBufferSize];
         using var messageBuffer = new MemoryStream();
+
+        // Hyperliquid closes idle connections — send a ping every 30s to keep alive
+        using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _ = PingLoopAsync(pingCts.Token);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -166,38 +173,103 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         }
     }
 
+    private async Task PingLoopAsync(CancellationToken cancellationToken)
+    {
+        var pingPayload = "{\"method\":\"ping\"}"u8.ToArray();
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+
+                if (_webSocket?.State == WebSocketState.Open)
+                {
+                    await _webSocket.SendAsync(
+                        new ArraySegment<byte>(pingPayload),
+                        WebSocketMessageType.Text,
+                        true,
+                        cancellationToken);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Ping failed — connection likely closing");
+                break;
+            }
+        }
+    }
+
     private async Task ProcessMessageAsync(string json)
     {
         try
         {
             using var doc = JsonDocument.Parse(json);
 
-            if (!doc.RootElement.TryGetProperty("channel", out var channelProp))
+            // Ignore ping/pong responses
+            if (doc.RootElement.TryGetProperty("method", out var methodProp) &&
+                string.Equals(methodProp.GetString(), "pong", StringComparison.OrdinalIgnoreCase))
+            {
                 return;
+            }
+
+            if (!doc.RootElement.TryGetProperty("channel", out var channelProp))
+            {
+                _logger.LogDebug("User event message has no 'channel' property");
+                return;
+            }
 
             var channel = channelProp.GetString();
+            _logger.LogInformation("User event WebSocket message received: channel={Channel}", channel);
 
-            // Route based on channel — exact channel name to be verified against Hyperliquid API
+            // Route based on channel
             if (!string.Equals(channel, "user", StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(channel, "userEvents", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogDebug("Ignoring channel {Channel}", channel);
                 return;
+            }
 
             if (!doc.RootElement.TryGetProperty("data", out var dataProp))
+            {
+                _logger.LogWarning("User event message has channel={Channel} but no 'data' property", channel);
                 return;
+            }
 
             var dataJson = dataProp.GetRawText();
+            _logger.LogDebug("User event data: {DataJson}", dataJson.Length > 500 ? dataJson[..500] + "..." : dataJson);
+
             var eventsData = JsonSerializer.Deserialize<HyperliquidUserEventsData>(dataJson);
 
             if (eventsData is null)
-                return;
-
-            foreach (var fill in eventsData.Fills)
             {
-                if (_fillHandler is not null)
+                _logger.LogWarning("Failed to deserialize user event data (null result)");
+                return;
+            }
+
+            _logger.LogInformation(
+                "User event parsed: {FillCount} fills, {OrderUpdateCount} order updates",
+                eventsData.Fills.Count, eventsData.OrderUpdates.Count);
+
+            var fillDtos = eventsData.Fills.Select(MapFillToDto).ToList();
+
+            // Individual fill handler (for TradingSession, account state, etc.)
+            if (_fillHandler is not null)
+            {
+                foreach (var dto in fillDtos)
                 {
-                    var dto = MapFillToDto(fill);
                     await _fillHandler(dto);
                 }
+            }
+
+            // Batch handler (for consolidated notifications)
+            if (_fillBatchHandler is not null && fillDtos.Count > 0)
+            {
+                await _fillBatchHandler(fillDtos);
             }
 
             foreach (var orderUpdate in eventsData.OrderUpdates)
@@ -211,7 +283,8 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         }
         catch (JsonException ex)
         {
-            _logger.LogWarning(ex, "Failed to deserialize user event message; skipping");
+            _logger.LogWarning(ex, "Failed to deserialize user event message: {Json}",
+                json.Length > 500 ? json[..500] + "..." : json);
         }
     }
 

@@ -44,6 +44,8 @@ public sealed class AgentCheckInService : BackgroundService
     private readonly ITradingHealthProvider _healthProvider;
     private readonly IUpdateNotifier _updateNotifier;
     private readonly IExecutionLogger _executionLogger;
+    private readonly ITelegramNotifier _telegramNotifier;
+    private readonly NotificationConfigHolder _notificationConfig;
     private readonly HyperliquidOptions _hyperliquidOptions;
     private readonly AgentOptions _agentOptions;
     private readonly ILogger<AgentCheckInService> _logger;
@@ -66,6 +68,8 @@ public sealed class AgentCheckInService : BackgroundService
         ITradingHealthProvider healthProvider,
         IUpdateNotifier updateNotifier,
         IExecutionLogger executionLogger,
+        ITelegramNotifier telegramNotifier,
+        NotificationConfigHolder notificationConfig,
         IOptions<HyperliquidOptions> hyperliquidOptions,
         IOptions<AgentOptions> agentOptions,
         ILogger<AgentCheckInService> logger)
@@ -76,6 +80,8 @@ public sealed class AgentCheckInService : BackgroundService
         _healthProvider = healthProvider;
         _updateNotifier = updateNotifier;
         _executionLogger = executionLogger;
+        _telegramNotifier = telegramNotifier;
+        _notificationConfig = notificationConfig;
         _hyperliquidOptions = hyperliquidOptions.Value;
         _agentOptions = agentOptions.Value;
         _logger = logger;
@@ -158,6 +164,25 @@ public sealed class AgentCheckInService : BackgroundService
         if (result.NetworkConfig is { } netCfg)
         {
             ApplyNetworkConfig(netCfg);
+        }
+
+        // Apply notification config from control plane
+        if (result.NotificationConfig is { } notifCfg)
+        {
+            if (_notificationConfig.TelegramChatId != notifCfg.TelegramChatId)
+            {
+                _logger.LogInformation(
+                    "Telegram chat ID updated: {ChatId}, BotToken={HasToken}",
+                    notifCfg.TelegramChatId,
+                    !string.IsNullOrEmpty(notifCfg.TelegramBotToken));
+            }
+            _notificationConfig.TelegramChatId = notifCfg.TelegramChatId;
+            _notificationConfig.TelegramBotToken = notifCfg.TelegramBotToken;
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Heartbeat returned NULL notification config — API may not have Telegram bot token or wallet lookup failed");
         }
 
         // Kill switch — stop everything and halt the heartbeat loop
@@ -377,6 +402,13 @@ public sealed class AgentCheckInService : BackgroundService
         _logger.LogInformation(
             "Trading session started: Strategy={Strategy}, Market={Market}",
             command.StrategyConfig.StrategyName, command.StrategyConfig.Market);
+
+        if (_notificationConfig.TelegramChatId is { } chatId)
+        {
+            await _telegramNotifier.NotifyStrategyEventAsync(
+                chatId, "started", command.StrategyConfig.StrategyName,
+                $"{command.StrategyConfig.Market} ({command.StrategyConfig.Timeframe})");
+        }
     }
 
     private async Task HandleStopAsync()
@@ -406,6 +438,11 @@ public sealed class AgentCheckInService : BackgroundService
         });
 
         _logger.LogInformation("Trading session stopped by dashboard command.");
+
+        if (_notificationConfig.TelegramChatId is { } chatId)
+        {
+            await _telegramNotifier.NotifyStrategyEventAsync(chatId, "stopped", "Trading session");
+        }
     }
 
     private async Task HandlePlaceOrderAsync(AgentCommand command, CancellationToken cancellationToken)

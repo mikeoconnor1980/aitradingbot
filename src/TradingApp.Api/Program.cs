@@ -254,6 +254,29 @@ builder.Services.AddScoped<IMacroEventRiskCheck, MacroEventRiskCheck>();
 builder.Services.AddHostedService<MacroCalendarSyncWorker>();
 builder.Services.AddHostedService<ExecutionLogCleanupService>();
 
+// ---------- Telegram bot notifications ----------
+builder.Services.AddOptions<TelegramOptions>()
+    .Bind(builder.Configuration.GetSection(TelegramOptions.SectionName));
+
+var telegramBotToken = builder.Configuration
+    .GetSection(TelegramOptions.SectionName)["BotToken"];
+
+if (!string.IsNullOrWhiteSpace(telegramBotToken))
+{
+    builder.Services.AddHttpClient<ITelegramNotifier, TelegramNotifier>((sp, client) =>
+    {
+        client.BaseAddress = new Uri($"https://api.telegram.org/bot{telegramBotToken}/");
+        client.Timeout = TimeSpan.FromSeconds(10);
+    });
+}
+else
+{
+    builder.Services.AddSingleton<ITelegramNotifier, NullTelegramNotifier>();
+}
+
+builder.Services.AddHttpClient("TelegramBot");
+builder.Services.AddHostedService<TelegramBotPollingService>();
+
 builder.Services.AddAI(builder.Configuration);
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddHealthChecks()

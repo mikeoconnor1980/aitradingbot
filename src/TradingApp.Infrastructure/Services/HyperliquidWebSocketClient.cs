@@ -41,8 +41,15 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
         {
             if (_webSocket.State == WebSocketState.Open)
             {
-                await _webSocket.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure, "Reconnecting", cancellationToken);
+                try
+                {
+                    await _webSocket.CloseAsync(
+                        WebSocketCloseStatus.NormalClosure, "Reconnecting", cancellationToken);
+                }
+                catch (WebSocketException)
+                {
+                    // Remote already closed — safe to dispose
+                }
             }
 
             _webSocket.Dispose();

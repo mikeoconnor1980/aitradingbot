@@ -1,0 +1,98 @@
+<mat-card class="telegram-link">
+  <mat-card-header>
+    <mat-card-title>
+      <mat-icon>send</mat-icon>
+      Telegram Notifications
+    </mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    @if (status(); as s) {
+      @if (s.linked) {
+        <div class="telegram-link__status">
+          <span class="telegram-link__badge telegram-link__badge--linked">
+            <mat-icon>check_circle</mat-icon>
+            Linked
+          </span>
+          <p class="telegram-link__info">
+            You'll receive trade fill, strategy, and risk alert notifications via Telegram.
+          </p>
+          <div class="telegram-link__actions">
+            <button
+              mat-flat-button
+              color="primary"
+              [disabled]="loading()"
+              (click)="onSendTest()">
+              <mat-icon>notifications_active</mat-icon>
+              Send Test
+            </button>
+            <button
+              mat-stroked-button
+              color="warn"
+              [disabled]="loading()"
+              (click)="onUnlink()">
+              <mat-icon>link_off</mat-icon>
+              Unlink Telegram
+            </button>
+          </div>
+        </div>
+      } @else {
+        @if (linkCode(); as code) {
+          <div class="telegram-link__code-section">
+            <div class="telegram-link__steps">
+              <div class="telegram-link__step">
+                <span class="telegram-link__step-number">1</span>
+                @if (botUsername(); as bot) {
+                  <span>
+                    Open
+                    <a class="telegram-link__bot-link" [href]="'https://t.me/' + bot" target="_blank" rel="noopener">
+                      {{ "@" + bot }}
+                    </a>
+                    in Telegram
+                  </span>
+                } @else {
+                  <span>Open the bot in Telegram</span>
+                }
+              </div>
+              <div class="telegram-link__step">
+                <span class="telegram-link__step-number">2</span>
+                <span>Send the command below to link your account</span>
+              </div>
+            </div>
+
+            @if (qrCodeDataUrl(); as qr) {
+              <div class="telegram-link__qr-section">
+                <img [src]="qr" alt="Scan to open bot in Telegram" class="telegram-link__qr" width="140" height="140" />
+                <span class="telegram-link__qr-label">Scan to open bot</span>
+              </div>
+            }
+
+            <div class="telegram-link__code-display">
+              <code class="telegram-link__code">/link {{ code }}</code>
+              <button mat-icon-button (click)="onCopyCode()" matTooltip="Copy to clipboard">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            @if (polling()) {
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+              <p class="telegram-link__waiting">Waiting for you to send the code...</p>
+            }
+          </div>
+        } @else {
+          <p class="telegram-link__info">
+            Link your Telegram account to receive real-time trade notifications, strategy alerts, and risk warnings.
+          </p>
+          <button
+            mat-flat-button
+            color="primary"
+            [disabled]="loading()"
+            (click)="onGenerateCode()">
+            <mat-icon>link</mat-icon>
+            {{ loading() ? 'Generating...' : 'Link Telegram' }}
+          </button>
+        }
+      }
+    } @else {
+      <p>Loading...</p>
+    }
+  </mat-card-content>
+</mat-card>

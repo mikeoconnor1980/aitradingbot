@@ -1,0 +1,62 @@
+<!-- Backdrop overlay -->
+@if (isOpen) {
+  <button type="button" class="notif-overlay" aria-label="Close notification panel" (click)="onOverlayClick()"></button>
+}
+
+<!-- Slide-out panel -->
+<aside class="notif-panel" [class.notif-panel--open]="isOpen" role="complementary" aria-label="Notification panel">
+  <!-- Header -->
+  <div class="notif-panel__header">
+    <mat-icon class="notif-panel__header-icon">notifications</mat-icon>
+    <h2 class="notif-panel__title">Notifications</h2>
+    <div class="notif-panel__header-actions">
+      <button mat-icon-button (click)="onMarkAllRead()" matTooltip="Mark all read" aria-label="Mark all as read">
+        <mat-icon>done_all</mat-icon>
+      </button>
+      <button mat-icon-button (click)="onClear()" matTooltip="Clear all" aria-label="Clear all notifications">
+        <mat-icon>delete_sweep</mat-icon>
+      </button>
+      <button mat-icon-button (click)="onClose()" matTooltip="Close" aria-label="Close notification panel">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter chips -->
+  <div class="notif-panel__filters">
+    @for (filter of filters; track filter) {
+      <button
+        class="notif-panel__chip"
+        [class.notif-panel__chip--active]="activeFilter() === filter"
+        (click)="onFilterChange(filter)">
+        {{ getFilterLabel(filter) }}
+      </button>
+    }
+  </div>
+
+  <!-- Notification list -->
+  <div class="notif-panel__body">
+    @if (notifications().length === 0) {
+      <div class="notif-panel__empty">
+        <mat-icon class="notif-panel__empty-icon">notifications_none</mat-icon>
+        <p>No notifications yet</p>
+      </div>
+    } @else {
+      @for (n of notifications(); track trackById($index, n)) {
+        <div
+          class="notif-panel__card"
+          [class.notif-panel__card--unread]="!n.read"
+          [attr.data-severity]="n.severity">
+          <mat-icon class="notif-panel__card-icon">{{ getIcon(n.type) }}</mat-icon>
+          <div class="notif-panel__card-content">
+            <div class="notif-panel__card-title">{{ n.title }}</div>
+            @if (n.message) {
+              <div class="notif-panel__card-message">{{ n.message }}</div>
+            }
+            <div class="notif-panel__card-time">{{ n.timestamp | relativeTime }}</div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</aside>

@@ -18,6 +18,8 @@ public interface IHyperliquidUserEventClient : IAsyncDisposable
 
     void OnFillReceived(Func<FillEventDto, Task> handler);
 
+    void OnFillBatchReceived(Func<IReadOnlyList<FillEventDto>, Task> handler);
+
     void OnOrderUpdateReceived(Func<OrderUpdateDto, Task> handler);
 
     void OnConnectionStateChanged(Func<WebSocketConnectionState, Task> handler);

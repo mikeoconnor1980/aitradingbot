@@ -15,11 +15,12 @@ import { SubscriptionService } from "../../core/services/subscription.service";
 import { WalletService } from "../../core/services/wallet.service";
 import { Router } from "@angular/router";
 import { environment } from "../../../environments/environment";
+import { TelegramLinkComponent } from "./telegram-link.component";
 
 @Component({
   selector: "app-profile-page",
   standalone: true,
-  imports: [AsyncPipe, DatePipe, ReactiveFormsModule, MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule],
+  imports: [AsyncPipe, DatePipe, ReactiveFormsModule, MatCardModule, MatIconModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule, TelegramLinkComponent],
   templateUrl: "./profile-page.component.html",
   styleUrl: "./profile-page.component.scss"
 })

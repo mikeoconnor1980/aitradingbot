@@ -67,6 +67,11 @@ public sealed class HeartbeatResponse
     /// The agent uses these endpoints instead of its local config.
     /// </summary>
     public NetworkConfig? NetworkConfig { get; init; }
+
+    /// <summary>
+    /// Notification configuration pushed from the control plane (e.g. Telegram chat ID).
+    /// </summary>
+    public NotificationConfig? NotificationConfig { get; init; }
 }
 
 /// <summary>
@@ -91,4 +96,16 @@ public enum UpdateState
     Applying,
     Failed,
     Deferred,
+}
+
+/// <summary>
+/// Notification settings pushed from the API to the agent.
+/// </summary>
+public sealed class NotificationConfig
+{
+    /// <summary>User's linked Telegram chat ID (null if not linked).</summary>
+    public long? TelegramChatId { get; init; }
+
+    /// <summary>Telegram Bot API token for sending notifications.</summary>
+    public string? TelegramBotToken { get; init; }
 }

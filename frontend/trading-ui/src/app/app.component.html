@@ -46,6 +46,19 @@
       @if (!isMobile()) {
         <button
           mat-icon-button
+          class="app-shell__notif-btn"
+          (click)="onToggleNotifications()"
+          matTooltip="Notifications"
+          aria-label="Toggle notification panel"
+        >
+          <mat-icon>{{ unreadCount() > 0 ? 'notifications' : 'notifications_none' }}</mat-icon>
+          @if (unreadCount() > 0) {
+            <span class="app-shell__notif-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+          }
+        </button>
+
+        <button
+          mat-icon-button
           class="app-shell__help-btn"
           (click)="onToggleHelp()"
           matTooltip="Help &amp; Guide"
@@ -63,6 +76,7 @@
 </main>
 
 @if (!isMobile()) {
+  <app-notification-panel [isOpen]="notificationPanelOpen" (closed)="onNotificationPanelClosed()" />
   <app-help-panel />
 }
 

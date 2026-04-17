@@ -10,6 +10,8 @@ public sealed class UserEventStreamServiceTests
 {
     private readonly Mock<IHyperliquidUserEventClient> _wsClientMock = new();
     private readonly Mock<ISignalRPublisher> _publisherMock = new();
+    private readonly Mock<ITelegramNotifier> _telegramNotifierMock = new();
+    private readonly NotificationConfigHolder _notificationConfigHolder = new();
     private readonly Mock<IHyperliquidSigner> _signerMock = new();
     private readonly Mock<ILogger<UserEventStreamService>> _loggerMock = new();
 
@@ -36,6 +38,8 @@ public sealed class UserEventStreamServiceTests
         return new UserEventStreamService(
             _wsClientMock.Object,
             _publisherMock.Object,
+            _telegramNotifierMock.Object,
+            _notificationConfigHolder,
             _signerMock.Object,
             _loggerMock.Object);
     }

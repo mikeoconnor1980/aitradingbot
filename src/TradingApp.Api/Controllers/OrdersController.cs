@@ -147,14 +147,21 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> PlaceOrderAsync([FromBody] PlaceOrderRequest request, CancellationToken ct)
     {
-        var result = await _orderService.PlaceOrderAsync(request, ct);
-
-        if (!result.Success)
+        try
         {
-            return BadRequest(new Envelope(result.Detail ?? "Order rejected"));
-        }
+            var result = await _orderService.PlaceOrderAsync(request, ct);
 
-        return Ok(result);
+            if (!result.Success)
+            {
+                return BadRequest(new Envelope(result.Detail ?? "Order rejected"));
+            }
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
+        {
+            return BadRequest(new Envelope("All orders must be routed through an Execution Agent. Please start a Worker process and ensure it is selected in the UI."));
+        }
     }
 
     [HttpPost("trigger")]
@@ -163,14 +170,21 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> PlaceTriggerOrderAsync([FromBody] PlaceTriggerOrderRequest request, CancellationToken ct)
     {
-        var result = await _orderService.PlaceTriggerOrderAsync(request, ct);
-
-        if (!result.Success)
+        try
         {
-            return BadRequest(new Envelope(result.Detail ?? "Trigger order rejected"));
-        }
+            var result = await _orderService.PlaceTriggerOrderAsync(request, ct);
 
-        return Ok(result);
+            if (!result.Success)
+            {
+                return BadRequest(new Envelope(result.Detail ?? "Trigger order rejected"));
+            }
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
+        {
+            return BadRequest(new Envelope("All orders must be routed through an Execution Agent. Please start a Worker process and ensure it is selected in the UI."));
+        }
     }
 
     [HttpPost("test-sign")]
@@ -189,13 +203,20 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CancelOrderAsync(string orderId, CancellationToken ct)
     {
-        var walletAddress = await GetWalletAddressAsync(ct);
-        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
-        var existingOrder = openOrders.FirstOrDefault(o => o.OrderId == orderId)
-            ?? throw new NotFoundException($"Order {orderId} not found in open orders");
+        try
+        {
+            var walletAddress = await GetWalletAddressAsync(ct);
+            var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
+            var existingOrder = openOrders.FirstOrDefault(o => o.OrderId == orderId)
+                ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
-        await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
-        return NoContent();
+            await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
+        {
+            return BadRequest(new Envelope("All orders must be routed through an Execution Agent. Please start a Worker process and ensure it is selected in the UI."));
+        }
     }
 
     [HttpDelete]

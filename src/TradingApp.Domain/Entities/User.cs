@@ -11,6 +11,7 @@ public sealed class User
     public string PreferredNetwork { get; private set; } = "mainnet";
     public string? AuthProvider { get; private set; }
     public string? ExternalProviderId { get; private set; }
+    public long? TelegramChatId { get; private set; }
 
     private User()
     {
@@ -84,5 +85,15 @@ public sealed class User
     public void Deactivate()
     {
         IsActive = false;
+    }
+
+    public void LinkTelegram(long chatId)
+    {
+        TelegramChatId = chatId;
+    }
+
+    public void UnlinkTelegram()
+    {
+        TelegramChatId = null;
     }
 }

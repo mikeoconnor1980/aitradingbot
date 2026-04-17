@@ -7,6 +7,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { HelpPanelComponent } from "./core/components/help-panel.component";
 import { MobileNavComponent } from "./core/components/mobile-nav/mobile-nav.component";
+import { NotificationPanelComponent } from "./core/components/notification-panel/notification-panel.component";
 import { SidebarNavComponent } from "./core/components/sidebar-nav/sidebar-nav.component";
 import { ConnectionStatus } from "./core/models/connection-status.model";
 import { HealthResponse } from "./core/models/health-response.model";
@@ -15,13 +16,14 @@ import { AuthService } from "./core/services/auth.service";
 import { HealthService } from "./core/services/health.service";
 import { HelpService } from "./core/services/help.service";
 import { LayoutService } from "./core/services/layout.service";
+import { NotificationStoreService } from "./core/services/notification-store.service";
 import { ProfileService } from "./core/services/profile.service";
 import { SignalRService } from "./core/services/signalr.service";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, HelpPanelComponent, SidebarNavComponent, MobileNavComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })
@@ -32,6 +34,7 @@ export class AppComponent implements OnInit {
   private readonly _authService = inject(AuthService);
   private readonly _profileService = inject(ProfileService);
   private readonly _layoutService = inject(LayoutService);
+  private readonly _notificationStore = inject(NotificationStoreService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public title = "TradePilot";
@@ -50,6 +53,8 @@ export class AppComponent implements OnInit {
   };
   public health: HealthResponse | null = null;
   public preferredNetwork: string | null = null;
+  public notificationPanelOpen = false;
+  public readonly unreadCount = this._notificationStore.unreadCount;
 
   public ngOnInit(): void {
     this._signalRService.connectionStatus$
@@ -118,7 +123,20 @@ export class AppComponent implements OnInit {
   }
 
   public onToggleHelp(): void {
+    this.notificationPanelOpen = false;
     this._helpService.toggle();
+  }
+
+  public onToggleNotifications(): void {
+    this._helpService.close();
+    this.notificationPanelOpen = !this.notificationPanelOpen;
+    if (this.notificationPanelOpen) {
+      this._notificationStore.markAllRead();
+    }
+  }
+
+  public onNotificationPanelClosed(): void {
+    this.notificationPanelOpen = false;
   }
 
   public onLogout(): void {

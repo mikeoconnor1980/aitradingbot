@@ -111,6 +111,33 @@ $sidebar-expanded: 220px;
     }
   }
 
+  &__notif-btn {
+    position: relative;
+    color: var(--colour-muted);
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--colour-accent);
+    }
+  }
+
+  &__notif-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: var(--colour-loss);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
+  }
+
   &__profile-btn {
     color: var(--colour-muted);
     transition: color 0.2s ease;

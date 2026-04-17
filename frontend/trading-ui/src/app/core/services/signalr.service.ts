@@ -24,6 +24,7 @@ export class SignalRService implements OnDestroy {
 
   private readonly _priceUpdate$ = new Subject<PriceUpdate>();
   private readonly _fillEvent$ = new Subject<FillEvent>();
+  private readonly _orderUpdate$ = new Subject<OrderUpdate>();
   private readonly _backtestProgress$ = new Subject<BacktestProgress>();
   private readonly _optimizationProgress$ = new Subject<OptimizationProgress>();
   private readonly _executionLog$ = new Subject<ExecutionLogEntry>();
@@ -37,6 +38,7 @@ export class SignalRService implements OnDestroy {
 
   public readonly priceUpdate$: Observable<PriceUpdate> = this._priceUpdate$.asObservable();
   public readonly fillEvent$: Observable<FillEvent> = this._fillEvent$.asObservable();
+  public readonly orderUpdate$: Observable<OrderUpdate> = this._orderUpdate$.asObservable();
   public readonly backtestProgress$: Observable<BacktestProgress> = this._backtestProgress$.asObservable();
   public readonly optimizationProgress$: Observable<OptimizationProgress> = this._optimizationProgress$.asObservable();
   public readonly executionLog$: Observable<ExecutionLogEntry> = this._executionLog$.asObservable();
@@ -58,6 +60,7 @@ export class SignalRService implements OnDestroy {
     void this._hubConnection.stop();
     this._priceUpdate$.complete();
     this._fillEvent$.complete();
+    this._orderUpdate$.complete();
     this._backtestProgress$.complete();
     this._optimizationProgress$.complete();
     this._executionLog$.complete();
@@ -86,9 +89,9 @@ export class SignalRService implements OnDestroy {
       this._accountState.addFillEvent(fill);
       this._fillEvent$.next(fill);
     });
-
     this._hubConnection.on("ReceiveOrderUpdate", (orderUpdate: OrderUpdate) => {
       this._accountState.addOrderUpdateEvent(orderUpdate);
+      this._orderUpdate$.next(orderUpdate);
     });
 
     this._hubConnection.on("ReceiveUserConnectionStatus", (status: ConnectionStatus) => {

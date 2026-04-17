@@ -160,10 +160,17 @@ jobs:
               --server ghcr.io \
               --username ${{ github.actor }} \
               --password ${{ secrets.GHCR_PAT }}
+            az containerapp secret set \
+              --name tradepilot-dev-api \
+              --resource-group rg-tradepilot-dev \
+              --secrets "telegram-bot-token=${{ secrets.TELEGRAM_BOT_TOKEN }}"
             az containerapp update \
               --name tradepilot-dev-api \
               --resource-group rg-tradepilot-dev \
-              --image ${{ env.API_IMAGE }}:${{ needs.build-api-image.outputs.image-tag }}
+              --image ${{ env.API_IMAGE }}:${{ needs.build-api-image.outputs.image-tag }} \
+              --set-env-vars \
+                "Telegram__BotToken=secretref:telegram-bot-token" \
+                "Telegram__BotUsername=${{ secrets.TELEGRAM_BOT_USERNAME }}"
 
   deploy-frontend:
     needs: build-frontend

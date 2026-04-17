@@ -15,6 +15,8 @@ public sealed class UserEventStreamService : BackgroundService
 
     private readonly IHyperliquidUserEventClient _wsClient;
     private readonly ISignalRPublisher _publisher;
+    private readonly ITelegramNotifier _telegramNotifier;
+    private readonly NotificationConfigHolder _notificationConfig;
     private readonly IHyperliquidSigner _signer;
     private readonly ILogger<UserEventStreamService> _logger;
 
@@ -23,11 +25,15 @@ public sealed class UserEventStreamService : BackgroundService
     public UserEventStreamService(
         IHyperliquidUserEventClient wsClient,
         ISignalRPublisher publisher,
+        ITelegramNotifier telegramNotifier,
+        NotificationConfigHolder notificationConfig,
         IHyperliquidSigner signer,
         ILogger<UserEventStreamService> logger)
     {
         _wsClient = wsClient;
         _publisher = publisher;
+        _telegramNotifier = telegramNotifier;
+        _notificationConfig = notificationConfig;
         _signer = signer;
         _logger = logger;
     }
@@ -41,20 +47,69 @@ public sealed class UserEventStreamService : BackgroundService
 
         _wsClient.OnFillReceived(async fill =>
         {
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "Fill received: {Asset} {Side} {Size}@{Price}",
                 fill.Asset, fill.Side, fill.Size, fill.Price);
 
+            // Relay individual fill to SignalR (for account state tracking in Angular)
             await _publisher.BroadcastFillEventAsync(fill);
+        });
+
+        _wsClient.OnFillBatchReceived(async fills =>
+        {
+            // Aggregate partial fills into consolidated notifications
+            var groups = fills
+                .GroupBy(f => new { f.Asset, f.Side, f.Direction })
+                .Select(g => new
+                {
+                    g.Key.Asset,
+                    g.Key.Side,
+                    TotalSize = g.Sum(f => f.Size),
+                    TotalPnl = g.Sum(f => f.ClosedPnl),
+                    Vwap = g.Sum(f => f.Size * f.Price) / g.Sum(f => f.Size),
+                    Count = g.Count(),
+                })
+                .ToList();
+
+            foreach (var g in groups)
+            {
+                _logger.LogInformation(
+                    "Fill batch: {Asset} {Side} total {Size}@{Vwap:N2} ({Count} partial fills, PnL={Pnl:N2})",
+                    g.Asset, g.Side, g.TotalSize, g.Vwap, g.Count, g.TotalPnl);
+            }
+
+            if (_notificationConfig.TelegramChatId is { } chatId)
+            {
+                _logger.LogInformation("Sending consolidated Telegram fill notification to chat {ChatId}", chatId);
+                await _telegramNotifier.NotifyFillBatchAsync(chatId, fills);
+            }
+            else
+            {
+                _logger.LogWarning("Fill batch received but no Telegram chat ID configured — notification skipped");
+            }
         });
 
         _wsClient.OnOrderUpdateReceived(async orderUpdate =>
         {
-            _logger.LogDebug(
+            _logger.LogInformation(
                 "Order update received: {OrderId} {Asset} {Status}",
                 orderUpdate.OrderId, orderUpdate.Asset, orderUpdate.Status);
 
             await _publisher.BroadcastOrderUpdateAsync(orderUpdate);
+
+            if (_notificationConfig.TelegramChatId is { } chatId)
+            {
+                var emoji = orderUpdate.Status switch
+                {
+                    "filled" => "\u2705",
+                    "canceled" or "cancelled" => "\u274c",
+                    "triggered" => "\u26a1",
+                    _ => "\U0001f4cb",
+                };
+                var text = $"{emoji} *Order {orderUpdate.Status.ToUpperInvariant()}* \u2014 {orderUpdate.Asset}\n" +
+                           $"OrderId: `{orderUpdate.OrderId}`";
+                await _telegramNotifier.NotifyRiskEventAsync(chatId, $"Order {orderUpdate.Status}", text);
+            }
         });
 
         _wsClient.OnConnectionStateChanged(async state =>

@@ -29,6 +29,7 @@ public sealed class TradingAppDbContext : DbContext
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ExecutionLog> ExecutionLogs => Set<ExecutionLog>();
+    public DbSet<TelegramLinkCode> TelegramLinkCodes => Set<TelegramLinkCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -740,6 +741,9 @@ public sealed class TradingAppDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue("mainnet");
 
+            entity.Property(e => e.TelegramChatId)
+                .IsRequired(false);
+
             entity.HasIndex(e => e.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_Users_Email");
@@ -860,6 +864,44 @@ public sealed class TradingAppDbContext : DbContext
 
             entity.HasIndex(e => e.ReceivedAtUtc)
                 .HasDatabaseName("IX_ExecutionLogs_ReceivedAtUtc");
+        });
+
+        modelBuilder.Entity<TelegramLinkCode>(entity =>
+        {
+            entity.ToTable("TelegramLinkCodes");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(6)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.ExpiresAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.IsUsed)
+                .IsRequired();
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.Code)
+                .HasFilter("[IsUsed] = 0")
+                .HasDatabaseName("IX_TelegramLinkCodes_Code");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_TelegramLinkCodes_UserId");
         });
     }
 }

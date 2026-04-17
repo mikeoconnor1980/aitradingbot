@@ -139,6 +139,10 @@ builder.Services.AddSingleton<IPositionManager, LivePositionManager>();
 builder.Services.AddSingleton<LiveExecutionLogger>();
 builder.Services.AddSingleton<IExecutionLogger>(sp => sp.GetRequiredService<LiveExecutionLogger>());
 builder.Services.AddSingleton<GridStrategyEngine>();
+builder.Services.AddSingleton<IConditionHandler, RsiConditionHandler>();
+builder.Services.AddSingleton<IConditionHandler, PriceVsEmaConditionHandler>();
+builder.Services.AddSingleton<IConditionHandler, MacdConditionHandler>();
+builder.Services.AddSingleton<IConditionHandler, SupportResistanceConditionHandler>();
 builder.Services.AddSingleton<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddSingleton<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddSingleton<IStrategyEngine, CompositeStrategyEngine>();
@@ -177,6 +181,17 @@ builder.Services.AddSingleton<UpdateCheckerService>();
 builder.Services.AddSingleton<IUpdateNotifier>(sp => sp.GetRequiredService<UpdateCheckerService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<UpdateCheckerService>());
 
+// ---------- Telegram notifications ----------
+builder.Services.AddSingleton<NotificationConfigHolder>();
+
+// Telegram notifier — uses bot token received dynamically from the API heartbeat.
+// No local bot token config needed; the token flows from control plane via NotificationConfigHolder.
+builder.Services.AddHttpClient("TelegramBot", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddSingleton<ITelegramNotifier, DynamicTelegramNotifier>();
+
 builder.Services.AddHostedService<AgentCheckInService>();
 
 // ---------- Azure SignalR publisher (pushes real-time data to browser via Azure SignalR Service) ----------
@@ -195,8 +210,14 @@ if (!string.IsNullOrWhiteSpace(signalRConnectionString))
     builder.Services.AddSingleton<ISignalRPublisher, AzureSignalRPublisher>();
     builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
     builder.Services.AddHostedService<MarketDataStreamService>();
-    builder.Services.AddHostedService<UserEventStreamService>();
 }
+else
+{
+    builder.Services.AddSingleton<ISignalRPublisher, RelaySignalRPublisher>();
+}
+
+// User event WebSocket — runs regardless of SignalR (needed for Telegram notifications)
+builder.Services.AddHostedService<UserEventStreamService>();
 
 var app = builder.Build();
 
