@@ -46,7 +46,7 @@ public sealed class TradingControllerTests : BaseControllerTests
     }
 
     [TestMethod]
-    public async Task GivenDcaStrategy_WhenStartTrading_ThenReturnsBadRequest()
+    public async Task GivenDcaStrategy_WhenStartTrading_ThenQueuesCommand()
     {
         var client = GetTestClient();
 
@@ -54,12 +54,15 @@ public sealed class TradingControllerTests : BaseControllerTests
             $"api/trading/{AgentId}/start",
             new StartTradingRequest(CreateDcaConfig()));
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>(BaseControllerTestsJson.Options);
-        problem.Should().NotBeNull();
-        problem!.Title.Should().Be("Unsupported live strategy");
-        problem.Detail.Should().Be("Live DCA spot execution is not implemented yet. Use backtesting for DCA strategies.");
+        using var scope = GetCurrentFactory().Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<AgentCommandStore>();
+        var pendingCommands = store.GetPendingCommands(AgentId);
+
+        pendingCommands.Should().ContainSingle();
+        pendingCommands[0].Type.Should().Be(AgentCommandType.Start);
+        pendingCommands[0].StrategyConfig!.StrategyMode.Should().Be(StrategyMode.Dca);
     }
 
     [TestMethod]

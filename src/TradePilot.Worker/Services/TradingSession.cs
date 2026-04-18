@@ -52,6 +52,8 @@ public sealed class TradingSession : IAsyncDisposable
     private Task? _runTask;
     private int _retryCount;
     private Func<CandleClosedEvent, Task>? _candleClosedHandler;
+    private Func<FillEventDto, Task>? _fillHandler;
+    private Func<OrderUpdateDto, Task>? _orderUpdateHandler;
 
     public StrategyConfig StrategyConfig { get; }
     public GridState GridState { get; }
@@ -177,16 +179,7 @@ public sealed class TradingSession : IAsyncDisposable
             _logger.LogError(ex, "Error disconnecting WebSocket during session stop.");
         }
 
-        // Disconnect user event WebSocket
-        try
-        {
-            await _userEventClient.DisconnectAsync(timeoutCts.Token);
-            _logger.LogInformation("User event WebSocket disconnected.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error disconnecting user event WebSocket during session stop.");
-        }
+        UnregisterUserEventHandlers();
 
         _logger.LogInformation("TradingSession stopped.");
     }
@@ -374,7 +367,7 @@ public sealed class TradingSession : IAsyncDisposable
             return Task.CompletedTask;
         });
 
-        _userEventClient.OnFillReceived(async fill =>
+        _fillHandler = async fill =>
         {
             try
             {
@@ -384,9 +377,9 @@ public sealed class TradingSession : IAsyncDisposable
             {
                 _logger.LogError(ex, "Error processing fill: OrderId={OrderId}", fill.OrderId);
             }
-        });
+        };
 
-        _userEventClient.OnOrderUpdateReceived(async update =>
+        _orderUpdateHandler = async update =>
         {
             try
             {
@@ -396,7 +389,10 @@ public sealed class TradingSession : IAsyncDisposable
             {
                 _logger.LogError(ex, "Error processing order update: OrderId={OrderId}", update.OrderId);
             }
-        });
+        };
+
+        _userEventClient.OnFillReceived(_fillHandler);
+        _userEventClient.OnOrderUpdateReceived(_orderUpdateHandler);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -407,34 +403,10 @@ public sealed class TradingSession : IAsyncDisposable
 
                 _logger.LogInformation("WebSocket connected. Subscribed to {Coin} trade stream.", coin);
 
-                // Connect user event WebSocket for fill detection
-                Task? userEventTask = null;
-                if (_signerProvider.IsConfigured)
-                {
-                    await _userEventClient.ConnectAsync(stoppingToken);
-                    await _userEventClient.SubscribeToUserEventsAsync(
-                        _signerProvider.WalletAddress, stoppingToken);
-
-                    _logger.LogInformation(
-                        "User event WebSocket connected. Subscribed to fills for {Wallet}.",
-                        _signerProvider.WalletAddress);
-
-                    userEventTask = _userEventClient.ReceiveLoopAsync(stoppingToken);
-                }
-
                 _retryCount = 0;
 
                 var marketDataTask = _wsClient.ReceiveLoopAsync(stoppingToken);
-
-                // Run both receive loops concurrently; when either exits, we reconnect both
-                if (userEventTask is not null)
-                {
-                    await Task.WhenAny(marketDataTask, userEventTask);
-                }
-                else
-                {
-                    await marketDataTask;
-                }
+                await marketDataTask;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -468,6 +440,21 @@ public sealed class TradingSession : IAsyncDisposable
         }
 
         _logger.LogInformation("TradingSession loop exited.");
+    }
+
+    private void UnregisterUserEventHandlers()
+    {
+        if (_fillHandler is not null)
+        {
+            _userEventClient.RemoveFillReceivedHandler(_fillHandler);
+            _fillHandler = null;
+        }
+
+        if (_orderUpdateHandler is not null)
+        {
+            _userEventClient.RemoveOrderUpdateReceivedHandler(_orderUpdateHandler);
+            _orderUpdateHandler = null;
+        }
     }
 
     public async ValueTask DisposeAsync()

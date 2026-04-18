@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Application.Trading.Services;
 using TradePilot.Domain.Enums;
@@ -186,12 +187,12 @@ public sealed class LivePositionManagerTests
     }
 
     [TestMethod]
-    public async Task GivenDcaOpenPositionSignal_WhenExecuteSignalsAsync_ThenSkipsLiveExecution()
+    public async Task GivenDcaOpenPositionSignal_WhenExecuteSignalsAsync_ThenPlacesSpotMarketOrder()
     {
         var signal = new TradingSignal
         {
             SignalType = "OpenPosition",
-            Symbol = "BTC-PERP",
+            Symbol = "BTC-USD",
             Parameters = new Dictionary<string, object>
             {
                 ["entryPrice"] = 50000m,
@@ -203,7 +204,14 @@ public sealed class LivePositionManagerTests
 
         await _sut.ExecuteSignalsAsync([signal]);
 
-        _executionEngine.Verify(e => e.PlaceOrderAsync(It.IsAny<OrderRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        _executionEngine.Verify(e => e.PlaceOrderAsync(
+            It.Is<OrderRequest>(o =>
+                o.Symbol == "BTC-USD" &&
+                o.AssetType == AssetType.Spot &&
+                o.OrderType == OrderType.Market &&
+                o.Side == OrderSide.Buy &&
+                o.TradeType == TradeType.DcaBuy),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]

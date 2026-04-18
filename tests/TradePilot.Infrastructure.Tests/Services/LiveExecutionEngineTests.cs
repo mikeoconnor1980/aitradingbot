@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Enums;
 using TradePilot.Infrastructure.Hyperliquid.Models;
@@ -43,9 +44,16 @@ public sealed class LiveExecutionEngineTests
         var metaJson = JsonSerializer.Deserialize<JsonElement>(
             """{"universe":[{"name":"BTC","maxLeverage":50},{"name":"ETH","maxLeverage":25},{"name":"SOL","maxLeverage":20}]}""");
         _restClient.Setup(r => r.PostInfoAsync<JsonElement>(
-                It.Is<object>(o => o.ToString()!.Contains("meta")),
+                It.Is<object>(o => IsInfoRequestType(o, "meta")),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(metaJson);
+
+        var spotMetaJson = JsonSerializer.Deserialize<JsonElement>(
+            """{"tokens":[{"name":"USDC","index":0},{"name":"BTC","index":69}],"universe":[{"tokens":[69,0],"name":"@50","index":50,"isCanonical":false}]}""");
+        _restClient.Setup(r => r.PostInfoAsync<JsonElement>(
+                It.Is<object>(o => IsInfoRequestType(o, "spotMeta")),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(spotMetaJson);
 
         _sut = new LiveExecutionEngine(
             _restClient.Object,
@@ -123,6 +131,34 @@ public sealed class LiveExecutionEngineTests
         // Assert
         orderId.Should().Be("99999");
         _restClient.Verify(r => r.GetMarketInfoAsync("BTC-PERP", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenSpotMarketOrder_WhenPlaceOrderAsync_ThenUsesSpotPairIndexWithoutPerpMidPriceLookup()
+    {
+        var exchangeResponse = BuildSuccessResponse(54321L);
+        _restClient.Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(exchangeResponse);
+
+        var order = new OrderRequest
+        {
+            Symbol = "BTC-USD",
+            AssetType = AssetType.Spot,
+            Side = OrderSide.Buy,
+            OrderType = OrderType.Market,
+            Price = 50000m,
+            Size = 0.01m,
+            TradeType = TradeType.DcaBuy
+        };
+
+        var orderId = await _sut.PlaceOrderAsync(order);
+
+        orderId.Should().Be("54321");
+        _restClient.Verify(r => r.GetMarketInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _restClient.Verify(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+            It.Is<object>(payload => PayloadHasOrderAsset(payload, 10050)),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -335,6 +371,23 @@ public sealed class LiveExecutionEngineTests
             && action.GetProperty("asset").GetInt32() == assetIndex
             && action.GetProperty("isCross").GetBoolean() == isCross
             && action.GetProperty("leverage").GetInt32() == leverage;
+    }
+
+    private static bool PayloadHasOrderAsset(object payload, int assetIndex)
+    {
+        var json = JsonSerializer.SerializeToElement(payload);
+        var action = json.GetProperty("action");
+        var orders = action.GetProperty("orders");
+
+        return orders.GetArrayLength() > 0
+            && orders[0].GetProperty("a").GetInt32() == assetIndex;
+    }
+
+    private static bool IsInfoRequestType(object request, string type)
+    {
+        var json = JsonSerializer.SerializeToElement(request);
+        return json.TryGetProperty("type", out var typeElement)
+            && string.Equals(typeElement.GetString(), type, StringComparison.OrdinalIgnoreCase);
     }
 
     private void VerifyLogged(LogLevel level, string message)

@@ -20,12 +20,13 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 
     private readonly ILogger<HyperliquidUserEventClient> _logger;
     private readonly HyperliquidOptions _options;
+    private readonly object _handlerLock = new();
 
     private ClientWebSocket? _webSocket;
-    private Func<FillEventDto, Task>? _fillHandler;
-    private Func<IReadOnlyList<FillEventDto>, Task>? _fillBatchHandler;
-    private Func<OrderUpdateDto, Task>? _orderUpdateHandler;
-    private Func<WebSocketConnectionState, Task>? _stateHandler;
+    private readonly List<Func<FillEventDto, Task>> _fillHandlers = [];
+    private readonly List<Func<IReadOnlyList<FillEventDto>, Task>> _fillBatchHandlers = [];
+    private readonly List<Func<OrderUpdateDto, Task>> _orderUpdateHandlers = [];
+    private readonly List<Func<WebSocketConnectionState, Task>> _stateHandlers = [];
 
     public HyperliquidUserEventClient(
         ILogger<HyperliquidUserEventClient> logger,
@@ -43,8 +44,15 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         {
             if (_webSocket.State == WebSocketState.Open)
             {
-                await _webSocket.CloseAsync(
-                    WebSocketCloseStatus.NormalClosure, "Reconnecting", cancellationToken);
+                try
+                {
+                    await _webSocket.CloseAsync(
+                        WebSocketCloseStatus.NormalClosure, "Reconnecting", cancellationToken);
+                }
+                catch (WebSocketException)
+                {
+                    // Remote already closed — safe to dispose and reconnect.
+                }
             }
 
             _webSocket.Dispose();
@@ -67,7 +75,14 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         if (_webSocket is { State: WebSocketState.Open })
         {
             _logger.LogInformation("Disconnecting from Hyperliquid user event WebSocket");
-            await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", cancellationToken);
+            try
+            {
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Client closing", cancellationToken);
+            }
+            catch (WebSocketException)
+            {
+                // Remote already closed — treat as disconnected.
+            }
         }
 
         await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
@@ -100,13 +115,85 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
             cancellationToken);
     }
 
-    public void OnFillReceived(Func<FillEventDto, Task> handler) => _fillHandler = handler;
+    public void OnFillReceived(Func<FillEventDto, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
 
-    public void OnFillBatchReceived(Func<IReadOnlyList<FillEventDto>, Task> handler) => _fillBatchHandler = handler;
+        lock (_handlerLock)
+        {
+            _fillHandlers.Add(handler);
+        }
+    }
 
-    public void OnOrderUpdateReceived(Func<OrderUpdateDto, Task> handler) => _orderUpdateHandler = handler;
+    public void RemoveFillReceivedHandler(Func<FillEventDto, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
 
-    public void OnConnectionStateChanged(Func<WebSocketConnectionState, Task> handler) => _stateHandler = handler;
+        lock (_handlerLock)
+        {
+            _fillHandlers.Remove(handler);
+        }
+    }
+
+    public void OnFillBatchReceived(Func<IReadOnlyList<FillEventDto>, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_handlerLock)
+        {
+            _fillBatchHandlers.Add(handler);
+        }
+    }
+
+    public void RemoveFillBatchReceivedHandler(Func<IReadOnlyList<FillEventDto>, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_handlerLock)
+        {
+            _fillBatchHandlers.Remove(handler);
+        }
+    }
+
+    public void OnOrderUpdateReceived(Func<OrderUpdateDto, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_handlerLock)
+        {
+            _orderUpdateHandlers.Add(handler);
+        }
+    }
+
+    public void RemoveOrderUpdateReceivedHandler(Func<OrderUpdateDto, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_handlerLock)
+        {
+            _orderUpdateHandlers.Remove(handler);
+        }
+    }
+
+    public void OnConnectionStateChanged(Func<WebSocketConnectionState, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_handlerLock)
+        {
+            _stateHandlers.Add(handler);
+        }
+    }
+
+    public void RemoveConnectionStateChangedHandler(Func<WebSocketConnectionState, Task> handler)
+    {
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_handlerLock)
+        {
+            _stateHandlers.Remove(handler);
+        }
+    }
 
     public async Task ReceiveLoopAsync(CancellationToken cancellationToken = default)
     {
@@ -257,27 +344,37 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 
             var fillDtos = eventsData.Fills.Select(MapFillToDto).ToList();
 
-            // Individual fill handler (for TradingSession, account state, etc.)
-            if (_fillHandler is not null)
+            var fillHandlers = GetHandlerSnapshot(_fillHandlers);
+            if (fillHandlers.Count > 0)
             {
                 foreach (var dto in fillDtos)
                 {
-                    await _fillHandler(dto);
+                    foreach (var handler in fillHandlers)
+                    {
+                        await handler(dto);
+                    }
                 }
             }
 
-            // Batch handler (for consolidated notifications)
-            if (_fillBatchHandler is not null && fillDtos.Count > 0)
+            var fillBatchHandlers = GetHandlerSnapshot(_fillBatchHandlers);
+            if (fillDtos.Count > 0 && fillBatchHandlers.Count > 0)
             {
-                await _fillBatchHandler(fillDtos);
+                foreach (var handler in fillBatchHandlers)
+                {
+                    await handler(fillDtos);
+                }
             }
 
+            var orderUpdateHandlers = GetHandlerSnapshot(_orderUpdateHandlers);
             foreach (var orderUpdate in eventsData.OrderUpdates)
             {
-                if (_orderUpdateHandler is not null)
+                if (orderUpdateHandlers.Count > 0)
                 {
                     var dto = MapOrderUpdateToDto(orderUpdate);
-                    await _orderUpdateHandler(dto);
+                    foreach (var handler in orderUpdateHandlers)
+                    {
+                        await handler(dto);
+                    }
                 }
             }
         }
@@ -337,9 +434,17 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 
     private async Task NotifyStateChangeAsync(WebSocketConnectionState state)
     {
-        if (_stateHandler is not null)
+        foreach (var handler in GetHandlerSnapshot(_stateHandlers))
         {
-            await _stateHandler(state);
+            await handler(state);
+        }
+    }
+
+    private IReadOnlyList<THandler> GetHandlerSnapshot<THandler>(List<THandler> handlers)
+    {
+        lock (_handlerLock)
+        {
+            return [.. handlers];
         }
     }
 

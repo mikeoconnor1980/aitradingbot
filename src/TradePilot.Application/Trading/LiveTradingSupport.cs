@@ -1,4 +1,5 @@
 using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Domain.Trading;
 
 namespace TradePilot.Application.Trading;
 
@@ -8,9 +9,21 @@ public static class LiveTradingSupport
     {
         ArgumentNullException.ThrowIfNull(config);
 
-        if (config.StrategyMode == StrategyMode.Dca)
+        if (config.StrategyMode != StrategyMode.Dca)
         {
-            reason = "Live DCA spot execution is not implemented yet. Use backtesting for DCA strategies.";
+            reason = null;
+            return true;
+        }
+
+        if (config.AssetType != AssetType.Spot)
+        {
+            reason = "Live DCA requires a spot asset type.";
+            return false;
+        }
+
+        if (config.Direction != Direction.Long)
+        {
+            reason = "Live DCA currently supports long accumulation only.";
             return false;
         }
 

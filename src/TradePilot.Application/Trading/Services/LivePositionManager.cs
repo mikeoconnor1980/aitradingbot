@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Entities;
 using TradePilot.Domain.Enums;
@@ -218,18 +219,11 @@ public sealed class LivePositionManager : IPositionManager
             return;
         }
 
-        if (tradeType == TradeType.DcaBuy)
-        {
-            _logger.LogWarning(
-                "Skipping DCA buy for {Symbol}. Live spot execution is not implemented yet.",
-                signal.Symbol);
-            return;
-        }
-
         var orderId = await _executionEngine.PlaceOrderAsync(
             new OrderRequest
             {
                 Symbol = signal.Symbol,
+                AssetType = tradeType == TradeType.DcaBuy ? AssetType.Spot : AssetType.Perp,
                 Side = OrderSide.Buy,
                 OrderType = OrderType.Market,
                 Price = entryPrice,

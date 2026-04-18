@@ -17,12 +17,16 @@ public interface IHyperliquidUserEventClient : IAsyncDisposable
     Task SubscribeToUserEventsAsync(string walletAddress, CancellationToken cancellationToken = default);
 
     void OnFillReceived(Func<FillEventDto, Task> handler);
+    void RemoveFillReceivedHandler(Func<FillEventDto, Task> handler);
 
     void OnFillBatchReceived(Func<IReadOnlyList<FillEventDto>, Task> handler);
+    void RemoveFillBatchReceivedHandler(Func<IReadOnlyList<FillEventDto>, Task> handler);
 
     void OnOrderUpdateReceived(Func<OrderUpdateDto, Task> handler);
+    void RemoveOrderUpdateReceivedHandler(Func<OrderUpdateDto, Task> handler);
 
     void OnConnectionStateChanged(Func<WebSocketConnectionState, Task> handler);
+    void RemoveConnectionStateChangedHandler(Func<WebSocketConnectionState, Task> handler);
 
     Task ReceiveLoopAsync(CancellationToken cancellationToken = default);
 }

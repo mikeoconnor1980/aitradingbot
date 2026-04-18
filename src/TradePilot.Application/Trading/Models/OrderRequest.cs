@@ -1,4 +1,5 @@
 using TradePilot.Application.Backtesting.Models;
+using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Domain.Enums;
 
 namespace TradePilot.Application.Trading.Models;
@@ -6,6 +7,7 @@ namespace TradePilot.Application.Trading.Models;
 public sealed class OrderRequest
 {
     public required string Symbol { get; init; }
+    public AssetType AssetType { get; init; } = AssetType.Perp;
     public required OrderSide Side { get; init; }
     public required OrderType OrderType { get; init; }
     public required decimal Price { get; init; }
