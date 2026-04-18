@@ -1,6 +1,7 @@
 import { Injectable } from "@angular/core";
 import {
   Direction,
+  DcaInterval,
   EntryMode,
   EntryConditionConfig,
   EntryConditionType,
@@ -11,14 +12,14 @@ import {
   PriceVsEmaOperator,
   PositionSizeType,
   PriceVsEmaParams,
+  StrategyConfig,
+  SupportResistanceOperator,
+  SupportResistanceParams,
   TrendFilterConfig,
   TrendFilterType,
   TrendOperator,
   RsiOperator,
   RsiParams,
-  StrategyConfig,
-  SupportResistanceOperator,
-  SupportResistanceParams,
 } from "../models/strategy.model";
 
 @Injectable({ providedIn: "root" })
@@ -35,31 +36,52 @@ export class StrategyMapperService {
     const entryMode = (grid["entryMode"] as EntryMode | undefined) ?? "auto_from_signal_candle";
     const templateId = String(formValue["templateId"] ?? "grid");
     const strategyMode = String(formValue["strategyMode"] ?? "grid");
+    const isDcaMode = strategyMode === "dca" || this._isDcaTemplate(templateId);
     const isSignalMode = strategyMode === "signal" || this._isSignalTemplate(templateId);
     const conditions = (formValue["conditions"] ?? []) as Record<string, unknown>[];
     const positionSizeType = (risk["positionSizeType"] as PositionSizeType | undefined) ?? "percent_wallet";
+    const dca = this._mapDcaConfig(formValue);
+    const dcaBaseAmount = dca?.baseAmountUsd ?? 0;
 
     return {
       schemaVersion: 1,
-      strategyMode: isSignalMode ? "signal" : "grid",
+      strategyMode: isDcaMode ? "dca" : isSignalMode ? "signal" : "grid",
       strategyName: String(formValue["strategyName"] ?? "").trim(),
       exchange: String(formValue["exchange"] ?? "Hyperliquid"),
+      assetType: isDcaMode ? "spot" : null,
       market: String(formValue["market"] ?? ""),
-      timeframe: String(formValue["timeframe"] ?? "15m"),
-      direction: (formValue["direction"] as Direction | undefined) ?? "long",
+      timeframe: isDcaMode ? "1h" : String(formValue["timeframe"] ?? "15m"),
+      direction: isDcaMode ? "long" : (formValue["direction"] as Direction | undefined) ?? "long",
       enabled: true,
       templateId,
-      grid: isSignalMode ? null : {
+      grid: isSignalMode || isDcaMode ? null : {
         levels: Number(grid["levels"] ?? 0),
         spacing: Number(grid["spacing"] ?? 0),
         entryMode,
         anchorPrice: entryMode === "manual" ? this._toNullableNumber(grid["anchorPrice"]) : null,
         breakdownThreshold: Number(grid["breakdownThreshold"] ?? 0),
       },
+      dca,
       trendFilter: isSignalMode ? this._mapTrendFilter(trendFilter) : null,
       entryLogic: isSignalMode ? (String(formValue["entryLogic"] ?? "all") as "all" | "any") : null,
       entryConditions: isSignalMode ? this._mapConditions(conditions) : null,
-      exit: {
+      exit: isDcaMode ? {
+        takeProfit: {
+          enabled: false,
+          type: "fixed_percent",
+          value: null,
+          lookback: null,
+        },
+        stopLoss: {
+          enabled: false,
+          type: "fixed_percent",
+          value: null,
+          lookback: null,
+          atrMultiplier: null,
+          trailingStopWarmup: null,
+        },
+        exitOnOppositeSignal: false,
+      } : {
         takeProfit: {
           enabled: !!takeProfit["enabled"],
           type: (takeProfit["type"] as ExitRuleType | undefined) ?? "fixed_percent",
@@ -69,7 +91,16 @@ export class StrategyMapperService {
         stopLoss: this._mapStopLoss(stopLoss),
         exitOnOppositeSignal: !!exit["exitOnOppositeSignal"],
       },
-      risk: {
+      risk: isDcaMode ? {
+        positionSizeType: "fixed_notional",
+        positionSizeValue: dcaBaseAmount,
+        leverage: 1,
+        maxOpenTrades: 1,
+        cooldownValue: 0,
+        cooldownUnit: "candles",
+        allowSameCandleReentry: false,
+        autoLeverage: false,
+      } : {
         positionSizeType,
         positionSizeValue: Number(risk["positionSizeValue"] ?? 0),
         leverage: Number(risk["leverage"] ?? 1),
@@ -89,6 +120,48 @@ export class StrategyMapperService {
         summary: String(source["summary"] ?? "Created in strategy builder"),
         sourceText: this._toNullableString(source["sourceText"]),
       },
+    };
+  }
+
+  private _mapDcaConfig(formValue: Record<string, unknown>): StrategyConfig["dca"] {
+    const templateId = String(formValue["templateId"] ?? "grid");
+    const strategyMode = String(formValue["strategyMode"] ?? "grid");
+
+    if (strategyMode !== "dca" && !this._isDcaTemplate(templateId)) {
+      return null;
+    }
+
+    const dca = (formValue["dca"] ?? {}) as Record<string, unknown>;
+    const gateConditions = (dca["gateConditions"] ?? {}) as Record<string, unknown>;
+    const scalingBands = Array.isArray(dca["scalingBands"])
+      ? (dca["scalingBands"] as Record<string, unknown>[])
+      : [];
+    const market = String(formValue["market"] ?? "").trim();
+    const maxPriceUsd = this._toNullableNumber(gateConditions["maxPriceUsd"]);
+    const minFearGreedIndex = this._toNullableNumber(gateConditions["minFearGreedIndex"]);
+    const maxFearGreedIndex = this._toNullableNumber(gateConditions["maxFearGreedIndex"]);
+
+    return {
+      interval: String(dca["interval"] ?? "weekly") as DcaInterval,
+      dayOfWeek: this._toNullableNumber(dca["dayOfWeek"]),
+      dayOfMonth: this._toNullableNumber(dca["dayOfMonth"]),
+      timeOfDayUtc: String(dca["timeOfDayUtc"] ?? "00:00"),
+      baseAmountUsd: Number(dca["baseAmountUsd"] ?? 0),
+      allocations: market.length === 0 ? [] : [{ market, weightPercent: 100 }],
+      gateConditions: maxPriceUsd === null && minFearGreedIndex === null && maxFearGreedIndex === null
+        ? null
+        : {
+          maxPriceUsd,
+          minFearGreedIndex,
+          maxFearGreedIndex,
+        },
+      scalingBands: scalingBands.map((band) => ({
+        priceLowerUsd: this._toNullableNumber(band["priceLowerUsd"]),
+        priceUpperUsd: this._toNullableNumber(band["priceUpperUsd"]),
+        scalingPercent: Number(band["scalingPercent"] ?? 0),
+      })),
+      profitTaking: null,
+      budgetCapUsd: null,
     };
   }
 
@@ -169,6 +242,10 @@ export class StrategyMapperService {
 
   private _isSignalTemplate(templateId: string): boolean {
     return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
+  }
+
+  private _isDcaTemplate(templateId: string): boolean {
+    return templateId === "dca";
   }
 
   private _toNullableNumber(value: unknown): number | null {

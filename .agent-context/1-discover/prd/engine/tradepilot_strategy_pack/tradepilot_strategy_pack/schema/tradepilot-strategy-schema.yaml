@@ -1,0 +1,251 @@
+schema:
+  name: TradePilot Strategy Schema
+  version: 1.0.0
+  description: >
+    Shared base schema with discriminated subtypes for signal, dca, and grid strategies.
+    Intended for YAML authoring, then mapped to C# models and validated before runtime.
+
+enums:
+  strategy_type: [signal, dca, grid]
+  direction: [long, short, neutral]
+  condition_operator: [">", ">=", "<", "<=", "==", "!=", "crosses_above", "crosses_below", "in", "not_in"]
+  spacing_mode: [arithmetic, geometric]
+  order_size_mode: [fixed_quote, fixed_base, percent_equity]
+  stop_action: [pause, pause_and_alert, stop_and_close, alert_only]
+  execution_entry_type: [market, limit, market_on_close, limit_on_retest]
+  take_profit_mode: [rr_based, next_level, blended_position, fixed_percent, staged]
+  slope_state: [positive, negative, flat]
+  session_name: [london, new_york, asia, custom]
+
+shared_types:
+  value_ref:
+    description: A typed right-hand-side value or reference.
+    one_of:
+      - type: static_number
+        shape:
+          type: static
+          value: number
+      - type: indicator_reference
+        shape:
+          type: indicator
+          id: string
+      - type: signal_reference
+        shape:
+          type: signal
+          id: string
+      - type: field_reference
+        shape:
+          type: field
+          path: string
+
+  condition:
+    required: [lhs, operator, rhs]
+    fields:
+      lhs: string
+      operator: enum(condition_operator)
+      rhs: value_ref
+      timeframe: string?
+      lookback_bars: integer?
+      notes: string?
+
+  indicator:
+    required: [id, kind]
+    fields:
+      id: string
+      kind: string
+      timeframe: string
+      params: object
+
+  signal:
+    required: [id, kind]
+    fields:
+      id: string
+      kind: string
+      timeframe: string?
+      source: object
+
+base_strategy:
+  required:
+    - id
+    - name
+    - strategy_type
+    - direction
+    - enabled
+    - market
+    - execution
+    - risk
+    - telemetry
+  fields:
+    id: string
+    name: string
+    version: string
+    strategy_type: enum(strategy_type)
+    direction: enum(direction)
+    enabled: boolean
+    tags: array[string]?
+    description: string?
+    market:
+      required: [symbol, venue]
+      fields:
+        symbol: string
+        venue: string
+        base_asset: string?
+        quote_asset: string?
+    timeframes: object?
+    indicators: array[indicator]?
+    signals: array[signal]?
+    enablement_conditions: array[condition]?
+    disablement_conditions: array[condition]?
+    execution:
+      required: [entry_type, max_reentries]
+      fields:
+        entry_type: enum(execution_entry_type)
+        max_reentries: integer
+        allowed_sessions: array[enum(session_name)]?
+        max_spread_bps: number?
+        max_slippage_bps: number?
+        flat_by_session_end: boolean?
+    risk:
+      required: [position_sizing, stop_loss]
+      fields:
+        position_sizing:
+          required: [mode]
+          fields:
+            mode: enum(order_size_mode)
+            value: number?
+            currency: string?
+            risk_percent: number?
+        stop_loss:
+          required: [mode]
+          fields:
+            mode: string
+            value: number?
+            reference: string?
+            action_on_hit: enum(stop_action)?
+        take_profit:
+          required: [mode]
+          fields:
+            mode: enum(take_profit_mode)
+            rr_target: number?
+            target_percent: number?
+            targets: array[object]?
+        max_total_exposure:
+          value: number?
+          currency: string?
+    telemetry:
+      fields:
+        emit_signals: boolean
+        emit_orders: boolean
+        emit_position_updates: boolean
+        emit_pnl_updates: boolean
+        custom_tags: array[string]?
+
+subtypes:
+
+  signal_strategy:
+    discriminator:
+      strategy_type: signal
+    required:
+      - core
+      - filters
+    fields:
+      core:
+        required: [market_bias, setup, entry_trigger]
+        fields:
+          market_bias: array[condition]
+          setup: array[condition]
+          entry_trigger: array[condition]
+      filters:
+        fields:
+          hard: array[condition]?
+          soft: array[condition]?
+          scoring:
+            fields:
+              min_score: integer?
+              weights: object?
+
+  dca_strategy:
+    discriminator:
+      strategy_type: dca
+    required:
+      - trigger
+      - ladder
+    fields:
+      trigger:
+        required: [activation]
+        fields:
+          activation: array[condition]
+      ladder:
+        required: [order_sizing_mode, base_order_size, scaling, placement]
+        fields:
+          order_sizing_mode: enum(order_size_mode)
+          base_order_size:
+            value: number
+            currency: string
+          scaling:
+            required: [mode]
+            fields:
+              mode: string
+              step_percent: number?
+              max_orders: integer
+              size_multiplier: number?
+          placement:
+            required: [reference_price]
+            fields:
+              reference_price: string
+              place_orders: array[object]
+      budget:
+        fields:
+          max_total_investment:
+            value: number
+            currency: string
+
+  grid_strategy:
+    discriminator:
+      strategy_type: grid
+    required:
+      - activation
+      - grid
+      - inventory
+      - profit_model
+    fields:
+      activation: array[condition]
+      grid:
+        required: [lower_bound, upper_bound, grid_count, spacing_mode, order_size_mode, order_size]
+        fields:
+          lower_bound: number
+          upper_bound: number
+          grid_count: integer
+          spacing_mode: enum(spacing_mode)
+          order_size_mode: enum(order_size_mode)
+          order_size:
+            value: number
+            currency: string
+      inventory:
+        required: [rebalance_on_start]
+        fields:
+          initial_base_allocation:
+            asset: string
+            value: number
+          rebalance_on_start: boolean
+          maintain_inventory_buffer: boolean?
+      profit_model:
+        required: [capture_per_grid_fill, fee_adjusted]
+        fields:
+          capture_per_grid_fill: boolean
+          fee_adjusted: boolean
+      rebalance:
+        fields:
+          auto_recenter: boolean?
+          recenter_threshold_percent: number?
+          recenter_action: enum(stop_action)?
+
+validation_guidance:
+  - Use strategy_type as the discriminator for subtype validation.
+  - Reject unknown top-level fields in production mode.
+  - Require all condition rhs objects to be explicitly typed.
+  - Validate that referenced indicator ids and signal ids exist.
+  - Validate timeframe aliases referenced by indicators and conditions.
+  - Validate that signal strategies are long or short only.
+  - Validate that grid strategies are neutral by default unless a trend-biased extension is introduced.
+  - Validate that dca strategies use long for accumulation and short only if short-DCA is explicitly supported.

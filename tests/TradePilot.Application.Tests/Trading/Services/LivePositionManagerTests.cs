@@ -186,6 +186,27 @@ public sealed class LivePositionManagerTests
     }
 
     [TestMethod]
+    public async Task GivenDcaOpenPositionSignal_WhenExecuteSignalsAsync_ThenSkipsLiveExecution()
+    {
+        var signal = new TradingSignal
+        {
+            SignalType = "OpenPosition",
+            Symbol = "BTC-PERP",
+            Parameters = new Dictionary<string, object>
+            {
+                ["entryPrice"] = 50000m,
+                ["size"] = 0.01m,
+                ["tradeType"] = TradeType.DcaBuy.ToString(),
+                ["gridCycleId"] = "dca"
+            }
+        };
+
+        await _sut.ExecuteSignalsAsync([signal]);
+
+        _executionEngine.Verify(e => e.PlaceOrderAsync(It.IsAny<OrderRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
     public async Task GivenTakeProfitLimitSignal_WhenExecuteSignalsAsync_ThenCancelsAndPlacesSellOrder()
     {
         // Arrange

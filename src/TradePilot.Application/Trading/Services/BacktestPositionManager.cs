@@ -152,6 +152,9 @@ public sealed class BacktestPositionManager : IPositionManager
     {
         var entryPrice = GetDecimal(signal.Parameters, "entryPrice");
         var size = Math.Abs(GetDecimal(signal.Parameters, "size"));
+        var tradeType = ResolveTradeType(signal.Parameters);
+        var gridCycleId = GetOptionalString(signal.Parameters, "gridCycleId")
+            ?? (tradeType == TradeType.DcaBuy ? "dca" : "signal");
 
         if (size <= 0m)
         {
@@ -167,10 +170,10 @@ public sealed class BacktestPositionManager : IPositionManager
                 OrderType = OrderType.Market,
                 Price = entryPrice,
                 Size = size,
-                TradeType = TradeType.SignalEntry,
-                GridCycleId = "signal"
+                TradeType = tradeType,
+                GridCycleId = gridCycleId
             },
-            "signal",
+            gridCycleId,
             cancellationToken);
     }
 
@@ -283,6 +286,14 @@ public sealed class BacktestPositionManager : IPositionManager
             string stringValue => decimal.Parse(stringValue),
             _ => Convert.ToDecimal(value)
         };
+    }
+
+    private static TradeType ResolveTradeType(IReadOnlyDictionary<string, object>? parameters)
+    {
+        var rawTradeType = GetOptionalString(parameters, "tradeType");
+        return Enum.TryParse<TradeType>(rawTradeType, ignoreCase: true, out var tradeType)
+            ? tradeType
+            : TradeType.SignalEntry;
     }
 
     private static int GetInt(IReadOnlyDictionary<string, object>? parameters, string key)

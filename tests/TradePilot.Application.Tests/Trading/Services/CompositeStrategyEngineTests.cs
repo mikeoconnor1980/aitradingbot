@@ -30,6 +30,7 @@ public sealed class CompositeStrategyEngineTests
             .Returns(TrendFilterResult.Pass("Trend filter passed."));
         _sut = new CompositeStrategyEngine(
             new GridStrategyEngine(),
+            new DcaStrategyEngine(),
             _conditionEvaluatorMock.Object,
             _trendFilterEvaluatorMock.Object);
     }
@@ -120,6 +121,44 @@ public sealed class CompositeStrategyEngineTests
     }
 
     [TestMethod]
+    public async Task GivenDcaMode_WhenPriceAndFearGreedGatesPass_ThenReturnsSetupDetected()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            StrategyName = "BTC DCA",
+            AssetType = AssetType.Spot,
+            Market = "BTC-USD",
+            Direction = Direction.Long,
+            Dca = new DcaConfig
+            {
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 100m }
+                ],
+                GateConditions = new DcaGateConfig
+                {
+                    MaxPriceUsd = 110m,
+                    MaxFearGreedIndex = 40,
+                },
+            },
+        };
+
+        var context = CreateMarketContext(
+            includeHigherTimeframes: false,
+            fearGreed: new FearGreedSnapshot(35, FearGreedClassification.Fear, CandleTimestamp));
+
+        var result = await _sut.EvaluateAsync(context, config);
+
+        result.SetupDetected.Should().BeTrue();
+        result.Reason.Should().Be("DCA buy window open.");
+        _conditionEvaluatorMock.Verify(
+            evaluator => evaluator.Evaluate(It.IsAny<StrategyConfig>(), It.IsAny<MarketContext>()),
+            Times.Never);
+    }
+
+    [TestMethod]
     public async Task GivenNonStrategyConfig_WhenEvaluated_ThenThrowsArgumentException()
     {
         var context = CreateMarketContext(includeHigherTimeframes: true);
@@ -191,7 +230,7 @@ public sealed class CompositeStrategyEngineTests
         };
     }
 
-    private static MarketContext CreateMarketContext(bool includeHigherTimeframes)
+    private static MarketContext CreateMarketContext(bool includeHigherTimeframes, FearGreedSnapshot? fearGreed = null)
     {
         return new MarketContext
         {
@@ -202,7 +241,8 @@ public sealed class CompositeStrategyEngineTests
             LatestOneHourCandle = includeHigherTimeframes ? CreateCandle("1h", CandleTimestamp) : null,
             LatestFourHourCandle = includeHigherTimeframes ? CreateCandle("4h", CandleTimestamp) : null,
             Indicators = new IndicatorSnapshot(),
-            IndicatorContext = new IndicatorContext()
+            IndicatorContext = new IndicatorContext(),
+            FearGreed = fearGreed,
         };
     }
 

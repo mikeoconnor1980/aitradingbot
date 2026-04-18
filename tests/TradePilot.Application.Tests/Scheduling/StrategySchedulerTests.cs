@@ -78,10 +78,45 @@ public sealed class StrategySchedulerTests
         },
     };
 
+    private static readonly StrategyConfig DcaTestConfig = new()
+    {
+        SchemaVersion = 1,
+        StrategyMode = StrategyMode.Dca,
+        StrategyName = "Test DCA",
+        Exchange = "Hyperliquid",
+        AssetType = AssetType.Spot,
+        Market = "BTC-USD",
+        Timeframe = "1h",
+        Direction = Direction.Long,
+        Dca = new DcaConfig
+        {
+            Interval = DcaInterval.Hourly,
+            TimeOfDayUtc = "00:00",
+            BaseAmountUsd = 100m,
+            Allocations =
+            [
+                new DcaAllocation
+                {
+                    Market = "BTC-USD",
+                    WeightPercent = 100m,
+                }
+            ],
+        },
+        Exit = new ExitConfig(),
+        Risk = new RiskConfig
+        {
+            PositionSizeType = PositionSizeType.FixedNotional,
+            PositionSizeValue = 100m,
+            Leverage = 1m,
+            MaxOpenTrades = 1,
+        },
+    };
+
     private Mock<IMarketContextBuilder> _contextBuilderMock = default!;
     private Mock<IStrategyEngine> _strategyEngineMock = default!;
     private Mock<IGridController> _gridControllerMock = default!;
     private Mock<ISignalController> _signalControllerMock = default!;
+    private Mock<IDcaController> _dcaControllerMock = default!;
     private Mock<IRiskEngine> _riskEngineMock = default!;
     private Mock<IPositionManager> _positionManagerMock = default!;
     private Mock<IStrategyRepository> _strategyRepositoryMock = default!;
@@ -94,6 +129,7 @@ public sealed class StrategySchedulerTests
         _strategyEngineMock = new Mock<IStrategyEngine>();
         _gridControllerMock = new Mock<IGridController>();
         _signalControllerMock = new Mock<ISignalController>();
+        _dcaControllerMock = new Mock<IDcaController>();
         _riskEngineMock = new Mock<IRiskEngine>();
         _positionManagerMock = new Mock<IPositionManager>();
         _strategyRepositoryMock = new Mock<IStrategyRepository>();
@@ -105,7 +141,8 @@ public sealed class StrategySchedulerTests
             _riskEngineMock.Object,
             _positionManagerMock.Object,
             TestConfig,
-            signalController: _signalControllerMock.Object);
+            signalController: _signalControllerMock.Object,
+            dcaController: _dcaControllerMock.Object);
 
         _contextBuilderMock
             .Setup(builder => builder.BuildAsync(
@@ -143,6 +180,16 @@ public sealed class StrategySchedulerTests
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
         _signalControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<TradingSignal>());
+
+        _dcaControllerMock
             .Setup(controller => controller.ProcessAsync(
                 It.IsAny<StrategyEvaluation>(),
                 It.IsAny<MarketContext>(),
@@ -299,6 +346,43 @@ public sealed class StrategySchedulerTests
             Times.Once);
 
         _signalControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenDcaModeConfig_WhenHandleCandleClosedAsync_ThenDcaControllerCalledNotGridController()
+    {
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            DcaTestConfig,
+            triggerTimeframe: "1h",
+            signalController: _signalControllerMock.Object,
+            dcaController: _dcaControllerMock.Object);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("1h"), CreateCandle("1h"), null);
+
+        _dcaControllerMock.Verify(
+            controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                It.IsAny<IStrategyConfig>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _gridControllerMock.Verify(
             controller => controller.ProcessAsync(
                 It.IsAny<StrategyEvaluation>(),
                 It.IsAny<MarketContext>(),

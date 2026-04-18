@@ -76,15 +76,19 @@
         />
 
         <app-strategy-details-card [group]="form" />
-        @if (!isSignalMode) {
+        @if (isDcaMode) {
+          <app-dca-config-card [group]="dcaFormGroup"></app-dca-config-card>
+        } @else if (!isSignalMode) {
           <app-grid-config-card [group]="gridFormGroup" />
         }
         @if (isSignalMode) {
           <app-entry-conditions-card [conditions]="conditionsFormArray" [entryLogicControl]="form.get('entryLogic')!" />
         }
-        <app-exit-rules-card [group]="exitFormGroup" />
-        <app-risk-management-card [group]="riskFormGroup" [exitGroup]="exitFormGroup" />
-        <app-trend-filter-card [group]="isSignalMode ? trendFilterFormGroup : null" />
+        @if (!isDcaMode) {
+          <app-exit-rules-card [group]="exitFormGroup" />
+          <app-risk-management-card [group]="riskFormGroup" [exitGroup]="exitFormGroup" />
+          <app-trend-filter-card [group]="isSignalMode ? trendFilterFormGroup : null" />
+        }
       </div>
 
       <div class="builder-page__column builder-page__column--side">

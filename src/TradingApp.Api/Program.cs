@@ -186,6 +186,7 @@ builder.Services.AddSingleton<OptimizationJobQueue>();
 builder.Services.AddSingleton<OptimizationCancellationRegistry>();
 builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
 builder.Services.AddScoped<GridStrategyEngine>();
+builder.Services.AddScoped<DcaStrategyEngine>();
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, MacdConditionHandler>();

@@ -42,6 +42,7 @@ public sealed class RealBacktestRunnerTests
             new BacktestMarketContextBuilder(),
             new CompositeStrategyEngine(
                 new GridStrategyEngine(),
+                new DcaStrategyEngine(),
                 conditionEvaluator,
                 new TrendFilterEvaluator(new Mock<ILogger<TrendFilterEvaluator>>().Object)),
             new GridController(),

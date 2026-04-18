@@ -10,6 +10,7 @@ using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Scheduling;
 using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Trading;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Application.Trading.Services;
 using TradePilot.Domain.Enums;
@@ -361,6 +362,39 @@ public sealed class AgentCheckInService : BackgroundService
         if (command.StrategyConfig is null)
         {
             _logger.LogError("Start command received without StrategyConfig. Ignoring.");
+            return;
+        }
+
+        if (!LiveTradingSupport.TryValidate(command.StrategyConfig, out var unsupportedReason))
+        {
+            _logger.LogError(
+                "Cannot start strategy {StrategyName} on {Market}: {Reason}",
+                command.StrategyConfig.StrategyName,
+                command.StrategyConfig.Market,
+                unsupportedReason);
+
+            _executionLogger.Log(new ExecutionLogEntry
+            {
+                TimestampUtc = DateTimeOffset.UtcNow,
+                Category = ExecutionLogCategory.Signal,
+                Level = ExecutionLogLevel.Summary,
+                Message = unsupportedReason!,
+                Data = new Dictionary<string, object>
+                {
+                    ["strategy"] = command.StrategyConfig.StrategyName,
+                    ["market"] = command.StrategyConfig.Market,
+                    ["timeframe"] = command.StrategyConfig.Timeframe,
+                    ["mode"] = command.StrategyConfig.StrategyMode.ToString(),
+                },
+            });
+
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = unsupportedReason,
+            });
+
             return;
         }
 

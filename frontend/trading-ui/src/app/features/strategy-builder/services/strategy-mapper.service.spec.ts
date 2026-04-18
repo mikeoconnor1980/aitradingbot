@@ -28,6 +28,20 @@ describe("StrategyMapperService", () => {
     expect(config.entryConditions).toHaveSize(1);
   });
 
+  it("should map a DCA form to a DCA strategy config", () => {
+    const config = service.mapFormToConfig(buildDcaFormValue());
+
+    expect(config.strategyMode).toBe("dca");
+    expect(config.assetType).toBe("spot");
+    expect(config.timeframe).toBe("1h");
+    expect(config.direction).toBe("long");
+    expect(config.grid).toBeNull();
+    expect(config.dca).not.toBeNull();
+    expect(config.dca?.allocations).toEqual([{ market: "BTC-USD", weightPercent: 100 }]);
+    expect(config.risk.positionSizeType).toBe("fixed_notional");
+    expect(config.exit.takeProfit.enabled).toBeFalse();
+  });
+
   it("should map RSI condition params for signal mode", () => {
     const config = service.mapFormToConfig(buildSignalFormValue());
     const condition = config.entryConditions?.[0];
@@ -128,6 +142,27 @@ describe("StrategyMapperService", () => {
       },
     });
   });
+
+  it("should map DCA scaling bands and gates", () => {
+    const config = service.mapFormToConfig(buildDcaFormValue());
+
+    expect(config.dca).toEqual({
+      interval: "weekly",
+      dayOfWeek: 1,
+      dayOfMonth: null,
+      timeOfDayUtc: "00:00",
+      baseAmountUsd: 150,
+      allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+      gateConditions: {
+        maxPriceUsd: 95000,
+        minFearGreedIndex: null,
+        maxFearGreedIndex: 40,
+      },
+      scalingBands: [{ priceLowerUsd: 80000, priceUpperUsd: 90000, scalingPercent: 20 }],
+      profitTaking: null,
+      budgetCapUsd: null,
+    });
+  });
 });
 
 function buildGridFormValue(): Record<string, unknown> {
@@ -195,5 +230,27 @@ function buildSignalFormValue(): Record<string, unknown> {
       operator: "lt",
       value: 40,
     }],
+  };
+}
+
+function buildDcaFormValue(): Record<string, unknown> {
+  return {
+    ...buildGridFormValue(),
+    templateId: "dca",
+    timeframe: "15m",
+    direction: "short",
+    dca: {
+      interval: "weekly",
+      dayOfWeek: 1,
+      dayOfMonth: null,
+      timeOfDayUtc: "00:00",
+      baseAmountUsd: 150,
+      gateConditions: {
+        maxPriceUsd: 95000,
+        minFearGreedIndex: null,
+        maxFearGreedIndex: 40,
+      },
+      scalingBands: [{ priceLowerUsd: 80000, priceUpperUsd: 90000, scalingPercent: 20 }],
+    },
   };
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq;
 using TradePilot.Application.StrategyAuthoring.Models;
 
@@ -15,6 +16,7 @@ public sealed class BusinessRuleValidator
         ValidateRisk(config.Risk, result);
         ValidateEntryConditions(config.EntryConditions, result);
         ValidateTrendFilter(config.TrendFilter, result);
+        ValidateDca(config, result);
     }
 
     private static void ValidateGrid(GridConfig? grid, ValidationResult result)
@@ -476,6 +478,351 @@ public sealed class BusinessRuleValidator
                 }
 
                 break;
+        }
+    }
+
+    private static void ValidateDca(StrategyConfig config, ValidationResult result)
+    {
+        var dca = config.Dca;
+        if (dca is null)
+        {
+            return;
+        }
+
+        if (dca.BaseAmountUsd <= 0m)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.baseAmountUsd",
+                Code = "DCA_BASE_AMOUNT_INVALID",
+                Message = "DCA base amount must be greater than 0.",
+            });
+        }
+
+        if (!TimeOnly.TryParseExact(dca.TimeOfDayUtc, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.timeOfDayUtc",
+                Code = "DCA_TIME_OF_DAY_INVALID",
+                Message = "DCA time of day must use HH:mm UTC format.",
+            });
+        }
+
+        ValidateDcaIntervalFields(dca, result);
+        ValidateDcaAllocations(dca, result);
+        ValidateDcaGateConditions(dca.GateConditions, result);
+        ValidateDcaScalingBands(dca.ScalingBands, result);
+        ValidateDcaProfitTaking(dca.ProfitTaking, result);
+
+        if (dca.BudgetCapUsd.HasValue && dca.BudgetCapUsd.Value <= 0m)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.budgetCapUsd",
+                Code = "DCA_BUDGET_CAP_INVALID",
+                Message = "DCA budget cap must be greater than 0 when provided.",
+            });
+        }
+
+        if (config.StrategyMode == StrategyMode.Dca && config.Risk.AutoLeverage)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "risk.autoLeverage",
+                Code = "DCA_AUTO_LEVERAGE_NOT_SUPPORTED",
+                Message = "Auto-leverage is not supported for DCA spot accumulation.",
+            });
+        }
+
+        if (config.StrategyMode == StrategyMode.Dca && config.Risk.Leverage != 1m)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "risk.leverage",
+                Code = "DCA_LEVERAGE_NOT_SUPPORTED",
+                Message = "Leverage must remain 1 for DCA spot accumulation.",
+            });
+        }
+    }
+
+    private static void ValidateDcaIntervalFields(DcaConfig dca, ValidationResult result)
+    {
+        switch (dca.Interval)
+        {
+            case DcaInterval.Weekly:
+            case DcaInterval.Biweekly:
+                if (!dca.DayOfWeek.HasValue || dca.DayOfWeek.Value is < 0 or > 6)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = "dca.dayOfWeek",
+                        Code = "DCA_DAY_OF_WEEK_REQUIRED",
+                        Message = "Weekly and biweekly DCA schedules require a day of week between 0 and 6.",
+                    });
+                }
+
+                break;
+
+            case DcaInterval.Monthly:
+                if (!dca.DayOfMonth.HasValue || dca.DayOfMonth.Value is < 1 or > 28)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = "dca.dayOfMonth",
+                        Code = "DCA_DAY_OF_MONTH_REQUIRED",
+                        Message = "Monthly DCA schedules require a day of month between 1 and 28.",
+                    });
+                }
+
+                break;
+        }
+    }
+
+    private static void ValidateDcaAllocations(DcaConfig dca, ValidationResult result)
+    {
+        if (dca.Allocations.Count == 0)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.allocations",
+                Code = "DCA_ALLOCATIONS_REQUIRED",
+                Message = "At least one DCA allocation is required.",
+            });
+
+            return;
+        }
+
+        for (var index = 0; index < dca.Allocations.Count; index++)
+        {
+            var allocation = dca.Allocations[index];
+
+            if (string.IsNullOrWhiteSpace(allocation.Market))
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.allocations[{index}].market",
+                    Code = "DCA_ALLOCATION_MARKET_REQUIRED",
+                    Message = "Each DCA allocation must specify a market.",
+                });
+            }
+
+            if (allocation.WeightPercent <= 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.allocations[{index}].weightPercent",
+                    Code = "DCA_ALLOCATION_WEIGHT_INVALID",
+                    Message = "DCA allocation weights must be greater than 0.",
+                });
+            }
+        }
+
+        var totalWeight = dca.Allocations.Sum(allocation => allocation.WeightPercent);
+        if (Math.Abs(totalWeight - 100m) > 0.0001m)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.allocations",
+                Code = "DCA_ALLOCATION_WEIGHTS_MUST_TOTAL_100",
+                Message = "DCA allocation weights must total 100%.",
+            });
+        }
+    }
+
+    private static void ValidateDcaGateConditions(DcaGateConfig? gates, ValidationResult result)
+    {
+        if (gates is null)
+        {
+            return;
+        }
+
+        if (gates.MaxPriceUsd.HasValue && gates.MaxPriceUsd.Value <= 0m)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.gateConditions.maxPriceUsd",
+                Code = "DCA_MAX_PRICE_INVALID",
+                Message = "DCA max price gate must be greater than 0 when provided.",
+            });
+        }
+
+        if (gates.MinFearGreedIndex.HasValue && gates.MinFearGreedIndex.Value is < 0 or > 100)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.gateConditions.minFearGreedIndex",
+                Code = "DCA_MIN_FEAR_GREED_INVALID",
+                Message = "DCA minimum Fear & Greed value must be between 0 and 100.",
+            });
+        }
+
+        if (gates.MaxFearGreedIndex.HasValue && gates.MaxFearGreedIndex.Value is < 0 or > 100)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.gateConditions.maxFearGreedIndex",
+                Code = "DCA_MAX_FEAR_GREED_INVALID",
+                Message = "DCA maximum Fear & Greed value must be between 0 and 100.",
+            });
+        }
+
+        if (gates.MinFearGreedIndex.HasValue
+            && gates.MaxFearGreedIndex.HasValue
+            && gates.MinFearGreedIndex.Value > gates.MaxFearGreedIndex.Value)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.gateConditions",
+                Code = "DCA_FEAR_GREED_RANGE_INVALID",
+                Message = "DCA minimum Fear & Greed value must be less than or equal to the maximum value.",
+            });
+        }
+    }
+
+    private static void ValidateDcaScalingBands(IReadOnlyList<DcaScalingBand>? bands, ValidationResult result)
+    {
+        if (bands is null)
+        {
+            return;
+        }
+
+        if (bands.Count > 5)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.scalingBands",
+                Code = "DCA_SCALING_BANDS_LIMIT_EXCEEDED",
+                Message = "DCA supports at most 5 scaling bands.",
+            });
+        }
+
+        for (var index = 0; index < bands.Count; index++)
+        {
+            var band = bands[index];
+
+            if (band.PriceLowerUsd.HasValue && band.PriceLowerUsd.Value < 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.scalingBands[{index}].priceLowerUsd",
+                    Code = "DCA_SCALING_BAND_LOWER_INVALID",
+                    Message = "DCA scaling band lower price must be 0 or greater.",
+                });
+            }
+
+            if (band.PriceUpperUsd.HasValue && band.PriceUpperUsd.Value <= 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.scalingBands[{index}].priceUpperUsd",
+                    Code = "DCA_SCALING_BAND_UPPER_INVALID",
+                    Message = "DCA scaling band upper price must be greater than 0.",
+                });
+            }
+
+            if (band.PriceLowerUsd.HasValue
+                && band.PriceUpperUsd.HasValue
+                && band.PriceLowerUsd.Value >= band.PriceUpperUsd.Value)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.scalingBands[{index}]",
+                    Code = "DCA_SCALING_BAND_RANGE_INVALID",
+                    Message = "DCA scaling band lower price must be less than upper price.",
+                });
+            }
+
+            if (band.ScalingPercent < -100m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.scalingBands[{index}].scalingPercent",
+                    Code = "DCA_SCALING_PERCENT_INVALID",
+                    Message = "DCA scaling percent must be greater than or equal to -100.",
+                });
+            }
+        }
+    }
+
+    private static void ValidateDcaProfitTaking(DcaProfitTakingConfig? profitTaking, ValidationResult result)
+    {
+        if (profitTaking is null)
+        {
+            return;
+        }
+
+        if (profitTaking.Tiers.Count == 0)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.profitTaking.tiers",
+                Code = "DCA_PROFIT_TIERS_REQUIRED",
+                Message = "DCA profit taking requires at least one tier.",
+            });
+
+            return;
+        }
+
+        decimal totalSellPercent = 0m;
+        for (var index = 0; index < profitTaking.Tiers.Count; index++)
+        {
+            var tier = profitTaking.Tiers[index];
+            totalSellPercent += tier.SellPercent;
+
+            if (tier.TargetMultiple <= 0m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.profitTaking.tiers[{index}].targetMultiple",
+                    Code = "DCA_PROFIT_TARGET_INVALID",
+                    Message = "DCA profit-taking target multiple must be greater than 0.",
+                });
+            }
+
+            if (tier.SellPercent <= 0m || tier.SellPercent > 100m)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"dca.profitTaking.tiers[{index}].sellPercent",
+                    Code = "DCA_PROFIT_SELL_PERCENT_INVALID",
+                    Message = "DCA profit-taking sell percent must be greater than 0 and less than or equal to 100.",
+                });
+            }
+        }
+
+        if (totalSellPercent > 100m)
+        {
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = "dca.profitTaking.tiers",
+                Code = "DCA_PROFIT_SELL_PERCENT_TOTAL_INVALID",
+                Message = "DCA profit-taking sell percentages must not exceed 100 in total.",
+            });
         }
     }
 }

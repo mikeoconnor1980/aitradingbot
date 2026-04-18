@@ -87,6 +87,40 @@ public sealed class BacktestPositionManagerTests
         executionEngine.GetAllFills().Should().BeEmpty();
     }
 
+    [TestMethod]
+    public async Task GivenOpenPositionSignalWithDcaTradeType_WhenExecuteSignalsAsync_ThenPlacesDcaBuyMarketOrder()
+    {
+        var executionEngine = CreateExecutionEngine();
+        _contextAccessor.CurrentExecutionEngine = executionEngine;
+        _contextAccessor.CurrentTimestampUtc = 1_000;
+
+        await _sut.ExecuteSignalsAsync(
+        [
+            new TradingSignal
+            {
+                SignalType = "OpenPosition",
+                Symbol = "BTC",
+                Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["entryPrice"] = 50_000m,
+                    ["size"] = 0.02m,
+                    ["tradeType"] = TradeType.DcaBuy.ToString(),
+                    ["gridCycleId"] = "dca"
+                }
+            }
+        ]);
+
+        var openOrders = executionEngine.GetOpenOrders();
+        openOrders.Should().ContainSingle();
+        openOrders[0].TradeType.Should().Be(TradeType.DcaBuy);
+        openOrders[0].GridCycleId.Should().Be("dca");
+
+        var fills = executionEngine.ProcessCandle(CreateCandle(close: 50_250m, timestampUtc: 2_000));
+
+        fills.Should().ContainSingle();
+        fills[0].TradeType.Should().Be(TradeType.DcaBuy);
+    }
+
     private static SimulatedExecutionEngine CreateExecutionEngine()
     {
         return new SimulatedExecutionEngine(new FeeModel

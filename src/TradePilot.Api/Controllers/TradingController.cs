@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.Trading;
 
 namespace TradePilot.Api.Controllers;
 
@@ -37,6 +38,15 @@ public sealed class TradingController : ControllerBase
             {
                 Title = "Invalid request",
                 Detail = "StrategyConfig is required."
+            });
+        }
+
+        if (!LiveTradingSupport.TryValidate(request.StrategyConfig, out var unsupportedReason))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Unsupported live strategy",
+                Detail = unsupportedReason,
             });
         }
 

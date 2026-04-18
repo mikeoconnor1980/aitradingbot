@@ -32,6 +32,7 @@ public sealed class BacktestRunner : IBacktestRunner
     private readonly IPositionManager _positionManager;
     private readonly BacktestExecutionContextAccessor _executionContextAccessor;
     private readonly ISignalController _signalController;
+    private readonly IDcaController? _dcaController;
     private readonly RiskLimitsConfig _riskLimits;
     private readonly IFearGreedReadingRepository? _fearGreedRepository;
 
@@ -45,7 +46,8 @@ public sealed class BacktestRunner : IBacktestRunner
         BacktestExecutionContextAccessor executionContextAccessor,
         ISignalController signalController,
         IOptions<RiskLimitsConfig>? riskLimits = null,
-        IFearGreedReadingRepository? fearGreedRepository = null)
+        IFearGreedReadingRepository? fearGreedRepository = null,
+        IDcaController? dcaController = null)
     {
         _candleRepository = candleRepository ?? throw new ArgumentNullException(nameof(candleRepository));
         _marketContextBuilder = marketContextBuilder ?? throw new ArgumentNullException(nameof(marketContextBuilder));
@@ -55,6 +57,7 @@ public sealed class BacktestRunner : IBacktestRunner
         _positionManager = positionManager ?? throw new ArgumentNullException(nameof(positionManager));
         _executionContextAccessor = executionContextAccessor ?? throw new ArgumentNullException(nameof(executionContextAccessor));
         _signalController = signalController ?? throw new ArgumentNullException(nameof(signalController));
+        _dcaController = dcaController;
         _riskLimits = riskLimits?.Value ?? new RiskLimitsConfig { DrawdownTiers = RiskLimitsConfig.DefaultDrawdownTiers.ToArray() };
         _fearGreedRepository = fearGreedRepository;
     }
@@ -97,7 +100,9 @@ public sealed class BacktestRunner : IBacktestRunner
         }
 
         var positionManager = _positionManager;
-        var triggerTimeframe = config.TriggerTimeframe;
+        var triggerTimeframe = config.Strategy is StrategyConfig { StrategyMode: StrategyMode.Dca }
+            ? "1h"
+            : config.TriggerTimeframe;
         var scheduler = new StrategyScheduler(
             _marketContextBuilder,
             _strategyEngine,
@@ -108,6 +113,7 @@ public sealed class BacktestRunner : IBacktestRunner
             triggerTimeframe: triggerTimeframe,
             auditCollector: collector,
             signalController: _signalController,
+            dcaController: _dcaController,
             initialCapital: config.InitialCapital,
             executionContextAccessor: _executionContextAccessor,
             drawdownTiers: _riskLimits.DrawdownTiers);
@@ -368,7 +374,7 @@ public sealed class BacktestRunner : IBacktestRunner
         var gridCycleId = fill.GridCycleId ?? gridState.GridCycleId ?? "default";
         ApplyGridFillState(gridState, fill);
 
-        if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen or TradeType.SignalEntry)
+        if (fill.TradeType is TradeType.GridFill or TradeType.HedgeOpen or TradeType.SignalEntry or TradeType.DcaBuy)
         {
             tradeLog.Add(new BacktestTrade
             {
@@ -521,7 +527,7 @@ public sealed class BacktestRunner : IBacktestRunner
     {
         return exitTradeType switch
         {
-            TradeType.TakeProfit => openTrade.TradeType is TradeType.GridFill or TradeType.SignalEntry,
+            TradeType.TakeProfit => openTrade.TradeType is TradeType.GridFill or TradeType.SignalEntry or TradeType.DcaBuy,
             TradeType.HedgeClose => openTrade.TradeType == TradeType.HedgeOpen,
             _ => false
         };
@@ -633,6 +639,7 @@ public sealed class BacktestRunner : IBacktestRunner
                 break;
 
             case TradeType.SignalEntry:
+            case TradeType.DcaBuy:
                 break;
         }
     }

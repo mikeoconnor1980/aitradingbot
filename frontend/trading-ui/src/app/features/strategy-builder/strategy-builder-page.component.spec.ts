@@ -153,6 +153,18 @@ describe("StrategyBuilderPageComponent", () => {
     expect(component.canSave).toBeTrue();
   });
 
+  it("should switch into DCA mode and lock timeframe and direction", () => {
+    component.onTemplateSelected("dca");
+
+    expect(component.isDcaMode).toBeTrue();
+    expect(component.form.get("grid")?.disabled).toBeTrue();
+    expect(component.form.get("timeframe")?.disabled).toBeTrue();
+    expect(component.form.get("direction")?.disabled).toBeTrue();
+    expect(component.form.get("timeframe")?.value).toBe("1h");
+    expect(component.form.get("direction")?.value).toBe("long");
+    expect(component.form.get("dca.baseAmountUsd")?.value).toBe(100);
+  });
+
   it("should include risk-based controls in the risk form group", () => {
     expect(component.riskFormGroup.get("riskPerTradePercent")).not.toBeNull();
     expect(component.riskFormGroup.get("autoLeverage")).not.toBeNull();

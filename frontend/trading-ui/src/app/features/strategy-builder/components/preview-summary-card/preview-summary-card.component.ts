@@ -27,6 +27,10 @@ export class PreviewSummaryCardComponent {
     const templateId = String(formValue["templateId"] ?? "grid");
     const strategyMode = String(formValue["strategyMode"] ?? "grid");
 
+    if (strategyMode === "dca" || this._isDcaTemplate(templateId)) {
+      return this._buildDcaPreview(formValue);
+    }
+
     if (strategyMode === "signal" || this._isSignalTemplate(templateId)) {
       return this._buildSignalPreview(formValue);
     }
@@ -104,6 +108,54 @@ export class PreviewSummaryCardComponent {
     const entryLogic = String(formValue["entryLogic"] ?? "all");
     const joiner = entryLogic === "any" ? " or " : " and ";
     parts.push(`Entry when ${conditionTexts.join(joiner)}.`);
+    return parts.join(" ");
+  }
+
+  private _buildDcaPreview(formValue: Record<string, unknown>): string {
+    const dca = (formValue["dca"] ?? null) as Record<string, unknown> | null;
+    if (dca === null) {
+      return "Configure the DCA schedule to see a preview.";
+    }
+
+    const market = String(formValue["market"] ?? "market");
+    const interval = String(dca["interval"] ?? "weekly").replace(/_/g, " ");
+    const timeOfDayUtc = String(dca["timeOfDayUtc"] ?? "00:00");
+    const baseAmountUsd = this._formatNumber(dca["baseAmountUsd"]);
+    const gateConditions = (dca["gateConditions"] ?? null) as Record<string, unknown> | null;
+    const scalingBands = Array.isArray(dca["scalingBands"]) ? dca["scalingBands"] as Record<string, unknown>[] : [];
+    const parts = [`Spot DCA on ${market}: buy $${baseAmountUsd} ${interval} at ${timeOfDayUtc} UTC.`];
+
+    if (interval === "weekly" || interval === "biweekly") {
+      parts.push(`Scheduled weekday index: ${this._formatNumber(dca["dayOfWeek"])}.`);
+    }
+
+    if (interval === "monthly") {
+      parts.push(`Scheduled day of month: ${this._formatNumber(dca["dayOfMonth"])}.`);
+    }
+
+    const maxPriceUsd = this._toNullableNumber(gateConditions?.["maxPriceUsd"]);
+    if (maxPriceUsd !== null) {
+      parts.push(`Only buy at or below $${this._formatNumber(maxPriceUsd)}.`);
+    }
+
+    const maxFearGreedIndex = this._toNullableNumber(gateConditions?.["maxFearGreedIndex"]);
+    if (maxFearGreedIndex !== null) {
+      parts.push(`Fear & Greed must be ${this._formatNumber(maxFearGreedIndex)} or lower.`);
+    }
+
+    if (scalingBands.length > 0) {
+      const bandText = scalingBands.map((band) => {
+        const lower = this._toNullableNumber(band["priceLowerUsd"]);
+        const upper = this._toNullableNumber(band["priceUpperUsd"]);
+        const scaling = this._formatNumber(band["scalingPercent"]);
+        const lowerText = lower === null ? "open" : `$${this._formatNumber(lower)}`;
+        const upperText = upper === null ? "open" : `$${this._formatNumber(upper)}`;
+        return `${scaling}% between ${lowerText} and ${upperText}`;
+      });
+
+      parts.push(`Scaling bands: ${bandText.join(", ")}.`);
+    }
+
     return parts.join(" ");
   }
 
@@ -257,6 +309,19 @@ export class PreviewSummaryCardComponent {
 
   private _isSignalTemplate(templateId: string): boolean {
     return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
+  }
+
+  private _isDcaTemplate(templateId: string): boolean {
+    return templateId === "dca";
+  }
+
+  private _toNullableNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+
+    const parsedValue = Number(value);
+    return Number.isNaN(parsedValue) ? null : parsedValue;
   }
 
   private _formatNumber(value: unknown): string {

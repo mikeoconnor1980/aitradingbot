@@ -1,0 +1,123 @@
+<mat-card class="dca-card" [formGroup]="group">
+  <mat-card-header>
+    <mat-card-title>DCA Schedule</mat-card-title>
+    <mat-card-subtitle>Single-market spot DCA for builder and backtest testing.</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <p class="dca-card__hint">
+      Live spot execution is still blocked until Hyperliquid spot order support is added. You can configure and backtest the strategy now.
+    </p>
+
+    <div class="dca-card__grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Interval</mat-label>
+        <mat-select formControlName="interval">
+          <mat-option value="hourly">Hourly</mat-option>
+          <mat-option value="four_hourly">Every 4 hours</mat-option>
+          <mat-option value="daily">Daily</mat-option>
+          <mat-option value="weekly">Weekly</mat-option>
+          <mat-option value="biweekly">Biweekly</mat-option>
+          <mat-option value="monthly">Monthly</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Time (UTC)</mat-label>
+        <input matInput type="time" formControlName="timeOfDayUtc" step="3600" />
+        @if (hasError("timeOfDayUtc", "required") || hasError("timeOfDayUtc", "pattern")) {
+          <mat-error>Use HH:mm in UTC.</mat-error>
+        }
+      </mat-form-field>
+
+      @if (showsDayOfWeek) {
+        <mat-form-field appearance="outline">
+          <mat-label>Day of week</mat-label>
+          <mat-select formControlName="dayOfWeek">
+            @for (day of dayOptions; track day.value) {
+              <mat-option [value]="day.value">{{ day.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      @if (showsDayOfMonth) {
+        <mat-form-field appearance="outline">
+          <mat-label>Day of month</mat-label>
+          <input matInput type="number" formControlName="dayOfMonth" min="1" max="31" step="1" />
+          @if (hasError("dayOfMonth", "min") || hasError("dayOfMonth", "max")) {
+            <mat-error>Choose a day between 1 and 31.</mat-error>
+          }
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="outline">
+        <mat-label>Base amount (USD)</mat-label>
+        <input matInput type="number" formControlName="baseAmountUsd" min="0.01" step="0.01" />
+        @if (hasError("baseAmountUsd", "required") || hasError("baseAmountUsd", "min")) {
+          <mat-error>Base amount must be greater than 0.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="dca-card__nested" formGroupName="gateConditions">
+        <mat-form-field appearance="outline">
+          <mat-label>Max price gate</mat-label>
+          <input matInput type="number" formControlName="maxPriceUsd" min="0.00000001" step="0.01" />
+          <mat-hint>Optional. Only buy when price is at or below this level.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Max Fear &amp; Greed</mat-label>
+          <input matInput type="number" formControlName="maxFearGreedIndex" min="0" max="100" step="1" />
+          <mat-hint>Optional. Only buy when the index is at or below this value.</mat-hint>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <div class="dca-card__bands">
+      <div class="dca-card__bands-header">
+        <div>
+          <h3>Scaling Bands</h3>
+          <p>Optional price ranges that scale the base buy amount up or down.</p>
+        </div>
+
+        <button mat-stroked-button type="button" (click)="addScalingBand()" [disabled]="scalingBands.length >= 5">
+          <mat-icon>add</mat-icon>
+          <span>Add band</span>
+        </button>
+      </div>
+
+      @if (scalingBands.length === 0) {
+        <p class="dca-card__empty">No scaling bands configured.</p>
+      } @else {
+        <div class="dca-card__band-list">
+          @for (band of scalingBands.controls; track $index; let index = $index) {
+            <div class="dca-card__band" [formGroup]="getScalingBand(index)">
+              <mat-form-field appearance="outline">
+                <mat-label>Lower price</mat-label>
+                <input matInput type="number" formControlName="priceLowerUsd" min="0.00000001" step="0.01" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Upper price</mat-label>
+                <input matInput type="number" formControlName="priceUpperUsd" min="0.00000001" step="0.01" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Scaling %</mat-label>
+                <input matInput type="number" formControlName="scalingPercent" min="-100" max="500" step="5" />
+                @if (hasBandError(index, "scalingPercent", "required") || hasBandError(index, "scalingPercent", "min") || hasBandError(index, "scalingPercent", "max")) {
+                  <mat-error>Use a value between -100 and 500.</mat-error>
+                }
+              </mat-form-field>
+
+              <button mat-icon-button type="button" aria-label="Remove scaling band" (click)="removeScalingBand(index)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

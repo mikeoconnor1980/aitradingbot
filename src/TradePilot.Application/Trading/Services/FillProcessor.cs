@@ -94,7 +94,7 @@ public sealed class FillProcessor : IFillProcessor
         {
             ProcessTakeProfitFill(tracked, fill);
         }
-        else if (tracked.TradeType == TradeType.SignalEntry)
+        else if (tracked.TradeType is TradeType.SignalEntry or TradeType.DcaBuy)
         {
             ProcessSignalEntryFill(tracked);
         }

@@ -7,20 +7,23 @@ using TradePilot.Domain.Trading;
 namespace TradePilot.Application.Trading.Services;
 
 /// <summary>
-/// Routes strategy evaluation to the grid or signal path based on the configured strategy mode.
+/// Routes strategy evaluation to the configured strategy mode.
 /// </summary>
 public sealed class CompositeStrategyEngine : IStrategyEngine
 {
     private readonly GridStrategyEngine _gridEngine;
+    private readonly DcaStrategyEngine _dcaEngine;
     private readonly IConditionEvaluator _conditionEvaluator;
     private readonly ITrendFilterEvaluator _trendFilterEvaluator;
 
     public CompositeStrategyEngine(
         GridStrategyEngine gridEngine,
+        DcaStrategyEngine dcaEngine,
         IConditionEvaluator conditionEvaluator,
         ITrendFilterEvaluator trendFilterEvaluator)
     {
         _gridEngine = gridEngine ?? throw new ArgumentNullException(nameof(gridEngine));
+        _dcaEngine = dcaEngine ?? throw new ArgumentNullException(nameof(dcaEngine));
         _conditionEvaluator = conditionEvaluator ?? throw new ArgumentNullException(nameof(conditionEvaluator));
         _trendFilterEvaluator = trendFilterEvaluator ?? throw new ArgumentNullException(nameof(trendFilterEvaluator));
     }
@@ -41,6 +44,7 @@ public sealed class CompositeStrategyEngine : IStrategyEngine
         return config.StrategyMode switch
         {
             StrategyMode.Signal => Task.FromResult(EvaluateSignalMode(config, context)),
+            StrategyMode.Dca => _dcaEngine.EvaluateAsync(context, strategyConfig, cancellationToken),
             _ => _gridEngine.EvaluateAsync(context, strategyConfig, cancellationToken)
         };
     }

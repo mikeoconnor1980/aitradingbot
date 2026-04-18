@@ -1,9 +1,11 @@
-export type StrategyMode = "grid" | "signal";
+export type StrategyMode = "grid" | "signal" | "dca";
 export type Direction = "long" | "short" | "both";
+export type AssetType = "perp" | "spot";
 export type ExitRuleType = "fixed_percent" | "swing_low" | "atr_trailing" | "r_multiple";
 export type PositionSizeType = "percent_wallet" | "fixed_notional" | "risk_based";
 export type CooldownUnit = "candles" | "minutes";
 export type EntryMode = "auto_from_signal_candle" | "manual";
+export type DcaInterval = "hourly" | "four_hourly" | "daily" | "weekly" | "biweekly" | "monthly";
 export type EntryLogic = "all" | "any";
 export type EntryConditionType = "rsi" | "price_vs_ema" | "macd" | "support_resistance";
 export type SupportResistanceOperator = "near_support" | "near_resistance" | "above_support" | "below_resistance" | "bounce_support" | "bounce_resistance";
@@ -20,6 +22,36 @@ export interface GridConfig {
   entryMode: EntryMode;
   anchorPrice?: number | null;
   breakdownThreshold: number;
+}
+
+export interface DcaGateConfig {
+  maxPriceUsd?: number | null;
+  minFearGreedIndex?: number | null;
+  maxFearGreedIndex?: number | null;
+}
+
+export interface DcaScalingBand {
+  priceLowerUsd?: number | null;
+  priceUpperUsd?: number | null;
+  scalingPercent: number;
+}
+
+export interface DcaAllocation {
+  market: string;
+  weightPercent: number;
+}
+
+export interface DcaConfig {
+  interval: DcaInterval;
+  dayOfWeek?: number | null;
+  dayOfMonth?: number | null;
+  timeOfDayUtc: string;
+  baseAmountUsd: number;
+  allocations: DcaAllocation[];
+  gateConditions?: DcaGateConfig | null;
+  scalingBands?: DcaScalingBand[] | null;
+  profitTaking?: unknown | null;
+  budgetCapUsd?: number | null;
 }
 
 export interface RsiParams {
@@ -110,12 +142,14 @@ export interface StrategyConfig {
   strategyMode: StrategyMode;
   strategyName: string;
   exchange: string;
+  assetType?: AssetType | null;
   market: string;
   timeframe: string;
   direction: Direction;
   enabled: boolean;
   templateId?: string | null;
   grid?: GridConfig | null;
+  dca?: DcaConfig | null;
   trendFilter?: TrendFilterConfig | null;
   entryLogic?: EntryLogic | null;
   entryConditions?: EntryConditionConfig[] | null;
@@ -203,6 +237,7 @@ export interface StrategyTemplate {
 
 export const STRATEGY_TEMPLATES: StrategyTemplate[] = [
   { id: "grid", label: "Grid", available: true },
+  { id: "dca", label: "DCA Spot", available: true },
   { id: "custom_signal", label: "Custom Signal", available: true },
   { id: "ema_pullback", label: "EMA Pullback", available: true },
   { id: "macd_cross", label: "MACD Cross", available: true },

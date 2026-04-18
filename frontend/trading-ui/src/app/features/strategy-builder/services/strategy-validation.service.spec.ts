@@ -47,6 +47,26 @@ describe("StrategyValidationService", () => {
     };
   }
 
+  function validDcaFormValue(): Record<string, unknown> {
+    return {
+      ...baseFormValue(),
+      templateId: "dca",
+      timeframe: "1h",
+      dca: {
+        interval: "weekly",
+        dayOfWeek: 1,
+        dayOfMonth: null,
+        timeOfDayUtc: "00:00",
+        baseAmountUsd: 100,
+        gateConditions: {
+          maxPriceUsd: 95000,
+          maxFearGreedIndex: 35,
+        },
+        scalingBands: [{ priceLowerUsd: 80000, priceUpperUsd: 90000, scalingPercent: 20 }],
+      },
+    };
+  }
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
@@ -114,6 +134,38 @@ describe("StrategyValidationService", () => {
     });
 
     expect(errors.some((error) => error.fieldPath === "exit.stopLoss.lookback" && error.code === "REQUIRED")).toBeTrue();
+  });
+
+  describe("DCA mode validation", () => {
+    it("should accept a valid DCA form", () => {
+      const errors = service.validate(validDcaFormValue());
+
+      expect(errors.filter((error) => error.severity === "error")).toHaveSize(0);
+    });
+
+    it("should require a positive DCA base amount", () => {
+      const errors = service.validate({
+        ...validDcaFormValue(),
+        dca: {
+          ...(validDcaFormValue()["dca"] as Record<string, unknown>),
+          baseAmountUsd: 0,
+        },
+      });
+
+      expect(errors.some((error) => error.fieldPath === "dca.baseAmountUsd" && error.code === "RANGE")).toBeTrue();
+    });
+
+    it("should validate DCA scaling band ranges", () => {
+      const errors = service.validate({
+        ...validDcaFormValue(),
+        dca: {
+          ...(validDcaFormValue()["dca"] as Record<string, unknown>),
+          scalingBands: [{ priceLowerUsd: 90000, priceUpperUsd: 80000, scalingPercent: 20 }],
+        },
+      });
+
+      expect(errors.some((error) => error.fieldPath === "dca.scalingBands[0]" && error.code === "RANGE")).toBeTrue();
+    });
   });
 
   describe("signal mode validation", () => {

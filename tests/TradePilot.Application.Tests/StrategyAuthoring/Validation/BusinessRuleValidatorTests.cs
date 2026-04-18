@@ -518,6 +518,171 @@ public sealed class BusinessRuleValidatorTests
             && error.FieldPath == "exit.stopLoss.atrPeriod");
     }
 
+    [TestMethod]
+    public void GivenDcaWithAllocationsNotTotalingOneHundred_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Long,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.FixedNotional,
+                PositionSizeValue = 100m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+            Dca = new DcaConfig
+            {
+                TimeOfDayUtc = "09:30",
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 60m },
+                    new DcaAllocation { Market = "ETH-USD", WeightPercent = 30m },
+                ],
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_ALLOCATION_WEIGHTS_MUST_TOTAL_100");
+    }
+
+    [TestMethod]
+    public void GivenDcaWithInvalidFearGreedRange_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Long,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.FixedNotional,
+                PositionSizeValue = 100m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+            Dca = new DcaConfig
+            {
+                TimeOfDayUtc = "09:30",
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 100m },
+                ],
+                GateConditions = new DcaGateConfig
+                {
+                    MinFearGreedIndex = 60,
+                    MaxFearGreedIndex = 40,
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_FEAR_GREED_RANGE_INVALID");
+    }
+
+    [TestMethod]
+    public void GivenDcaWithMoreThanFiveScalingBands_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Long,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.FixedNotional,
+                PositionSizeValue = 100m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+            Dca = new DcaConfig
+            {
+                TimeOfDayUtc = "09:30",
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 100m },
+                ],
+                ScalingBands =
+                [
+                    new DcaScalingBand { PriceUpperUsd = 10m, ScalingPercent = 10m },
+                    new DcaScalingBand { PriceLowerUsd = 10m, PriceUpperUsd = 20m, ScalingPercent = 10m },
+                    new DcaScalingBand { PriceLowerUsd = 20m, PriceUpperUsd = 30m, ScalingPercent = 10m },
+                    new DcaScalingBand { PriceLowerUsd = 30m, PriceUpperUsd = 40m, ScalingPercent = 10m },
+                    new DcaScalingBand { PriceLowerUsd = 40m, PriceUpperUsd = 50m, ScalingPercent = 10m },
+                    new DcaScalingBand { PriceLowerUsd = 50m, ScalingPercent = 10m },
+                ],
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_SCALING_BANDS_LIMIT_EXCEEDED");
+    }
+
+    [TestMethod]
+    public void GivenDcaWithValidConfig_WhenValidated_ThenNoDcaErrorsReturned()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Long,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.FixedNotional,
+                PositionSizeValue = 100m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+            Dca = new DcaConfig
+            {
+                Interval = DcaInterval.Weekly,
+                DayOfWeek = 1,
+                TimeOfDayUtc = "09:30",
+                BaseAmountUsd = 100m,
+                BudgetCapUsd = 500m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 60m },
+                    new DcaAllocation { Market = "ETH-USD", WeightPercent = 40m },
+                ],
+                GateConditions = new DcaGateConfig
+                {
+                    MaxPriceUsd = 120_000m,
+                    MaxFearGreedIndex = 45,
+                },
+                ScalingBands =
+                [
+                    new DcaScalingBand { PriceUpperUsd = 60_000m, ScalingPercent = 20m },
+                    new DcaScalingBand { PriceLowerUsd = 60_000m, ScalingPercent = -20m },
+                ],
+                ProfitTaking = new DcaProfitTakingConfig
+                {
+                    Tiers =
+                    [
+                        new DcaProfitTier { TargetMultiple = 2m, SellPercent = 25m },
+                        new DcaProfitTier { TargetMultiple = 3m, SellPercent = 25m },
+                    ],
+                },
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().NotContain(error => error.Code.StartsWith("DCA_", StringComparison.Ordinal));
+    }
+
     private static EntryConditionConfig CreateMacdCondition(
         int fastPeriod = 12,
         int slowPeriod = 26,

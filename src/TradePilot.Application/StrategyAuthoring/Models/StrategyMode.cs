@@ -4,4 +4,5 @@ public enum StrategyMode
 {
     Grid,
     Signal,
+    Dca,
 }

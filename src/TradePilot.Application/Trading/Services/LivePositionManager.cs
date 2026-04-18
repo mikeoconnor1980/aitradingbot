@@ -209,9 +209,20 @@ public sealed class LivePositionManager : IPositionManager
     {
         var entryPrice = GetDecimal(signal.Parameters, "entryPrice");
         var size = Math.Abs(GetDecimal(signal.Parameters, "size"));
+        var tradeType = ResolveTradeType(signal.Parameters);
+        var gridCycleId = GetOptionalString(signal.Parameters, "gridCycleId")
+            ?? (tradeType == TradeType.DcaBuy ? "dca" : "signal");
 
         if (size <= 0m)
         {
+            return;
+        }
+
+        if (tradeType == TradeType.DcaBuy)
+        {
+            _logger.LogWarning(
+                "Skipping DCA buy for {Symbol}. Live spot execution is not implemented yet.",
+                signal.Symbol);
             return;
         }
 
@@ -223,13 +234,13 @@ public sealed class LivePositionManager : IPositionManager
                 OrderType = OrderType.Market,
                 Price = entryPrice,
                 Size = size,
-                TradeType = TradeType.SignalEntry,
-                GridCycleId = "signal"
+                TradeType = tradeType,
+                GridCycleId = gridCycleId
             },
             cancellationToken);
 
-        _orderTracker.TrackOrder(orderId, "signal", 0, signal.Symbol,
-            OrderSide.Buy, entryPrice, size, TradeType.SignalEntry);
+        _orderTracker.TrackOrder(orderId, gridCycleId, 0, signal.Symbol,
+            OrderSide.Buy, entryPrice, size, tradeType);
     }
 
     private async Task PlaceTakeProfitAsync(TradingSignal signal, CancellationToken cancellationToken)
@@ -367,6 +378,14 @@ public sealed class LivePositionManager : IPositionManager
             string stringValue => int.Parse(stringValue),
             _ => Convert.ToInt32(value)
         };
+    }
+
+    private static TradeType ResolveTradeType(IReadOnlyDictionary<string, object>? parameters)
+    {
+        var rawTradeType = GetOptionalString(parameters, "tradeType");
+        return Enum.TryParse<TradeType>(rawTradeType, ignoreCase: true, out var tradeType)
+            ? tradeType
+            : TradeType.SignalEntry;
     }
 
     private static int? GetOptionalInt(IReadOnlyDictionary<string, object>? parameters, string key)

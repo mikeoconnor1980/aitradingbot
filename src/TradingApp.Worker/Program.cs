@@ -139,6 +139,7 @@ builder.Services.AddSingleton<IPositionManager, LivePositionManager>();
 builder.Services.AddSingleton<LiveExecutionLogger>();
 builder.Services.AddSingleton<IExecutionLogger>(sp => sp.GetRequiredService<LiveExecutionLogger>());
 builder.Services.AddSingleton<GridStrategyEngine>();
+builder.Services.AddSingleton<DcaStrategyEngine>();
 builder.Services.AddSingleton<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, MacdConditionHandler>();

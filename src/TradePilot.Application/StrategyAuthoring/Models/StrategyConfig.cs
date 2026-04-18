@@ -1,4 +1,5 @@
 using TradePilot.Domain.Trading;
+using System.Text.Json.Serialization;
 
 namespace TradePilot.Application.StrategyAuthoring.Models;
 
@@ -8,12 +9,15 @@ public sealed record StrategyConfig : IStrategyConfig
     public StrategyMode StrategyMode { get; init; }
     public string StrategyName { get; init; } = string.Empty;
     public string Exchange { get; init; } = "Hyperliquid";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public AssetType AssetType { get; init; }
     public string Market { get; init; } = string.Empty;
     public string Timeframe { get; init; } = "15m";
     public Direction Direction { get; init; }
     public bool Enabled { get; init; } = true;
     public string? TemplateId { get; init; }
     public GridConfig? Grid { get; init; }
+    public DcaConfig? Dca { get; init; }
     public TrendFilterConfig? TrendFilter { get; init; }
     public EntryLogic? EntryLogic { get; init; }
     public IReadOnlyList<EntryConditionConfig>? EntryConditions { get; init; }

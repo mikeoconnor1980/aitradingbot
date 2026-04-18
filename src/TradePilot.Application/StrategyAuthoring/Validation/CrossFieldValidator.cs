@@ -1,3 +1,4 @@
+using System.Linq;
 using TradePilot.Application.StrategyAuthoring.Models;
 
 namespace TradePilot.Application.StrategyAuthoring.Validation;
@@ -48,6 +49,42 @@ public sealed class CrossFieldValidator
                     FieldPath = "entryLogic",
                     Code = "ENTRY_LOGIC_REQUIRED_FOR_SIGNAL_MODE",
                     Message = "Entry logic is required for signal mode.",
+                });
+            }
+        }
+
+        if (config.StrategyMode == StrategyMode.Dca)
+        {
+            if (config.Dca is null)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "dca",
+                    Code = "DCA_REQUIRED_FOR_DCA_MODE",
+                    Message = "DCA configuration required for DCA mode.",
+                });
+            }
+
+            if (config.AssetType != AssetType.Spot)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "assetType",
+                    Code = "DCA_REQUIRES_SPOT_ASSET_TYPE",
+                    Message = "DCA mode currently requires spot asset type.",
+                });
+            }
+
+            if (config.Direction != Direction.Long)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "direction",
+                    Code = "DCA_REQUIRES_LONG_DIRECTION",
+                    Message = "DCA mode currently supports long accumulation only.",
                 });
             }
         }

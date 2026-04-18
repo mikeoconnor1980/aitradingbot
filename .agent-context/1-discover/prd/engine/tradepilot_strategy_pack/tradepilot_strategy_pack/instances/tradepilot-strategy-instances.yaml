@@ -1,0 +1,694 @@
+strategies:
+
+  - id: trend_pullback_ema_long
+    name: Trend Pullback EMA Long
+    version: 1.0.0
+    strategy_type: signal
+    direction: long
+    enabled: true
+    tags: [starter, trend, ema]
+    description: Buy pullbacks in an established uptrend.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      trend: 1h
+      entry: 5m
+    indicators:
+      - id: ema20_entry
+        kind: ema
+        timeframe: 5m
+        params: { period: 20, source: close }
+      - id: ema50_trend
+        kind: ema
+        timeframe: 1h
+        params: { period: 50, source: close }
+      - id: ema200_regime
+        kind: ema
+        timeframe: 1h
+        params: { period: 200, source: close }
+      - id: rsi14_entry
+        kind: rsi
+        timeframe: 5m
+        params: { period: 14, source: close }
+    signals:
+      - id: bullish_confirmation
+        kind: candle_pattern
+        timeframe: 5m
+        source: { pattern: bullish_rejection_or_engulfing }
+      - id: ema50_slope_positive
+        kind: slope_state
+        timeframe: 1h
+        source: { indicator_id: ema50_trend, state: positive, lookback_bars: 3 }
+    core:
+      market_bias:
+        - lhs: price.close
+          operator: ">"
+          rhs: { type: indicator, id: ema50_trend }
+          timeframe: 1h
+      setup:
+        - lhs: price.low
+          operator: "<="
+          rhs: { type: indicator, id: ema20_entry }
+          timeframe: 5m
+      entry_trigger:
+        - lhs: signal.bullish_confirmation
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+    filters:
+      hard:
+        - lhs: price.close
+          operator: ">"
+          rhs: { type: indicator, id: ema200_regime }
+          timeframe: 1h
+        - lhs: signal.ema50_slope_positive
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 1h
+      soft:
+        - lhs: indicator.rsi14_entry
+          operator: ">"
+          rhs: { type: static, value: 50 }
+          timeframe: 5m
+      scoring:
+        min_score: 1
+        weights:
+          indicator.rsi14_entry_gt_50: 1
+    execution:
+      entry_type: market_on_close
+      max_reentries: 1
+      allowed_sessions: [london, new_york]
+      max_spread_bps: 8
+      max_slippage_bps: 12
+    risk:
+      position_sizing:
+        mode: percent_equity
+        risk_percent: 1.0
+      stop_loss:
+        mode: swing_low
+        reference: recent_pullback_low
+        action_on_hit: stop_and_close
+      take_profit:
+        mode: rr_based
+        rr_target: 2.0
+      max_total_exposure:
+        value: 10000
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [trend_pullback]
+
+  - id: break_and_retest_short
+    name: Break and Retest Short
+    version: 1.0.0
+    strategy_type: signal
+    direction: short
+    enabled: true
+    tags: [core, breakout, retest]
+    description: Short confirmed bearish breakdowns after retest.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      trend: 1h
+      entry: 5m
+    indicators:
+      - id: ema50_trend
+        kind: ema
+        timeframe: 1h
+        params: { period: 50, source: close }
+      - id: ema200_regime
+        kind: ema
+        timeframe: 1h
+        params: { period: 200, source: close }
+    signals:
+      - id: bearish_retest_rejection
+        kind: candle_pattern
+        timeframe: 5m
+        source: { pattern: bearish_rejection_or_engulfing }
+      - id: bearish_structure
+        kind: market_structure
+        timeframe: 1h
+        source: { state: bearish }
+    core:
+      market_bias:
+        - lhs: price.close
+          operator: "<"
+          rhs: { type: indicator, id: ema50_trend }
+          timeframe: 1h
+      setup:
+        - lhs: level.breakout_direction
+          operator: "=="
+          rhs: { type: static, value: down }
+          timeframe: 5m
+        - lhs: level.retest_status
+          operator: "=="
+          rhs: { type: static, value: resistance_hold }
+          timeframe: 5m
+      entry_trigger:
+        - lhs: signal.bearish_retest_rejection
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+    filters:
+      hard:
+        - lhs: level.breakout_close_confirmed
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+      soft:
+        - lhs: price.close
+          operator: "<"
+          rhs: { type: indicator, id: ema200_regime }
+          timeframe: 1h
+        - lhs: signal.bearish_structure
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 1h
+      scoring:
+        min_score: 1
+        weights:
+          below_ema200: 1
+          bearish_structure: 1
+    execution:
+      entry_type: limit_on_retest
+      max_reentries: 1
+      allowed_sessions: [london, new_york]
+      max_spread_bps: 8
+      max_slippage_bps: 12
+    risk:
+      position_sizing:
+        mode: percent_equity
+        risk_percent: 1.0
+      stop_loss:
+        mode: structure_high
+        reference: retest_high
+        action_on_hit: stop_and_close
+      take_profit:
+        mode: next_level
+        targets:
+          - { type: static, label: support_1 }
+      max_total_exposure:
+        value: 10000
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [break_retest]
+
+  - id: vwap_intraday_pullback_long
+    name: VWAP Intraday Pullback Long
+    version: 1.0.0
+    strategy_type: signal
+    direction: long
+    enabled: true
+    tags: [daytrading, vwap]
+    description: Buy intraday pullbacks above VWAP.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      bias: 5m
+      entry: 1m
+    indicators:
+      - id: vwap_session
+        kind: vwap
+        timeframe: 5m
+        params: { anchor: session }
+      - id: ema9_entry
+        kind: ema
+        timeframe: 1m
+        params: { period: 9, source: close }
+      - id: ema20_support
+        kind: ema
+        timeframe: 1m
+        params: { period: 20, source: close }
+    signals:
+      - id: bullish_continuation
+        kind: candle_pattern
+        timeframe: 1m
+        source: { pattern: bullish_continuation }
+      - id: vwap_slope_positive
+        kind: slope_state
+        timeframe: 5m
+        source: { indicator_id: vwap_session, state: positive, lookback_bars: 3 }
+    core:
+      market_bias:
+        - lhs: price.close
+          operator: ">"
+          rhs: { type: indicator, id: vwap_session }
+          timeframe: 5m
+      setup:
+        - lhs: price.low
+          operator: "<="
+          rhs: { type: indicator, id: ema9_entry }
+          timeframe: 1m
+      entry_trigger:
+        - lhs: signal.bullish_continuation
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 1m
+    filters:
+      hard:
+        - lhs: signal.vwap_slope_positive
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+      soft:
+        - lhs: price.close
+          operator: ">"
+          rhs: { type: indicator, id: ema20_support }
+          timeframe: 1m
+      scoring:
+        min_score: 1
+        weights:
+          above_ema20: 1
+    execution:
+      entry_type: market
+      max_reentries: 2
+      allowed_sessions: [london, new_york]
+      max_spread_bps: 10
+      max_slippage_bps: 15
+      flat_by_session_end: true
+    risk:
+      position_sizing:
+        mode: percent_equity
+        risk_percent: 0.5
+      stop_loss:
+        mode: intraday_swing_low
+        reference: latest_pullback_low
+        action_on_hit: stop_and_close
+      take_profit:
+        mode: staged
+        targets:
+          - { label: tp1, mode: fixed_percent, target_percent: 0.4 }
+          - { label: tp2, mode: fixed_percent, target_percent: 0.8 }
+      max_total_exposure:
+        value: 5000
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [vwap_intraday]
+
+  - id: range_reversion_rsi_long
+    name: Range Reversion RSI Long
+    version: 1.0.0
+    strategy_type: signal
+    direction: long
+    enabled: true
+    tags: [range, mean_reversion]
+    description: Buy support in a sideways range.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      context: 15m
+      entry: 5m
+    indicators:
+      - id: rsi14_entry
+        kind: rsi
+        timeframe: 5m
+        params: { period: 14, source: close }
+      - id: ema50_filter
+        kind: ema
+        timeframe: 15m
+        params: { period: 50, source: close }
+      - id: atr14_context
+        kind: atr
+        timeframe: 15m
+        params: { period: 14 }
+    signals:
+      - id: bullish_rejection
+        kind: candle_pattern
+        timeframe: 5m
+        source: { pattern: bullish_rejection }
+      - id: market_is_ranging
+        kind: range_state
+        timeframe: 15m
+        source: { min_touches: 2, max_slope_abs: 0.15 }
+    core:
+      market_bias:
+        - lhs: signal.market_is_ranging
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 15m
+      setup:
+        - lhs: level.range_position_percent
+          operator: "<="
+          rhs: { type: static, value: 10 }
+          timeframe: 5m
+      entry_trigger:
+        - lhs: signal.bullish_rejection
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+    filters:
+      hard:
+        - lhs: indicator.atr14_context
+          operator: "<="
+          rhs: { type: static, value: 80 }
+          timeframe: 15m
+      soft:
+        - lhs: indicator.rsi14_entry
+          operator: "<="
+          rhs: { type: static, value: 30 }
+          timeframe: 5m
+      scoring:
+        min_score: 1
+        weights:
+          rsi_oversold: 1
+    execution:
+      entry_type: market_on_close
+      max_reentries: 1
+      allowed_sessions: [london, new_york, asia]
+      max_spread_bps: 8
+      max_slippage_bps: 10
+    risk:
+      position_sizing:
+        mode: percent_equity
+        risk_percent: 0.75
+      stop_loss:
+        mode: range_boundary
+        reference: range_support_minus_buffer
+        action_on_hit: stop_and_close
+      take_profit:
+        mode: staged
+        targets:
+          - { label: midpoint, mode: fixed_percent, target_percent: 0.7 }
+          - { label: range_top, mode: fixed_percent, target_percent: 1.4 }
+      max_total_exposure:
+        value: 7000
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [range_reversion]
+
+  - id: liquidity_sweep_structure_shift_short
+    name: Liquidity Sweep + Structure Shift Short
+    version: 1.0.0
+    strategy_type: signal
+    direction: short
+    enabled: true
+    tags: [advanced, smart_money]
+    description: Short reversal after upside liquidity sweep.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      bias: 1h
+      setup: 15m
+      entry: 5m
+    indicators:
+      - id: ema50_bias
+        kind: ema
+        timeframe: 1h
+        params: { period: 50, source: close }
+      - id: ema20_entry
+        kind: ema
+        timeframe: 5m
+        params: { period: 20, source: close }
+      - id: ema200_regime
+        kind: ema
+        timeframe: 1h
+        params: { period: 200, source: close }
+    signals:
+      - id: upside_liquidity_sweep
+        kind: liquidity_sweep
+        timeframe: 15m
+        source: { side: upside, lookback_bars: 50 }
+      - id: bearish_structure_shift
+        kind: structure_shift
+        timeframe: 5m
+        source: { direction: bearish, confirmation: close_beyond_pivot }
+      - id: bearish_confirmation
+        kind: candle_pattern
+        timeframe: 5m
+        source: { pattern: bearish_rejection_or_engulfing }
+    core:
+      market_bias:
+        - lhs: price.close
+          operator: "<"
+          rhs: { type: indicator, id: ema50_bias }
+          timeframe: 1h
+      setup:
+        - lhs: signal.upside_liquidity_sweep
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 15m
+        - lhs: signal.bearish_structure_shift
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+      entry_trigger:
+        - lhs: signal.bearish_confirmation
+          operator: "=="
+          rhs: { type: static, value: 1 }
+          timeframe: 5m
+    filters:
+      hard:
+        - lhs: price.close
+          operator: "<"
+          rhs: { type: indicator, id: ema200_regime }
+          timeframe: 1h
+      soft:
+        - lhs: price.close
+          operator: "<"
+          rhs: { type: indicator, id: ema20_entry }
+          timeframe: 5m
+      scoring:
+        min_score: 1
+        weights:
+          below_ema20_entry: 1
+    execution:
+      entry_type: limit_on_retest
+      max_reentries: 1
+      allowed_sessions: [london, new_york]
+      max_spread_bps: 10
+      max_slippage_bps: 15
+    risk:
+      position_sizing:
+        mode: percent_equity
+        risk_percent: 0.75
+      stop_loss:
+        mode: liquidity_extreme
+        reference: sweep_high
+        action_on_hit: stop_and_close
+      take_profit:
+        mode: rr_based
+        rr_target: 2.5
+      max_total_exposure:
+        value: 8000
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [liquidity_sweep]
+
+  - id: eth_dca_below_2400
+    name: ETH DCA Below 2400
+    version: 1.0.0
+    strategy_type: dca
+    direction: long
+    enabled: true
+    tags: [dca, accumulator]
+    description: Start staged accumulation when price trades at or below 2400.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      trigger: 5m
+    indicators:
+      - id: rsi14_trigger
+        kind: rsi
+        timeframe: 5m
+        params: { period: 14, source: close }
+    signals:
+      - id: not_parabolic_downtrend
+        kind: regime_state
+        timeframe: 1h
+        source: { excluded_state: parabolic_downtrend }
+    trigger:
+      activation:
+        - lhs: price.close
+          operator: "<="
+          rhs: { type: static, value: 2400 }
+          timeframe: 5m
+    ladder:
+      order_sizing_mode: fixed_quote
+      base_order_size:
+        value: 50
+        currency: USDT
+      scaling:
+        mode: percent_steps
+        step_percent: 1.5
+        max_orders: 8
+        size_multiplier: 1.0
+      placement:
+        reference_price: activation_price
+        place_orders:
+          - { type: market, at_activation: true }
+          - { type: limit, below_each_step: true }
+    budget:
+      max_total_investment:
+        value: 400
+        currency: USDT
+    enablement_conditions:
+      - lhs: signal.not_parabolic_downtrend
+        operator: "=="
+        rhs: { type: static, value: 1 }
+        timeframe: 1h
+    disablement_conditions:
+      - lhs: price.close
+        operator: "<"
+        rhs: { type: static, value: 2100 }
+        timeframe: 5m
+    execution:
+      entry_type: market
+      max_reentries: 0
+      allowed_sessions: [london, new_york, asia]
+    risk:
+      position_sizing:
+        mode: fixed_quote
+        value: 50
+        currency: USDT
+      stop_loss:
+        mode: threshold_disable
+        value: 2100
+        action_on_hit: pause_and_alert
+      take_profit:
+        mode: blended_position
+        target_percent: 4.0
+      max_total_exposure:
+        value: 400
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [dca]
+
+  - id: eth_fixed_range_grid_v1
+    name: ETH Fixed Range Grid
+    version: 1.0.0
+    strategy_type: grid
+    direction: neutral
+    enabled: true
+    tags: [grid, pionex_style]
+    description: Fixed-range fee-adjusted neutral grid for ETH.
+    market:
+      symbol: ETHUSDT
+      venue: hyperliquid
+      base_asset: ETH
+      quote_asset: USDT
+    timeframes:
+      control: 1m
+      regime: 15m
+    indicators:
+      - id: atr15m
+        kind: atr
+        timeframe: 15m
+        params: { period: 14 }
+    signals:
+      - id: not_breakout_regime
+        kind: regime_state
+        timeframe: 15m
+        source: { excluded_state: breakout }
+    activation:
+      - lhs: price.close
+        operator: ">="
+        rhs: { type: static, value: 2300 }
+        timeframe: 1m
+      - lhs: price.close
+        operator: "<="
+        rhs: { type: static, value: 2600 }
+        timeframe: 1m
+    grid:
+      lower_bound: 2300
+      upper_bound: 2600
+      grid_count: 20
+      spacing_mode: arithmetic
+      order_size_mode: fixed_quote
+      order_size:
+        value: 30
+        currency: USDT
+    inventory:
+      initial_base_allocation:
+        asset: ETH
+        value: 0.788
+      rebalance_on_start: true
+      maintain_inventory_buffer: true
+    profit_model:
+      capture_per_grid_fill: true
+      fee_adjusted: true
+    rebalance:
+      auto_recenter: false
+      recenter_threshold_percent: 0
+      recenter_action: pause_and_alert
+    enablement_conditions:
+      - lhs: signal.not_breakout_regime
+        operator: "=="
+        rhs: { type: static, value: 1 }
+        timeframe: 15m
+    disablement_conditions:
+      - lhs: price.close
+        operator: "<"
+        rhs: { type: static, value: 2200 }
+        timeframe: 1m
+      - lhs: price.close
+        operator: ">"
+        rhs: { type: static, value: 2700 }
+        timeframe: 1m
+    execution:
+      entry_type: limit
+      max_reentries: 0
+      allowed_sessions: [london, new_york, asia]
+      max_spread_bps: 10
+      max_slippage_bps: 12
+    risk:
+      position_sizing:
+        mode: fixed_quote
+        value: 30
+        currency: USDT
+      stop_loss:
+        mode: range_escape
+        reference: outside_grid_range
+        action_on_hit: pause_and_alert
+      take_profit:
+        mode: fixed_percent
+        target_percent: 0.0
+      max_total_exposure:
+        value: 1200
+        currency: USDT
+    telemetry:
+      emit_signals: true
+      emit_orders: true
+      emit_position_updates: true
+      emit_pnl_updates: true
+      custom_tags: [grid]

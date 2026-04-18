@@ -19,6 +19,7 @@ import { AiReviewCardComponent } from "./components/ai-review-card/ai-review-car
 import { AiReviewModalComponent, AiReviewModalData } from "./components/ai-review-modal/ai-review-modal.component";
 import { AssumptionsPanelComponent } from "./components/assumptions-panel/assumptions-panel.component";
 import { ConfidenceBadgeComponent } from "./components/confidence-badge/confidence-badge.component";
+import { DcaConfigCardComponent } from "./components/dca-config-card/dca-config-card.component";
 import { EntryConditionsCardComponent } from "./components/entry-conditions-card/entry-conditions-card.component";
 import { ExitRulesCardComponent } from "./components/exit-rules-card/exit-rules-card.component";
 import { GridConfigCardComponent } from "./components/grid-config-card/grid-config-card.component";
@@ -35,7 +36,7 @@ import { ValidationCardComponent } from "./components/validation-card/validation
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
 import { StrategyIntentDto } from "./models/strategy-intent.model";
 import { StrategyReviewDto } from "./models/strategy-review.model";
-import { EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, SupportResistanceParams, ValidationError } from "./models/strategy.model";
+import { DcaScalingBand, EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, SupportResistanceParams, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -56,6 +57,7 @@ import { StrategyValidationService } from "./services/strategy-validation.servic
     AssumptionsPanelComponent,
     StrategyTemplateSelectorComponent,
     StrategyDetailsCardComponent,
+    DcaConfigCardComponent,
     GridConfigCardComponent,
     ExitRulesCardComponent,
     RiskManagementCardComponent,
@@ -140,6 +142,10 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       return "Update the saved strategy configuration and review the resulting JSON.";
     }
 
+    if (this.isDcaMode) {
+      return "Build a scheduled spot DCA strategy with optional price and sentiment gates.";
+    }
+
     return this.isSignalMode
       ? "Build a signal strategy with entry conditions."
       : "Build a grid strategy with the visual editor.";
@@ -153,12 +159,20 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     return this._isSignalTemplate(this.selectedTemplateId);
   }
 
+  public get isDcaMode(): boolean {
+    return this._isDcaTemplate(this.selectedTemplateId);
+  }
+
   public get currentConfig(): StrategyConfig {
     return this._strategyMapper.mapFormToConfig(this.form.getRawValue() as Record<string, unknown>);
   }
 
   public get gridFormGroup(): FormGroup {
     return this.form.get("grid") as FormGroup;
+  }
+
+  public get dcaFormGroup(): FormGroup {
+    return this.form.get("dca") as FormGroup;
   }
 
   public get exitFormGroup(): FormGroup {
@@ -175,6 +189,10 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   public get conditionsFormArray(): FormArray {
     return this.form.get("conditions") as FormArray;
+  }
+
+  public get dcaScalingBandsFormArray(): FormArray {
+    return this.form.get("dca.scalingBands") as FormArray;
   }
 
   public get canSave(): boolean {
@@ -220,9 +238,14 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   public onTemplateSelected(templateId: string): void {
     this.form.patchValue({ templateId });
 
-    if (this._isSignalTemplate(templateId)) {
-      this.form.get("grid")?.disable();
+    this._applyModeState(templateId);
 
+    if (this._isDcaTemplate(templateId)) {
+      this._applyDcaTemplate();
+      return;
+    }
+
+    if (this._isSignalTemplate(templateId)) {
       if (templateId === "ema_pullback") {
         this._applyEmaPullbackTemplate();
       } else if (templateId === "macd_cross") {
@@ -231,9 +254,6 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
       return;
     }
-
-    this.form.get("grid")?.enable();
-    this._clearConditions();
   }
 
   public onSave(): void {
@@ -400,6 +420,19 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         anchorPrice: [null],
         breakdownThreshold: [1.5, [Validators.required, Validators.min(0), Validators.max(10)]],
       }),
+      dca: this._fb.group({
+        interval: ["weekly", Validators.required],
+        dayOfWeek: [1, [Validators.min(0), Validators.max(6)]],
+        dayOfMonth: [null, [Validators.min(1), Validators.max(31)]],
+        timeOfDayUtc: ["00:00", [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
+        baseAmountUsd: [100, [Validators.required, Validators.min(0.01)]],
+        gateConditions: this._fb.group({
+          maxPriceUsd: [null, [Validators.min(0.00000001)]],
+          minFearGreedIndex: [null, [Validators.min(0), Validators.max(100)]],
+          maxFearGreedIndex: [null, [Validators.min(0), Validators.max(100)]],
+        }),
+        scalingBands: this._fb.array([]),
+      }),
       exit: this._fb.group({
         takeProfit: this._fb.group({
           enabled: [true],
@@ -501,53 +534,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     this._strategyApi.getStrategy(id, this._localErrorContext).subscribe({
       next: (strategy) => {
-        const templateId = strategy.config.templateId ?? (strategy.config.strategyMode === "signal" ? "custom_signal" : "grid");
-        this.form.patchValue({
-          templateId,
-          strategyName: strategy.config.strategyName,
-          exchange: strategy.config.exchange,
-          market: strategy.config.market,
-          timeframe: strategy.config.timeframe,
-          direction: strategy.config.direction,
-          grid: {
-            levels: strategy.config.grid?.levels ?? 10,
-            spacing: strategy.config.grid?.spacing ?? 0.5,
-            entryMode: strategy.config.grid?.entryMode ?? "auto_from_signal_candle",
-            anchorPrice: strategy.config.grid?.anchorPrice ?? null,
-            breakdownThreshold: strategy.config.grid?.breakdownThreshold ?? 1.5,
-          },
-          exit: strategy.config.exit,
-          risk: strategy.config.risk,
-          metadata: strategy.config.metadata ?? { tags: [], notes: "" },
-          source: {
-            entryPoint: strategy.config.source?.entryPoint ?? "ui_builder",
-            summary: strategy.config.source?.summary ?? "Created in strategy builder",
-            sourceText: strategy.config.source?.sourceText ?? null,
-          },
-          trendFilter: strategy.config.trendFilter ?? {
-            enabled: false,
-            type: "ema_cross",
-            period: 200,
-            fastPeriod: 50,
-            slowPeriod: 200,
-            operator: "gt",
-            appliesTo: "both",
-          },
-          entryLogic: strategy.config.entryLogic ?? "all",
-        });
-
-        if (strategy.config.strategyMode === "signal") {
-          this.form.patchValue({ templateId: strategy.config.templateId ?? "custom_signal" });
-          this.form.get("grid")?.disable();
-          this._clearConditions();
-
-          for (const condition of strategy.config.entryConditions ?? []) {
-            this._addLoadedCondition(condition);
-          }
-        } else {
-          this.form.get("grid")?.enable();
-          this._clearConditions();
-        }
+        this._applyConfigToForm(strategy.config);
 
         this.nlSourceText = strategy.config.source?.sourceText ?? "";
         this.nlResult = null;
@@ -571,53 +558,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     this._strategyApi.getStrategy(sourceId, this._localErrorContext).subscribe({
       next: (strategy) => {
-        const templateId = strategy.config.templateId ?? (strategy.config.strategyMode === "signal" ? "custom_signal" : "grid");
-        this.form.patchValue({
-          templateId,
+        this._applyConfigToForm({
+          ...strategy.config,
           strategyName: `${strategy.config.strategyName} (Copy)`,
-          exchange: strategy.config.exchange,
-          market: strategy.config.market,
-          timeframe: strategy.config.timeframe,
-          direction: strategy.config.direction,
-          grid: {
-            levels: strategy.config.grid?.levels ?? 10,
-            spacing: strategy.config.grid?.spacing ?? 0.5,
-            entryMode: strategy.config.grid?.entryMode ?? "auto_from_signal_candle",
-            anchorPrice: strategy.config.grid?.anchorPrice ?? null,
-            breakdownThreshold: strategy.config.grid?.breakdownThreshold ?? 1.5,
-          },
-          exit: strategy.config.exit,
-          risk: strategy.config.risk,
           metadata: { tags: [], notes: "" },
-          source: {
-            entryPoint: strategy.config.source?.entryPoint ?? "ui_builder",
-            summary: strategy.config.source?.summary ?? "Created in strategy builder",
-            sourceText: strategy.config.source?.sourceText ?? null,
-          },
-          trendFilter: strategy.config.trendFilter ?? {
-            enabled: false,
-            type: "ema_cross",
-            period: 200,
-            fastPeriod: 50,
-            slowPeriod: 200,
-            operator: "gt",
-            appliesTo: "both",
-          },
-          entryLogic: strategy.config.entryLogic ?? "all",
         });
-
-        if (strategy.config.strategyMode === "signal") {
-          this.form.patchValue({ templateId: strategy.config.templateId ?? "custom_signal" });
-          this.form.get("grid")?.disable();
-          this._clearConditions();
-
-          for (const condition of strategy.config.entryConditions ?? []) {
-            this._addLoadedCondition(condition);
-          }
-        } else {
-          this.form.get("grid")?.enable();
-          this._clearConditions();
-        }
 
         this.nlSourceText = strategy.config.source?.sourceText ?? "";
         this.nlResult = null;
@@ -744,6 +689,26 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     this.form.updateValueAndValidity();
   }
 
+  private _applyDcaTemplate(): void {
+    this.form.get("direction")?.setValue("long", { emitEvent: false });
+    this.form.get("timeframe")?.setValue("1h", { emitEvent: false });
+    this.dcaFormGroup.patchValue({
+      interval: "weekly",
+      dayOfWeek: 1,
+      dayOfMonth: null,
+      timeOfDayUtc: "00:00",
+      baseAmountUsd: 100,
+      gateConditions: {
+        maxPriceUsd: null,
+        minFearGreedIndex: null,
+        maxFearGreedIndex: null,
+      },
+    });
+    this._setDcaScalingBands([]);
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
+  }
+
   private _addLoadedCondition(condition: EntryConditionConfig): void {
     if (condition.type === "price_vs_ema") {
       const params = condition.params as PriceVsEmaParams;
@@ -806,8 +771,133 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     }));
   }
 
+  private _applyConfigToForm(config: StrategyConfig): void {
+    const templateId = this._resolveTemplateId(config);
+
+    this.form.patchValue({
+      templateId,
+      strategyName: config.strategyName,
+      exchange: config.exchange,
+      market: config.market,
+      timeframe: config.timeframe,
+      direction: config.direction,
+      grid: {
+        levels: config.grid?.levels ?? 10,
+        spacing: config.grid?.spacing ?? 0.5,
+        entryMode: config.grid?.entryMode ?? "auto_from_signal_candle",
+        anchorPrice: config.grid?.anchorPrice ?? null,
+        breakdownThreshold: config.grid?.breakdownThreshold ?? 1.5,
+      },
+      dca: {
+        interval: config.dca?.interval ?? "weekly",
+        dayOfWeek: config.dca?.dayOfWeek ?? 1,
+        dayOfMonth: config.dca?.dayOfMonth ?? null,
+        timeOfDayUtc: config.dca?.timeOfDayUtc ?? "00:00",
+        baseAmountUsd: config.dca?.baseAmountUsd ?? 100,
+        gateConditions: {
+          maxPriceUsd: config.dca?.gateConditions?.maxPriceUsd ?? null,
+          minFearGreedIndex: config.dca?.gateConditions?.minFearGreedIndex ?? null,
+          maxFearGreedIndex: config.dca?.gateConditions?.maxFearGreedIndex ?? null,
+        },
+      },
+      exit: config.exit,
+      risk: config.risk,
+      metadata: config.metadata ?? { tags: [], notes: "" },
+      source: {
+        entryPoint: config.source?.entryPoint ?? "ui_builder",
+        summary: config.source?.summary ?? "Created in strategy builder",
+        sourceText: config.source?.sourceText ?? null,
+      },
+      trendFilter: config.trendFilter ?? {
+        enabled: false,
+        type: "ema_cross",
+        period: 200,
+        fastPeriod: 50,
+        slowPeriod: 200,
+        operator: "gt",
+        appliesTo: "both",
+      },
+      entryLogic: config.entryLogic ?? "all",
+    }, { emitEvent: false });
+
+    this._setDcaScalingBands(config.dca?.scalingBands ?? []);
+    this._clearConditions();
+    this._applyModeState(templateId);
+
+    if (config.strategyMode === "signal") {
+      for (const condition of config.entryConditions ?? []) {
+        this._addLoadedCondition(condition);
+      }
+    }
+
+    this.form.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private _applyModeState(templateId: string): void {
+    const isSignalMode = this._isSignalTemplate(templateId);
+    const isDcaMode = this._isDcaTemplate(templateId);
+
+    if (isSignalMode || isDcaMode) {
+      this.form.get("grid")?.disable({ emitEvent: false });
+    } else {
+      this.form.get("grid")?.enable({ emitEvent: false });
+    }
+
+    if (isDcaMode) {
+      this.form.get("direction")?.setValue("long", { emitEvent: false });
+      this.form.get("timeframe")?.setValue("1h", { emitEvent: false });
+      this.form.get("direction")?.disable({ emitEvent: false });
+      this.form.get("timeframe")?.disable({ emitEvent: false });
+      this._clearConditions();
+      return;
+    }
+
+    this.form.get("direction")?.enable({ emitEvent: false });
+    this.form.get("timeframe")?.enable({ emitEvent: false });
+
+    if (!isSignalMode) {
+      this._clearConditions();
+    }
+  }
+
+  private _setDcaScalingBands(bands: readonly DcaScalingBand[]): void {
+    this.dcaScalingBandsFormArray.clear();
+
+    for (const band of bands) {
+      this.dcaScalingBandsFormArray.push(this._createScalingBandGroup(band));
+    }
+  }
+
+  private _createScalingBandGroup(band?: DcaScalingBand): FormGroup {
+    return this._fb.group({
+      priceLowerUsd: [band?.priceLowerUsd ?? null, [Validators.min(0.00000001)]],
+      priceUpperUsd: [band?.priceUpperUsd ?? null, [Validators.min(0.00000001)]],
+      scalingPercent: [band?.scalingPercent ?? 0, [Validators.required, Validators.min(-100), Validators.max(500)]],
+    });
+  }
+
   private _isSignalTemplate(templateId: string): boolean {
     return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
+  }
+
+  private _isDcaTemplate(templateId: string): boolean {
+    return templateId === "dca";
+  }
+
+  private _resolveTemplateId(config: StrategyConfig): string {
+    if (config.templateId !== null && config.templateId !== undefined) {
+      return config.templateId;
+    }
+
+    if (config.strategyMode === "signal") {
+      return "custom_signal";
+    }
+
+    if (config.strategyMode === "dca") {
+      return "dca";
+    }
+
+    return "grid";
   }
 
   private _applyServerSaveError(error: HttpErrorResponse): void {
@@ -841,68 +931,12 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   private _populateFormFromIntent(intent: { config: StrategyConfig }): void {
     const config = intent.config;
-    const templateId = config.templateId ?? (config.strategyMode === "signal" ? "custom_signal" : "grid");
     const existingName = String(this.form.get("strategyName")?.value ?? "").trim();
 
-    this.form.patchValue({
-      templateId,
+    this._applyConfigToForm({
+      ...config,
       strategyName: existingName.length > 0 ? existingName : config.strategyName,
-      exchange: config.exchange,
-      market: config.market,
-      timeframe: config.timeframe,
-      direction: config.direction,
-      exit: {
-        takeProfit: {
-          enabled: config.exit.takeProfit.enabled,
-          type: config.exit.takeProfit.type,
-          value: config.exit.takeProfit.value ?? null,
-        },
-        stopLoss: {
-          enabled: config.exit.stopLoss.enabled,
-          type: config.exit.stopLoss.type,
-          value: config.exit.stopLoss.value ?? null,
-          lookback: config.exit.stopLoss.lookback ?? null,
-          atrMultiplier: config.exit.stopLoss.atrMultiplier ?? 3,
-          trailingStopWarmup: config.exit.stopLoss.trailingStopWarmup ?? 3,
-        },
-        exitOnOppositeSignal: config.exit.exitOnOppositeSignal,
-      },
-      risk: config.risk,
-      metadata: config.metadata ?? { tags: [], notes: "" },
-      source: {
-        entryPoint: config.source?.entryPoint ?? "ui_builder",
-        summary: config.source?.summary ?? "Created in strategy builder",
-        sourceText: config.source?.sourceText ?? null,
-      },
-      trendFilter: config.trendFilter ?? {
-        enabled: false,
-        type: "ema_cross",
-        period: 200,
-        fastPeriod: 50,
-        slowPeriod: 200,
-        operator: "gt",
-        appliesTo: "both",
-      },
-      entryLogic: config.entryLogic ?? "all",
     });
-
-    this._clearConditions();
-
-    if (config.strategyMode === "signal") {
-      this.form.get("grid")?.disable({ emitEvent: false });
-      for (const condition of config.entryConditions ?? []) {
-        this._addLoadedCondition(condition);
-      }
-    } else {
-      this.form.get("grid")?.enable({ emitEvent: false });
-      this.gridFormGroup.patchValue({
-        levels: config.grid?.levels ?? 10,
-        spacing: config.grid?.spacing ?? 0.5,
-        entryMode: config.grid?.entryMode ?? "auto_from_signal_candle",
-        anchorPrice: config.grid?.anchorPrice ?? null,
-        breakdownThreshold: config.grid?.breakdownThreshold ?? 1.5,
-      });
-    }
 
     this.form.markAsDirty();
     this.form.updateValueAndValidity();

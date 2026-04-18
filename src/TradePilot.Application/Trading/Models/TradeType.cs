@@ -7,5 +7,6 @@ public enum TradeType
     HedgeOpen,
     HedgeClose,
     SignalEntry,
+    DcaBuy,
     Manual,
 }

@@ -16,6 +16,7 @@ export class StrategyValidationService {
     const errors: ValidationError[] = [];
     const templateId = String(formValue["templateId"] ?? "grid");
     const strategyMode = String(formValue["strategyMode"] ?? "grid");
+    const isDcaMode = strategyMode === "dca" || this._isDcaTemplate(templateId);
     const isSignalMode = strategyMode === "signal" || this._isSignalTemplate(templateId);
     const name = String(formValue["strategyName"] ?? "").trim();
     const market = String(formValue["market"] ?? "").trim();
@@ -40,7 +41,9 @@ export class StrategyValidationService {
       errors.push(this._error("timeframe", "REQUIRED", "Timeframe is required."));
     }
 
-    if (isSignalMode) {
+    if (isDcaMode) {
+      this._validateDcaMode(formValue, errors);
+    } else if (isSignalMode) {
       this._validateSignalMode(formValue, errors);
     } else if (grid === null) {
       errors.push(this._error("grid", "REQUIRED", "Grid configuration is required."));
@@ -66,6 +69,10 @@ export class StrategyValidationService {
       if (entryMode === "manual" && (anchorPrice === null || anchorPrice <= 0)) {
         errors.push(this._error("grid.anchorPrice", "REQUIRED", "Anchor price is required for manual entry mode."));
       }
+    }
+
+    if (isDcaMode) {
+      return errors;
     }
 
     this._validateExitRule(takeProfit, "exit.takeProfit", "Take profit", errors);
@@ -153,6 +160,78 @@ export class StrategyValidationService {
       const value = Number(condition["value"] ?? -1);
       if (value < 0 || value > 100) {
         errors.push(this._error(`entryConditions[${index}].params.value`, "RANGE", "RSI value must be between 0 and 100."));
+      }
+    });
+  }
+
+  private _validateDcaMode(formValue: Record<string, unknown>, errors: ValidationError[]): void {
+    const dca = (formValue["dca"] ?? null) as Record<string, unknown> | null;
+    if (dca === null) {
+      errors.push(this._error("dca", "REQUIRED", "DCA configuration is required."));
+      return;
+    }
+
+    const interval = String(dca["interval"] ?? "").trim();
+    const timeOfDayUtc = String(dca["timeOfDayUtc"] ?? "").trim();
+    const baseAmountUsd = Number(dca["baseAmountUsd"] ?? 0);
+    const dayOfWeek = this._toNullableNumber(dca["dayOfWeek"]);
+    const dayOfMonth = this._toNullableNumber(dca["dayOfMonth"]);
+    const gateConditions = (dca["gateConditions"] ?? null) as Record<string, unknown> | null;
+    const scalingBands = Array.isArray(dca["scalingBands"]) ? dca["scalingBands"] as Record<string, unknown>[] : [];
+
+    if (interval.length === 0) {
+      errors.push(this._error("dca.interval", "REQUIRED", "DCA interval is required."));
+    }
+
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(timeOfDayUtc)) {
+      errors.push(this._error("dca.timeOfDayUtc", "FORMAT", "DCA time must use HH:mm format."));
+    }
+
+    if (baseAmountUsd <= 0) {
+      errors.push(this._error("dca.baseAmountUsd", "RANGE", "DCA base amount must be greater than 0."));
+    }
+
+    if ((interval === "weekly" || interval === "biweekly") && (dayOfWeek === null || dayOfWeek < 0 || dayOfWeek > 6)) {
+      errors.push(this._error("dca.dayOfWeek", "RANGE", "Choose a day of week between 0 and 6."));
+    }
+
+    if (interval === "monthly" && (dayOfMonth === null || dayOfMonth < 1 || dayOfMonth > 31)) {
+      errors.push(this._error("dca.dayOfMonth", "RANGE", "Choose a day of month between 1 and 31."));
+    }
+
+    const maxPriceUsd = this._toNullableNumber(gateConditions?.["maxPriceUsd"]);
+    if (maxPriceUsd !== null && maxPriceUsd <= 0) {
+      errors.push(this._error("dca.gateConditions.maxPriceUsd", "RANGE", "Max price gate must be greater than 0."));
+    }
+
+    const maxFearGreedIndex = this._toNullableNumber(gateConditions?.["maxFearGreedIndex"]);
+    if (maxFearGreedIndex !== null && (maxFearGreedIndex < 0 || maxFearGreedIndex > 100)) {
+      errors.push(this._error("dca.gateConditions.maxFearGreedIndex", "RANGE", "Fear & Greed gate must be between 0 and 100."));
+    }
+
+    if (scalingBands.length > 5) {
+      errors.push(this._error("dca.scalingBands", "MAX_ITEMS", "Use at most 5 scaling bands."));
+    }
+
+    scalingBands.forEach((band, index) => {
+      const lower = this._toNullableNumber(band["priceLowerUsd"]);
+      const upper = this._toNullableNumber(band["priceUpperUsd"]);
+      const scalingPercent = this._toNullableNumber(band["scalingPercent"]);
+
+      if (lower !== null && lower <= 0) {
+        errors.push(this._error(`dca.scalingBands[${index}].priceLowerUsd`, "RANGE", "Lower price must be greater than 0."));
+      }
+
+      if (upper !== null && upper <= 0) {
+        errors.push(this._error(`dca.scalingBands[${index}].priceUpperUsd`, "RANGE", "Upper price must be greater than 0."));
+      }
+
+      if (lower !== null && upper !== null && lower >= upper) {
+        errors.push(this._error(`dca.scalingBands[${index}]`, "RANGE", "Lower price must be below upper price."));
+      }
+
+      if (scalingPercent === null || scalingPercent < -100 || scalingPercent > 500) {
+        errors.push(this._error(`dca.scalingBands[${index}].scalingPercent`, "RANGE", "Scaling percent must be between -100 and 500."));
       }
     });
   }
@@ -284,6 +363,10 @@ export class StrategyValidationService {
 
   private _isSignalTemplate(templateId: string): boolean {
     return templateId === "custom_signal" || templateId === "ema_pullback" || templateId === "macd_cross";
+  }
+
+  private _isDcaTemplate(templateId: string): boolean {
+    return templateId === "dca";
   }
 
   public validateServer(config: StrategyConfig, context?: HttpContext): Observable<ServerValidationResult> {

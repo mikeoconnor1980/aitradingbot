@@ -1,0 +1,33 @@
+strategy_groups:
+  - id: starter_signal_pack
+    name: Starter Signal Pack
+    description: Beginner-friendly directional strategies.
+    children:
+      - trend_pullback_ema_long
+      - break_and_retest_short
+      - vwap_intraday_pullback_long
+
+  - id: mean_reversion_pack
+    name: Mean Reversion Pack
+    description: Range and reversion-oriented strategies.
+    children:
+      - range_reversion_rsi_long
+      - eth_fixed_range_grid_v1
+
+  - id: advanced_price_action_pack
+    name: Advanced Price Action Pack
+    description: More advanced smart-money and structure-based logic.
+    children:
+      - liquidity_sweep_structure_shift_short
+
+  - id: accumulation_pack
+    name: Accumulation Pack
+    description: Position-building strategies.
+    children:
+      - eth_dca_below_2400
+
+group_rules:
+  - A group may contain mixed strategy types.
+  - A signal group should usually contain only signal strategies unless explicitly labeled hybrid.
+  - A grid strategy should not share the same live symbol account allocation as an aggressive signal strategy without exposure coordination.
+  - Group execution should support priority, enable/disable, and capital budget allocation.

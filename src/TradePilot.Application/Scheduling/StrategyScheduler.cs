@@ -26,6 +26,7 @@ public sealed class StrategyScheduler
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
     private readonly ISignalController? _signalController;
+    private readonly IDcaController? _dcaController;
     private readonly IBacktestAuditCollector _auditCollector;
     private readonly IExecutionLogger _executionLogger;
     private readonly IStrategyConfig _strategyConfig;
@@ -52,6 +53,7 @@ public sealed class StrategyScheduler
         IBacktestAuditCollector? auditCollector = null,
         IExecutionLogger? executionLogger = null,
         ISignalController? signalController = null,
+        IDcaController? dcaController = null,
         decimal initialCapital = 0m,
         BacktestExecutionContextAccessor? executionContextAccessor = null,
         GridState? gridState = null,
@@ -70,6 +72,7 @@ public sealed class StrategyScheduler
         _auditCollector = auditCollector ?? NullBacktestAuditCollector.Instance;
         _executionLogger = executionLogger ?? NullExecutionLogger.Instance;
         _signalController = signalController;
+        _dcaController = dcaController;
         _strategyConfig = strategyConfig;
         _triggerTimeframe = triggerTimeframe;
         _initialCapital = initialCapital;
@@ -272,6 +275,23 @@ public sealed class StrategyScheduler
                 _positionState,
                 _strategyConfig,
                 cancellationToken);
+        }
+
+        if (_dcaController is not null
+            && _strategyConfig is StrategyConfig { StrategyMode: StrategyMode.Dca })
+        {
+            return _dcaController.ProcessAsync(
+                evaluation,
+                context,
+                _gridState,
+                _positionState,
+                _strategyConfig,
+                cancellationToken);
+        }
+
+        if (_strategyConfig is StrategyConfig { StrategyMode: StrategyMode.Dca })
+        {
+            return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
         return _gridController.ProcessAsync(

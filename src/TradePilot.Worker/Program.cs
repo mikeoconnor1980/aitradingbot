@@ -139,6 +139,7 @@ builder.Services.AddSingleton<IPositionManager, LivePositionManager>();
 builder.Services.AddSingleton<LiveExecutionLogger>();
 builder.Services.AddSingleton<IExecutionLogger>(sp => sp.GetRequiredService<LiveExecutionLogger>());
 builder.Services.AddSingleton<GridStrategyEngine>();
+builder.Services.AddSingleton<DcaStrategyEngine>();
 builder.Services.AddSingleton<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, MacdConditionHandler>();
@@ -148,6 +149,7 @@ builder.Services.AddSingleton<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddSingleton<IStrategyEngine, CompositeStrategyEngine>();
 builder.Services.AddSingleton<IGridController, GridController>();
 builder.Services.AddSingleton<ISignalController, SignalController>();
+builder.Services.AddSingleton<IDcaController, DcaController>();
 builder.Services.AddSingleton<ITriggerOrderManager, TriggerOrderManager>();
 
 // ---------- Risk engine (live limits: daily loss, order size, circuit breaker) ----------

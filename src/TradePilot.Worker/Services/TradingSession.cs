@@ -35,6 +35,7 @@ public sealed class TradingSession : IAsyncDisposable
     private readonly IRiskEngine _riskEngine;
     private readonly IPositionManager _positionManager;
     private readonly ISignalController _signalController;
+    private readonly IDcaController? _dcaController;
     private readonly IExecutionEngine _executionEngine;
     private readonly IFillProcessor _fillProcessor;
     private readonly ISignerProvider _signerProvider;
@@ -80,7 +81,8 @@ public sealed class TradingSession : IAsyncDisposable
         IServiceScope? serviceScope = null,
         ITriggerOrderManager? triggerOrderManager = null,
         IOptions<RiskLimitsConfig>? riskLimits = null,
-        IExecutionLogger? executionLogger = null)
+        IExecutionLogger? executionLogger = null,
+        IDcaController? dcaController = null)
     {
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
@@ -93,6 +95,7 @@ public sealed class TradingSession : IAsyncDisposable
         _riskEngine = riskEngine;
         _positionManager = positionManager;
         _signalController = signalController;
+        _dcaController = dcaController;
         _executionEngine = executionEngine;
         _fillProcessor = fillProcessor;
         _signerProvider = signerProvider;
@@ -191,7 +194,7 @@ public sealed class TradingSession : IAsyncDisposable
     private async Task RunAsync(CancellationToken stoppingToken)
     {
         var coin = HyperliquidAssetMapper.ToCoin(StrategyConfig.Market);
-        var triggerTimeframe = StrategyConfig.Timeframe;
+        var triggerTimeframe = StrategyConfig.StrategyMode == StrategyMode.Dca ? "1h" : StrategyConfig.Timeframe;
 
         _logger.LogInformation(
             "TradingSession starting: Strategy={Strategy}, Market={Market}, Coin={Coin}, Timeframe={Timeframe}",
@@ -253,6 +256,7 @@ public sealed class TradingSession : IAsyncDisposable
             StrategyConfig,
             triggerTimeframe,
             signalController: _signalController,
+            dcaController: _dcaController,
             executionLogger: _executionLogger,
             initialCapital: initialCapital,
             gridState: GridState,

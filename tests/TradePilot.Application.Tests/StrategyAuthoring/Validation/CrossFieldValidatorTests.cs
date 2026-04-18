@@ -78,6 +78,70 @@ public sealed class CrossFieldValidatorTests
     }
 
     [TestMethod]
+    public void GivenDcaModeWithNullDca_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Long,
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_REQUIRED_FOR_DCA_MODE");
+    }
+
+    [TestMethod]
+    public void GivenDcaModeWithPerpAssetType_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Perp,
+            Direction = Direction.Long,
+            Dca = new DcaConfig
+            {
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 100m }
+                ],
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_REQUIRES_SPOT_ASSET_TYPE");
+    }
+
+    [TestMethod]
+    public void GivenDcaModeWithShortDirection_WhenValidated_ThenError()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Short,
+            Dca = new DcaConfig
+            {
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 100m }
+                ],
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_REQUIRES_LONG_DIRECTION");
+    }
+
+    [TestMethod]
     public void GivenRiskBasedWithNoStopLoss_WhenValidated_ThenError()
     {
         var config = new StrategyConfig
