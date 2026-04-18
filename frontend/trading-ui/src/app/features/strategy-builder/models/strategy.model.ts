@@ -262,3 +262,30 @@ export const STRATEGY_TEMPLATES: StrategyTemplate[] = [
   { id: "rsi_reversal", label: "RSI Reversal", available: false },
   { id: "blank", label: "Blank", available: true },
 ];
+
+export interface StrategyTemplateDto {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  strategyMode: string;
+  direction: string;
+  market: string;
+  tags: string[];
+  config: StrategyConfig;
+  sortOrder: number;
+  isSystemTemplate: boolean;
+  createdAtUtc: number;
+  updatedAtUtc: number;
+}
+
+export interface RenameStrategyTemplateRequest {
+  name: string;
+  description: string;
+}
+
+export interface PromoteStrategyTemplateRequest {
+  name: string;
+  description: string;
+  tags: string[];
+}

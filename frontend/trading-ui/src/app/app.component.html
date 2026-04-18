@@ -1,6 +1,6 @@
 @if (isAuthenticated) {
 @if (!isMobile()) {
-  <app-sidebar-nav (logoutClicked)="onLogout()" />
+  <app-sidebar-nav [isAdmin]="currentUser?.isAdmin ?? false" (logoutClicked)="onLogout()" />
 }
 
 <main class="app-shell"

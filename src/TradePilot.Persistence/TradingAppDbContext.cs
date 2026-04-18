@@ -31,6 +31,7 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ExecutionLog> ExecutionLogs => Set<ExecutionLog>();
     public DbSet<TelegramLinkCode> TelegramLinkCodes => Set<TelegramLinkCode>();
+    public DbSet<StrategyTemplate> StrategyTemplates => Set<StrategyTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -921,6 +922,74 @@ public sealed class TradePilotDbContext : DbContext
             entity.HasIndex(e => e.Timestamp)
                 .IsUnique()
                 .HasDatabaseName("IX_FearGreedReadings_Timestamp");
+        });
+
+        modelBuilder.Entity<StrategyTemplate>(entity =>
+        {
+            entity.ToTable("StrategyTemplates");
+
+            entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(t => t.Slug)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(t => t.Name)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(t => t.Description)
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(t => t.StrategyMode)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(t => t.Direction)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(t => t.Market)
+                .HasMaxLength(20)
+                .IsRequired();
+
+            entity.Property(t => t.TagsJson)
+                .HasMaxLength(500)
+                .IsRequired();
+
+            entity.Property(t => t.ConfigJson)
+                .IsRequired();
+
+            entity.Property(t => t.SortOrder)
+                .IsRequired();
+
+            entity.Property(t => t.IsSystemTemplate)
+                .IsRequired();
+
+            entity.Property(t => t.IsActive)
+                .IsRequired();
+
+            entity.Property(t => t.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(t => t.UpdatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(t => t.Slug)
+                .IsUnique()
+                .HasDatabaseName("IX_StrategyTemplates_Slug");
+
+            entity.HasIndex(t => t.Name)
+                .IsUnique()
+                .HasDatabaseName("IX_StrategyTemplates_Name")
+                .HasFilter("[IsActive] = 1");
+
+            entity.HasIndex(t => new { t.IsActive, t.SortOrder })
+                .HasDatabaseName("IX_StrategyTemplates_IsActive_SortOrder");
         });
     }
 }

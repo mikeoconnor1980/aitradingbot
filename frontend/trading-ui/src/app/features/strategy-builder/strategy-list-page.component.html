@@ -2,14 +2,10 @@
   <header class="strategy-list__header">
     <div>
       <h2 class="strategy-list__title">Strategies</h2>
-      <p class="strategy-list__subtitle">Manage saved grid strategies, edit configurations, and remove inactive ideas.</p>
+      <p class="strategy-list__subtitle">Manage your strategies, edit configurations, and track performance.</p>
     </div>
 
     <div class="strategy-list__header-actions">
-      <button mat-stroked-button type="button" (click)="onGuidedSetup()">
-        <mat-icon>auto_fix_high</mat-icon>
-        <span>Guided Setup</span>
-      </button>
       <button mat-raised-button color="primary" type="button" (click)="onNewStrategy()">
         <mat-icon>add</mat-icon>
         <span>New Strategy</span>
@@ -27,7 +23,7 @@
   } @else if (strategies.length === 0) {
     <mat-card class="strategy-list__state strategy-list__state--empty">
       <mat-card-content>
-        <p>No strategies yet. Start with a new grid strategy to build and save your first configuration.</p>
+        <p>No strategies yet. Click <strong>New Strategy</strong> to create your first one.</p>
       </mat-card-content>
     </mat-card>
   } @else {

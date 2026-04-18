@@ -1,0 +1,32 @@
+<section class="tag-selector">
+  <div class="tag-selector__header">
+    <div>
+      <h4 class="tag-selector__title">{{ title }}</h4>
+      <p class="tag-selector__subtitle">{{ subtitle }}</p>
+    </div>
+
+    @if (selectedTags.length > 0) {
+      <button mat-stroked-button type="button" class="tag-selector__clear" (click)="clearTags()">
+        <mat-icon>clear_all</mat-icon>
+        <span>Clear</span>
+      </button>
+    }
+  </div>
+
+  @if (hasTags) {
+    <div class="tag-selector__list">
+      @for (tag of availableTags; track tag) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="tag-selector__chip"
+          [class.tag-selector__chip--selected]="isSelected(tag)"
+          (click)="toggleTag(tag)">
+          {{ tag }}
+        </button>
+      }
+    </div>
+  } @else {
+    <p class="tag-selector__empty">{{ emptyText }}</p>
+  }
+</section>

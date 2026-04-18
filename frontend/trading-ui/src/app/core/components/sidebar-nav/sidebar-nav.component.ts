@@ -1,4 +1,4 @@
-import { Component, output } from "@angular/core";
+import { Component, Input, output } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive } from "@angular/router";
@@ -18,9 +18,12 @@ export interface NavItem {
   styleUrl: "./sidebar-nav.component.scss"
 })
 export class SidebarNavComponent {
+  @Input()
+  public isAdmin = false;
+
   public expanded = true;
 
-  public readonly navItems: NavItem[] = [
+  private readonly _baseNavItems: NavItem[] = [
     { route: "/dashboard", icon: "dashboard", label: "Dashboard", exact: true },
     { route: "/market-data", icon: "show_chart", label: "Market Data" },
     { route: "/strategies", icon: "tune", label: "Strategies", exact: true },
@@ -32,6 +35,17 @@ export class SidebarNavComponent {
     { route: "/agents", icon: "devices", label: "Agents" },
     { route: "/order-entry", icon: "swap_vert", label: "Order Entry" }
   ];
+
+  public get navItems(): NavItem[] {
+    if (!this.isAdmin) {
+      return this._baseNavItems;
+    }
+
+    return [
+      ...this._baseNavItems,
+      { route: "/admin/strategy-library", icon: "admin_panel_settings", label: "Strategy Library" }
+    ];
+  }
 
   public readonly logoutClicked = output();
 

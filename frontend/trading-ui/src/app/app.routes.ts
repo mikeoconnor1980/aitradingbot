@@ -1,5 +1,6 @@
 import { Routes } from "@angular/router";
 import { authGuard } from "./core/guards/auth.guard";
+import { adminRoleGuard } from "./core/guards/admin-role.guard";
 import { mobileRedirectGuard } from "./core/guards/mobile-redirect.guard";
 import { subscriptionGuard } from "./core/guards/subscription.guard";
 import { unsavedChangesGuard } from "./features/strategy-builder/guards/unsaved-changes.guard";
@@ -40,6 +41,12 @@ export const routes: Routes = [
     canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
     canDeactivate: [unsavedChangesGuard],
     title: "Edit Strategy"
+  },
+  {
+    path: "admin/strategy-library",
+    loadComponent: () => import("./features/admin/strategy-library-page.component").then((m) => m.StrategyLibraryPageComponent),
+    canActivate: [authGuard, adminRoleGuard, mobileRedirectGuard],
+    title: "Strategy Library"
   },
   {
     path: "market-data",

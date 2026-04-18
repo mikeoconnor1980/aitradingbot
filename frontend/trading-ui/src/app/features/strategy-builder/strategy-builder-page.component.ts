@@ -17,6 +17,10 @@ import { formatErrorPayload } from "../../core/utils/error-utils";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { AiReviewCardComponent } from "./components/ai-review-card/ai-review-card.component";
 import { AiReviewModalComponent, AiReviewModalData } from "./components/ai-review-modal/ai-review-modal.component";
+import {
+  PromoteTemplateDialogComponent,
+  PromoteTemplateDialogResult
+} from "./components/promote-template-dialog/promote-template-dialog.component";
 import { AssumptionsPanelComponent } from "./components/assumptions-panel/assumptions-panel.component";
 import { ConfidenceBadgeComponent } from "./components/confidence-badge/confidence-badge.component";
 import { DcaConfigCardComponent } from "./components/dca-config-card/dca-config-card.component";
@@ -36,7 +40,7 @@ import { ValidationCardComponent } from "./components/validation-card/validation
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
 import { StrategyIntentDto } from "./models/strategy-intent.model";
 import { StrategyReviewDto } from "./models/strategy-review.model";
-import { CandlePatternParams, DcaScalingBand, EntryConditionConfig, LiquiditySweepParams, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, StructureShiftParams, SupportResistanceParams, ValidationError } from "./models/strategy.model";
+import { CandlePatternParams, DcaScalingBand, EntryConditionConfig, LiquiditySweepParams, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, StrategyTemplateDto, StructureShiftParams, SupportResistanceParams, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -103,6 +107,9 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   public serverErrors: ValidationError[] = [];
   public serverWarnings: ValidationError[] = [];
   public serverInfoMessages: ValidationError[] = [];
+  public isLoadingLibraryTemplates = false;
+  public isPromotingTemplate = false;
+  public libraryTemplates: StrategyTemplateDto[] = [];
   public currentReview: StrategyReviewDto | null = null;
   public isReviewing = false;
   public reviewCooldownSeconds = 0;
@@ -120,6 +127,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     if (this.editId !== null) {
       this._loadStrategy(this.editId);
+      this._loadLibraryTemplates();
     } else {
       const duplicateFrom = this._route.snapshot.queryParamMap.get("duplicateFrom");
       if (duplicateFrom !== null) {
@@ -156,11 +164,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   public get isSignalMode(): boolean {
-    return this._isSignalTemplate(this.selectedTemplateId);
+    return String(this.form.get("strategyMode")?.value ?? "grid") === "signal";
   }
 
   public get isDcaMode(): boolean {
-    return this._isDcaTemplate(this.selectedTemplateId);
+    return String(this.form.get("strategyMode")?.value ?? "grid") === "dca";
   }
 
   public get currentConfig(): StrategyConfig {
@@ -207,6 +215,59 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     return this.editId !== null && this._currentRevisionNumber !== null && !this.isReviewing && !this.isReviewCooldownActive;
   }
 
+  public get canPromoteToLibrary(): boolean {
+    return this.editId !== null &&
+      !this.hasUnsavedChanges() &&
+      !this.isLoading &&
+      !this.isSaving &&
+      !this.isPromotingTemplate &&
+      !this.isLoadingLibraryTemplates;
+  }
+
+  public get promoteButtonLabel(): string {
+    if (this.isLoadingLibraryTemplates) {
+      return "Loading Library";
+    }
+
+    if (this.isPromotingTemplate) {
+      return "Promoting...";
+    }
+
+    return "Promote to Library";
+  }
+
+  public get promoteTooltip(): string {
+    if (this.editId === null) {
+      return "Save the strategy before promoting it to the library.";
+    }
+
+    if (this.hasUnsavedChanges()) {
+      return "Save your latest changes before promoting this strategy to the shared library.";
+    }
+
+    if (this.isLoadingLibraryTemplates) {
+      return "Loading the current library tag list.";
+    }
+
+    if (this.isPromotingTemplate) {
+      return "Promotion is in progress.";
+    }
+
+    return "";
+  }
+
+  public get availableLibraryTags(): string[] {
+    const tags = new Set<string>();
+
+    for (const template of this.libraryTemplates) {
+      for (const tag of template.tags) {
+        tags.add(tag);
+      }
+    }
+
+    return Array.from(tags).sort();
+  }
+
   public get aiReviewButtonLabel(): string {
     if (this.isReviewCooldownActive) {
       return `AI Review (${this.reviewCooldownSeconds}s)`;
@@ -236,16 +297,20 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   public onTemplateSelected(templateId: string): void {
-    this.form.patchValue({ templateId });
+    const mode = this._isDcaTemplate(templateId) ? "dca"
+      : this._isSignalTemplate(templateId) ? "signal"
+      : "grid";
+
+    this.form.patchValue({ templateId, strategyMode: mode });
 
     this._applyModeState(templateId);
 
-    if (this._isDcaTemplate(templateId)) {
+    if (mode === "dca") {
       this._applyDcaTemplate();
       return;
     }
 
-    if (this._isSignalTemplate(templateId)) {
+    if (mode === "signal") {
       if (templateId === "ema_pullback") {
         this._applyEmaPullbackTemplate();
       } else if (templateId === "macd_cross") {
@@ -379,6 +444,45 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
+  public onPromoteToLibrary(): void {
+    if (!this.canPromoteToLibrary || this.editId === null) {
+      return;
+    }
+
+    const dialogRef = this._dialog.open(PromoteTemplateDialogComponent, {
+      width: "640px",
+      maxWidth: "92vw",
+      autoFocus: false,
+      data: {
+        defaultName: this.currentConfig.strategyName,
+        existingNames: this.libraryTemplates.map((template) => template.name),
+        availableTags: this.availableLibraryTags,
+        initialTags: this.currentConfig.metadata?.tags ?? [],
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result: PromoteTemplateDialogResult | undefined) => {
+      if (result === undefined || this.editId === null) {
+        return;
+      }
+
+      this.isPromotingTemplate = true;
+      this._strategyApi.promoteStrategyTemplate(this.editId, result, this._localErrorContext).subscribe({
+        next: () => {
+          this._notifications.success("Strategy promoted to the library.");
+          this._loadLibraryTemplates();
+        },
+        error: (error: HttpErrorResponse) => {
+          this._notifications.error(formatErrorPayload(error));
+          this.isPromotingTemplate = false;
+        },
+        complete: () => {
+          this.isPromotingTemplate = false;
+        }
+      });
+    });
+  }
+
   public onViewFullReview(): void {
     if (this.currentReview === null) {
       return;
@@ -408,6 +512,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   private _buildForm(): FormGroup {
     return this._fb.group({
       templateId: ["grid"],
+      strategyMode: ["grid"],
       strategyName: ["", [Validators.required, Validators.maxLength(100)]],
       exchange: ["Hyperliquid", Validators.required],
       market: ["BTC-USD", Validators.required],
@@ -815,6 +920,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     this.form.patchValue({
       templateId,
+      strategyMode: config.strategyMode ?? "grid",
       strategyName: config.strategyName,
       exchange: config.exchange,
       market: config.market,
@@ -872,9 +978,9 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     this.form.updateValueAndValidity({ emitEvent: false });
   }
 
-  private _applyModeState(templateId: string): void {
-    const isSignalMode = this._isSignalTemplate(templateId);
-    const isDcaMode = this._isDcaTemplate(templateId);
+  private _applyModeState(_templateId: string): void {
+    const isSignalMode = this.isSignalMode;
+    const isDcaMode = this.isDcaMode;
 
     if (isSignalMode || isDcaMode) {
       this.form.get("grid")?.disable({ emitEvent: false });
@@ -960,6 +1066,20 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
   private _createFormSnapshot(): string {
     return JSON.stringify(this.form.getRawValue());
+  }
+
+  private _loadLibraryTemplates(): void {
+    this.isLoadingLibraryTemplates = true;
+
+    this._strategyApi.getTemplates(this._localErrorContext).subscribe({
+      next: (templates) => {
+        this.libraryTemplates = templates;
+        this.isLoadingLibraryTemplates = false;
+      },
+      error: () => {
+        this.isLoadingLibraryTemplates = false;
+      }
+    });
   }
 
   private _applyInterpretedResult(result: StrategyIntentDto): void {

@@ -91,7 +91,10 @@ public abstract class BaseControllerTests
         return client;
     }
 
-    internal static string GenerateTestToken()
+    internal static string GenerateTestToken(
+        string userId = "dev-user",
+        string email = "test@tradepilot.dev",
+        string displayName = "Test User")
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(TestJwtSecretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -100,9 +103,9 @@ public abstract class BaseControllerTests
             audience: "TradePilot",
             claims: new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, "dev-user"),
-                new Claim(ClaimTypes.Email, "test@tradepilot.dev"),
-                new Claim(ClaimTypes.Name, "Test User"),
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.Name, displayName),
                 new Claim("token_type", "access"),
             },
             expires: DateTime.UtcNow.AddHours(1),

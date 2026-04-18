@@ -13,13 +13,16 @@ import { AuthService } from "./core/services/auth.service";
 import { SignalRService } from "./core/services/signalr.service";
 import { LayoutService } from "./core/services/layout.service";
 
-const signalRServiceMock: Pick<SignalRService, "connectionStatus$"> = {
+const signalRServiceMock: Pick<SignalRService, "connectionStatus$" | "fillEvent$" | "orderUpdate$" | "executionLog$"> = {
   connectionStatus$: of({
     source: "SignalR",
     status: "Connected",
     detail: null,
     retryCount: 0
-  } as ConnectionStatus)
+  } as ConnectionStatus),
+  fillEvent$: of(),
+  orderUpdate$: of(),
+  executionLog$: of()
 };
 
 const healthServiceMock: Pick<HealthService, "health$"> = {
@@ -44,7 +47,7 @@ const profileServiceMock: Pick<ProfileService, "profile$" | "load"> = {
 };
 
 const authServiceMock = {
-  user$: of({ displayName: "Test", email: "test@test.com" }),
+  user$: of({ displayName: "Test", email: "test@test.com", isAdmin: false }),
   isAuthenticated$: of(true)
 };
 
@@ -102,7 +105,7 @@ describe("AppComponent", () => {
     expect(linkTexts).not.toContain("Connection");
   });
 
-  it("should have exactly 9 sidebar nav links including Optimizer and Strategies", async () => {
+  it("should have exactly 10 sidebar nav links including Optimizer and Strategies", async () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -112,7 +115,7 @@ describe("AppComponent", () => {
       (link.querySelector(".sidebar__label")?.textContent ?? "").trim()
     );
 
-    expect(navLinks.length).toBe(9);
+    expect(navLinks.length).toBe(10);
     expect(linkTexts).toContain("Optimizer");
     expect(linkTexts).toContain("Strategies");
   });

@@ -20,22 +20,17 @@
       (selectionChange)="onStepChange($event.selectedIndex)"
       class="strategy-wizard__stepper">
 
-      <!-- Step 1: Trading Idea -->
-      <mat-step [editable]="true" label="Trading Idea">
+      <!-- Step 1: Get Started -->
+      <mat-step [editable]="true" label="Get Started">
         <div class="strategy-wizard__step-content">
           <h3 class="strategy-wizard__question">{{ _education.getStepEducation(0).question }}</h3>
           <app-wizard-goal-step
             [selectedTemplateId]="selectedTemplateId"
-            (templateSelected)="onTemplateSelected($event)">
+            [libraryTemplates]="libraryTemplates"
+            [isLoadingLibrary]="isLoadingLibrary"
+            (templateSelected)="onTemplateSelected($event)"
+            (libraryTemplateSelected)="onLibraryTemplateSelected($event)">
           </app-wizard-goal-step>
-          <div class="strategy-wizard__tips">
-            @for (tip of _education.getStepEducation(0).tips; track tip) {
-              <p class="strategy-wizard__tip">
-                <mat-icon class="strategy-wizard__tip-icon">lightbulb</mat-icon>
-                {{ tip }}
-              </p>
-            }
-          </div>
           <div class="strategy-wizard__nav">
             <span></span>
             <button mat-raised-button color="primary" matStepperNext type="button">
@@ -189,6 +184,8 @@
           <h3 class="strategy-wizard__question">{{ _education.getStepEducation(6).question }}</h3>
           <app-wizard-review-step
             [formValue]="form.getRawValue()"
+            [tagsControl]="tagsControl"
+            [availableTags]="availableTags"
             [errors]="allErrors"
             [warnings]="serverWarnings"
             [isSaving]="isSaving"

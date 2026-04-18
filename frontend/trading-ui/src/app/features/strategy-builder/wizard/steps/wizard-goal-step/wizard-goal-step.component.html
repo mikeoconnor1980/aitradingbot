@@ -1,27 +1,135 @@
 <div class="wizard-goal">
-  <div class="wizard-goal__templates">
-    @for (template of templates; track template.id) {
-      <mat-card
-        class="wizard-goal__card"
-        [class.wizard-goal__card--selected]="template.id === selectedTemplateId"
-        [class.wizard-goal__card--disabled]="!template.available"
-        (click)="selectTemplate(template)"
-        (keydown.enter)="selectTemplate(template)"
-        tabindex="0"
-        [attr.aria-label]="template.label"
-        role="button">
-        <mat-card-content>
-          <mat-icon class="wizard-goal__icon">{{ template.icon }}</mat-icon>
-          <h3 class="wizard-goal__label">{{ template.label }}</h3>
-          <p class="wizard-goal__description">{{ template.description }}</p>
-          <span class="wizard-goal__best-for">
-            <strong>Best for:</strong> {{ template.bestFor }}
-          </span>
-          @if (!template.available) {
-            <span class="wizard-goal__coming-soon">Coming soon</span>
+  <!-- Build Your Own -->
+  <section class="wizard-goal__section">
+    <h4 class="wizard-goal__section-title">
+      <mat-icon class="wizard-goal__section-icon">build</mat-icon>
+      Build Your Own
+    </h4>
+    <p class="wizard-goal__section-subtitle">Start from scratch with a strategy type. The wizard will guide you through every step.</p>
+
+    <div class="wizard-goal__templates">
+      @for (template of templates; track template.id) {
+        <mat-card
+          class="wizard-goal__card"
+          [class.wizard-goal__card--selected]="template.id === selectedTemplateId"
+          [class.wizard-goal__card--disabled]="!template.available"
+          (click)="selectTemplate(template)"
+          (keydown.enter)="selectTemplate(template)"
+          tabindex="0"
+          [attr.aria-label]="template.label"
+          role="button">
+          <mat-card-content>
+            <mat-icon class="wizard-goal__icon">{{ template.icon }}</mat-icon>
+            <h3 class="wizard-goal__label">{{ template.label }}</h3>
+            <p class="wizard-goal__description">{{ template.description }}</p>
+            <span class="wizard-goal__best-for">
+              <strong>Best for:</strong> {{ template.bestFor }}
+            </span>
+            @if (!template.available) {
+              <span class="wizard-goal__coming-soon">Coming soon</span>
+            }
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  </section>
+
+  <!-- Divider -->
+  @if (libraryTemplates.length > 0) {
+    <div class="wizard-goal__divider">
+      <span class="wizard-goal__divider-text">or pick from the library</span>
+    </div>
+  }
+
+  <!-- Strategy Library -->
+  @if (libraryTemplates.length > 0) {
+    <section class="wizard-goal__section">
+      <h4 class="wizard-goal__section-title">
+        <mat-icon class="wizard-goal__section-icon">auto_stories</mat-icon>
+        Strategy Library
+      </h4>
+      <p class="wizard-goal__section-subtitle">Pre-built strategies ready to use. Pick one and customise it in the wizard.</p>
+
+      @if (!showFullLibrary) {
+        <div class="wizard-goal__library-grid">
+          @for (template of featuredTemplates; track template.id) {
+            <app-strategy-template-card
+              [template]="template"
+              (clone)="selectLibraryTemplate($event)">
+            </app-strategy-template-card>
           }
-        </mat-card-content>
-      </mat-card>
-    }
-  </div>
+
+          @if (libraryTemplates.length < 6) {
+            <mat-card class="wizard-goal__placeholder-card">
+              <mat-card-content>
+                <mat-icon class="wizard-goal__placeholder-icon">rocket_launch</mat-icon>
+                <span class="wizard-goal__placeholder-label">More strategies coming soon</span>
+              </mat-card-content>
+            </mat-card>
+          }
+
+          <mat-card class="wizard-goal__browse-card" (click)="toggleFullLibrary()" (keydown.enter)="toggleFullLibrary()" tabindex="0" role="button" aria-label="Browse full library">
+            <mat-card-content>
+              <mat-icon class="wizard-goal__browse-icon">library_books</mat-icon>
+              <span class="wizard-goal__browse-label">Browse full library</span>
+              <mat-icon class="wizard-goal__browse-arrow">arrow_forward</mat-icon>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      } @else {
+        <!-- Expanded library with filters -->
+        <div class="wizard-goal__filters">
+          <div class="wizard-goal__filter-group">
+            <span class="wizard-goal__filter-label">Mode:</span>
+            @for (mode of allModes; track mode) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="wizard-goal__filter-chip"
+                [class.wizard-goal__filter-chip--active]="activeFilterMode === mode"
+                (click)="toggleFilterMode(mode)">
+                {{ mode }}
+              </button>
+            }
+          </div>
+          <div class="wizard-goal__filter-group">
+            <span class="wizard-goal__filter-label">Tags:</span>
+            @for (tag of allTags; track tag) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="wizard-goal__filter-chip"
+                [class.wizard-goal__filter-chip--active]="activeFilterTag === tag"
+                (click)="toggleFilterTag(tag)">
+                {{ tag }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="wizard-goal__library-grid">
+          @for (template of filteredLibraryTemplates; track template.id) {
+            <app-strategy-template-card
+              [template]="template"
+              (clone)="selectLibraryTemplate($event)">
+            </app-strategy-template-card>
+          }
+
+          @if (filteredLibraryTemplates.length === 0) {
+            <p class="wizard-goal__empty">No templates match your filters.</p>
+          }
+        </div>
+
+        <button mat-stroked-button type="button" class="wizard-goal__collapse-btn" (click)="toggleFullLibrary()">
+          <mat-icon>expand_less</mat-icon>
+          Show less
+        </button>
+      }
+    </section>
+  } @else if (isLoadingLibrary) {
+    <div class="wizard-goal__loading">
+      <mat-spinner diameter="28"></mat-spinner>
+      <span>Loading library…</span>
+    </div>
+  }
 </div>

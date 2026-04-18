@@ -1,0 +1,32 @@
+<h2 mat-dialog-title>Rename Strategy Template</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="rename-template-dialog">
+    <mat-form-field appearance="outline" class="rename-template-dialog__field">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" maxlength="100" />
+      @if (form.controls.name.hasError("required")) {
+        <mat-error>Name is required.</mat-error>
+      } @else if (form.controls.name.hasError("duplicateName")) {
+        <mat-error>Name must be unique in the library.</mat-error>
+      } @else if (form.controls.name.hasError("maxlength")) {
+        <mat-error>Name must be 100 characters or fewer.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="rename-template-dialog__field">
+      <mat-label>Description</mat-label>
+      <textarea matInput formControlName="description" rows="4" maxlength="500"></textarea>
+      @if (form.controls.description.hasError("required")) {
+        <mat-error>Description is required.</mat-error>
+      } @else if (form.controls.description.hasError("maxlength")) {
+        <mat-error>Description must be 500 characters or fewer.</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="onSave()">Save</button>
+</mat-dialog-actions>

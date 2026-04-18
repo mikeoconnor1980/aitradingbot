@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>Promote to Strategy Library</h2>
+
+<mat-dialog-content class="promote-template-dialog">
+  <p class="promote-template-dialog__intro">
+    Publish this saved strategy into the shared library. The library name must be unique.
+  </p>
+
+  <form [formGroup]="form" class="promote-template-dialog__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Library name</mat-label>
+      <input matInput formControlName="name" maxlength="100" />
+      <mat-hint>Visible to all users in the strategy library.</mat-hint>
+      @if (form.get("name")?.hasError("required") && form.get("name")?.touched) {
+        <mat-error>Library name is required.</mat-error>
+      }
+      @if (form.get("name")?.hasError("maxlength")) {
+        <mat-error>Library name must be 100 characters or fewer.</mat-error>
+      }
+      @if (form.get("name")?.hasError("duplicateName")) {
+        <mat-error>That library name already exists.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput rows="4" formControlName="description" maxlength="500"></textarea>
+      <mat-hint>Shown on the library card before a user clones the strategy.</mat-hint>
+      @if (form.get("description")?.hasError("required") && form.get("description")?.touched) {
+        <mat-error>Description is required.</mat-error>
+      }
+      @if (form.get("description")?.hasError("maxlength")) {
+        <mat-error>Description must be 500 characters or fewer.</mat-error>
+      }
+    </mat-form-field>
+
+    <app-tag-selector
+      [control]="tagsControl"
+      [availableTags]="data.availableTags"
+      title="Library tags"
+      subtitle="Choose zero or more tags from the current library taxonomy."
+      emptyText="No shared tags are available yet.">
+    </app-tag-selector>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" type="button" (click)="onPromote()">Promote</button>
+</mat-dialog-actions>

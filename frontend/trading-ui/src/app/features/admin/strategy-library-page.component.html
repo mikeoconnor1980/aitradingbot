@@ -1,0 +1,112 @@
+<section class="strategy-library">
+  <header class="strategy-library__header">
+    <div>
+      <h2 class="strategy-library__title">Strategy Library</h2>
+      <p class="strategy-library__subtitle">Manage shared templates used by the strategy wizard. Built-in templates stay protected; promoted templates can be renamed or removed.</p>
+    </div>
+  </header>
+
+  @if (isLoading) {
+    <mat-card class="strategy-library__state strategy-library__state--loading">
+      <mat-card-content>
+        <mat-spinner diameter="42"></mat-spinner>
+        <p>Loading strategy library...</p>
+      </mat-card-content>
+    </mat-card>
+  } @else if (templates.length === 0) {
+    <mat-card class="strategy-library__state strategy-library__state--empty">
+      <mat-card-content>
+        <p>No shared templates are currently available.</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <mat-card class="strategy-library__table-card">
+      <mat-card-content>
+        <div class="strategy-library__table-wrap">
+          <table mat-table [dataSource]="templates" class="strategy-library__table">
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Template</th>
+              <td mat-cell *matCellDef="let template">
+                <div class="strategy-library__name-cell">
+                  <span class="strategy-library__name">{{ template.name }}</span>
+                  <span class="strategy-library__description">{{ template.description }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="source">
+              <th mat-header-cell *matHeaderCellDef>Source</th>
+              <td mat-cell *matCellDef="let template">
+                <span
+                  class="strategy-library__source"
+                  [class.strategy-library__source--system]="template.isSystemTemplate"
+                  [class.strategy-library__source--promoted]="!template.isSystemTemplate">
+                  {{ template.isSystemTemplate ? "Built-in" : "Promoted" }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="mode">
+              <th mat-header-cell *matHeaderCellDef>Mode</th>
+              <td mat-cell *matCellDef="let template">{{ template.strategyMode | titlecase }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="tags">
+              <th mat-header-cell *matHeaderCellDef>Tags</th>
+              <td mat-cell *matCellDef="let template">
+                <mat-chip-set class="strategy-library__tags">
+                  @for (tag of template.tags; track tag) {
+                    <mat-chip class="strategy-library__tag">{{ tag }}</mat-chip>
+                  }
+                </mat-chip-set>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="updatedAt">
+              <th mat-header-cell *matHeaderCellDef>Updated</th>
+              <td mat-cell *matCellDef="let template">
+                <span class="strategy-library__updated-date">{{ template.updatedAtUtc | date: "dd MMM yyyy" }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let template" class="strategy-library__actions">
+                @if (canManage(template)) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Rename template"
+                    matTooltip="Rename"
+                    [disabled]="renamingTemplateId === template.id || removingTemplateId === template.id"
+                    (click)="onRename(template)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    color="warn"
+                    aria-label="Remove template"
+                    matTooltip="Remove from library"
+                    [disabled]="renamingTemplateId === template.id || removingTemplateId === template.id"
+                    (click)="onRemove(template)">
+                    @if (removingTemplateId === template.id) {
+                      <mat-spinner diameter="18"></mat-spinner>
+                    } @else {
+                      <mat-icon>delete</mat-icon>
+                    }
+                  </button>
+                } @else {
+                  <span class="strategy-library__managed-note">Protected</span>
+                }
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns" class="strategy-library__row"></tr>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

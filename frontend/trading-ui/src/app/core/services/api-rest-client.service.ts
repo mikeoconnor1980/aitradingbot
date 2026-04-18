@@ -20,6 +20,10 @@ export class ApiRestClient {
     return this._http.put<T>(this.buildUrl(path), body, context ? { context } : undefined);
   }
 
+  public patch<T>(path: string, body: unknown, context?: HttpContext): Observable<T> {
+    return this._http.patch<T>(this.buildUrl(path), body, context ? { context } : undefined);
+  }
+
   public delete<T>(path: string, context?: HttpContext): Observable<T> {
     return this._http.delete<T>(this.buildUrl(path), context ? { context } : undefined);
   }

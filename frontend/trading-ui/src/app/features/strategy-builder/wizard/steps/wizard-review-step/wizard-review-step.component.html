@@ -3,6 +3,16 @@
     <app-preview-summary-card [formValue]="formValue"></app-preview-summary-card>
   </div>
 
+  <div class="wizard-review__tags">
+    <app-tag-selector
+      [control]="tagsControl"
+      [availableTags]="availableTags"
+      title="Strategy tags"
+      subtitle="Choose zero, one, or many tags from the current strategy library list."
+      emptyText="Library tags are unavailable right now.">
+    </app-tag-selector>
+  </div>
+
   @if (errors.length > 0 || warnings.length > 0) {
     <div class="wizard-review__validation">
       <app-validation-card [errors]="errors" [warnings]="warnings"></app-validation-card>

@@ -40,6 +40,85 @@ public sealed class StrategiesController : ApiController
         return Ok(result);
     }
 
+    [HttpGet("templates")]
+    [ProducesResponseType(typeof(IReadOnlyList<StrategyTemplateDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTemplates(CancellationToken cancellationToken)
+    {
+        var templates = await Mediator.Send(new GetStrategyTemplatesQuery(), cancellationToken);
+        return Ok(templates);
+    }
+
+    [HttpPost("templates/{templateId:guid}/clone")]
+    [ProducesResponseType(typeof(CreatedResultEnvelope), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CloneTemplate(Guid templateId, CancellationToken cancellationToken)
+    {
+        var id = await Mediator.Send(
+            new CreateStrategyFromTemplateCommand(templateId, IdentityService.Identity),
+            cancellationToken);
+
+        return CreatedAtAction(nameof(GetStrategy), new { id }, new CreatedResultEnvelope(id));
+    }
+
+    [HttpPost("{id:guid}/promote-template")]
+    [ProducesResponseType(typeof(CreatedResultEnvelope), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> PromoteTemplate(
+        Guid id,
+        [FromBody] PromoteStrategyTemplateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var templateId = await Mediator.Send(
+            new PromoteStrategyTemplateCommand(
+                id,
+                request.Name,
+                request.Description,
+                request.Tags,
+                IdentityService.Identity),
+            cancellationToken);
+
+        return CreatedAtAction(nameof(GetTemplates), new { }, new CreatedResultEnvelope(templateId));
+    }
+
+    [HttpDelete("templates/{templateId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UnpublishTemplate(Guid templateId, CancellationToken cancellationToken)
+    {
+        await Mediator.Send(
+            new UnpublishStrategyTemplateCommand(templateId, IdentityService.Identity),
+            cancellationToken);
+
+        return NoContent();
+    }
+
+    [HttpPatch("templates/{templateId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RenameTemplate(
+        Guid templateId,
+        [FromBody] RenameStrategyTemplateRequest request,
+        CancellationToken cancellationToken)
+    {
+        await Mediator.Send(
+            new RenameStrategyTemplateCommand(
+                templateId,
+                request.Name,
+                request.Description,
+                IdentityService.Identity),
+            cancellationToken);
+
+        return NoContent();
+    }
+
     [HttpPost("interpret")]
     [EnableRateLimiting("interpret-strategy")]
     [ProducesResponseType(typeof(StrategyIntentDto), StatusCodes.Status200OK)]

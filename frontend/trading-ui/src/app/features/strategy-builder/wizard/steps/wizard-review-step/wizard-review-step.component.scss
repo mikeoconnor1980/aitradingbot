@@ -10,6 +10,13 @@
     }
   }
 
+  &__tags {
+    padding: 1rem;
+    border: 1px solid var(--colour-border-subtle, #333);
+    border-radius: 12px;
+    background: var(--colour-surface-dark, #111827);
+  }
+
   &__actions {
     display: flex;
     gap: 1rem;

@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,7 @@ public sealed class StrategiesControllerTests : BaseControllerTests
         builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
         builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
         builder.UseSetting("Hyperliquid:Network", "testnet");
+        builder.UseSetting("Admin:Emails:0", "test@tradepilot.dev");
     }
 
     protected override void ConfigureTestServices(IServiceCollection services)
@@ -496,6 +498,297 @@ public sealed class StrategiesControllerTests : BaseControllerTests
     }
 
     [TestMethod]
+    public async Task GivenSavedStrategy_WhenPromotedToTemplate_ThenReturnsCreatedAndTemplateAppearsInLibrary()
+    {
+        var client = GetTestClient();
+        await SeedStrategyTemplateAsync(
+            slug: $"allowed-tags-{Guid.NewGuid():N}",
+            name: $"Allowed Tags {Guid.NewGuid():N}",
+            tags: ["trend", "ema", "range"]);
+
+        var strategyId = await CreateStrategyAsync(client, $"Promote-{Guid.NewGuid():N}");
+        var request = new PromoteStrategyTemplateRequest
+        {
+            Name = $"Library Promotion {Guid.NewGuid():N}",
+            Description = "Promoted from a saved user strategy.",
+            Tags = ["trend", "ema"],
+        };
+
+        var response = await client.PostAsync(
+            $"{BaseUrl}/{strategyId}/promote-template",
+            GetStringContent(request));
+
+        response.AssertStatusCode(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var templateId = body.GetProperty("id").GetGuid();
+
+        var templatesResponse = await client.GetAsync($"{BaseUrl}/templates");
+        var templates = await templatesResponse.ReadAndAssertSuccessAsync<List<StrategyTemplateDto>>();
+        var promotedTemplate = templates.Single(template => template.Id == templateId);
+
+        promotedTemplate.Name.Should().Be(request.Name);
+        promotedTemplate.Description.Should().Be(request.Description);
+        promotedTemplate.Tags.Should().Equal("trend", "ema");
+        promotedTemplate.Config.StrategyName.Should().Be(request.Name);
+        promotedTemplate.Config.TemplateId.Should().Be(promotedTemplate.Slug);
+    }
+
+    [TestMethod]
+    public async Task GivenDuplicateTemplateName_WhenPromotedToTemplate_ThenReturns409()
+    {
+        var client = GetTestClient();
+        await SeedStrategyTemplateAsync(
+            slug: "trend-pullback-ema-long",
+            name: "Trend Pullback EMA Long",
+            tags: ["trend", "ema"]);
+
+        var strategyId = await CreateStrategyAsync(client, $"Promote-{Guid.NewGuid():N}");
+        var request = new PromoteStrategyTemplateRequest
+        {
+            Name = "Trend Pullback EMA Long",
+            Description = "Should fail because the name already exists.",
+            Tags = ["trend"],
+        };
+
+        var response = await client.PostAsync(
+            $"{BaseUrl}/{strategyId}/promote-template",
+            GetStringContent(request));
+
+        response.AssertStatusCode(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorCode").GetString().Should().Be("duplicate_template_name");
+        body.GetProperty("errorMessage").GetString().Should().Contain(request.Name);
+    }
+
+    [TestMethod]
+    public async Task GivenNamesThatNormalizeToSameSlug_WhenPromotedToTemplate_ThenSecondPromotionGetsUniqueSlug()
+    {
+        var client = GetTestClient();
+        await SeedStrategyTemplateAsync(
+            slug: $"allowed-range-{Guid.NewGuid():N}",
+            name: $"Allowed Range {Guid.NewGuid():N}",
+            tags: ["range"]);
+
+        var firstStrategyId = await CreateStrategyAsync(client, $"Promote-{Guid.NewGuid():N}");
+        var secondStrategyId = await CreateStrategyAsync(client, $"Promote-{Guid.NewGuid():N}");
+
+        var firstRequest = new PromoteStrategyTemplateRequest
+        {
+            Name = "Range Shift Alpha",
+            Description = "First promoted template.",
+            Tags = ["range"],
+        };
+
+        var secondRequest = new PromoteStrategyTemplateRequest
+        {
+            Name = "Range-Shift Alpha",
+            Description = "Second promoted template.",
+            Tags = ["range"],
+        };
+
+        var firstResponse = await client.PostAsync(
+            $"{BaseUrl}/{firstStrategyId}/promote-template",
+            GetStringContent(firstRequest));
+        firstResponse.AssertStatusCode(HttpStatusCode.Created);
+
+        var secondResponse = await client.PostAsync(
+            $"{BaseUrl}/{secondStrategyId}/promote-template",
+            GetStringContent(secondRequest));
+        secondResponse.AssertStatusCode(HttpStatusCode.Created);
+
+        await using var context = CreateTestDbContext();
+        var promotedTemplates = await context.StrategyTemplates
+            .AsNoTracking()
+            .Where(template => template.Name == firstRequest.Name || template.Name == secondRequest.Name)
+            .OrderBy(template => template.Name)
+            .ToListAsync();
+
+        promotedTemplates.Should().HaveCount(2);
+        promotedTemplates.Select(template => template.Slug).Should().OnlyHaveUniqueItems();
+        promotedTemplates.Select(template => template.Slug).Should().OnlyContain(slug => slug.StartsWith("range-shift-alpha", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task GivenPromotedTemplate_WhenUnpublished_ThenReturns204AndRemovesItFromLibrary()
+    {
+        var client = GetTestClient();
+        await SeedStrategyTemplateAsync(
+            slug: $"allowed-tags-{Guid.NewGuid():N}",
+            name: $"Allowed Tags {Guid.NewGuid():N}",
+            tags: ["trend"]);
+
+        var strategyId = await CreateStrategyAsync(client, $"Promote-{Guid.NewGuid():N}");
+        var promoteRequest = new PromoteStrategyTemplateRequest
+        {
+            Name = $"Unpublish Target {Guid.NewGuid():N}",
+            Description = "Template to remove from the library.",
+            Tags = ["trend"],
+        };
+
+        var promoteResponse = await client.PostAsync(
+            $"{BaseUrl}/{strategyId}/promote-template",
+            GetStringContent(promoteRequest));
+        promoteResponse.AssertStatusCode(HttpStatusCode.Created);
+
+        var createdBody = await promoteResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var templateId = createdBody.GetProperty("id").GetGuid();
+
+        var unpublishResponse = await client.DeleteAsync($"{BaseUrl}/templates/{templateId}");
+        unpublishResponse.AssertStatusCode(HttpStatusCode.NoContent);
+
+        var templatesResponse = await client.GetAsync($"{BaseUrl}/templates");
+        var templates = await templatesResponse.ReadAndAssertSuccessAsync<List<StrategyTemplateDto>>();
+        templates.Should().NotContain(template => template.Id == templateId);
+
+        await using var context = CreateTestDbContext();
+        var unpublishedTemplate = await context.StrategyTemplates
+            .AsNoTracking()
+            .SingleAsync(template => template.Id == templateId);
+        unpublishedTemplate.IsActive.Should().BeFalse();
+        unpublishedTemplate.IsSystemTemplate.Should().BeFalse();
+    }
+
+    [TestMethod]
+    public async Task GivenPromotedTemplate_WhenRenamedByAdmin_ThenReturns204AndUpdatesTemplate()
+    {
+        var client = GetTestClient();
+        await SeedStrategyTemplateAsync(
+            slug: $"allowed-tags-{Guid.NewGuid():N}",
+            name: $"Allowed Tags {Guid.NewGuid():N}",
+            tags: ["trend"]);
+
+        var strategyId = await CreateStrategyAsync(client, $"Promote-{Guid.NewGuid():N}");
+        var promoteRequest = new PromoteStrategyTemplateRequest
+        {
+            Name = $"Rename Target {Guid.NewGuid():N}",
+            Description = "Template before rename.",
+            Tags = ["trend"],
+        };
+
+        var promoteResponse = await client.PostAsync(
+            $"{BaseUrl}/{strategyId}/promote-template",
+            GetStringContent(promoteRequest));
+        promoteResponse.AssertStatusCode(HttpStatusCode.Created);
+
+        var createdBody = await promoteResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var templateId = createdBody.GetProperty("id").GetGuid();
+
+        await using var context = CreateTestDbContext();
+        var originalTemplate = await context.StrategyTemplates
+            .AsNoTracking()
+            .SingleAsync(template => template.Id == templateId);
+        var originalSlug = originalTemplate.Slug;
+
+        var renameRequest = new RenameStrategyTemplateRequest
+        {
+            Name = $"Renamed Template {Guid.NewGuid():N}",
+            Description = "Updated library description."
+        };
+
+        var renameResponse = await client.PatchAsync(
+            $"{BaseUrl}/templates/{templateId}",
+            GetStringContent(renameRequest));
+
+        renameResponse.AssertStatusCode(HttpStatusCode.NoContent);
+
+        var renamedTemplate = await context.StrategyTemplates
+            .AsNoTracking()
+            .SingleAsync(template => template.Id == templateId);
+
+        renamedTemplate.Name.Should().Be(renameRequest.Name);
+        renamedTemplate.Description.Should().Be(renameRequest.Description);
+        renamedTemplate.Slug.Should().Be(originalSlug);
+    }
+
+    [TestMethod]
+    public async Task GivenDuplicateTemplateName_WhenRenamed_ThenReturns409()
+    {
+        var client = GetTestClient();
+        var existingTemplateId = await SeedStrategyTemplateAsync(
+            slug: $"existing-template-{Guid.NewGuid():N}",
+            name: $"Existing Template {Guid.NewGuid():N}",
+            tags: ["trend"]);
+        var renameTargetId = await SeedStrategyTemplateAsync(
+            slug: $"rename-target-{Guid.NewGuid():N}",
+            name: $"Rename Target {Guid.NewGuid():N}",
+            tags: ["trend"]);
+
+        await using var context = CreateTestDbContext();
+        var existingTemplate = await context.StrategyTemplates.AsNoTracking().SingleAsync(template => template.Id == existingTemplateId);
+
+        var response = await client.PatchAsync(
+            $"{BaseUrl}/templates/{renameTargetId}",
+            GetStringContent(new RenameStrategyTemplateRequest
+            {
+                Name = existingTemplate.Name,
+                Description = "Updated description"
+            }));
+
+        response.AssertStatusCode(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorCode").GetString().Should().Be("duplicate_template_name");
+    }
+
+    [TestMethod]
+    public async Task GivenSystemTemplate_WhenUnpublished_ThenReturns409()
+    {
+        var client = GetTestClient();
+        var systemTemplateId = await SeedStrategyTemplateAsync(
+            slug: $"system-template-{Guid.NewGuid():N}",
+            name: $"System Template {Guid.NewGuid():N}",
+            tags: ["starter"],
+            isSystemTemplate: true);
+
+        var response = await client.DeleteAsync($"{BaseUrl}/templates/{systemTemplateId}");
+
+        response.AssertStatusCode(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("errorCode").GetString().Should().Be("conflict");
+    }
+
+    [TestMethod]
+    public async Task GivenNonAdmin_WhenTemplateRenamed_ThenReturns403()
+    {
+        var client = GetTestClient();
+        var templateId = await SeedStrategyTemplateAsync(
+            slug: $"rename-target-{Guid.NewGuid():N}",
+            name: $"Rename Target {Guid.NewGuid():N}",
+            tags: ["trend"]);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateTestToken(email: "non-admin@tradepilot.dev", displayName: "Non Admin User"));
+
+        var response = await client.PatchAsync(
+            $"{BaseUrl}/templates/{templateId}",
+            GetStringContent(new RenameStrategyTemplateRequest
+            {
+                Name = $"Blocked Rename {Guid.NewGuid():N}",
+                Description = "Blocked description"
+            }));
+
+        response.AssertStatusCode(HttpStatusCode.Forbidden);
+    }
+
+    [TestMethod]
+    public async Task GivenNonAdmin_WhenTemplateUnpublished_ThenReturns403()
+    {
+        var client = GetTestClient();
+        var templateId = await SeedStrategyTemplateAsync(
+            slug: $"remove-target-{Guid.NewGuid():N}",
+            name: $"Remove Target {Guid.NewGuid():N}",
+            tags: ["trend"]);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            GenerateTestToken(email: "non-admin@tradepilot.dev", displayName: "Non Admin User"));
+
+        var response = await client.DeleteAsync($"{BaseUrl}/templates/{templateId}");
+
+        response.AssertStatusCode(HttpStatusCode.Forbidden);
+    }
+
+    [TestMethod]
     public async Task GivenUnknownId_WhenGetById_ThenReturns404()
     {
         var client = GetTestClient();
@@ -645,6 +938,79 @@ public sealed class StrategiesControllerTests : BaseControllerTests
         var strategy = await context.Strategies.FirstAsync(item => item.Id == strategyId);
         strategy.SetRunningState(isRunning);
         await context.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedStrategyTemplateAsync(string slug, string name, string[] tags, bool isSystemTemplate = false)
+    {
+        await using var context = CreateTestDbContext();
+
+        var config = new StrategyConfig
+        {
+            SchemaVersion = 1,
+            StrategyMode = StrategyMode.Grid,
+            StrategyName = name,
+            Exchange = "Hyperliquid",
+            Market = "BTC-USD",
+            Timeframe = "15m",
+            Direction = Direction.Long,
+            Enabled = true,
+            TemplateId = slug,
+            Grid = new GridConfig
+            {
+                Levels = 10,
+                Spacing = 0.5m,
+                EntryMode = "auto_from_signal_candle",
+                BreakdownThreshold = 1.5m,
+            },
+            Exit = new ExitConfig
+            {
+                TakeProfit = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 2.0m,
+                },
+                StopLoss = new ExitRuleConfig
+                {
+                    Enabled = true,
+                    Type = ExitRuleType.FixedPercent,
+                    Value = 6.0m,
+                },
+                ExitOnOppositeSignal = false,
+            },
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.PercentWallet,
+                PositionSizeValue = 5.0m,
+                Leverage = 1.0m,
+                MaxOpenTrades = 1,
+                CooldownValue = 0,
+                CooldownUnit = CooldownUnit.Candles,
+                AllowSameCandleReentry = false,
+            },
+            Metadata = new StrategyMetadata
+            {
+                Tags = tags,
+                Notes = string.Empty,
+            },
+        };
+
+        var template = StrategyTemplate.Create(
+            slug,
+            name,
+            $"Seeded template for {name}",
+            "grid",
+            "long",
+            "BTC-USD",
+            JsonSerializer.Serialize(tags),
+            JsonSerializer.Serialize(config, StrategyJsonOptions.Default),
+            1,
+            isSystemTemplate);
+
+        context.StrategyTemplates.Add(template);
+        await context.SaveChangesAsync();
+
+        return template.Id;
     }
 
     private async Task AddBacktestRunAsync(Guid strategyId, int? strategyRevisionId, int totalTrades, decimal totalPnl)

@@ -28,45 +28,21 @@ export class WizardEducationService {
       available: true
     },
     {
-      id: "custom_signal",
-      label: "Custom Signal",
+      id: "dca",
+      label: "DCA",
+      icon: "stacked_line_chart",
+      description: "Scheduled accumulation — buy at regular intervals with optional price gates and scaling bands. Set a budget cap and let it run.",
+      bestFor: "Long-term accumulation / dollar-cost averaging",
+      available: true
+    },
+    {
+      id: "signal",
+      label: "Signal",
       icon: "tune",
       description: "Build your own entry logic by combining indicators like RSI, MACD, and EMA crossovers. Full control over when to enter and exit.",
       bestFor: "Experienced traders with a specific edge",
       available: true
     },
-    {
-      id: "ema_pullback",
-      label: "EMA Pullback",
-      icon: "trending_up",
-      description: "Enters when price pulls back to a key EMA (e.g. 21 or 50) during a trend. Rides the trend with tight risk management.",
-      bestFor: "Trending markets with clear direction",
-      available: true
-    },
-    {
-      id: "macd_cross",
-      label: "MACD Cross",
-      icon: "swap_vert",
-      description: "Enters on MACD signal-line crossovers — a classic momentum strategy. Works well on higher timeframes where signals are more reliable.",
-      bestFor: "Momentum / trend-following on 1h+ timeframes",
-      available: true
-    },
-    {
-      id: "rsi_reversal",
-      label: "RSI Reversal",
-      icon: "replay",
-      description: "Enters when RSI reaches oversold/overbought extremes, betting on a mean-reversion bounce. Best with additional confirmation.",
-      bestFor: "Mean-reversion in ranging markets",
-      available: false
-    },
-    {
-      id: "blank",
-      label: "Blank Canvas",
-      icon: "edit_note",
-      description: "Start from scratch with no pre-filled values. For advanced users who want complete control from the ground up.",
-      bestFor: "Advanced users who know exactly what they want",
-      available: true
-    }
   ];
 
   public getStepEducation(stepIndex: number): WizardStepEducation {
@@ -75,14 +51,10 @@ export class WizardEducationService {
 
   private readonly _steps: WizardStepEducation[] = [
     {
-      title: "Trading Idea",
-      question: "What kind of strategy do you want to build?",
-      description: "Choose a strategy template to get started. Each template pre-configures entry logic suited to different market conditions.",
-      tips: [
-        "Grid strategies work best in sideways markets where price bounces between support and resistance.",
-        "Signal strategies use technical indicators to time entries — better for trending markets.",
-        "Not sure? Start with a Grid strategy — it's the simplest to understand and configure."
-      ]
+      title: "Get Started",
+      question: "How do you want to create your strategy?",
+      description: "Pick a pre-built strategy from the library, or choose a strategy type to build your own from scratch.",
+      tips: []
     },
     {
       title: "Market & Timeframe",

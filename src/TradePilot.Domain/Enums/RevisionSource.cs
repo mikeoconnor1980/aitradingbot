@@ -7,4 +7,5 @@ public enum RevisionSource
     Import = 2,
     Restore = 3,
     Optimizer = 4,
+    Template = 5,
 }

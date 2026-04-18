@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Application.Abstractions.Auth;
 using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Abstractions.Services;
 using TradePilot.Domain.Entities;
 
 namespace TradePilot.Api.Controllers;
@@ -17,17 +18,20 @@ public sealed class AuthController : ControllerBase
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IGoogleTokenValidator _googleTokenValidator;
+    private readonly IAdminAuthorizationService _adminAuthorizationService;
 
     public AuthController(
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
         IPasswordHasher passwordHasher,
-        IGoogleTokenValidator googleTokenValidator)
+        IGoogleTokenValidator googleTokenValidator,
+        IAdminAuthorizationService adminAuthorizationService)
     {
         _userRepository = userRepository;
         _jwtTokenService = jwtTokenService;
         _passwordHasher = passwordHasher;
         _googleTokenValidator = googleTokenValidator;
+        _adminAuthorizationService = adminAuthorizationService;
     }
 
     [HttpPost("register")]
@@ -59,7 +63,7 @@ public sealed class AuthController : ControllerBase
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(newUser.Id, newUser.Email, newUser.DisplayName)));
+            new UserInfo(newUser.Id, newUser.Email, newUser.DisplayName, _adminAuthorizationService.IsAdmin(newUser.Email))));
     }
 
     [HttpPost("login")]
@@ -91,7 +95,7 @@ public sealed class AuthController : ControllerBase
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(user.Id, user.Email, user.DisplayName)));
+            new UserInfo(user.Id, user.Email, user.DisplayName, _adminAuthorizationService.IsAdmin(user.Email))));
     }
 
     [HttpPost("refresh")]
@@ -118,7 +122,7 @@ public sealed class AuthController : ControllerBase
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(user.Id, user.Email, user.DisplayName)));
+            new UserInfo(user.Id, user.Email, user.DisplayName, _adminAuthorizationService.IsAdmin(user.Email))));
     }
 
     [HttpPost("google")]
@@ -159,7 +163,7 @@ public sealed class AuthController : ControllerBase
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(user.Id, user.Email, user.DisplayName)));
+            new UserInfo(user.Id, user.Email, user.DisplayName, _adminAuthorizationService.IsAdmin(user.Email))));
     }
 
     [HttpGet("me")]
@@ -177,7 +181,7 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        return Ok(new MeResponse(Guid.Parse(userId), email, displayName ?? email));
+        return Ok(new MeResponse(Guid.Parse(userId), email, displayName ?? email, _adminAuthorizationService.IsAdmin(email)));
     }
 
     private static bool IsPasswordComplex(string password)
@@ -195,5 +199,5 @@ public sealed record LoginRequest(string Email, string Password);
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record GoogleAuthRequest(string IdToken);
 public sealed record AuthResponse(string Token, string RefreshToken, UserInfo User);
-public sealed record UserInfo(Guid Id, string Email, string DisplayName);
-public sealed record MeResponse(Guid Id, string Email, string DisplayName);
+public sealed record UserInfo(Guid Id, string Email, string DisplayName, bool IsAdmin);
+public sealed record MeResponse(Guid Id, string Email, string DisplayName, bool IsAdmin);

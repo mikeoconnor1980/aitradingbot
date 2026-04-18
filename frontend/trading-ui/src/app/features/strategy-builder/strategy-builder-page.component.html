@@ -24,6 +24,25 @@
       </span>
 
       @if (editId) {
+        <span class="builder-page__action-wrapper" [matTooltip]="promoteTooltip" [matTooltipDisabled]="promoteTooltip.length === 0">
+          <button
+            mat-stroked-button
+            type="button"
+            class="builder-page__action-button"
+            [disabled]="!canPromoteToLibrary"
+            (click)="onPromoteToLibrary()">
+            @if (isLoadingLibraryTemplates || isPromotingTemplate) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              <mat-icon>publish</mat-icon>
+            }
+
+            <span>{{ promoteButtonLabel }}</span>
+          </button>
+        </span>
+      }
+
+      @if (editId) {
         <button mat-stroked-button type="button" color="primary" (click)="onBacktestStrategy()">
           <mat-icon>science</mat-icon>
           <span>Backtest this strategy</span>

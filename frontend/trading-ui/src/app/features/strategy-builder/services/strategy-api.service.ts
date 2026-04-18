@@ -4,6 +4,8 @@ import { Observable } from "rxjs";
 import { PagedResult } from "../../../core/models/paged-result.model";
 import { ApiRestClient } from "../../../core/services/api-rest-client.service";
 import {
+  PromoteStrategyTemplateRequest,
+  RenameStrategyTemplateRequest,
   StrategyDiffDto,
   ServerValidationResult,
   StrategyConfig,
@@ -11,6 +13,7 @@ import {
   StrategyRevisionSummaryDto,
   StrategyDto,
   StrategySummaryDto,
+  StrategyTemplateDto,
 } from "../models/strategy.model";
 import { StrategyIntentDto } from "../models/strategy-intent.model";
 import { StrategyReviewDto } from "../models/strategy-review.model";
@@ -104,6 +107,42 @@ export class StrategyApiService {
 
     return this._apiClient.get<StrategyReviewDto>(
       `strategies/${encodedStrategyId}/versions/${revisionNumber}/review`,
+      context
+    );
+  }
+
+  public getTemplates(context?: HttpContext): Observable<StrategyTemplateDto[]> {
+    return this._apiClient.get<StrategyTemplateDto[]>("strategies/templates", context);
+  }
+
+  public cloneTemplate(templateId: string, context?: HttpContext): Observable<{ id: string }> {
+    return this._apiClient.post<{ id: string }>(
+      `strategies/templates/${encodeURIComponent(templateId)}/clone`,
+      null,
+      context
+    );
+  }
+
+  public unpublishTemplate(templateId: string, context?: HttpContext): Observable<void> {
+    return this._apiClient.delete<void>(`strategies/templates/${encodeURIComponent(templateId)}`, context);
+  }
+
+  public renameTemplate(
+    templateId: string,
+    request: RenameStrategyTemplateRequest,
+    context?: HttpContext
+  ): Observable<void> {
+    return this._apiClient.patch<void>(`strategies/templates/${encodeURIComponent(templateId)}`, request, context);
+  }
+
+  public promoteStrategyTemplate(
+    id: string,
+    request: PromoteStrategyTemplateRequest,
+    context?: HttpContext
+  ): Observable<{ id: string }> {
+    return this._apiClient.post<{ id: string }>(
+      `strategies/${encodeURIComponent(id)}/promote-template`,
+      request,
       context
     );
   }

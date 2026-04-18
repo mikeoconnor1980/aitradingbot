@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Persistence.Repositories;
+using TradePilot.Persistence.Seeding;
 
 namespace TradePilot.Persistence;
 
@@ -28,6 +29,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<IStrategyRepository, StrategyRepository>();
         services.AddScoped<IStrategyRevisionRepository, StrategyRevisionRepository>();
         services.AddScoped<IStrategyReviewRepository, StrategyReviewRepository>();
+        services.AddScoped<IStrategyTemplateRepository, StrategyTemplateRepository>();
         services.AddScoped<ILiveOrderRepository, LiveOrderRepository>();
         services.AddScoped<ILiveFillRepository, LiveFillRepository>();
         services.AddScoped<IGridCycleRepository, GridCycleRepository>();
@@ -53,5 +55,6 @@ public static class PersistenceServiceExtensions
         }
 
         await db.Database.MigrateAsync();
+        await StrategyTemplateSeeder.SeedAsync(db);
     }
 }

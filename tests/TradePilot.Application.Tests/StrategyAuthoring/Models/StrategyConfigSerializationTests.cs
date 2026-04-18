@@ -148,6 +148,29 @@ public sealed class StrategyConfigSerializationTests
     }
 
     [TestMethod]
+    public void GivenConfigWithMetadataTags_WhenSerializedAndDeserialized_ThenTagsRoundTrip()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Signal,
+            StrategyName = "Tagged Strategy",
+            Metadata = new StrategyMetadata
+            {
+                Tags = ["trend", "ema"],
+                Notes = "Reusable strategy tags",
+            },
+        };
+
+        var json = JsonSerializer.Serialize(config, StrategyJsonOptions.Default);
+        var deserialized = JsonSerializer.Deserialize<StrategyConfig>(json, StrategyJsonOptions.Default);
+
+        deserialized.Should().NotBeNull();
+        deserialized!.Metadata.Should().NotBeNull();
+        deserialized.Metadata!.Tags.Should().Equal("trend", "ema");
+        deserialized.Metadata.Notes.Should().Be("Reusable strategy tags");
+    }
+
+    [TestMethod]
     public void GivenSignalModeWithRsiCondition_WhenRoundTripped_ThenRsiParamsPreserved()
     {
         var config = new StrategyConfig

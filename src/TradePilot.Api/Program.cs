@@ -52,6 +52,10 @@ builder.Services.AddMediatR(cfg =>
 // Identity — resolved from JWT claims via HttpContext
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IdentityService>();
+builder.Services.AddSingleton<IAdminAuthorizationService, ConfiguredEmailAdminAuthorizationService>();
+
+builder.Services.AddOptions<AdminAuthorizationOptions>()
+    .Bind(builder.Configuration.GetSection(AdminAuthorizationOptions.SectionName));
 
 // JWT Authentication
 builder.Services.AddOptions<JwtOptions>()

@@ -11,11 +11,10 @@ import { debounceTime, map, startWith, switchMap, tap } from "rxjs";
 import { of } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { NotificationFacade } from "../../../core/services/notification-facade.service";
-import { StrategyConfig, ServerValidationResult, ValidationError } from "../models/strategy.model";
+import { StrategyConfig, StrategyTemplateDto, ServerValidationResult, ValidationError } from "../models/strategy.model";
 import { StrategyApiService } from "../services/strategy-api.service";
 import { StrategyMapperService } from "../services/strategy-mapper.service";
 import { StrategyValidationService } from "../services/strategy-validation.service";
-import { ConditionFactoryService } from "../services/condition-factory.service";
 import { StrategyDraftService } from "../services/strategy-draft.service";
 import { WizardEducationService, WizardStepEducation } from "./services/wizard-education.service";
 import { WizardGoalStepComponent } from "./steps/wizard-goal-step/wizard-goal-step.component";
@@ -56,18 +55,23 @@ export class StrategyWizardPageComponent implements OnInit {
   private readonly _strategyValidator = inject(StrategyValidationService);
   private readonly _draftService = inject(StrategyDraftService);
   private readonly _notifications = inject(NotificationFacade);
-  private readonly _conditionFactory = inject(ConditionFactoryService);
   public readonly _education = inject(WizardEducationService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   @ViewChild("stepper") public stepper!: MatStepper;
 
-  private readonly _signalTemplates = new Set(["custom_signal", "ema_pullback", "macd_cross", "rsi_reversal", "blank"]);
+  private readonly _templateModeMap = new Map<string, "grid" | "signal" | "dca">([
+    ["grid", "grid"],
+    ["signal", "signal"],
+    ["dca", "dca"],
+  ]);
 
   public form: FormGroup = this._buildForm();
   public entryStepForm: FormGroup = this._fb.group({}, { validators: [this._entryStepValidator()] });
   public isSaving = false;
+  public isLoadingLibrary = false;
+  public libraryTemplates: StrategyTemplateDto[] = [];
   public clientErrors: ValidationError[] = [];
   public serverErrors: ValidationError[] = [];
   public serverWarnings: ValidationError[] = [];
@@ -84,8 +88,16 @@ export class StrategyWizardPageComponent implements OnInit {
     return template?.label ?? "Custom";
   }
 
+  public get selectedTemplateMode(): "grid" | "signal" | "dca" {
+    return this._templateModeMap.get(this.selectedTemplateId) ?? "grid";
+  }
+
   public get isSignalMode(): boolean {
-    return this._signalTemplates.has(this.selectedTemplateId);
+    return this.selectedTemplateMode === "signal";
+  }
+
+  public get isDcaMode(): boolean {
+    return this.selectedTemplateMode === "dca";
   }
 
   public get showFilterStep(): boolean {
@@ -140,8 +152,26 @@ export class StrategyWizardPageComponent implements OnInit {
     return this.clientErrors.concat(this.serverErrors);
   }
 
+  public get availableTags(): string[] {
+    const tags = new Set<string>();
+
+    for (const template of this.libraryTemplates) {
+      for (const tag of template.tags) {
+        tags.add(tag);
+      }
+    }
+
+    return Array.from(tags).sort();
+  }
+
+  public get tagsControl() {
+    return this.form.get("metadata.tags");
+  }
+
   public ngOnInit(): void {
     const draft = this._draftService.draft;
+
+    this._loadLibraryTemplates();
 
     if (draft !== null) {
       this._populateFormFromDraft(draft);
@@ -154,9 +184,15 @@ export class StrategyWizardPageComponent implements OnInit {
   }
 
   public onTemplateSelected(templateId: string): void {
+    if (templateId === "dca") {
+      void this._router.navigate(["/strategies/new"], { queryParams: { mode: "dca" } });
+
+      return;
+    }
+
     this.form.patchValue({ templateId });
 
-    if (this._signalTemplates.has(templateId)) {
+    if (this._templateModeMap.get(templateId) === "signal") {
       this.form.get("grid")?.disable();
     } else {
       this.form.get("grid")?.enable();
@@ -165,6 +201,20 @@ export class StrategyWizardPageComponent implements OnInit {
     this._applyTemplateDefaults(templateId);
     this._maybeAutoName();
     this.entryStepForm.updateValueAndValidity();
+  }
+
+  public onLibraryTemplateSelected(template: StrategyTemplateDto): void {
+    if (template.strategyMode === "dca") {
+      void this._router.navigate(["/strategies/new"], {
+        queryParams: { mode: "dca" },
+        state: { prefillConfig: template.config }
+      });
+
+      return;
+    }
+
+    this._applyLibraryTemplateToForm(template);
+    this.stepper.next();
   }
 
   public onStepChange(index: number): void {
@@ -364,11 +414,8 @@ export class StrategyWizardPageComponent implements OnInit {
   private _generateName(): string {
     const templateLabels: Record<string, string> = {
       grid: "Grid",
-      custom_signal: "Signal",
-      ema_pullback: "EMA Pullback",
-      macd_cross: "MACD Cross",
-      rsi_reversal: "RSI Reversal",
-      blank: "Custom",
+      signal: "Signal",
+      dca: "DCA",
     };
 
     const templateId = String(this.form.get("templateId")?.value ?? "grid");
@@ -383,86 +430,20 @@ export class StrategyWizardPageComponent implements OnInit {
 
   private _applyTemplateDefaults(templateId: string): void {
     switch (templateId) {
-      case "ema_pullback":
-        this._applyEmaPullbackDefaults();
-        break;
-      case "macd_cross":
-        this._applyMacdCrossDefaults();
-        break;
-      case "custom_signal":
-      case "blank":
+      case "signal":
         this.conditionsArray.clear();
         break;
       case "grid":
         this.conditionsArray.clear();
         this._resetGridDefaults();
         break;
+      case "dca":
+        // DCA bypasses the wizard — no defaults to apply
+        break;
     }
 
     this.form.markAsDirty();
     this.form.updateValueAndValidity();
-  }
-
-  private _applyEmaPullbackDefaults(): void {
-    this.form.patchValue({ direction: "long" });
-
-    this.trendFilterGroup.patchValue({
-      enabled: true,
-      type: "ema_cross",
-      period: 200,
-      fastPeriod: 50,
-      slowPeriod: 200,
-      operator: "gt",
-      appliesTo: "long",
-    });
-
-    this.conditionsArray.clear();
-    this.conditionsArray.push(this._conditionFactory.createPriceVsEmaCondition({
-      label: "Price near EMA 50",
-      period: 50,
-      operator: "near",
-      distanceType: "percent",
-      distanceValue: 0.25,
-    }));
-    this.conditionsArray.push(this._conditionFactory.createRsiCondition({
-      label: "RSI Oversold",
-      period: 14,
-      operator: "lt",
-      value: 40,
-    }));
-
-    this.exitGroup.patchValue({
-      takeProfit: { enabled: true, type: "fixed_percent", value: 3 },
-      stopLoss: { enabled: true, type: "swing_low", value: null, lookback: 5 },
-    });
-  }
-
-  private _applyMacdCrossDefaults(): void {
-    this.form.patchValue({ direction: "long" });
-
-    this.trendFilterGroup.patchValue({
-      enabled: false,
-      type: "ema_cross",
-      period: 200,
-      fastPeriod: 50,
-      slowPeriod: 200,
-      operator: "gt",
-      appliesTo: "both",
-    });
-
-    this.conditionsArray.clear();
-    this.conditionsArray.push(this._conditionFactory.createMacdCondition({
-      label: "MACD Bullish Cross",
-      fastPeriod: 12,
-      slowPeriod: 26,
-      signalPeriod: 9,
-      operator: "cross_above_signal",
-    }));
-
-    this.exitGroup.patchValue({
-      takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
-      stopLoss: { enabled: true, type: "fixed_percent", value: 1.5 },
-    });
   }
 
   private _resetGridDefaults(): void {
@@ -478,6 +459,65 @@ export class StrategyWizardPageComponent implements OnInit {
       takeProfit: { enabled: true, type: "fixed_percent", value: 2 },
       stopLoss: { enabled: true, type: "fixed_percent", value: 6 },
     });
+  }
+
+  private _applyLibraryTemplateToForm(template: StrategyTemplateDto): void {
+    const config = template.config;
+
+    const templateId = config.strategyMode === "signal" ? "signal" : "grid";
+    this.form.patchValue({ templateId });
+
+    if (templateId === "signal") {
+      this.form.get("grid")?.disable();
+    } else {
+      this.form.get("grid")?.enable();
+    }
+
+    this.form.patchValue({
+      strategyName: template.name,
+      exchange: config.exchange ?? "Hyperliquid",
+      market: config.market,
+      timeframe: config.timeframe,
+      direction: config.direction,
+      metadata: {
+        tags: config.metadata?.tags ?? template.tags ?? [],
+        notes: config.metadata?.notes ?? "",
+      },
+    });
+
+    this._userEditedName = true;
+
+    if (config.grid) {
+      this.gridGroup.patchValue(config.grid);
+    }
+
+    if (config.exit) {
+      this.exitGroup.patchValue(config.exit);
+    }
+
+    if (config.risk) {
+      this.riskGroup.patchValue(config.risk);
+    }
+
+    if (config.trendFilter) {
+      this.trendFilterGroup.patchValue(config.trendFilter);
+    }
+
+    this.conditionsArray.clear();
+
+    if (config.entryConditions) {
+      for (const condition of config.entryConditions) {
+        this.conditionsArray.push(this._fb.group(condition));
+      }
+    }
+
+    if (config.entryLogic) {
+      this.form.patchValue({ entryLogic: config.entryLogic });
+    }
+
+    this.entryStepForm.updateValueAndValidity();
+    this.form.markAsDirty();
+    this.form.updateValueAndValidity();
   }
 
   private _setupEntryStepValidation(): void {
@@ -521,6 +561,7 @@ export class StrategyWizardPageComponent implements OnInit {
       market: config.market,
       timeframe: config.timeframe,
       direction: config.direction,
+      metadata: config.metadata ?? { tags: [], notes: "" },
     });
 
     if (config.grid) {
@@ -543,8 +584,20 @@ export class StrategyWizardPageComponent implements OnInit {
       this.form.patchValue({ entryLogic: config.entryLogic });
     }
 
-    if (this._signalTemplates.has(config.templateId ?? "grid")) {
-      this.form.get("grid")?.disable();
-    }
+    this.form.updateValueAndValidity();
+  }
+
+  private _loadLibraryTemplates(): void {
+    this.isLoadingLibrary = true;
+
+    this._strategyApi.getTemplates().subscribe({
+      next: (templates) => {
+        this.libraryTemplates = templates;
+        this.isLoadingLibrary = false;
+      },
+      error: () => {
+        this.isLoadingLibrary = false;
+      }
+    });
   }
 }

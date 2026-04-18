@@ -38,10 +38,6 @@ export class StrategyListPageComponent implements OnInit {
   }
 
   public onNewStrategy(): void {
-    void this._router.navigate(["/strategies/new"]);
-  }
-
-  public onGuidedSetup(): void {
     void this._router.navigate(["/strategies/wizard"]);
   }
 
@@ -100,4 +96,5 @@ export class StrategyListPageComponent implements OnInit {
       }
     });
   }
+
 }

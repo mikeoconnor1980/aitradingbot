@@ -35,6 +35,10 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
                 StatusCodes.Status409Conflict,
                 new Envelope(ex.Message, "duplicate_name", correlationId)),
 
+            DuplicateStrategyTemplateNameException ex => (
+                StatusCodes.Status409Conflict,
+                new Envelope(ex.Message, "duplicate_template_name", correlationId)),
+
             ConflictException ex => (
                 StatusCodes.Status409Conflict,
                 new Envelope(ex.Message, "conflict", correlationId)),

@@ -1,0 +1,28 @@
+<mat-card
+  class="template-card"
+  (click)="onClone()"
+  (keydown.enter)="onClone()"
+  tabindex="0"
+  role="button"
+  [attr.aria-label]="template.name">
+  <mat-card-content>
+    <div class="template-card__header">
+      <mat-icon class="template-card__icon">{{ modeIcon }}</mat-icon>
+      <div class="template-card__title-group">
+        <h3 class="template-card__name">{{ template.name }}</h3>
+        <div class="template-card__badges">
+          <span class="template-card__badge template-card__badge--mode">{{ template.strategyMode }}</span>
+          <span class="template-card__badge template-card__badge--direction">{{ template.direction }}</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="template-card__description">{{ template.description }}</p>
+
+    <mat-chip-set class="template-card__tags">
+      @for (tag of template.tags; track tag) {
+        <mat-chip class="template-card__tag">{{ tag }}</mat-chip>
+      }
+    </mat-chip-set>
+  </mat-card-content>
+</mat-card>
