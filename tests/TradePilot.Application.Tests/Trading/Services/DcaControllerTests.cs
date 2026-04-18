@@ -85,6 +85,91 @@ public sealed class DcaControllerTests
         signals.Should().BeEmpty();
     }
 
+    [TestMethod]
+    public async Task GivenDueFiveMinuteDcaWindow_WhenProcessAsync_ThenEmitsSignal()
+    {
+        var config = CreateConfig(new DcaConfig
+        {
+            Interval = DcaInterval.FiveMinutes,
+            TimeOfDayUtc = "00:05",
+            BaseAmountUsd = 100m,
+            Allocations =
+            [
+                new DcaAllocation
+                {
+                    Market = "BTC-USD",
+                    WeightPercent = 100m,
+                }
+            ],
+        });
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true },
+            CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 5, 0, TimeSpan.Zero), "5m"),
+            new GridState(),
+            new PositionState(),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Reason.Should().Contain("FiveMinutes");
+    }
+
+    [TestMethod]
+    public async Task GivenFiveMinuteScheduleSameModuloDifferentMinute_WhenProcessAsync_ThenEmitsSignal()
+    {
+        var config = CreateConfig(new DcaConfig
+        {
+            Interval = DcaInterval.FiveMinutes,
+            TimeOfDayUtc = "00:05",
+            BaseAmountUsd = 100m,
+            Allocations =
+            [
+                new DcaAllocation
+                {
+                    Market = "BTC-USD",
+                    WeightPercent = 100m,
+                }
+            ],
+        });
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true },
+            CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 45, 0, TimeSpan.Zero), "5m"),
+            new GridState(),
+            new PositionState(),
+            config);
+
+        signals.Should().ContainSingle();
+    }
+
+    [TestMethod]
+    public async Task GivenFiveMinuteScheduleOffBoundary_WhenProcessAsync_ThenReturnsNoSignals()
+    {
+        var config = CreateConfig(new DcaConfig
+        {
+            Interval = DcaInterval.FiveMinutes,
+            TimeOfDayUtc = "00:05",
+            BaseAmountUsd = 100m,
+            Allocations =
+            [
+                new DcaAllocation
+                {
+                    Market = "BTC-USD",
+                    WeightPercent = 100m,
+                }
+            ],
+        });
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true },
+            CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 7, 0, TimeSpan.Zero), "5m"),
+            new GridState(),
+            new PositionState(),
+            config);
+
+        signals.Should().BeEmpty();
+    }
+
     private static StrategyConfig CreateConfig(DcaConfig dca)
     {
         return new StrategyConfig
@@ -109,7 +194,7 @@ public sealed class DcaControllerTests
         };
     }
 
-    private static MarketContext CreateContext(string symbol, decimal close, DateTimeOffset timestamp)
+    private static MarketContext CreateContext(string symbol, decimal close, DateTimeOffset timestamp, string interval = "1h")
     {
         var timestampUtc = timestamp.ToUnixTimeMilliseconds();
 
@@ -120,7 +205,7 @@ public sealed class DcaControllerTests
             CurrentCandle = Candle.Create(
                 "Binance",
                 symbol,
-                "1h",
+                interval,
                 timestampUtc,
                 close,
                 close,

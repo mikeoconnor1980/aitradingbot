@@ -101,27 +101,31 @@ public sealed class DcaController : IDcaController
         }
 
         var utcTime = DateTimeOffset.FromUnixTimeMilliseconds(timestampUtc).UtcDateTime;
-        if (utcTime.Minute != scheduledTime.Minute)
-        {
-            return false;
-        }
 
         return dca.Interval switch
         {
-            DcaInterval.Hourly => true,
-            DcaInterval.FourHourly => utcTime.Hour % 4 == scheduledTime.Hour % 4,
-            DcaInterval.Daily => utcTime.Hour == scheduledTime.Hour,
+            DcaInterval.FiveMinutes => utcTime.Minute % 5 == scheduledTime.Minute % 5,
+            DcaInterval.Hourly => utcTime.Minute == scheduledTime.Minute,
+            DcaInterval.FourHourly =>
+                utcTime.Minute == scheduledTime.Minute
+                && utcTime.Hour % 4 == scheduledTime.Hour % 4,
+            DcaInterval.Daily =>
+                utcTime.Minute == scheduledTime.Minute
+                && utcTime.Hour == scheduledTime.Hour,
             DcaInterval.Weekly =>
                 dca.DayOfWeek is int weeklyDay
+                && utcTime.Minute == scheduledTime.Minute
                 && utcTime.Hour == scheduledTime.Hour
                 && (int)utcTime.DayOfWeek == weeklyDay,
             DcaInterval.Biweekly =>
                 dca.DayOfWeek is int biweeklyDay
+                && utcTime.Minute == scheduledTime.Minute
                 && utcTime.Hour == scheduledTime.Hour
                 && (int)utcTime.DayOfWeek == biweeklyDay
                 && ISOWeek.GetWeekOfYear(utcTime.Date) % 2 == 0,
             DcaInterval.Monthly =>
                 dca.DayOfMonth is int monthlyDay
+                && utcTime.Minute == scheduledTime.Minute
                 && utcTime.Hour == scheduledTime.Hour
                 && utcTime.Day == monthlyDay,
             _ => false,

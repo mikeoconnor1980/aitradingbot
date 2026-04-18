@@ -92,6 +92,7 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketClient>();
 builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
+builder.Services.AddSingleton<IFearGreedSnapshotProvider, ControlPlaneFearGreedSnapshotProvider>();
 
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<IExecutionEngine, LiveExecutionEngine>();
@@ -130,6 +131,7 @@ builder.Services.AddSingleton<CandleBuilder>();
 builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
     new LiveMarketContextBuilder(
         sp.GetService<ILlmContextProvider>(),
+        sp.GetService<IFearGreedSnapshotProvider>(),
         sp.GetRequiredService<IServiceScopeFactory>(),
         sp.GetRequiredService<IHyperliquidRestClient>(),
         sp.GetRequiredService<ILoggerFactory>().CreateLogger<LiveMarketContextBuilder>()));

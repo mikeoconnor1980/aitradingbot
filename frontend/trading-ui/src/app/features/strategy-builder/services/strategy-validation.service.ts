@@ -187,6 +187,13 @@ export class StrategyValidationService {
       errors.push(this._error("dca.timeOfDayUtc", "FORMAT", "DCA time must use HH:mm format."));
     }
 
+    if (interval === "five_minutes") {
+      const minute = Number(timeOfDayUtc.split(":")[1] ?? Number.NaN);
+      if (Number.isNaN(minute) || minute % 5 !== 0) {
+        errors.push(this._error("dca.timeOfDayUtc", "ALIGNMENT", "5-minute DCA schedules must align to a 5-minute UTC boundary."));
+      }
+    }
+
     if (baseAmountUsd <= 0) {
       errors.push(this._error("dca.baseAmountUsd", "RANGE", "DCA base amount must be greater than 0."));
     }

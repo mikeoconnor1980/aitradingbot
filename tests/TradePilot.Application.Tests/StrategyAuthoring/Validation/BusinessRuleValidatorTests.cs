@@ -683,6 +683,39 @@ public sealed class BusinessRuleValidatorTests
         result.Errors.Should().NotContain(error => error.Code.StartsWith("DCA_", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    public void GivenFiveMinuteDcaWithOffBoundaryTime_WhenValidated_ThenAlignmentErrorReturned()
+    {
+        var config = new StrategyConfig
+        {
+            StrategyMode = StrategyMode.Dca,
+            AssetType = AssetType.Spot,
+            Direction = Direction.Long,
+            Risk = new RiskConfig
+            {
+                PositionSizeType = PositionSizeType.FixedNotional,
+                PositionSizeValue = 100m,
+                Leverage = 1m,
+                MaxOpenTrades = 1,
+            },
+            Dca = new DcaConfig
+            {
+                Interval = DcaInterval.FiveMinutes,
+                TimeOfDayUtc = "09:32",
+                BaseAmountUsd = 100m,
+                Allocations =
+                [
+                    new DcaAllocation { Market = "BTC-USD", WeightPercent = 100m },
+                ],
+            },
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "DCA_FIVE_MINUTE_ALIGNMENT_REQUIRED");
+    }
+
     private static EntryConditionConfig CreateMacdCondition(
         int fastPeriod = 12,
         int slowPeriod = 26,

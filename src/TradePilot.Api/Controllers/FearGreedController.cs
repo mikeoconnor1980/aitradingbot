@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Application.FearGreed.Commands;
@@ -16,6 +17,7 @@ public sealed class FearGreedController : ApiController
     }
 
     [HttpGet("status")]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(FearGreedStatusDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStatusAsync(CancellationToken cancellationToken)
     {

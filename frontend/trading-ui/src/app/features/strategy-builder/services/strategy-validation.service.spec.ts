@@ -166,6 +166,19 @@ describe("StrategyValidationService", () => {
 
       expect(errors.some((error) => error.fieldPath === "dca.scalingBands[0]" && error.code === "RANGE")).toBeTrue();
     });
+
+    it("should require five-minute DCA times to align to a five-minute boundary", () => {
+      const errors = service.validate({
+        ...validDcaFormValue(),
+        dca: {
+          ...(validDcaFormValue()["dca"] as Record<string, unknown>),
+          interval: "five_minutes",
+          timeOfDayUtc: "00:07",
+        },
+      });
+
+      expect(errors.some((error) => error.fieldPath === "dca.timeOfDayUtc" && error.code === "ALIGNMENT")).toBeTrue();
+    });
   });
 
   describe("signal mode validation", () => {

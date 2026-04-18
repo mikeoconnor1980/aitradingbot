@@ -555,6 +555,21 @@ public sealed class BusinessRuleValidator
     {
         switch (dca.Interval)
         {
+            case DcaInterval.FiveMinutes:
+                if (TimeOnly.TryParseExact(dca.TimeOfDayUtc, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var scheduledTime)
+                    && scheduledTime.Minute % 5 != 0)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = "dca.timeOfDayUtc",
+                        Code = "DCA_FIVE_MINUTE_ALIGNMENT_REQUIRED",
+                        Message = "5-minute DCA schedules require a UTC time aligned to a 5-minute boundary.",
+                    });
+                }
+
+                break;
+
             case DcaInterval.Weekly:
             case DcaInterval.Biweekly:
                 if (!dca.DayOfWeek.HasValue || dca.DayOfWeek.Value is < 0 or > 6)

@@ -14,7 +14,7 @@ namespace TradePilot.Application.Scheduling;
 /// </summary>
 public sealed class CandleBuilder
 {
-    private static readonly string[] SupportedIntervals = ["15m", "1h", "4h"];
+    private static readonly string[] SupportedIntervals = ["5m", "15m", "1h", "4h"];
 
     private readonly MarketStateStore _stateStore;
     private readonly CandleClock _candleClock;
@@ -102,6 +102,7 @@ public sealed class CandleBuilder
 
     private static long GetIntervalMs(string interval) => interval switch
     {
+        "5m" => 5L * 60L * 1000L,
         "15m" => 15L * 60L * 1000L,
         "1h" => 60L * 60L * 1000L,
         "4h" => 4L * 60L * 60L * 1000L,

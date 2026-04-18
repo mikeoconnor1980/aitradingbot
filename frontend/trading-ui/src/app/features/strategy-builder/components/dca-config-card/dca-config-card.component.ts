@@ -50,6 +50,10 @@ export class DcaConfigCardComponent {
     return this.group.get("interval")?.value === "monthly";
   }
 
+  public get timeStepSeconds(): number {
+    return this.group.get("interval")?.value === "five_minutes" ? 300 : 3600;
+  }
+
   public hasError(controlName: string, errorCode: string): boolean {
     const control = this.group.get(controlName);
     return Boolean(control?.hasError(errorCode) && (control.touched || control.dirty));

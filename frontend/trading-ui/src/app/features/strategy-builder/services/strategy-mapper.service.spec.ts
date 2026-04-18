@@ -163,6 +163,20 @@ describe("StrategyMapperService", () => {
       budgetCapUsd: null,
     });
   });
+
+  it("should map five-minute DCA schedules to a 5m runtime timeframe", () => {
+    const config = service.mapFormToConfig({
+      ...buildDcaFormValue(),
+      dca: {
+        ...(buildDcaFormValue()["dca"] as Record<string, unknown>),
+        interval: "five_minutes",
+        timeOfDayUtc: "00:05",
+      },
+    });
+
+    expect(config.timeframe).toBe("5m");
+    expect(config.dca?.interval).toBe("five_minutes");
+  });
 });
 
 function buildGridFormValue(): Record<string, unknown> {

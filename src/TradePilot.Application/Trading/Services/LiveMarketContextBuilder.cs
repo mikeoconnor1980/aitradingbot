@@ -48,6 +48,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
 
     private readonly SyntheticRegimeProvider _syntheticRegimeProvider = new();
     private readonly ILlmContextProvider? _llmContextProvider;
+    private readonly IFearGreedSnapshotProvider? _fearGreedSnapshotProvider;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
     private readonly IHyperliquidRestClient? _restClient;
     private readonly IFearGreedReadingRepository? _fearGreedRepository;
@@ -63,12 +64,14 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
 
     public LiveMarketContextBuilder(
         ILlmContextProvider? llmContextProvider,
+        IFearGreedSnapshotProvider? fearGreedSnapshotProvider,
         IServiceScopeFactory? serviceScopeFactory,
         IHyperliquidRestClient? restClient,
         ILogger<LiveMarketContextBuilder>? logger = null,
         IFearGreedReadingRepository? fearGreedRepository = null)
     {
         _llmContextProvider = llmContextProvider;
+        _fearGreedSnapshotProvider = fearGreedSnapshotProvider;
         _serviceScopeFactory = serviceScopeFactory;
         _restClient = restClient;
         _logger = logger;
@@ -205,34 +208,54 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
 
     private async Task<FearGreedSnapshot?> ResolveFearGreedAsync(CancellationToken cancellationToken)
     {
-        var repo = _fearGreedRepository ?? ResolveFromScope<IFearGreedReadingRepository>();
-        if (repo is null)
-        {
-            return null;
-        }
-
         try
         {
-            var latest = await repo.GetLatestAsync(cancellationToken);
-            if (latest is null)
+            var providerSnapshot = await ResolveLatestFearGreedSnapshotAsync(cancellationToken);
+            if (providerSnapshot is null)
             {
                 return null;
             }
 
-            var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(latest.Timestamp);
+            var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(providerSnapshot.TimestampUtc);
             if (age.TotalHours > 48)
             {
                 _logger?.LogDebug("Fear & Greed reading is stale ({AgeHours:F1}h), skipping.", age.TotalHours);
                 return null;
             }
 
-            return new FearGreedSnapshot(latest.Value, FearGreedSnapshot.Classify(latest.Value), latest.Timestamp);
+            return providerSnapshot;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger?.LogWarning(ex, "Failed to resolve Fear & Greed reading.");
             return null;
         }
+    }
+
+    private async Task<FearGreedSnapshot?> ResolveLatestFearGreedSnapshotAsync(CancellationToken cancellationToken)
+    {
+        if (_fearGreedSnapshotProvider is not null)
+        {
+            var providedSnapshot = await _fearGreedSnapshotProvider.GetLatestAsync(cancellationToken);
+            if (providedSnapshot is not null)
+            {
+                return providedSnapshot;
+            }
+        }
+
+        var repo = _fearGreedRepository ?? ResolveFromScope<IFearGreedReadingRepository>();
+        if (repo is null)
+        {
+            return null;
+        }
+
+        var latest = await repo.GetLatestAsync(cancellationToken);
+        if (latest is null)
+        {
+            return null;
+        }
+
+        return new FearGreedSnapshot(latest.Value, FearGreedSnapshot.Classify(latest.Value), latest.Timestamp);
     }
 
     private T? ResolveFromScope<T>() where T : class

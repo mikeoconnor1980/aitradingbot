@@ -42,6 +42,7 @@ export class StrategyMapperService {
     const positionSizeType = (risk["positionSizeType"] as PositionSizeType | undefined) ?? "percent_wallet";
     const dca = this._mapDcaConfig(formValue);
     const dcaBaseAmount = dca?.baseAmountUsd ?? 0;
+    const dcaTimeframe = dca?.interval === "five_minutes" ? "5m" : "1h";
 
     return {
       schemaVersion: 1,
@@ -50,7 +51,7 @@ export class StrategyMapperService {
       exchange: String(formValue["exchange"] ?? "Hyperliquid"),
       assetType: isDcaMode ? "spot" : null,
       market: String(formValue["market"] ?? ""),
-      timeframe: isDcaMode ? "1h" : String(formValue["timeframe"] ?? "15m"),
+      timeframe: isDcaMode ? dcaTimeframe : String(formValue["timeframe"] ?? "15m"),
       direction: isDcaMode ? "long" : (formValue["direction"] as Direction | undefined) ?? "long",
       enabled: true,
       templateId,

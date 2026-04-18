@@ -118,12 +118,16 @@ export class PreviewSummaryCardComponent {
     }
 
     const market = String(formValue["market"] ?? "market");
-    const interval = String(dca["interval"] ?? "weekly").replace(/_/g, " ");
+    const rawInterval = String(dca["interval"] ?? "weekly");
+    const interval = rawInterval.replace(/_/g, " ");
     const timeOfDayUtc = String(dca["timeOfDayUtc"] ?? "00:00");
     const baseAmountUsd = this._formatNumber(dca["baseAmountUsd"]);
     const gateConditions = (dca["gateConditions"] ?? null) as Record<string, unknown> | null;
     const scalingBands = Array.isArray(dca["scalingBands"]) ? dca["scalingBands"] as Record<string, unknown>[] : [];
-    const parts = [`Spot DCA on ${market}: buy $${baseAmountUsd} ${interval} at ${timeOfDayUtc} UTC.`];
+    const scheduleText = rawInterval === "five_minutes"
+      ? `every 5 minutes aligned to ${timeOfDayUtc} UTC`
+      : `${interval} at ${timeOfDayUtc} UTC`;
+    const parts = [`Spot DCA on ${market}: buy $${baseAmountUsd} ${scheduleText}.`];
 
     if (interval === "weekly" || interval === "biweekly") {
       parts.push(`Scheduled weekday index: ${this._formatNumber(dca["dayOfWeek"])}.`);

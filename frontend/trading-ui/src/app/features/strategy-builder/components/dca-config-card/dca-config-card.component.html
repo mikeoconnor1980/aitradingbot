@@ -13,6 +13,7 @@
       <mat-form-field appearance="outline">
         <mat-label>Interval</mat-label>
         <mat-select formControlName="interval">
+          <mat-option value="five_minutes">Every 5 minutes</mat-option>
           <mat-option value="hourly">Hourly</mat-option>
           <mat-option value="four_hourly">Every 4 hours</mat-option>
           <mat-option value="daily">Daily</mat-option>
@@ -24,7 +25,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Time (UTC)</mat-label>
-        <input matInput type="time" formControlName="timeOfDayUtc" step="3600" />
+        <input matInput type="time" formControlName="timeOfDayUtc" [step]="timeStepSeconds" />
         @if (hasError("timeOfDayUtc", "required") || hasError("timeOfDayUtc", "pattern")) {
           <mat-error>Use HH:mm in UTC.</mat-error>
         }

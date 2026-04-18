@@ -187,7 +187,7 @@ public sealed class TradingSession : IAsyncDisposable
     private async Task RunAsync(CancellationToken stoppingToken)
     {
         var coin = HyperliquidAssetMapper.ToCoin(StrategyConfig.Market);
-        var triggerTimeframe = StrategyConfig.StrategyMode == StrategyMode.Dca ? "1h" : StrategyConfig.Timeframe;
+        var triggerTimeframe = ResolveTriggerTimeframe(StrategyConfig);
 
         _logger.LogInformation(
             "TradingSession starting: Strategy={Strategy}, Market={Market}, Coin={Coin}, Timeframe={Timeframe}",
@@ -455,6 +455,20 @@ public sealed class TradingSession : IAsyncDisposable
             _userEventClient.RemoveOrderUpdateReceivedHandler(_orderUpdateHandler);
             _orderUpdateHandler = null;
         }
+    }
+
+    private static string ResolveTriggerTimeframe(StrategyConfig config)
+    {
+        if (config.StrategyMode != StrategyMode.Dca || config.Dca is null)
+        {
+            return config.Timeframe;
+        }
+
+        return config.Dca.Interval switch
+        {
+            DcaInterval.FiveMinutes => "5m",
+            _ => "1h",
+        };
     }
 
     public async ValueTask DisposeAsync()

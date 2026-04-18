@@ -105,12 +105,11 @@ public sealed class CandleBuilderTests
         await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50100m, 0.3m, bucket2Start + 1));
 
         // The first bucket's candle should now be confirmed and emitted
-        _emittedEvents.Should().HaveCount(1);
-        _emittedEvents[0].Symbol.Should().Be("BTC-PERP");
-        _emittedEvents[0].Timeframe.Should().Be("15m");
-        _emittedEvents[0].Candle.Open.Should().Be(50000m);
-        _emittedEvents[0].Candle.High.Should().Be(50500m);
-        _emittedEvents[0].Candle.Close.Should().Be(50500m);
+        var event15m = _emittedEvents.Single(evt => evt.Timeframe == "15m");
+        event15m.Symbol.Should().Be("BTC-PERP");
+        event15m.Candle.Open.Should().Be(50000m);
+        event15m.Candle.High.Should().Be(50500m);
+        event15m.Candle.Close.Should().Be(50500m);
     }
 
     [TestMethod]
@@ -149,6 +148,17 @@ public sealed class CandleBuilderTests
 
         fifteenMinEvents.Should().HaveCount(1);
         oneHourEvents.Should().BeEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenFiveMinuteBoundary_WhenNextBucketTradeComes_ThenEmitsConfirmedFiveMinuteCandle()
+    {
+        await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50000m, 0.1m, EpochBase + 1_000));
+
+        var nextFiveMinuteBucket = EpochBase + (5L * 60L * 1000L);
+        await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50100m, 0.2m, nextFiveMinuteBucket + 1));
+
+        _emittedEvents.Should().ContainSingle(evt => evt.Timeframe == "5m");
     }
 
     [TestMethod]
