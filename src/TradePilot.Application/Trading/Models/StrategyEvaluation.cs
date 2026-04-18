@@ -1,3 +1,5 @@
+using TradePilot.Application.StrategyAuthoring.Models;
+
 namespace TradePilot.Application.Trading.Models;
 
 /// <summary>
@@ -9,4 +11,5 @@ public sealed class StrategyEvaluation
     public bool? TrendFilterPassed { get; init; }
     public MarketRegime? Regime { get; init; }
     public string? Reason { get; init; }
+    public IReadOnlyList<ConditionResult>? ConditionResults { get; init; }
 }

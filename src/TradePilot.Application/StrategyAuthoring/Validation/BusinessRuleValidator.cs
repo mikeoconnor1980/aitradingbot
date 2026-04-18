@@ -6,6 +6,30 @@ namespace TradePilot.Application.StrategyAuthoring.Validation;
 
 public sealed class BusinessRuleValidator
 {
+    private static readonly HashSet<string> ValidCandlePatterns =
+    [
+        "bullish_engulfing",
+        "bearish_engulfing",
+        "bullish_rejection",
+        "bearish_rejection",
+        "bullish_continuation",
+        "bearish_continuation",
+        "bullish_rejection_or_engulfing",
+        "bearish_rejection_or_engulfing",
+    ];
+
+    private static readonly HashSet<string> ValidSweepSides =
+    [
+        "upside",
+        "downside",
+    ];
+
+    private static readonly HashSet<string> ValidStructureShiftDirections =
+    [
+        "bullish",
+        "bearish",
+    ];
+
     public void Validate(StrategyConfig config, ValidationResult result)
     {
         ArgumentNullException.ThrowIfNull(config);
@@ -423,6 +447,79 @@ public sealed class BusinessRuleValidator
                         FieldPath = $"entryConditions[{index}].params.tolerance",
                         Code = "SR_TOLERANCE_RANGE",
                         Message = "Support/resistance tolerance must be between 0 and 10 percent.",
+                    });
+                }
+            }
+
+            if (condition.Params is CandlePatternParams candlePattern
+                && !ValidCandlePatterns.Contains(candlePattern.Pattern.Trim().ToLowerInvariant()))
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = $"entryConditions[{index}].params.pattern",
+                    Code = "CANDLE_PATTERN_INVALID",
+                    Message = "Candle pattern must be one of the supported derived signal patterns.",
+                });
+            }
+
+            if (condition.Params is LiquiditySweepParams liquiditySweep)
+            {
+                if (liquiditySweep.LookbackBars is < 1 or > 200)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.lookbackBars",
+                        Code = "LIQUIDITY_SWEEP_LOOKBACK_RANGE",
+                        Message = "Liquidity sweep lookback bars must be between 1 and 200.",
+                    });
+                }
+
+                if (liquiditySweep.PivotBars is < 1 or > 10)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.pivotBars",
+                        Code = "LIQUIDITY_SWEEP_PIVOT_RANGE",
+                        Message = "Liquidity sweep pivot bars must be between 1 and 10.",
+                    });
+                }
+
+                if (!ValidSweepSides.Contains(liquiditySweep.Side.Trim().ToLowerInvariant()))
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.side",
+                        Code = "LIQUIDITY_SWEEP_SIDE_INVALID",
+                        Message = "Liquidity sweep side must be 'upside' or 'downside'.",
+                    });
+                }
+            }
+
+            if (condition.Params is StructureShiftParams structureShift)
+            {
+                if (structureShift.PivotBars is < 1 or > 10)
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.pivotBars",
+                        Code = "STRUCTURE_SHIFT_PIVOT_RANGE",
+                        Message = "Structure shift pivot bars must be between 1 and 10.",
+                    });
+                }
+
+                if (!ValidStructureShiftDirections.Contains(structureShift.Direction.Trim().ToLowerInvariant()))
+                {
+                    result.Add(new ValidationError
+                    {
+                        Severity = ValidationSeverity.Error,
+                        FieldPath = $"entryConditions[{index}].params.direction",
+                        Code = "STRUCTURE_SHIFT_DIRECTION_INVALID",
+                        Message = "Structure shift direction must be 'bullish' or 'bearish'.",
                     });
                 }
             }

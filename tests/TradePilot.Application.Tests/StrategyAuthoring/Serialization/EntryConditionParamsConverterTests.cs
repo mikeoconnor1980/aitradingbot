@@ -54,6 +54,27 @@ public sealed class EntryConditionParamsConverterTests
     }
 
     [TestMethod]
+    public void GivenCandlePatternCondition_WhenRoundTripped_ThenParamsPreserved()
+    {
+        var condition = new EntryConditionConfig
+        {
+            Id = "cond-candle-pattern",
+            Enabled = true,
+            Type = EntryConditionType.CandlePattern,
+            Label = "Bullish engulfing",
+            Params = new CandlePatternParams { Pattern = "bullish_engulfing" },
+        };
+
+        var json = JsonSerializer.Serialize(condition, StrategyJsonOptions.Default);
+        var deserialized = JsonSerializer.Deserialize<EntryConditionConfig>(json, StrategyJsonOptions.Default);
+
+        deserialized.Should().NotBeNull();
+        deserialized!.Type.Should().Be(EntryConditionType.CandlePattern);
+        deserialized.Params.Should().BeOfType<CandlePatternParams>();
+        ((CandlePatternParams)deserialized.Params!).Pattern.Should().Be("bullish_engulfing");
+    }
+
+    [TestMethod]
     public void GivenConditionWithNullParams_WhenDeserialized_ThenParamsIsNull()
     {
         const string json = """{"id":"c1","enabled":true,"type":"rsi","label":"test","params":null}""";

@@ -7,4 +7,7 @@ public enum EntryConditionType
     PriceVsEma,
     Macd,
     SupportResistance,
+    CandlePattern,
+    LiquiditySweep,
+    StructureShift,
 }

@@ -187,6 +187,36 @@ public sealed class ConditionEvaluatorTests
         result.OverallReason.Should().Be("All conditions skipped (unknown types).");
     }
 
+    [TestMethod]
+    public void GivenHandlerSupportingMultipleTypes_WhenConditionUsesSecondaryType_ThenItIsEvaluated()
+    {
+        _sut = new ConditionEvaluator(
+            [new MultiConditionHandler()],
+            _loggerMock.Object);
+
+        var config = CreateSignalConfig(
+            EntryLogic.All,
+            new EntryConditionConfig
+            {
+                Id = "liq-1",
+                Enabled = true,
+                Type = EntryConditionType.LiquiditySweep,
+                Label = "Liquidity sweep",
+                Params = new LiquiditySweepParams
+                {
+                    LookbackBars = 50,
+                    PivotBars = 2,
+                    Side = "upside",
+                },
+            });
+        var context = CreateMarketContextWithIndicators();
+
+        var result = _sut.Evaluate(config, context);
+
+        result.SetupDetected.Should().BeTrue();
+        result.ConditionResults.Should().ContainSingle(entry => entry.ConditionId == "liq-1" && entry.Passed);
+    }
+
     private void VerifyWarningLogged(string messageFragment)
     {
         _loggerMock.Verify(
@@ -263,6 +293,27 @@ public sealed class ConditionEvaluatorTests
             Indicators = new IndicatorSnapshot(),
             IndicatorContext = indicatorContext
         };
+    }
+
+    private sealed class MultiConditionHandler : IConditionHandler
+    {
+        public EntryConditionType ConditionType => EntryConditionType.CandlePattern;
+
+        public IReadOnlyCollection<EntryConditionType> SupportedConditionTypes =>
+        [
+            EntryConditionType.CandlePattern,
+            EntryConditionType.LiquiditySweep,
+        ];
+
+        public ConditionResult Evaluate(EntryConditionConfig condition, IndicatorContext indicatorContext, MarketContext marketContext)
+        {
+            return new ConditionResult
+            {
+                ConditionId = condition.Id,
+                Passed = true,
+                Reason = "Handled by multi-condition test handler.",
+            };
+        }
     }
 
     private static Candle CreateCandle(decimal close)

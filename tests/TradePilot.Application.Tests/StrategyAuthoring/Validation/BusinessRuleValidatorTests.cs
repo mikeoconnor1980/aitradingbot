@@ -270,6 +270,37 @@ public sealed class BusinessRuleValidatorTests
     }
 
     [TestMethod]
+    public void GivenLiquiditySweepWithInvalidParams_WhenValidated_ThenDerivedSignalErrorsReturned()
+    {
+        var config = new StrategyConfig
+        {
+            EntryConditions =
+            [
+                new EntryConditionConfig
+                {
+                    Id = "liq-1",
+                    Enabled = true,
+                    Type = EntryConditionType.LiquiditySweep,
+                    Label = "Liquidity sweep",
+                    Params = new LiquiditySweepParams
+                    {
+                        LookbackBars = 0,
+                        PivotBars = 11,
+                        Side = "invalid",
+                    },
+                },
+            ],
+        };
+        var result = new ValidationResult();
+
+        _sut.Validate(config, result);
+
+        result.Errors.Should().Contain(error => error.Code == "LIQUIDITY_SWEEP_LOOKBACK_RANGE");
+        result.Errors.Should().Contain(error => error.Code == "LIQUIDITY_SWEEP_PIVOT_RANGE");
+        result.Errors.Should().Contain(error => error.Code == "LIQUIDITY_SWEEP_SIDE_INVALID");
+    }
+
+    [TestMethod]
     public void GivenRsiValueOverHundred_WhenValidated_ThenError()
     {
         var config = new StrategyConfig

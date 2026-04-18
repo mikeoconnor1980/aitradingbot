@@ -11,6 +11,7 @@ The runtime strategy path is selected from `StrategyConfig.StrategyMode` and eva
 | `IStrategyEngine` | Shared strategy contract used by the scheduler |
 | `GridStrategyEngine` | Grid-mode setup detector |
 | `CompositeStrategyEngine` | Routes between grid mode and signal mode |
+| `IDerivedSignalRegistry` | Resolves higher-order price-structure signals for signal-mode conditions |
 | `SignalController` | Signal-mode entry and exit signal emission |
 | `GridController` | Grid lifecycle and exit management |
 | `IRiskEngine` | Portfolio heat, order count, drawdown, and circuit-breaker enforcement |
@@ -77,6 +78,27 @@ Signal mode is implemented and is the main place where indicator-driven entry co
 2. Uses `IConditionEvaluator` to evaluate configured entry conditions.
 3. Returns a `StrategyEvaluation` that is consumed by `SignalController`.
 
+### Derived Signal Engine
+
+Signal mode now includes a derived-signal layer for price-structure-aware conditions that cannot be expressed as a single indicator threshold.
+
+| Component | Purpose |
+|-----------|---------|
+| `IDerivedSignal` | Contract for a reusable derived signal |
+| `IDerivedSignalRegistry` | Looks up signals by name and executes them |
+| `MarketContextSignalContextAdapter` | Adapts `MarketContext` candle history and indicators into signal-engine context |
+| `DerivedSignalConditionHandler` | Bridges strategy authoring entry conditions into the derived-signal registry |
+
+Currently implemented derived signal conditions:
+
+| Condition type | Runtime intent |
+|----------------|----------------|
+| `candle_pattern` | Detects explicit candle-structure patterns such as engulfing or pin-bar style setups |
+| `liquidity_sweep` | Detects sweep-and-reclaim style moves through recent swing highs/lows |
+| `structure_shift` | Detects local bullish or bearish market-structure breaks |
+
+These conditions still participate in normal signal-mode `all` / `any` entry logic. They do not emit trading signals directly. Instead they produce `ConditionResult` values that flow through `CompositeStrategyEngine` into the existing `SignalController` path.
+
 `SignalController` then:
 
 1. Emits `OpenPosition` when a setup is detected and no position is open.
@@ -133,4 +155,3 @@ Portfolio heat is implemented via `RiskLimitsConfig.MaxPortfolioHeatPercent`. Ne
 - Add VWAP-aware conditions and indicator support.
 - Implement hedge signal generation if hedging remains a product goal.
 - Add additional strategy families such as trend breakout, mean reversion, or funding-arbitrage strategies.
-- Add explicit candlestick-pattern conditions if they are needed for signal mode or future grid entry refinement.

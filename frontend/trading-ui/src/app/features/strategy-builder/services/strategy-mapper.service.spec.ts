@@ -143,6 +143,56 @@ describe("StrategyMapperService", () => {
     });
   });
 
+  it("should map candle pattern condition params for signal mode", () => {
+    const config = service.mapFormToConfig({
+      ...buildSignalFormValue(),
+      conditions: [{
+        id: "cond-1",
+        enabled: true,
+        type: "candle_pattern",
+        label: "Bullish engulfing",
+        pattern: "bullish_engulfing",
+      }],
+    });
+
+    expect(config.entryConditions?.[0]).toEqual({
+      id: "cond-1",
+      enabled: true,
+      type: "candle_pattern",
+      label: "Bullish engulfing",
+      params: {
+        pattern: "bullish_engulfing",
+      },
+    });
+  });
+
+  it("should map liquidity sweep condition params for signal mode", () => {
+    const config = service.mapFormToConfig({
+      ...buildSignalFormValue(),
+      conditions: [{
+        id: "cond-1",
+        enabled: true,
+        type: "liquidity_sweep",
+        label: "Upside sweep",
+        lookbackBars: 50,
+        pivotBars: 2,
+        side: "upside",
+      }],
+    });
+
+    expect(config.entryConditions?.[0]).toEqual({
+      id: "cond-1",
+      enabled: true,
+      type: "liquidity_sweep",
+      label: "Upside sweep",
+      params: {
+        lookbackBars: 50,
+        pivotBars: 2,
+        side: "upside",
+      },
+    });
+  });
+
   it("should map DCA scaling bands and gates", () => {
     const config = service.mapFormToConfig(buildDcaFormValue());
 

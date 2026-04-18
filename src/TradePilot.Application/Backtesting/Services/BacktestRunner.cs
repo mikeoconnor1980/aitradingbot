@@ -192,6 +192,7 @@ public sealed class BacktestRunner : IBacktestRunner
                         PositionSize = 0m,
                         PositionAvgEntry = 0m,
                         SignalsEmitted = [],
+                        ConditionResults = [],
                         GridCycleId = null
                     });
                 }

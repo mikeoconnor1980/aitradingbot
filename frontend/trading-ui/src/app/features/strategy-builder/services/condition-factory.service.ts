@@ -1,6 +1,6 @@
 import { Injectable, inject } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, SupportResistanceOperator } from "../models/strategy.model";
+import { CandlePatternType, MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, StructureShiftDirection, SupportResistanceOperator, SweepSide } from "../models/strategy.model";
 
 export interface CreateRsiConditionOverrides {
   id: string;
@@ -39,6 +39,30 @@ export interface CreateSupportResistanceConditionOverrides {
   strength: number;
   operator: SupportResistanceOperator;
   tolerance: number;
+}
+
+export interface CreateCandlePatternConditionOverrides {
+  id: string;
+  enabled: boolean;
+  label: string;
+  pattern: CandlePatternType;
+}
+
+export interface CreateLiquiditySweepConditionOverrides {
+  id: string;
+  enabled: boolean;
+  label: string;
+  lookbackBars: number;
+  pivotBars: number;
+  side: SweepSide;
+}
+
+export interface CreateStructureShiftConditionOverrides {
+  id: string;
+  enabled: boolean;
+  label: string;
+  pivotBars: number;
+  direction: StructureShiftDirection;
 }
 
 @Injectable({ providedIn: "root" })
@@ -118,6 +142,51 @@ export class ConditionFactoryService {
       strength: [overrides?.strength ?? 3, [Validators.required, Validators.min(1), Validators.max(10)]],
       operator: [overrides?.operator ?? "near_support", Validators.required],
       tolerance: [overrides?.tolerance ?? 0.5, [Validators.required, Validators.min(0), Validators.max(10)]],
+    });
+  }
+
+  public createCandlePatternCondition(overrides?: Partial<CreateCandlePatternConditionOverrides>): FormGroup {
+    if (overrides?.id !== undefined) {
+      this._advancePastId(overrides.id);
+    }
+
+    return this._fb.group({
+      id: [overrides?.id ?? this._generateId()],
+      enabled: [overrides?.enabled ?? true],
+      type: ["candle_pattern"],
+      label: [overrides?.label ?? ""],
+      pattern: [overrides?.pattern ?? "bullish_engulfing", Validators.required],
+    });
+  }
+
+  public createLiquiditySweepCondition(overrides?: Partial<CreateLiquiditySweepConditionOverrides>): FormGroup {
+    if (overrides?.id !== undefined) {
+      this._advancePastId(overrides.id);
+    }
+
+    return this._fb.group({
+      id: [overrides?.id ?? this._generateId()],
+      enabled: [overrides?.enabled ?? true],
+      type: ["liquidity_sweep"],
+      label: [overrides?.label ?? ""],
+      lookbackBars: [overrides?.lookbackBars ?? 50, [Validators.required, Validators.min(1), Validators.max(200)]],
+      pivotBars: [overrides?.pivotBars ?? 2, [Validators.required, Validators.min(1), Validators.max(10)]],
+      side: [overrides?.side ?? "upside", Validators.required],
+    });
+  }
+
+  public createStructureShiftCondition(overrides?: Partial<CreateStructureShiftConditionOverrides>): FormGroup {
+    if (overrides?.id !== undefined) {
+      this._advancePastId(overrides.id);
+    }
+
+    return this._fb.group({
+      id: [overrides?.id ?? this._generateId()],
+      enabled: [overrides?.enabled ?? true],
+      type: ["structure_shift"],
+      label: [overrides?.label ?? ""],
+      pivotBars: [overrides?.pivotBars ?? 2, [Validators.required, Validators.min(1), Validators.max(10)]],
+      direction: [overrides?.direction ?? "bullish", Validators.required],
     });
   }
 

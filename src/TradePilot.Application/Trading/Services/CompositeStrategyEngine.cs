@@ -89,7 +89,8 @@ public sealed class CompositeStrategyEngine : IStrategyEngine
         {
             SetupDetected = result.SetupDetected,
             TrendFilterPassed = trendResult?.Passed,
-            Reason = result.OverallReason
+            Reason = result.OverallReason,
+            ConditionResults = result.ConditionResults,
         };
     }
 

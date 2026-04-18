@@ -91,7 +91,7 @@ The **Backtesting** page lets you test strategies against historical market data
 1. **Select a strategy** from your saved strategies
 2. **Choose a date range** and asset pair
 3. **Configure parameters** — initial capital, fee rates, etc.
-4. **Run the backtest** — the replay engine processes historical candles through the same strategy engine used in live trading
+4. **Run the backtest** — the replay engine processes historical candles through the same strategy engine and derived-signal evaluation used in live trading
 
 ### Results
 - **Equity curve** — visual representation of your portfolio value over time
@@ -99,7 +99,7 @@ The **Backtesting** page lets you test strategies against historical market data
 - **Performance metrics** — total return, max drawdown, Sharpe ratio, win rate, profit factor
 
 ### Key principle
-Backtesting uses the **same StrategyEngine, GridController, and RiskEngine** as live trading — what you see in backtesting closely reflects real execution.`
+Backtesting uses the **same StrategyEngine, derived-signal engine, GridController, and RiskEngine** as live trading — what you see in backtesting closely reflects real execution.`
     },
     {
       id: "candle-data",
@@ -159,8 +159,9 @@ The **Strategies** page is where you create, edit, and manage your trading strat
 The platform supports two strategy modes:
 
 **Signal mode** — the primary strategy mode:
-- Define **entry conditions** using technical indicators: RSI, MACD, Price vs EMA, Support/Resistance
+- Define **entry conditions** using technical indicators and price-structure signals: RSI, MACD, Price vs EMA, Support/Resistance, Candle Pattern, Liquidity Sweep, and Structure Shift
 - Combine conditions with **all** (every condition must match) or **any** (at least one) logic
+- Use the **derived-signal engine** for higher-order structure detection such as candle patterns, sweep/reclaim setups, and local market-structure shifts
 - Set **trend filters** (EMA cross, SMA cross, price above EMA) to only trade in favourable conditions
 - Configure **exit rules**: fixed percent take-profit/stop-loss, swing-low trailing stops, or ATR-based trailing stops
 - Choose direction: Long, Short, or Both

@@ -124,6 +124,40 @@ Supported `EntryConditionType` values:
 | `price_vs_ema` | `PriceVsEmaParams` | `period`, `operator`, `distanceType`, `distanceValue` |
 | `macd` | `MacdParams` | `fastPeriod`, `slowPeriod`, `signalPeriod`, `operator` |
 | `support_resistance` | `SupportResistanceParams` | `lookback`, `strength`, `operator`, `tolerance` |
+| `candle_pattern` | `CandlePatternParams` | `pattern` |
+| `liquidity_sweep` | `LiquiditySweepParams` | `lookbackBars`, `pivotBars`, `side` |
+| `structure_shift` | `StructureShiftParams` | `lookbackBars`, `direction` |
+
+### Derived Signal Condition Params
+
+These condition types are evaluated through the derived-signal engine rather than a direct indicator comparison.
+
+#### `CandlePatternParams`
+
+| Field | Type |
+|-------|------|
+| `pattern` | `string` |
+
+Implemented pattern values are validated in `BusinessRuleValidator` and currently include the candle-pattern set supported by `CandlePatternSignal`.
+
+#### `LiquiditySweepParams`
+
+| Field | Type |
+|-------|------|
+| `lookbackBars` | `int` |
+| `pivotBars` | `int` |
+| `side` | `string` |
+
+`side` selects which sweep direction is valid for the condition. The frontend and backend use snake_case enum-style values.
+
+#### `StructureShiftParams`
+
+| Field | Type |
+|-------|------|
+| `lookbackBars` | `int` |
+| `direction` | `string` |
+
+`direction` selects bullish or bearish structure-shift detection.
 
 ### `PriceVsEmaParams`
 
@@ -167,6 +201,8 @@ Signal mode uses `IndicatorExtractor` to produce `IndicatorRequirement` records 
 
 This model determines which indicators the scheduler must compute before evaluating signal-mode conditions.
 
+Derived signal conditions may also require recent trigger-timeframe candle history. `MarketContext.CandleHistory` now carries that history into the runtime so the derived-signal engine can evaluate structure and sweep logic consistently in both live and backtest execution.
+
 ## Validation Pipeline
 
 `POST /api/strategies/validate` runs `CompositeStrategyValidator`:
@@ -184,7 +220,7 @@ Validation returns errors, warnings, and info messages. Trend-filter behavior an
 1. Add or update the model under `StrategyAuthoring/Models`.
 2. Update polymorphic serialization converters if the change affects entry-condition params.
 3. Extend `BusinessRuleValidator` and `CrossFieldValidator`.
-4. Add or update runtime consumers such as `IndicatorExtractor`, `CompositeStrategyEngine`, and the relevant condition handler.
+4. Add or update runtime consumers such as `IndicatorExtractor`, `CompositeStrategyEngine`, the relevant condition handler, and the derived-signal registry if the condition is price-structure-based.
 5. Update the frontend form factories and template helpers.
 
 ## Future Recommendations

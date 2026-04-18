@@ -135,6 +135,21 @@ export class StrategyValidationService {
     conditions.forEach((condition, index) => {
       const type = String(condition["type"] ?? "rsi");
 
+      if (type === "candle_pattern") {
+        this._validateCandlePatternCondition(condition, index, errors);
+        return;
+      }
+
+      if (type === "liquidity_sweep") {
+        this._validateLiquiditySweepCondition(condition, index, errors);
+        return;
+      }
+
+      if (type === "structure_shift") {
+        this._validateStructureShiftCondition(condition, index, errors);
+        return;
+      }
+
       if (type === "macd") {
         this._validateMacdCondition(condition, index, errors);
         return;
@@ -296,6 +311,30 @@ export class StrategyValidationService {
       ].join("|");
     }
 
+    if (type === "candle_pattern") {
+      return [
+        type,
+        String(condition["pattern"] ?? ""),
+      ].join("|");
+    }
+
+    if (type === "liquidity_sweep") {
+      return [
+        type,
+        String(condition["lookbackBars"] ?? ""),
+        String(condition["pivotBars"] ?? ""),
+        String(condition["side"] ?? ""),
+      ].join("|");
+    }
+
+    if (type === "structure_shift") {
+      return [
+        type,
+        String(condition["pivotBars"] ?? ""),
+        String(condition["direction"] ?? ""),
+      ].join("|");
+    }
+
     return [
       type,
       String(condition["period"] ?? ""),
@@ -365,6 +404,55 @@ export class StrategyValidationService {
 
     if (tolerance < 0 || tolerance > 10) {
       errors.push(this._error(`entryConditions[${index}].params.tolerance`, "RANGE", "Tolerance must be between 0 and 10."));
+    }
+  }
+
+  private _validateCandlePatternCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const pattern = String(condition["pattern"] ?? "").trim();
+    const validPatterns = new Set([
+      "bullish_engulfing",
+      "bearish_engulfing",
+      "bullish_rejection",
+      "bearish_rejection",
+      "bullish_continuation",
+      "bearish_continuation",
+      "bullish_rejection_or_engulfing",
+      "bearish_rejection_or_engulfing",
+    ]);
+
+    if (!validPatterns.has(pattern)) {
+      errors.push(this._error(`entryConditions[${index}].params.pattern`, "RANGE", "Choose a supported candle pattern."));
+    }
+  }
+
+  private _validateLiquiditySweepCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const lookbackBars = Number(condition["lookbackBars"] ?? 0);
+    const pivotBars = Number(condition["pivotBars"] ?? 0);
+    const side = String(condition["side"] ?? "").trim();
+
+    if (lookbackBars < 1 || lookbackBars > 200) {
+      errors.push(this._error(`entryConditions[${index}].params.lookbackBars`, "RANGE", "Lookback bars must be between 1 and 200."));
+    }
+
+    if (pivotBars < 1 || pivotBars > 10) {
+      errors.push(this._error(`entryConditions[${index}].params.pivotBars`, "RANGE", "Pivot bars must be between 1 and 10."));
+    }
+
+    if (side !== "upside" && side !== "downside") {
+      errors.push(this._error(`entryConditions[${index}].params.side`, "RANGE", "Side must be upside or downside."));
+    }
+  }
+
+  private _validateStructureShiftCondition(condition: Record<string, unknown>, index: number, errors: ValidationError[]): void {
+    const pivotBars = Number(condition["pivotBars"] ?? 0);
+    const direction = String(condition["direction"] ?? "").trim();
+
+    if (pivotBars < 1 || pivotBars > 10) {
+      errors.push(this._error(`entryConditions[${index}].params.pivotBars`, "RANGE", "Pivot bars must be between 1 and 10."));
+    }
+
+    if (direction !== "bullish" && direction !== "bearish") {
+      errors.push(this._error(`entryConditions[${index}].params.direction`, "RANGE", "Direction must be bullish or bearish."));
     }
   }
 

@@ -12,6 +12,9 @@ using TradePilot.Application.Scheduling;
 using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.StrategyAuthoring.Services;
 using TradePilot.Application.StrategyAuthoring.Validation;
+using TradePilot.Application.Trading.Signals.Abstractions;
+using TradePilot.Application.Trading.Signals.Implementations;
+using TradePilot.Application.Trading.Signals.Registry;
 using TradePilot.Application.Trading.Services;
 using TradePilot.Infrastructure.Services;
 using TradePilot.Persistence;
@@ -142,10 +145,24 @@ builder.Services.AddSingleton<LiveExecutionLogger>();
 builder.Services.AddSingleton<IExecutionLogger>(sp => sp.GetRequiredService<LiveExecutionLogger>());
 builder.Services.AddSingleton<GridStrategyEngine>();
 builder.Services.AddSingleton<DcaStrategyEngine>();
+builder.Services.AddSingleton<IDerivedSignal, CandlePatternSignal>();
+builder.Services.AddSingleton<IDerivedSignal, LiquiditySweepSignal>();
+builder.Services.AddSingleton<IDerivedSignal, StructureShiftSignal>();
+builder.Services.AddSingleton<IDerivedSignalRegistry>(sp =>
+{
+    var registry = new DerivedSignalRegistry();
+    foreach (var signal in sp.GetServices<IDerivedSignal>())
+    {
+        registry.Register(signal);
+    }
+
+    return registry;
+});
 builder.Services.AddSingleton<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, MacdConditionHandler>();
 builder.Services.AddSingleton<IConditionHandler, SupportResistanceConditionHandler>();
+builder.Services.AddSingleton<IConditionHandler, DerivedSignalConditionHandler>();
 builder.Services.AddSingleton<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddSingleton<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddSingleton<IStrategyEngine, CompositeStrategyEngine>();

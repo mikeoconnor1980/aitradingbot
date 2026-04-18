@@ -4,7 +4,7 @@
       <span>Entry Conditions</span>
       <app-info-popover
         title="Entry Conditions"
-        description="Entry conditions define the exact signal rules that must be true before the strategy opens a trade. You can combine RSI, Price vs EMA, and MACD rules, but exact duplicates are blocked."
+        description="Entry conditions define the exact signal rules that must be true before the strategy opens a trade. You can combine indicator checks with price-structure signals like candle patterns, liquidity sweeps, and structure shifts. Exact duplicates are blocked."
       />
     </mat-card-title>
   </mat-card-header>
@@ -13,7 +13,7 @@
     @if (!isBound) {
       <p class="conditions-card__message">Available in signal mode</p>
     } @else if (conditionGroups.length === 0) {
-      <p class="conditions-card__message">No conditions added. Click "Add RSI", "Add Price vs EMA", or "Add MACD" to create a condition.</p>
+      <p class="conditions-card__message">No conditions added. Add an indicator rule or a derived signal to create your entry logic.</p>
     } @else {
       @if (entryLogicControl !== null && conditionGroups.length > 1) {
         <div class="conditions-card__logic-toggle">
@@ -28,8 +28,30 @@
           />
         </div>
       }
+
       @for (group of conditionGroups; track group.value.id; let index = $index) {
-        @if (getConditionType(group) === "price_vs_ema") {
+        @if (getConditionType(group) === "candle_pattern") {
+          <app-candle-pattern-condition-item
+            [group]="group"
+            [index]="index"
+            (duplicate)="onDuplicate(index)"
+            (remove)="onRemove(index)"
+          />
+        } @else if (getConditionType(group) === "liquidity_sweep") {
+          <app-liquidity-sweep-condition-item
+            [group]="group"
+            [index]="index"
+            (duplicate)="onDuplicate(index)"
+            (remove)="onRemove(index)"
+          />
+        } @else if (getConditionType(group) === "structure_shift") {
+          <app-structure-shift-condition-item
+            [group]="group"
+            [index]="index"
+            (duplicate)="onDuplicate(index)"
+            (remove)="onRemove(index)"
+          />
+        } @else if (getConditionType(group) === "price_vs_ema") {
           <app-price-vs-ema-condition-item
             [group]="group"
             [index]="index"
@@ -63,29 +85,53 @@
   </mat-card-content>
 
   @if (isBound) {
-    <mat-card-actions>
-      <button mat-stroked-button type="button" (click)="onAddRsi()">
-        <mat-icon>add</mat-icon>
-        <span>Add RSI</span>
-      </button>
-      <button mat-stroked-button type="button" (click)="onAddPriceVsEma()">
-        <mat-icon>add</mat-icon>
-        <span>Add Price vs EMA</span>
-      </button>
-      <button
-        mat-stroked-button
-        type="button"
-        (click)="onAddMacd()"
-        [disabled]="hasMacdCondition"
-        [matTooltip]="hasMacdCondition ? 'Only one MACD condition allowed per strategy' : ''"
-      >
-        <mat-icon>add</mat-icon>
-        <span>Add MACD</span>
-      </button>
-      <button mat-stroked-button type="button" (click)="onAddSupportResistance()">
-        <mat-icon>add</mat-icon>
-        <span>Add S/R</span>
-      </button>
+    <mat-card-actions class="conditions-card__actions">
+      <div class="conditions-card__action-group">
+        <span class="conditions-card__action-heading">Indicator rules</span>
+        <div class="conditions-card__action-grid">
+          <button class="conditions-card__action-button" mat-stroked-button type="button" (click)="onAddRsi()">
+            <mat-icon>add</mat-icon>
+            <span>Add RSI</span>
+          </button>
+          <button class="conditions-card__action-button" mat-stroked-button type="button" (click)="onAddPriceVsEma()">
+            <mat-icon>add</mat-icon>
+            <span>Add Price vs EMA</span>
+          </button>
+          <button
+            class="conditions-card__action-button"
+            mat-stroked-button
+            type="button"
+            (click)="onAddMacd()"
+            [disabled]="hasMacdCondition"
+            [matTooltip]="hasMacdCondition ? 'Only one MACD condition allowed per strategy' : ''"
+          >
+            <mat-icon>add</mat-icon>
+            <span>Add MACD</span>
+          </button>
+          <button class="conditions-card__action-button" mat-stroked-button type="button" (click)="onAddSupportResistance()">
+            <mat-icon>add</mat-icon>
+            <span>Add S/R</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="conditions-card__action-group conditions-card__action-group--derived">
+        <span class="conditions-card__action-heading">Derived signals</span>
+        <div class="conditions-card__action-grid">
+          <button class="conditions-card__action-button" mat-stroked-button type="button" (click)="onAddCandlePattern()">
+            <mat-icon>add</mat-icon>
+            <span>Add Candle Pattern</span>
+          </button>
+          <button class="conditions-card__action-button" mat-stroked-button type="button" (click)="onAddLiquiditySweep()">
+            <mat-icon>add</mat-icon>
+            <span>Add Liquidity Sweep</span>
+          </button>
+          <button class="conditions-card__action-button" mat-stroked-button type="button" (click)="onAddStructureShift()">
+            <mat-icon>add</mat-icon>
+            <span>Add Structure Shift</span>
+          </button>
+        </div>
+      </div>
     </mat-card-actions>
   }
 </mat-card>

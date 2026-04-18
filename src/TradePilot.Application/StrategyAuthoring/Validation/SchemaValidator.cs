@@ -73,5 +73,31 @@ public sealed class SchemaValidator
                 Message = "Timeframe is required.",
             });
         }
+
+        ValidateEntryConditionSchema(config.EntryConditions, result);
+    }
+
+    private static void ValidateEntryConditionSchema(IReadOnlyList<EntryConditionConfig>? conditions, ValidationResult result)
+    {
+        if (conditions is null)
+        {
+            return;
+        }
+
+        for (var index = 0; index < conditions.Count; index++)
+        {
+            if (conditions[index].Type != EntryConditionType.Unknown)
+            {
+                continue;
+            }
+
+            result.Add(new ValidationError
+            {
+                Severity = ValidationSeverity.Error,
+                FieldPath = $"entryConditions[{index}].type",
+                Code = "ENTRY_CONDITION_TYPE_UNKNOWN",
+                Message = "Entry condition type is not recognized.",
+            });
+        }
     }
 }

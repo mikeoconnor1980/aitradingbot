@@ -1,0 +1,56 @@
+<mat-card class="condition-item" [formGroup]="group">
+  <div class="condition-item__header">
+    <div class="condition-item__identity">
+      <mat-checkbox formControlName="enabled" color="primary">
+        <span class="condition-item__type-label">Candle Pattern</span>
+      </mat-checkbox>
+
+      <app-info-popover
+        title="Candle Pattern"
+        description="Candle-pattern signals look for a specific reversal or continuation candle on the trigger timeframe. Use them when price action itself is the entry trigger rather than an indicator threshold."
+      />
+    </div>
+
+    <mat-form-field class="condition-item__label-field" appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" placeholder="e.g. Bullish Engulfing" />
+    </mat-form-field>
+
+    <div class="condition-item__actions">
+      <button
+        mat-icon-button
+        type="button"
+        matTooltip="Duplicate"
+        [attr.aria-label]="'Duplicate candle pattern condition ' + (index + 1)"
+        (click)="onDuplicate()"
+      >
+        <mat-icon>content_copy</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        type="button"
+        color="warn"
+        matTooltip="Remove"
+        [attr.aria-label]="'Remove candle pattern condition ' + (index + 1)"
+        (click)="onRemove()"
+      >
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="condition-item__fields">
+    <mat-form-field appearance="outline">
+      <mat-label>Pattern</mat-label>
+      <mat-select formControlName="pattern">
+        @for (pattern of patterns; track pattern.value) {
+          <mat-option [value]="pattern.value">{{ pattern.label }}</mat-option>
+        }
+      </mat-select>
+      @if (hasError("pattern", "required")) {
+        <mat-error>Pattern is required.</mat-error>
+      }
+    </mat-form-field>
+  </div>
+</mat-card>

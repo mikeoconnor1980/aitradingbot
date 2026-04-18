@@ -136,7 +136,8 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             Indicators = indicators,
             IndicatorContext = indicatorContext,
             LlmContext = llmContext,
-            MaxLeverage = maxLeverage
+            MaxLeverage = maxLeverage,
+            CandleHistory = _candles.AsReadOnly()
         };
     }
 
@@ -202,7 +203,8 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
             IndicatorContext = indicatorContext,
             LlmContext = llmContext,
             FearGreed = fearGreed,
-            MaxLeverage = maxLeverage
+            MaxLeverage = maxLeverage,
+            CandleHistory = _candles.AsReadOnly()
         };
     }
 

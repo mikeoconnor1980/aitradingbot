@@ -21,4 +21,10 @@ public sealed class MarketContext
     public decimal AccountEquity { get; set; }
     public decimal DrawdownScalingFactor { get; set; } = 1.0m;
     public int? MaxLeverage { get; init; }
+
+    /// <summary>
+    /// Trigger-timeframe candle history (oldest first, newest last) for derived signal evaluation.
+    /// May be null for consumers that do not require candle history.
+    /// </summary>
+    public IReadOnlyList<Candle>? CandleHistory { get; init; }
 }

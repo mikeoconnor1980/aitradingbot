@@ -82,6 +82,9 @@ Strategy authoring lives under `frontend/trading-ui/src/app/features/strategy-bu
 | `PriceVsEmaConditionItemComponent` | Price-vs-EMA condition editor |
 | `MacdConditionItemComponent` | MACD condition editor |
 | `SupportResistanceConditionItemComponent` | Fourth implemented condition type for support/resistance rules |
+| `CandlePatternConditionItemComponent` | Candle-pattern derived signal editor |
+| `LiquiditySweepConditionItemComponent` | Liquidity-sweep derived signal editor |
+| `StructureShiftConditionItemComponent` | Structure-shift derived signal editor |
 | `PreviewSummaryCardComponent` | Human-readable summary |
 | `AiReviewCardComponent` | Inline AI review summary with truncated markdown preview |
 | `ValidationCardComponent` | Client/server validation results |
@@ -99,6 +102,8 @@ Services used by the builder:
 | `StrategyValidationService` | Client-side validation rules |
 | `ConditionFactoryService` | Builds typed condition `FormGroup` instances |
 | `StrategyDraftService` | Wizard-side `sessionStorage` persistence |
+
+The strategy builder condition system is explicitly per-type. Adding a new condition requires coordinated updates in the model, form factory, mapper, validation service, builder reload path, preview summary, and `EntryConditionsCardComponent` render branches.
 
 #### Natural-Language Input
 

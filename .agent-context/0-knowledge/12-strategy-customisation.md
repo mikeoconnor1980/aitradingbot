@@ -43,6 +43,17 @@ The most important user-controlled knobs are:
 
 For the canonical schema, see [13-strategy-config-schema.md](13-strategy-config-schema.md).
 
+### Signal-Mode Authoring Surface
+
+The builder now supports both simple indicator thresholds and higher-order price-structure conditions in `entryConditions`.
+
+| Condition family | Implemented types |
+|------------------|-------------------|
+| Indicator threshold / crossover | `rsi`, `price_vs_ema`, `macd`, `support_resistance` |
+| Derived signal / price structure | `candle_pattern`, `liquidity_sweep`, `structure_shift` |
+
+Derived signal conditions are configured in the same authoring flow as other entry conditions and are combined with the same `all` / `any` entry logic.
+
 ## Position Sizing Options
 
 `PositionSizeType` currently supports:

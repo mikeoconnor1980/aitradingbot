@@ -7,10 +7,13 @@ export type CooldownUnit = "candles" | "minutes";
 export type EntryMode = "auto_from_signal_candle" | "manual";
 export type DcaInterval = "five_minutes" | "hourly" | "four_hourly" | "daily" | "weekly" | "biweekly" | "monthly";
 export type EntryLogic = "all" | "any";
-export type EntryConditionType = "rsi" | "price_vs_ema" | "macd" | "support_resistance";
+export type EntryConditionType = "rsi" | "price_vs_ema" | "macd" | "support_resistance" | "candle_pattern" | "liquidity_sweep" | "structure_shift";
 export type SupportResistanceOperator = "near_support" | "near_resistance" | "above_support" | "below_resistance" | "bounce_support" | "bounce_resistance";
 export type RsiOperator = "lt" | "lte" | "gt" | "gte" | "cross_above" | "cross_below";
 export type MacdOperator = "cross_above_signal" | "cross_below_signal" | "above_zero" | "below_zero" | "histogram_rising" | "histogram_falling";
+export type CandlePatternType = "bullish_engulfing" | "bearish_engulfing" | "bullish_rejection" | "bearish_rejection" | "bullish_continuation" | "bearish_continuation" | "bullish_rejection_or_engulfing" | "bearish_rejection_or_engulfing";
+export type SweepSide = "upside" | "downside";
+export type StructureShiftDirection = "bullish" | "bearish";
 export type TrendFilterType = "ema_cross" | "sma_cross" | "price_above_ema";
 export type TrendOperator = "gt" | "lt" | "gte" | "lte" | "cross_above" | "cross_below" | "above" | "below";
 export type PriceVsEmaOperator = "near" | "above" | "below" | "cross_above" | "cross_below" | "touch";
@@ -91,12 +94,27 @@ export interface SupportResistanceParams {
   tolerance: number;
 }
 
+export interface CandlePatternParams {
+  pattern: CandlePatternType;
+}
+
+export interface LiquiditySweepParams {
+  lookbackBars: number;
+  pivotBars: number;
+  side: SweepSide;
+}
+
+export interface StructureShiftParams {
+  pivotBars: number;
+  direction: StructureShiftDirection;
+}
+
 export interface EntryConditionConfig {
   id: string;
   enabled: boolean;
   type: EntryConditionType;
   label: string;
-  params: RsiParams | PriceVsEmaParams | MacdParams | SupportResistanceParams;
+  params: RsiParams | PriceVsEmaParams | MacdParams | SupportResistanceParams | CandlePatternParams | LiquiditySweepParams | StructureShiftParams;
 }
 
 export interface ExitRuleConfig {

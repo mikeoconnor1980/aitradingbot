@@ -21,7 +21,11 @@ public sealed class ConditionEvaluator : IConditionEvaluator
     {
         ArgumentNullException.ThrowIfNull(handlers);
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _handlers = handlers.ToDictionary(handler => handler.ConditionType);
+        _handlers = handlers
+            .SelectMany(
+                handler => handler.SupportedConditionTypes.Select(
+                    conditionType => new KeyValuePair<EntryConditionType, IConditionHandler>(conditionType, handler)))
+            .ToDictionary();
     }
 
     public ConditionEvaluationResult Evaluate(StrategyConfig config, MarketContext context)

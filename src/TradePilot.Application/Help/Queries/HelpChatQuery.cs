@@ -44,7 +44,7 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         ### Backtesting
         Test strategies against historical data. Select a strategy, date range, and asset. Results include
         equity curve, trade list, and metrics (return, drawdown, Sharpe, win rate, profit factor).
-        Uses the same StrategyEngine, GridController, and RiskEngine as live trading.
+        Uses the same StrategyEngine, derived-signal engine, GridController, and RiskEngine as live trading.
 
         ### Candle Data
         Manages local historical candle database for backtesting. View ingested data, trigger downloads,
@@ -57,9 +57,10 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         ### Strategies
         Create, edit, and manage trading strategies. Two strategy modes are supported:
         - Signal mode (primary): define entry conditions using RSI, MACD, Price vs EMA, and
-          Support/Resistance indicators. Combine with all/any logic. Add trend filters (EMA cross,
-          SMA cross, price above EMA). Configure exit rules (fixed percent, swing-low trailing,
-          ATR trailing). Choose direction (long, short, both).
+                    Support/Resistance indicators, plus price-structure conditions powered by the derived-signal
+                    engine such as Candle Pattern, Liquidity Sweep, and Structure Shift. Combine with all/any
+                    logic. Add trend filters (EMA cross, SMA cross, price above EMA). Configure exit rules
+                    (fixed percent, swing-low trailing, ATR trailing). Choose direction (long, short, both).
         - Grid mode: deploy pullback grids with configurable levels, spacing, and breakdown protection.
         Risk management includes position sizing (percent wallet or fixed notional), leverage,
         max open trades, and cooldown between entries.

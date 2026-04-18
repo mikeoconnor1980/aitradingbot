@@ -1,3 +1,4 @@
+using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 
 namespace TradePilot.Application.Backtesting.Models;
@@ -24,6 +25,7 @@ public sealed record CandleEvaluationEntry
     public required decimal PositionSize { get; init; }
     public required decimal PositionAvgEntry { get; init; }
     public required IReadOnlyList<string> SignalsEmitted { get; init; }
+    public IReadOnlyList<ConditionResult>? ConditionResults { get; init; }
     public string? GridCycleId { get; init; }
     public ChartIndicatorValues? Indicators { get; init; }
     public MarketRegime? Regime { get; init; }

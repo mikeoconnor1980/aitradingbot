@@ -1,20 +1,26 @@
 import { Injectable } from "@angular/core";
 import {
+  CandlePatternParams,
+  CandlePatternType,
   Direction,
   DcaInterval,
   EntryMode,
   EntryConditionConfig,
   EntryConditionType,
   ExitRuleType,
+  LiquiditySweepParams,
   MacdOperator,
   MacdParams,
   PriceVsEmaDistanceType,
   PriceVsEmaOperator,
   PositionSizeType,
   PriceVsEmaParams,
+  StructureShiftDirection,
+  StructureShiftParams,
   StrategyConfig,
   SupportResistanceOperator,
   SupportResistanceParams,
+  SweepSide,
   TrendFilterConfig,
   TrendFilterType,
   TrendOperator,
@@ -204,8 +210,29 @@ export class StrategyMapperService {
     }));
   }
 
-  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams | MacdParams | SupportResistanceParams {
+  private _mapConditionParams(condition: Record<string, unknown>): RsiParams | PriceVsEmaParams | MacdParams | SupportResistanceParams | CandlePatternParams | LiquiditySweepParams | StructureShiftParams {
     const type = String(condition["type"] ?? "rsi");
+
+    if (type === "candle_pattern") {
+      return {
+        pattern: String(condition["pattern"] ?? "bullish_engulfing") as CandlePatternType,
+      };
+    }
+
+    if (type === "liquidity_sweep") {
+      return {
+        lookbackBars: Number(condition["lookbackBars"] ?? 50),
+        pivotBars: Number(condition["pivotBars"] ?? 2),
+        side: String(condition["side"] ?? "upside") as SweepSide,
+      };
+    }
+
+    if (type === "structure_shift") {
+      return {
+        pivotBars: Number(condition["pivotBars"] ?? 2),
+        direction: String(condition["direction"] ?? "bullish") as StructureShiftDirection,
+      };
+    }
 
     if (type === "price_vs_ema") {
       return {

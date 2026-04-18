@@ -201,6 +201,36 @@ export class PreviewSummaryCardComponent {
 
   private _buildConditionText(condition: Record<string, unknown>): string {
     const type = String(condition["type"] ?? "rsi");
+
+    if (type === "candle_pattern") {
+      const pattern = String(condition["pattern"] ?? "bullish_engulfing");
+      const patternMap: Record<string, string> = {
+        bullish_engulfing: "bullish engulfing candle appears",
+        bearish_engulfing: "bearish engulfing candle appears",
+        bullish_rejection: "bullish rejection candle appears",
+        bearish_rejection: "bearish rejection candle appears",
+        bullish_continuation: "bullish continuation candle appears",
+        bearish_continuation: "bearish continuation candle appears",
+        bullish_rejection_or_engulfing: "bullish rejection or engulfing candle appears",
+        bearish_rejection_or_engulfing: "bearish rejection or engulfing candle appears",
+      };
+
+      return patternMap[pattern] ?? pattern;
+    }
+
+    if (type === "liquidity_sweep") {
+      const lookbackBars = Number(condition["lookbackBars"] ?? 50);
+      const pivotBars = Number(condition["pivotBars"] ?? 2);
+      const side = String(condition["side"] ?? "upside");
+      return `${side} liquidity sweep over ${lookbackBars} bars using ${pivotBars}-bar pivots`;
+    }
+
+    if (type === "structure_shift") {
+      const pivotBars = Number(condition["pivotBars"] ?? 2);
+      const direction = String(condition["direction"] ?? "bullish");
+      return `${direction} structure shift using ${pivotBars}-bar pivots`;
+    }
+
     if (type === "price_vs_ema") {
       const period = Number(condition["period"] ?? 50);
       const operator = String(condition["operator"] ?? "near") as PriceVsEmaOperator;

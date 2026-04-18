@@ -30,6 +30,9 @@ using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.StrategyAuthoring.Services;
 using TradePilot.Application.StrategyAuthoring.Validation;
 using TradePilot.Application.Trading.Services;
+using TradePilot.Application.Trading.Signals.Abstractions;
+using TradePilot.Application.Trading.Signals.Implementations;
+using TradePilot.Application.Trading.Signals.Registry;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Entities;
@@ -193,10 +196,24 @@ builder.Services.AddSingleton<OptimizationCancellationRegistry>();
 builder.Services.AddScoped<IMarketContextBuilder, BacktestMarketContextBuilder>();
 builder.Services.AddScoped<GridStrategyEngine>();
 builder.Services.AddScoped<DcaStrategyEngine>();
+builder.Services.AddSingleton<IDerivedSignal, CandlePatternSignal>();
+builder.Services.AddSingleton<IDerivedSignal, LiquiditySweepSignal>();
+builder.Services.AddSingleton<IDerivedSignal, StructureShiftSignal>();
+builder.Services.AddSingleton<IDerivedSignalRegistry>(sp =>
+{
+    var registry = new DerivedSignalRegistry();
+    foreach (var signal in sp.GetServices<IDerivedSignal>())
+    {
+        registry.Register(signal);
+    }
+
+    return registry;
+});
 builder.Services.AddScoped<IConditionHandler, RsiConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, PriceVsEmaConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, MacdConditionHandler>();
 builder.Services.AddScoped<IConditionHandler, SupportResistanceConditionHandler>();
+builder.Services.AddScoped<IConditionHandler, DerivedSignalConditionHandler>();
 builder.Services.AddScoped<ITrendFilterEvaluator, TrendFilterEvaluator>();
 builder.Services.AddScoped<IConditionEvaluator, ConditionEvaluator>();
 builder.Services.AddScoped<IStrategyEngine, CompositeStrategyEngine>();
@@ -354,7 +371,7 @@ builder.Services.AddCors(options =>
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
-    options.KnownNetworks.Clear();
+    options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
 

@@ -113,7 +113,8 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
             IndicatorContext = indicatorContext,
             LlmContext = llmContext,
             FearGreed = ResolveFearGreed(triggerCandle.Timestamp),
-            MaxLeverage = _maxLeverage
+            MaxLeverage = _maxLeverage,
+            CandleHistory = _candles.AsReadOnly()
         };
     }
 

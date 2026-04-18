@@ -10,6 +10,7 @@ This document describes the implemented runtime path from a persisted strategy r
 | Authoring | `StrategyConfig` is the concrete JSON model implementing `IStrategyConfig` |
 | Scheduling | `StrategyScheduler` builds context and orchestrates evaluation |
 | Strategy evaluation | `IStrategyEngine` decides whether a setup exists |
+| Derived-signal evaluation | `IDerivedSignalRegistry` evaluates candle-history-based entry conditions |
 | Signal emission | `IGridController` or `ISignalController` converts evaluation into `TradingSignal` payloads |
 | Risk | `IRiskEngine` validates signals and tracks portfolio state |
 | Execution | `IPositionManager` forwards approved signals to `IExecutionEngine` |
@@ -62,6 +63,7 @@ The runtime depends on these shared abstractions in `src/TradingApp.Application/
 |-----------|-------------|---------|
 | `IStrategyEngine` | `EvaluateAsync(MarketContext, IStrategyConfig, CancellationToken)` | Detect setup conditions |
 | `IMarketContextBuilder` | `UpdateIndicators(Candle)`, two `Build(...)` overloads, `BuildAsync(...)` | Produce market context and indicator state |
+| `IDerivedSignalRegistry` | `EvaluateAsync(string signalName, SignalRequest request, ISignalContext context, CancellationToken)` | Executes derived signal implementations |
 | `IGridController` | `ProcessAsync(...)` | Grid-mode signal generation and lifecycle management |
 | `ISignalController` | `ProcessAsync(...)` | Signal-mode entry and exit signal generation |
 | `IRiskEngine` | `ValidateAsync(...)`, `UpdatePortfolioState(...)`, `UpdateDrawdownState(...)`, `RecordPositionOpened(...)`, `RecordPositionClosed(...)` | Enforce risk, circuit breakers, and portfolio heat |
@@ -100,11 +102,23 @@ Important runtime state models include:
 
 | Model | Key Runtime Fields |
 |-------|--------------------|
-| `MarketContext` | Trigger candle, optional 1h/4h candles, indicators, account equity, drawdown scaling, LLM context |
-| `StrategyEvaluation` | `SetupDetected`, `Reason`, optional regime/filter data |
+| `MarketContext` | Trigger candle, optional 1h/4h candles, `CandleHistory`, indicators, account equity, drawdown scaling, LLM context |
+| `StrategyEvaluation` | `SetupDetected`, `Reason`, optional regime/filter data, `ConditionResults` |
 | `GridState` | Lifecycle, cycle id, fill counts, ATR-at-entry, trailing-stop state, protection-order state |
 | `PositionState` | Symbol, size, average entry, PnL, open/closed state |
 | `TradingSignal` | `SignalType`, `Symbol`, `Reason`, and parameter bag |
+
+### Signal-Mode Condition Flow
+
+For signal mode, the runtime path is now:
+
+1. `StrategyScheduler` builds `MarketContext`, including recent trigger-timeframe candle history.
+2. `CompositeStrategyEngine` evaluates any enabled trend filter.
+3. `ConditionEvaluator` dispatches each configured condition to a matching handler.
+4. Simple indicator conditions evaluate directly against `MarketContext.Indicators`.
+5. Derived conditions are handled by `DerivedSignalConditionHandler`, which adapts `MarketContext` into `ISignalContext` and calls `IDerivedSignalRegistry`.
+6. `ConditionResult` entries are carried into `StrategyEvaluation.ConditionResults` for audit/debug use.
+7. `SignalController` emits `OpenPosition` or exit signals if the aggregated evaluation passes and position state allows it.
 
 ## Strategy Scheduler Runtime Model
 

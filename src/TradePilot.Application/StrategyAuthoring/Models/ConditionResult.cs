@@ -10,4 +10,8 @@ public sealed class ConditionResult
     public required bool Passed { get; init; }
 
     public required string Reason { get; init; }
+
+    public decimal? Score { get; init; }
+
+    public IReadOnlyDictionary<string, object?>? Metadata { get; init; }
 }

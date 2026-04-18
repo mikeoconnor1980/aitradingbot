@@ -10,5 +10,7 @@ public interface IConditionHandler
 {
     EntryConditionType ConditionType { get; }
 
+    IReadOnlyCollection<EntryConditionType> SupportedConditionTypes => new[] { ConditionType };
+
     ConditionResult Evaluate(EntryConditionConfig condition, IndicatorContext indicatorContext, MarketContext marketContext);
 }

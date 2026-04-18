@@ -36,7 +36,7 @@ import { ValidationCardComponent } from "./components/validation-card/validation
 import { HasUnsavedChanges } from "./guards/unsaved-changes.guard";
 import { StrategyIntentDto } from "./models/strategy-intent.model";
 import { StrategyReviewDto } from "./models/strategy-review.model";
-import { DcaScalingBand, EntryConditionConfig, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, SupportResistanceParams, ValidationError } from "./models/strategy.model";
+import { CandlePatternParams, DcaScalingBand, EntryConditionConfig, LiquiditySweepParams, MacdParams, PriceVsEmaParams, RsiParams, ServerValidationResult, StrategyConfig, StructureShiftParams, SupportResistanceParams, ValidationError } from "./models/strategy.model";
 import { ConditionFactoryService } from "./services/condition-factory.service";
 import { StrategyApiService } from "./services/strategy-api.service";
 import { StrategyMapperService } from "./services/strategy-mapper.service";
@@ -710,6 +710,45 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   private _addLoadedCondition(condition: EntryConditionConfig): void {
+    if (condition.type === "candle_pattern") {
+      const params = condition.params as CandlePatternParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createCandlePatternCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        pattern: params.pattern,
+      }));
+      return;
+    }
+
+    if (condition.type === "liquidity_sweep") {
+      const params = condition.params as LiquiditySweepParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createLiquiditySweepCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        lookbackBars: params.lookbackBars,
+        pivotBars: params.pivotBars,
+        side: params.side,
+      }));
+      return;
+    }
+
+    if (condition.type === "structure_shift") {
+      const params = condition.params as StructureShiftParams;
+
+      this.conditionsFormArray.push(this._conditionFactory.createStructureShiftCondition({
+        id: condition.id,
+        enabled: condition.enabled,
+        label: condition.label,
+        pivotBars: params.pivotBars,
+        direction: params.direction,
+      }));
+      return;
+    }
+
     if (condition.type === "price_vs_ema") {
       const params = condition.params as PriceVsEmaParams;
 

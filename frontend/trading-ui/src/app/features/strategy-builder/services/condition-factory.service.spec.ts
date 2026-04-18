@@ -139,4 +139,35 @@ describe("ConditionFactoryService", () => {
       expect(group.get("signalPeriod")?.valid).toBeTrue();
     });
   });
+
+  describe("createCandlePatternCondition", () => {
+    it("should create a form group with candle pattern defaults", () => {
+      const group = service.createCandlePatternCondition();
+
+      expect(group.get("type")?.value).toBe("candle_pattern");
+      expect(group.get("pattern")?.value).toBe("bullish_engulfing");
+      expect(group.get("enabled")?.value).toBeTrue();
+    });
+  });
+
+  describe("createLiquiditySweepCondition", () => {
+    it("should create a form group with liquidity sweep defaults", () => {
+      const group = service.createLiquiditySweepCondition();
+
+      expect(group.get("type")?.value).toBe("liquidity_sweep");
+      expect(group.get("lookbackBars")?.value).toBe(50);
+      expect(group.get("pivotBars")?.value).toBe(2);
+      expect(group.get("side")?.value).toBe("upside");
+    });
+  });
+
+  describe("createStructureShiftCondition", () => {
+    it("should create a form group with structure shift defaults", () => {
+      const group = service.createStructureShiftCondition();
+
+      expect(group.get("type")?.value).toBe("structure_shift");
+      expect(group.get("pivotBars")?.value).toBe(2);
+      expect(group.get("direction")?.value).toBe("bullish");
+    });
+  });
 });

@@ -302,5 +302,41 @@ describe("StrategyValidationService", () => {
       expect(errors.some((error) => error.fieldPath === "entryConditions[0]" && error.code === "DUPLICATE")).toBeTrue();
       expect(errors.some((error) => error.fieldPath === "entryConditions[1]" && error.code === "DUPLICATE")).toBeTrue();
     });
+
+    it("should reject unsupported candle patterns", () => {
+      const errors = service.validate({
+        ...baseFormValue(),
+        templateId: "custom_signal",
+        conditions: [{
+          id: "cond-1",
+          enabled: true,
+          type: "candle_pattern",
+          label: "Invalid pattern",
+          pattern: "not_real",
+        }],
+      });
+
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0].params.pattern" && error.code === "RANGE")).toBeTrue();
+    });
+
+    it("should reject invalid liquidity sweep params", () => {
+      const errors = service.validate({
+        ...baseFormValue(),
+        templateId: "custom_signal",
+        conditions: [{
+          id: "cond-1",
+          enabled: true,
+          type: "liquidity_sweep",
+          label: "Invalid sweep",
+          lookbackBars: 0,
+          pivotBars: 11,
+          side: "invalid",
+        }],
+      });
+
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0].params.lookbackBars")).toBeTrue();
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0].params.pivotBars")).toBeTrue();
+      expect(errors.some((error) => error.fieldPath === "entryConditions[0].params.side")).toBeTrue();
+    });
   });
 });
