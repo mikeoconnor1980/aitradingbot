@@ -34,6 +34,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<ILiveFillRepository, LiveFillRepository>();
         services.AddScoped<IGridCycleRepository, GridCycleRepository>();
         services.AddScoped<ILlmContextSnapshotRepository, LlmContextSnapshotRepository>();
+        services.AddScoped<IAdminUserGrantRepository, AdminUserGrantRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserWalletAddressRepository, UserWalletAddressRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
@@ -51,10 +52,12 @@ public static class PersistenceServiceExtensions
         if (db.Database.ProviderName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true)
         {
             await db.Database.EnsureCreatedAsync();
+            await AdminUserGrantSeeder.SeedAsync(db);
             return;
         }
 
         await db.Database.MigrateAsync();
+        await AdminUserGrantSeeder.SeedAsync(db);
         await StrategyTemplateSeeder.SeedAsync(db);
     }
 }

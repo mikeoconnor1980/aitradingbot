@@ -1,0 +1,105 @@
+<section class="admin-users">
+  <header class="admin-users__header">
+    <div>
+      <h2 class="admin-users__title">Admin Users</h2>
+      <p class="admin-users__subtitle">Manage platform admin access by email. Grants are stored in the database and apply once the user session refreshes.</p>
+    </div>
+  </header>
+
+  <mat-card class="admin-users__create-card">
+    <mat-card-content>
+      <form class="admin-users__create-form" [formGroup]="form" (ngSubmit)="onAddAdmin()">
+        <mat-form-field class="admin-users__email-field" appearance="outline">
+          <mat-label>Admin email</mat-label>
+          <input matInput type="email" formControlName="email" autocomplete="off" placeholder="name@example.com">
+          @if (form.controls.email.hasError("required")) {
+            <mat-error>Email is required.</mat-error>
+          } @else if (form.controls.email.hasError("email")) {
+            <mat-error>Enter a valid email address.</mat-error>
+          } @else if (form.controls.email.hasError("maxlength")) {
+            <mat-error>Email must be 256 characters or fewer.</mat-error>
+          }
+        </mat-form-field>
+
+        <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || isAdding || removingAdminId !== null">
+          @if (isAdding) {
+            <mat-spinner diameter="18"></mat-spinner>
+          } @else {
+            <mat-icon>person_add</mat-icon>
+          }
+          <span>Add admin</span>
+        </button>
+      </form>
+
+      <p class="admin-users__hint">Use this for database-backed admin grants such as mike.oconnor&#64;hotmail.co.uk.</p>
+    </mat-card-content>
+  </mat-card>
+
+  @if (isLoading) {
+    <mat-card class="admin-users__state">
+      <mat-card-content>
+        <mat-spinner diameter="36"></mat-spinner>
+        <p>Loading admin users...</p>
+      </mat-card-content>
+    </mat-card>
+  } @else if (admins.length === 0) {
+    <mat-card class="admin-users__state">
+      <mat-card-content>
+        <p>No admin users configured yet.</p>
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <mat-card class="admin-users__table-card">
+      <mat-card-content>
+        <div class="admin-users__table-wrap">
+          <table mat-table [dataSource]="admins" class="admin-users__table">
+            <ng-container matColumnDef="email">
+              <th mat-header-cell *matHeaderCellDef>Email</th>
+              <td mat-cell *matCellDef="let admin">
+                <div class="admin-users__email-cell">
+                  <span class="admin-users__email">{{ admin.email }}</span>
+                  @if (isCurrentUser(admin)) {
+                    <span class="admin-users__badge">You</span>
+                  }
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="account">
+              <th mat-header-cell *matHeaderCellDef>Account</th>
+              <td mat-cell *matCellDef="let admin">
+                <div class="admin-users__account-cell">
+                  <span class="admin-users__account-name">{{ admin.displayName ?? "Awaiting sign-in" }}</span>
+                  <span class="admin-users__account-status">{{ admin.hasRegisteredAccount ? "Registered account" : "Grant only" }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="createdAtUtc">
+              <th mat-header-cell *matHeaderCellDef>Added</th>
+              <td mat-cell *matCellDef="let admin">{{ admin.createdAtUtc | date: "dd MMM yyyy" }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Actions</th>
+              <td mat-cell *matCellDef="let admin" class="admin-users__actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Remove admin"
+                  matTooltip="Remove admin access"
+                  [disabled]="removingAdminId !== null || isAdding"
+                  (click)="onRemoveAdmin(admin)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns" class="admin-users__row"></tr>
+          </table>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

@@ -72,6 +72,7 @@ public sealed class HealthControllerTests : BaseControllerTests
         _localFactory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseInMemoryTradePilotPersistence($"health-controller-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:Network", "testnet");

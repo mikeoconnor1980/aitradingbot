@@ -59,11 +59,12 @@ public sealed class AuthController : ControllerBase
         await _userRepository.AddAsync(newUser, cancellationToken);
 
         var tokens = _jwtTokenService.GenerateTokens(newUser);
+        var isAdmin = await _adminAuthorizationService.IsAdminAsync(newUser.Email, cancellationToken);
 
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(newUser.Id, newUser.Email, newUser.DisplayName, _adminAuthorizationService.IsAdmin(newUser.Email))));
+            new UserInfo(newUser.Id, newUser.Email, newUser.DisplayName, isAdmin)));
     }
 
     [HttpPost("login")]
@@ -91,11 +92,12 @@ public sealed class AuthController : ControllerBase
         }
 
         var tokens = _jwtTokenService.GenerateTokens(user);
+        var isAdmin = await _adminAuthorizationService.IsAdminAsync(user.Email, cancellationToken);
 
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(user.Id, user.Email, user.DisplayName, _adminAuthorizationService.IsAdmin(user.Email))));
+            new UserInfo(user.Id, user.Email, user.DisplayName, isAdmin)));
     }
 
     [HttpPost("refresh")]
@@ -118,11 +120,12 @@ public sealed class AuthController : ControllerBase
         }
 
         var tokens = _jwtTokenService.GenerateTokens(user);
+        var isAdmin = await _adminAuthorizationService.IsAdminAsync(user.Email, cancellationToken);
 
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(user.Id, user.Email, user.DisplayName, _adminAuthorizationService.IsAdmin(user.Email))));
+            new UserInfo(user.Id, user.Email, user.DisplayName, isAdmin)));
     }
 
     [HttpPost("google")]
@@ -159,18 +162,19 @@ public sealed class AuthController : ControllerBase
         }
 
         var tokens = _jwtTokenService.GenerateTokens(user);
+        var isAdmin = await _adminAuthorizationService.IsAdminAsync(user.Email, cancellationToken);
 
         return Ok(new AuthResponse(
             tokens.AccessToken,
             tokens.RefreshToken,
-            new UserInfo(user.Id, user.Email, user.DisplayName, _adminAuthorizationService.IsAdmin(user.Email))));
+            new UserInfo(user.Id, user.Email, user.DisplayName, isAdmin)));
     }
 
     [HttpGet("me")]
     [Authorize]
     [ProducesResponseType(typeof(MeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public IActionResult Me()
+    public async Task<IActionResult> Me(CancellationToken cancellationToken)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var email = User.FindFirst(ClaimTypes.Email)?.Value;
@@ -181,7 +185,8 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        return Ok(new MeResponse(Guid.Parse(userId), email, displayName ?? email, _adminAuthorizationService.IsAdmin(email)));
+        var isAdmin = await _adminAuthorizationService.IsAdminAsync(email, cancellationToken);
+        return Ok(new MeResponse(Guid.Parse(userId), email, displayName ?? email, isAdmin));
     }
 
     private static bool IsPasswordComplex(string password)

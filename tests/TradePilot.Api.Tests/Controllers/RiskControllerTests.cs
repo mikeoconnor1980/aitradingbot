@@ -40,6 +40,7 @@ public sealed class RiskControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseInMemoryTradePilotPersistence($"risk-controller-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Jwt:SecretKey", BaseControllerTests.TestJwtSecretKey);
                 builder.UseSetting("Jwt:Issuer", "TradePilot");
                 builder.UseSetting("Jwt:Audience", "TradePilot");

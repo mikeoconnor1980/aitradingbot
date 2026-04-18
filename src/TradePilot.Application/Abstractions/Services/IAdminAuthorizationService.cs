@@ -4,6 +4,6 @@ namespace TradePilot.Application.Abstractions.Services;
 
 public interface IAdminAuthorizationService
 {
-    bool IsAdmin(AppIdentity identity);
-    bool IsAdmin(string email);
+    Task<bool> IsAdminAsync(AppIdentity identity, CancellationToken cancellationToken = default);
+    Task<bool> IsAdminAsync(string email, CancellationToken cancellationToken = default);
 }

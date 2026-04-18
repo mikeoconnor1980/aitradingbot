@@ -1,0 +1,156 @@
+.admin-users {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__subtitle {
+    margin: 0.35rem 0 0;
+    max-width: 52rem;
+    color: var(--colour-muted);
+    line-height: 1.5;
+  }
+
+  &__create-card,
+  &__state,
+  &__table-card {
+    background: var(--colour-surface-dark);
+    border: 1px solid var(--colour-border-subtle);
+  }
+
+  &__create-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  &__email-field {
+    flex: 1 1 320px;
+  }
+
+  &__hint {
+    margin: 0.85rem 0 0;
+    color: var(--colour-muted);
+    font-size: 0.875rem;
+  }
+
+  &__state {
+    p {
+      margin: 0;
+      color: var(--colour-muted);
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .mat-mdc-card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      align-items: center;
+      justify-content: center;
+      min-height: 12rem;
+    }
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    min-width: 820px;
+  }
+
+  &__row {
+    &:hover {
+      background: var(--colour-surface-alt);
+    }
+  }
+
+  &__email-cell,
+  &__account-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  &__email-cell {
+    min-width: 20rem;
+  }
+
+  &__email,
+  &__account-name {
+    color: var(--colour-text-primary);
+    font-weight: 600;
+  }
+
+  &__account-status {
+    color: var(--colour-muted);
+    font-size: 0.875rem;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--colour-border-light);
+    border-radius: 999px;
+    background: var(--colour-surface-alt);
+    color: var(--colour-label);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__actions {
+    white-space: nowrap;
+  }
+
+  :where(th.mat-mdc-header-cell) {
+    color: var(--colour-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  :where(td.mat-mdc-cell),
+  :where(th.mat-mdc-header-cell) {
+    vertical-align: top;
+  }
+}
+
+@media (max-width: 960px) {
+  .admin-users {
+    padding-inline: 0;
+
+    &__create-form {
+      align-items: stretch;
+    }
+
+    &__email-field {
+      flex-basis: 100%;
+    }
+
+    &__email-cell {
+      min-width: 16rem;
+    }
+  }
+}

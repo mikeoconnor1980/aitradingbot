@@ -58,7 +58,6 @@ public sealed class StrategiesControllerTests : BaseControllerTests
         builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
         builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
         builder.UseSetting("Hyperliquid:Network", "testnet");
-        builder.UseSetting("Admin:Emails:0", "test@tradepilot.dev");
     }
 
     protected override void ConfigureTestServices(IServiceCollection services)
@@ -611,6 +610,7 @@ public sealed class StrategiesControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenPromotedTemplate_WhenUnpublished_ThenReturns204AndRemovesItFromLibrary()
     {
+        await SeedAdminGrantAsync();
         var client = GetTestClient();
         await SeedStrategyTemplateAsync(
             slug: $"allowed-tags-{Guid.NewGuid():N}",
@@ -651,6 +651,7 @@ public sealed class StrategiesControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenPromotedTemplate_WhenRenamedByAdmin_ThenReturns204AndUpdatesTemplate()
     {
+        await SeedAdminGrantAsync();
         var client = GetTestClient();
         await SeedStrategyTemplateAsync(
             slug: $"allowed-tags-{Guid.NewGuid():N}",
@@ -703,6 +704,7 @@ public sealed class StrategiesControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenDuplicateTemplateName_WhenRenamed_ThenReturns409()
     {
+        await SeedAdminGrantAsync();
         var client = GetTestClient();
         var existingTemplateId = await SeedStrategyTemplateAsync(
             slug: $"existing-template-{Guid.NewGuid():N}",
@@ -732,6 +734,7 @@ public sealed class StrategiesControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenSystemTemplate_WhenUnpublished_ThenReturns409()
     {
+        await SeedAdminGrantAsync();
         var client = GetTestClient();
         var systemTemplateId = await SeedStrategyTemplateAsync(
             slug: $"system-template-{Guid.NewGuid():N}",
@@ -1098,5 +1101,25 @@ public sealed class StrategiesControllerTests : BaseControllerTests
 
         await context.BacktestRuns.AddAsync(run);
         await context.SaveChangesAsync();
+    }
+
+    private async Task<Guid> SeedAdminGrantAsync(string email = "test@tradepilot.dev")
+    {
+        await using var context = CreateTestDbContext();
+
+        var normalizedEmail = AdminUserGrant.NormalizeEmail(email);
+        var existingGrant = await context.AdminUserGrants
+            .SingleOrDefaultAsync(grant => grant.Email == normalizedEmail);
+
+        if (existingGrant is not null)
+        {
+            return existingGrant.Id;
+        }
+
+        var grant = AdminUserGrant.Create(normalizedEmail);
+        context.AdminUserGrants.Add(grant);
+        await context.SaveChangesAsync();
+
+        return grant.Id;
     }
 }

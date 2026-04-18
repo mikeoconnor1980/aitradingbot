@@ -26,6 +26,7 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<GridCycle> GridCycles => Set<GridCycle>();
     public DbSet<LlmContextSnapshot> LlmContextSnapshots => Set<LlmContextSnapshot>();
     public DbSet<FearGreedReading> FearGreedReadings => Set<FearGreedReading>();
+    public DbSet<AdminUserGrant> AdminUserGrants => Set<AdminUserGrant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -754,6 +755,27 @@ public sealed class TradePilotDbContext : DbContext
                 .IsUnique()
                 .HasFilter("[AuthProvider] IS NOT NULL AND [ExternalProviderId] IS NOT NULL")
                 .HasDatabaseName("IX_Users_ExternalProvider");
+        });
+
+        modelBuilder.Entity<AdminUserGrant>(entity =>
+        {
+            entity.ToTable("AdminUserGrants");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(256)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_AdminUserGrants_Email");
         });
 
         modelBuilder.Entity<UserWalletAddress>(entity =>

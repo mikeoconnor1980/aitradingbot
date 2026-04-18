@@ -49,6 +49,12 @@ export const routes: Routes = [
     title: "Strategy Library"
   },
   {
+    path: "admin/users",
+    loadComponent: () => import("./features/admin/admin-users-page.component").then((m) => m.AdminUsersPageComponent),
+    canActivate: [authGuard, adminRoleGuard, mobileRedirectGuard],
+    title: "Admin Users"
+  },
+  {
     path: "market-data",
     loadComponent: () => import("./features/market-data/market-data.component").then((m) => m.MarketDataComponent),
     canActivate: [authGuard],

@@ -81,6 +81,9 @@ export class AppComponent implements OnInit {
         this.isAuthenticated = auth;
         if (auth) {
           this._profileService.load();
+          this._authService.syncCurrentUser().subscribe({
+            error: () => undefined
+          });
         }
       });
 

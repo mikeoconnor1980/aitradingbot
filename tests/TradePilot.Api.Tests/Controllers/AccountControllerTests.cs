@@ -44,6 +44,7 @@ public sealed class AccountControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseInMemoryTradePilotPersistence($"account-controller-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Jwt:SecretKey", BaseControllerTests.TestJwtSecretKey);
                 builder.UseSetting("Jwt:Issuer", "TradePilot");
                 builder.UseSetting("Jwt:Audience", "TradePilot");
@@ -73,8 +74,11 @@ public sealed class AccountControllerTests
     [TestCleanup]
     public async Task Cleanup()
     {
-        _client.Dispose();
-        await _factory.DisposeAsync();
+        _client?.Dispose();
+        if (_factory is not null)
+        {
+            await _factory.DisposeAsync();
+        }
     }
 
     [TestMethod]

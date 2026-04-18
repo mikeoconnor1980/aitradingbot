@@ -43,7 +43,8 @@ export class SidebarNavComponent {
 
     return [
       ...this._baseNavItems,
-      { route: "/admin/strategy-library", icon: "admin_panel_settings", label: "Strategy Library" }
+      { route: "/admin/strategy-library", icon: "admin_panel_settings", label: "Strategy Library" },
+      { route: "/admin/users", icon: "manage_accounts", label: "Admin Users" }
     ];
   }
 

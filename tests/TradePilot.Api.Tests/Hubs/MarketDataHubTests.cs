@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
 
@@ -48,6 +49,7 @@ public sealed class MarketDataHubTests
         await using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseInMemoryTradePilotPersistence($"market-data-hub-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");
@@ -128,6 +130,7 @@ public sealed class MarketDataHubTests
         await using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseInMemoryTradePilotPersistence($"market-data-hub-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");

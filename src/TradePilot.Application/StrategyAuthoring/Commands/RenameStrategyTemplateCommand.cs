@@ -31,7 +31,7 @@ public sealed class RenameStrategyTemplateCommandHandler : CommandHandler<Rename
     {
         ArgumentNullException.ThrowIfNull(request.Identity);
 
-        if (!_adminAuthorizationService.IsAdmin(request.Identity))
+        if (!await _adminAuthorizationService.IsAdminAsync(request.Identity, cancellationToken))
         {
             throw new UnauthorizedAccessException("Only administrators can manage strategy library templates.");
         }

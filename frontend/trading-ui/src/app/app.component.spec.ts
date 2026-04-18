@@ -48,7 +48,8 @@ const profileServiceMock: Pick<ProfileService, "profile$" | "load"> = {
 
 const authServiceMock = {
   user$: of({ displayName: "Test", email: "test@test.com", isAdmin: false }),
-  isAuthenticated$: of(true)
+  isAuthenticated$: of(true),
+  syncCurrentUser: () => of({ id: "1", displayName: "Test", email: "test@test.com", isAdmin: false })
 };
 
 const layoutServiceMock: Pick<LayoutService, "isMobile"> = {

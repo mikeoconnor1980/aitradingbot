@@ -67,6 +67,14 @@ export class AuthService {
       .pipe(tap((response) => this.storeAuth(response)));
   }
 
+  public syncCurrentUser(): Observable<AuthUser> {
+    const ctx = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
+
+    return this._http
+      .get<AuthUser>(`${this._baseUrl}/auth/me`, { context: ctx })
+      .pipe(tap((user) => this.storeUser(user)));
+  }
+
   public logout(): void {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
@@ -79,9 +87,13 @@ export class AuthService {
   private storeAuth(response: AuthResponse): void {
     localStorage.setItem(TOKEN_KEY, response.token);
     localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(response.user));
-    this._user$.next(response.user);
+    this.storeUser(response.user);
     this._isAuthenticated$.next(true);
+  }
+
+  private storeUser(user: AuthUser): void {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    this._user$.next(user);
   }
 
   private hasToken(): boolean {
