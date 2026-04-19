@@ -1,8 +1,10 @@
+using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Infrastructure.Hyperliquid;
 
-public static class HyperliquidAssetMapper
+public sealed class HyperliquidAssetMapper : IExchangeSymbolMapper
 {
     private static readonly string[] QuoteSuffixes = ["USDT", "USDC", "USD"];
 
@@ -28,6 +30,8 @@ public static class HyperliquidAssetMapper
         ["1h"] = 60L * 60L * 1000L,
         ["4h"] = 4L * 60L * 60L * 1000L,
     };
+
+    public Exchange Exchange => Exchange.Hyperliquid;
 
     public static string ToCoin(string displayName)
     {
@@ -105,5 +109,29 @@ public static class HyperliquidAssetMapper
         return TimeframeToIntervalMs.TryGetValue(timeframe, out var ms)
             ? ms
             : throw new DomainException($"Invalid timeframe '{timeframe}'. Supported: {string.Join(", ", TimeframeToIntervalMs.Keys)}");
+    }
+
+    string IExchangeSymbolMapper.ToExchangeSymbol(TradingPair pair)
+    {
+        ArgumentNullException.ThrowIfNull(pair);
+
+        if (!((IExchangeSymbolMapper)this).CanMap(pair))
+        {
+            throw new InvalidOperationException($"Hyperliquid cannot map trading pair '{pair.Canonical}'.");
+        }
+
+        return pair.Base;
+    }
+
+    TradingPair IExchangeSymbolMapper.FromExchangeSymbol(string exchangeSymbol)
+    {
+        var coin = ToCoin(exchangeSymbol);
+        return TradingPair.Create(coin, "USD", AssetType.Perp);
+    }
+
+    bool IExchangeSymbolMapper.CanMap(TradingPair pair)
+    {
+        ArgumentNullException.ThrowIfNull(pair);
+        return pair.ProductType == AssetType.Perp && !string.IsNullOrWhiteSpace(pair.Base);
     }
 }

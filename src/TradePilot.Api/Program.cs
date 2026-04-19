@@ -186,6 +186,12 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 });
 
 builder.Services.AddScoped<IHyperliquidAccountService, TradePilot.Infrastructure.Services.HyperliquidAccountService>();
+builder.Services.AddScoped<IExchangeAccountClient, TradePilot.Infrastructure.Hyperliquid.HyperliquidAccountAdapter>();
+builder.Services.AddScoped<IExchangeMarketMetadataProvider, TradePilot.Infrastructure.Hyperliquid.HyperliquidMarketMetadataProvider>();
+builder.Services.AddScoped<IExchangeHistoricalDataClient, TradePilot.Infrastructure.Hyperliquid.HyperliquidHistoricalDataClient>();
+builder.Services.AddSingleton<IExchangeCapabilities, TradePilot.Infrastructure.Hyperliquid.HyperliquidCapabilities>();
+builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Hyperliquid.HyperliquidAssetMapper>();
+builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Binance.BinanceAssetMapper>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
@@ -268,7 +274,7 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
 
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
 });
-builder.Services.AddScoped<IBinanceCandleIngestionService, BinanceCandleIngestionService>();
+builder.Services.AddScoped<ICandleIngestionService, BinanceCandleIngestionService>();
 builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
 

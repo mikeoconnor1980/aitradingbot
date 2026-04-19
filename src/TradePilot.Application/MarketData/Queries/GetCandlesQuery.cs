@@ -1,3 +1,4 @@
+using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Queries;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
@@ -9,11 +10,15 @@ public sealed record GetCandlesQuery(string Asset, string Timeframe, long? EndTi
 
 public sealed class GetCandlesQueryHandler : QueryHandler<GetCandlesQuery, List<CandleDto>>
 {
-    private readonly IHyperliquidRestClient _restClient;
+    private readonly IExchangeHistoricalDataClient _historicalDataClient;
+    private readonly IExchangeSymbolMapper _symbolMapper;
 
-    public GetCandlesQueryHandler(IHyperliquidRestClient restClient)
+    public GetCandlesQueryHandler(
+        IEnumerable<IExchangeHistoricalDataClient> historicalDataClients,
+        IEnumerable<IExchangeSymbolMapper> symbolMappers)
     {
-        _restClient = restClient;
+        _historicalDataClient = ResolveHistoricalDataClient(historicalDataClients, Exchange.Hyperliquid);
+        _symbolMapper = ResolveSymbolMapper(symbolMappers, Exchange.Hyperliquid);
     }
 
     public override async Task<List<CandleDto>> Handle(GetCandlesQuery request, CancellationToken cancellationToken)
@@ -21,8 +26,62 @@ public sealed class GetCandlesQueryHandler : QueryHandler<GetCandlesQuery, List<
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Asset);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Timeframe);
 
-        var candles = await _restClient.GetCandlesAsync(request.Asset, request.Timeframe, request.EndTime, cancellationToken);
+        var pair = _symbolMapper.FromExchangeSymbol(request.Asset);
+        var intervalMs = GetIntervalMs(request.Timeframe);
+        var endTime = request.EndTime ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var startTime = endTime - (500L * intervalMs);
+
+        var snapshots = await _historicalDataClient.GetCandleSnapshotsAsync(
+            pair,
+            request.Timeframe,
+            startTime,
+            endTime,
+            cancellationToken);
+
+        var candles = snapshots
+            .Select(candle => new CandleDto
+            {
+                Timestamp = candle.Timestamp,
+                Open = candle.Open,
+                High = candle.High,
+                Low = candle.Low,
+                Close = candle.Close,
+                Volume = candle.Volume,
+            })
+            .OrderByDescending(candle => candle.Timestamp)
+            .Take(500)
+            .ToList();
+
         return EnrichCandles(candles);
+    }
+
+    private static IExchangeHistoricalDataClient ResolveHistoricalDataClient(
+        IEnumerable<IExchangeHistoricalDataClient> historicalDataClients,
+        Exchange exchange)
+    {
+        return historicalDataClients.FirstOrDefault(client => client.Exchange == exchange)
+            ?? throw new InvalidOperationException($"No historical data client is registered for exchange '{exchange}'.");
+    }
+
+    private static IExchangeSymbolMapper ResolveSymbolMapper(
+        IEnumerable<IExchangeSymbolMapper> symbolMappers,
+        Exchange exchange)
+    {
+        return symbolMappers.FirstOrDefault(mapper => mapper.Exchange == exchange)
+            ?? throw new InvalidOperationException($"No symbol mapper is registered for exchange '{exchange}'.");
+    }
+
+    private static long GetIntervalMs(string timeframe)
+    {
+        return timeframe.Trim().ToLowerInvariant() switch
+        {
+            "5m" => 300_000L,
+            "15m" => 900_000L,
+            "1h" => 3_600_000L,
+            "4h" => 14_400_000L,
+            "1d" => 86_400_000L,
+            var unsupported => throw new DomainException($"Invalid timeframe '{unsupported}'. Supported: 5m, 15m, 1h, 4h, 1d"),
+        };
     }
 
     internal static List<CandleDto> EnrichCandles(IReadOnlyList<CandleDto> candles)

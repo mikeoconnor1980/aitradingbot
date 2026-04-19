@@ -12,7 +12,7 @@ using TradePilot.Infrastructure.Binance;
 
 namespace TradePilot.Infrastructure.Services;
 
-public sealed class BinanceCandleIngestionService : IBinanceCandleIngestionService
+public sealed class BinanceCandleIngestionService : ICandleIngestionService
 {
     private const string BinanceSource = "Binance";
     private const string MarkPriceIntervalPrefix = "mark-";
@@ -34,6 +34,8 @@ public sealed class BinanceCandleIngestionService : IBinanceCandleIngestionServi
         _options = options.Value;
         _logger = logger;
     }
+
+    public Exchange Exchange => Exchange.Binance;
 
     public async Task<IngestionResult> IngestAsync(IngestionRequest request, CancellationToken cancellationToken = default)
     {

@@ -1,8 +1,10 @@
+using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Infrastructure.Binance;
 
-public static class BinanceAssetMapper
+public sealed class BinanceAssetMapper : IExchangeSymbolMapper
 {
     private const string MarkPricePrefix = "mark-";
     private static readonly string[] KnownDisplaySuffixes = ["-USD", "-USDT", "-PERP"];
@@ -31,6 +33,8 @@ public static class BinanceAssetMapper
     public static IReadOnlyCollection<string> ValidSymbols => SymbolToFuturesSymbol.Keys;
 
     public static IReadOnlyCollection<string> ValidIntervals => IntervalToMs.Keys;
+
+    public Exchange Exchange => Exchange.Binance;
 
     public static string NormalizeSymbol(string displaySymbol)
     {
@@ -96,5 +100,39 @@ public static class BinanceAssetMapper
 
         throw new DomainException(
             $"Unsupported Binance interval: '{interval}'. Valid intervals: {string.Join(", ", IntervalToMs.Keys)}");
+    }
+
+    string IExchangeSymbolMapper.ToExchangeSymbol(TradingPair pair)
+    {
+        ArgumentNullException.ThrowIfNull(pair);
+
+        if (!((IExchangeSymbolMapper)this).CanMap(pair))
+        {
+            throw new InvalidOperationException($"Binance cannot map trading pair '{pair.Canonical}'.");
+        }
+
+        return ToFuturesSymbol(pair.Base);
+    }
+
+    TradingPair IExchangeSymbolMapper.FromExchangeSymbol(string exchangeSymbol)
+    {
+        var normalized = NormalizeSymbol(exchangeSymbol);
+        if (normalized.EndsWith("USDT", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^4];
+        }
+
+        if (normalized.EndsWith("USD", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^3];
+        }
+
+        return TradingPair.Create(normalized, "USD", AssetType.Perp);
+    }
+
+    bool IExchangeSymbolMapper.CanMap(TradingPair pair)
+    {
+        ArgumentNullException.ThrowIfNull(pair);
+        return IsValidSymbol(pair.Base);
     }
 }

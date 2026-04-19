@@ -9,11 +9,11 @@ public sealed record IngestBinanceCandlesCommand(IngestionRequest Request) : Com
 public sealed class IngestBinanceCandlesCommandHandler
     : CommandHandler<IngestBinanceCandlesCommand, IngestionResult>
 {
-    private readonly IBinanceCandleIngestionService _ingestionService;
+    private readonly ICandleIngestionService _ingestionService;
 
-    public IngestBinanceCandlesCommandHandler(IBinanceCandleIngestionService ingestionService)
+    public IngestBinanceCandlesCommandHandler(IEnumerable<ICandleIngestionService> ingestionServices)
     {
-        _ingestionService = ingestionService;
+        _ingestionService = ResolveIngestionService(ingestionServices, Exchange.Binance);
     }
 
     public override async Task<IngestionResult> Handle(
@@ -23,5 +23,14 @@ public sealed class IngestBinanceCandlesCommandHandler
         ArgumentNullException.ThrowIfNull(request.Request);
 
         return await _ingestionService.IngestAsync(request.Request, cancellationToken);
+    }
+
+    private static ICandleIngestionService ResolveIngestionService(
+        IEnumerable<ICandleIngestionService> ingestionServices,
+        Exchange exchange)
+    {
+        var service = ingestionServices.FirstOrDefault(candidate => candidate.Exchange == exchange);
+        return service
+            ?? throw new InvalidOperationException($"No candle ingestion service is registered for exchange '{exchange}'.");
     }
 }

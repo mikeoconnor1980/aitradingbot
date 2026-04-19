@@ -1,9 +1,10 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.MarketData.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Enums;
+using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Application.Trading.Services;
 
@@ -11,18 +12,18 @@ public sealed class StateRecoveryService : IStateRecoveryService
 {
     private readonly IGridCycleRepository _gridCycleRepository;
     private readonly ILiveOrderRepository _orderRepository;
-    private readonly IHyperliquidRestClient _restClient;
+    private readonly IExchangeAccountClient _accountClient;
     private readonly ILogger<StateRecoveryService> _logger;
 
     public StateRecoveryService(
         IGridCycleRepository gridCycleRepository,
         ILiveOrderRepository orderRepository,
-        IHyperliquidRestClient restClient,
+        IExchangeAccountClient accountClient,
         ILogger<StateRecoveryService> logger)
     {
         _gridCycleRepository = gridCycleRepository;
         _orderRepository = orderRepository;
-        _restClient = restClient;
+        _accountClient = accountClient;
         _logger = logger;
     }
 
@@ -50,15 +51,13 @@ public sealed class StateRecoveryService : IStateRecoveryService
             activeCycle.GridCycleId, activeCycle.Lifecycle,
             activeCycle.FilledLevels, activeCycle.TotalLevels);
 
+        var pair = ToTradingPair(symbol);
+
         // Query Hyperliquid for current fills since cycle start
-        var fills = await _restClient.GetUserFillsAsync(
-            walletAddress,
-            new DateTimeOffset(activeCycle.StartedAtUtc, TimeSpan.Zero).ToUnixTimeMilliseconds(),
-            cancellationToken);
+        var fills = await _accountClient.GetRecentFillsAsync(pair, walletAddress, cancellationToken);
 
         // Query Hyperliquid for open orders
-        var openOrdersJson = await _restClient.PostInfoAsync<JsonElement>(
-            new { type = "openOrders", user = walletAddress }, cancellationToken);
+        var openOrders = await _accountClient.GetOpenOrdersAsync(walletAddress, cancellationToken);
 
         // Rebuild order tracker from DB records
         var dbOrders = await _orderRepository.GetByGridCycleIdAsync(
@@ -74,32 +73,21 @@ public sealed class StateRecoveryService : IStateRecoveryService
         string? recoveredTpOrderId = null;
         decimal? recoveredTpTriggerPrice = null;
 
-        if (openOrdersJson.ValueKind == JsonValueKind.Array)
+        foreach (var openOrder in openOrders)
         {
-            foreach (var orderElement in openOrdersJson.EnumerateArray())
+            openOrderIds.Add(openOrder.OrderId);
+
+            if (IsTriggerOrderForSymbol(openOrder, pair.Base))
             {
-                if (orderElement.TryGetProperty("oid", out var oidProp))
+                if (string.Equals(openOrder.TpslType, "sl", StringComparison.OrdinalIgnoreCase))
                 {
-                    openOrderIds.Add(oidProp.ToString());
+                    recoveredSlOrderId = openOrder.OrderId;
+                    recoveredSlTriggerPrice = openOrder.TriggerPrice;
                 }
-
-                // Detect exchange-native protection trigger orders for this symbol
-                if (IsTriggerOrderForSymbol(orderElement, symbol))
+                else if (string.Equals(openOrder.TpslType, "tp", StringComparison.OrdinalIgnoreCase))
                 {
-                    var tpslType = GetTpslType(orderElement);
-                    var triggerPx = GetTriggerPrice(orderElement);
-                    var oid = oidProp.ToString();
-
-                    if (string.Equals(tpslType, "sl", StringComparison.OrdinalIgnoreCase))
-                    {
-                        recoveredSlOrderId = oid;
-                        recoveredSlTriggerPrice = triggerPx;
-                    }
-                    else if (string.Equals(tpslType, "tp", StringComparison.OrdinalIgnoreCase))
-                    {
-                        recoveredTpOrderId = oid;
-                        recoveredTpTriggerPrice = triggerPx;
-                    }
+                    recoveredTpOrderId = openOrder.OrderId;
+                    recoveredTpTriggerPrice = openOrder.TriggerPrice;
                 }
             }
         }
@@ -190,59 +178,22 @@ public sealed class StateRecoveryService : IStateRecoveryService
         return gridState;
     }
 
-    private static bool IsTriggerOrderForSymbol(JsonElement order, string symbol)
+    private static bool IsTriggerOrderForSymbol(OpenOrderDto order, string symbol)
     {
-        if (!order.TryGetProperty("coin", out var coinProp))
+        if (!string.Equals(order.Asset, symbol, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        if (!string.Equals(coinProp.GetString(), symbol, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        // Check if reduceOnly (all protection triggers are reduce-only)
-        if (order.TryGetProperty("reduceOnly", out var reduceOnly) && reduceOnly.ValueKind == JsonValueKind.True)
-        {
-            return GetTpslType(order) is not null;
-        }
-
-        return false;
+        return order.IsReduceOnly && !string.IsNullOrWhiteSpace(order.TpslType);
     }
 
-    private static string? GetTpslType(JsonElement order)
+    private static TradingPair ToTradingPair(string symbol)
     {
-        if (order.TryGetProperty("orderType", out var orderType)
-            && orderType.ValueKind == JsonValueKind.Object
-            && orderType.TryGetProperty("trigger", out var trigger)
-            && trigger.TryGetProperty("tpsl", out var tpsl))
-        {
-            return tpsl.GetString();
-        }
+        var normalized = symbol.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
+            ? symbol[..^5]
+            : symbol;
 
-        return null;
-    }
-
-    private static decimal? GetTriggerPrice(JsonElement order)
-    {
-        if (order.TryGetProperty("orderType", out var orderType)
-            && orderType.ValueKind == JsonValueKind.Object
-            && orderType.TryGetProperty("trigger", out var trigger)
-            && trigger.TryGetProperty("triggerPx", out var triggerPx))
-        {
-            if (triggerPx.ValueKind == JsonValueKind.String
-                && decimal.TryParse(triggerPx.GetString(), out var parsed))
-            {
-                return parsed;
-            }
-
-            if (triggerPx.ValueKind == JsonValueKind.Number)
-            {
-                return triggerPx.GetDecimal();
-            }
-        }
-
-        return null;
+        return TradingPair.Create(normalized, "USD", AssetType.Perp);
     }
 }

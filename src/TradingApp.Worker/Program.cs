@@ -13,6 +13,7 @@ using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.StrategyAuthoring.Services;
 using TradePilot.Application.StrategyAuthoring.Validation;
 using TradePilot.Application.Trading.Services;
+using TradePilot.Infrastructure.Hyperliquid;
 using TradePilot.Infrastructure.Services;
 using TradePilot.Persistence;
 using TradePilot.Persistence.Services;
@@ -92,6 +93,8 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketClient>();
 builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
+builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
+builder.Services.AddSingleton<IExchangeAccountClient, HyperliquidAccountAdapter>();
 
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<IExecutionEngine, LiveExecutionEngine>();
@@ -130,8 +133,9 @@ builder.Services.AddSingleton<CandleBuilder>();
 builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
     new LiveMarketContextBuilder(
         sp.GetService<ILlmContextProvider>(),
+        fearGreedSnapshotProvider: null,
         sp.GetRequiredService<IServiceScopeFactory>(),
-        sp.GetRequiredService<IHyperliquidRestClient>(),
+        new HyperliquidMarketMetadataProvider(sp.GetRequiredService<IHyperliquidRestClient>()),
         sp.GetRequiredService<ILoggerFactory>().CreateLogger<LiveMarketContextBuilder>()));
 builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
 builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();
@@ -210,7 +214,6 @@ if (!string.IsNullOrWhiteSpace(signalRConnectionString))
 
     builder.Services.AddSingleton(serviceManager);
     builder.Services.AddSingleton<ISignalRPublisher, AzureSignalRPublisher>();
-    builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
     builder.Services.AddHostedService<MarketDataStreamService>();
 }
 else

@@ -21,7 +21,7 @@ public sealed class LiveMarketContextBuilderTests
             llmContextProvider: null,
             fearGreedSnapshotProvider: fearGreedProvider.Object,
             serviceScopeFactory: null,
-            restClient: null);
+            marketMetadataProvider: null);
 
         var candle = CreateCandle(now.ToUnixTimeSeconds());
         sut.UpdateIndicators(candle);
@@ -46,7 +46,7 @@ public sealed class LiveMarketContextBuilderTests
             llmContextProvider: null,
             fearGreedSnapshotProvider: fearGreedProvider.Object,
             serviceScopeFactory: null,
-            restClient: null);
+            marketMetadataProvider: null);
 
         var candle = CreateCandle(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         sut.UpdateIndicators(candle);
@@ -64,7 +64,7 @@ public sealed class LiveMarketContextBuilderTests
             llmContextProvider: null,
             fearGreedSnapshotProvider: null,
             serviceScopeFactory: null,
-            restClient: null);
+            marketMetadataProvider: null);
 
         var firstCandle = CreateCandle(now.ToUnixTimeSeconds());
         sut.UpdateIndicators(firstCandle);

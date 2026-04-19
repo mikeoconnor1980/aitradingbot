@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Repositories;
@@ -10,6 +9,7 @@ using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Entities;
 using TradePilot.Domain.Enums;
+using TradePilot.Domain.ValueObjects;
 using TradePilot.Indicators;
 using TradePilot.Indicators.Incremental;
 
@@ -50,7 +50,7 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
     private readonly ILlmContextProvider? _llmContextProvider;
     private readonly IFearGreedSnapshotProvider? _fearGreedSnapshotProvider;
     private readonly IServiceScopeFactory? _serviceScopeFactory;
-    private readonly IHyperliquidRestClient? _restClient;
+    private readonly IExchangeMarketMetadataProvider? _marketMetadataProvider;
     private readonly IFearGreedReadingRepository? _fearGreedRepository;
     private readonly ILogger<LiveMarketContextBuilder>? _logger;
     private readonly ConcurrentDictionary<string, int> _maxLeverageCache = new(StringComparer.OrdinalIgnoreCase);
@@ -66,14 +66,14 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         ILlmContextProvider? llmContextProvider,
         IFearGreedSnapshotProvider? fearGreedSnapshotProvider,
         IServiceScopeFactory? serviceScopeFactory,
-        IHyperliquidRestClient? restClient,
+        IExchangeMarketMetadataProvider? marketMetadataProvider,
         ILogger<LiveMarketContextBuilder>? logger = null,
         IFearGreedReadingRepository? fearGreedRepository = null)
     {
         _llmContextProvider = llmContextProvider;
         _fearGreedSnapshotProvider = fearGreedSnapshotProvider;
         _serviceScopeFactory = serviceScopeFactory;
-        _restClient = restClient;
+        _marketMetadataProvider = marketMetadataProvider;
         _logger = logger;
         _fearGreedRepository = fearGreedRepository;
     }
@@ -317,23 +317,24 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
 
     private int? ResolveMaxLeverage(string symbol)
     {
-        if (_restClient is null || string.IsNullOrWhiteSpace(symbol))
+        if (_marketMetadataProvider is null || string.IsNullOrWhiteSpace(symbol))
         {
             return null;
         }
 
-        var asset = NormalizeAsset(symbol);
+        var asset = ToTradingPair(symbol).Base;
         return _maxLeverageCache.TryGetValue(asset, out var cached) ? cached : null;
     }
 
     private async Task<int?> ResolveMaxLeverageAsync(string symbol, CancellationToken cancellationToken)
     {
-        if (_restClient is null || string.IsNullOrWhiteSpace(symbol))
+        if (_marketMetadataProvider is null || string.IsNullOrWhiteSpace(symbol))
         {
             return null;
         }
 
-        var asset = NormalizeAsset(symbol);
+        var pair = ToTradingPair(symbol);
+        var asset = pair.Base;
         if (_maxLeverageCache.TryGetValue(asset, out var cachedMaxLeverage))
         {
             return cachedMaxLeverage;
@@ -347,30 +348,14 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
                 return cachedMaxLeverage;
             }
 
-            var response = await _restClient.PostInfoAsync<JsonElement>(new { type = "meta" }, cancellationToken);
-            if (response.TryGetProperty("universe", out var universe))
+            var maxLeverage = await _marketMetadataProvider.GetMaxLeverageAsync(pair, cancellationToken);
+            if (maxLeverage is > 0)
             {
-                foreach (var item in universe.EnumerateArray())
-                {
-                    var name = item.GetProperty("name").GetString();
-                    if (string.IsNullOrWhiteSpace(name))
-                    {
-                        continue;
-                    }
-
-                    var maxLeverage = item.TryGetProperty("maxLeverage", out var maxLeverageElement)
-                        && maxLeverageElement.TryGetInt32(out var parsedMaxLeverage)
-                        && parsedMaxLeverage > 0
-                        ? parsedMaxLeverage
-                        : LeverageCalculator.FallbackMaxLeverage;
-
-                    _maxLeverageCache[name] = maxLeverage;
-                }
+                _maxLeverageCache[asset] = maxLeverage.Value;
+                return maxLeverage.Value;
             }
 
-            return _maxLeverageCache.TryGetValue(asset, out cachedMaxLeverage)
-                ? cachedMaxLeverage
-                : null;
+            return null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -645,6 +630,11 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         return asset.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
             ? asset[..^5]
             : asset;
+    }
+
+    private static TradingPair ToTradingPair(string symbol)
+    {
+        return TradingPair.Create(NormalizeAsset(symbol), "USD", AssetType.Perp);
     }
 
     private static string MacdKey(int fast, int slow, int signal) => $"{fast}_{slow}_{signal}";

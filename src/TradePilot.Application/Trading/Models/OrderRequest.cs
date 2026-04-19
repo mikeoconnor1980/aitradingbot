@@ -1,5 +1,4 @@
 using TradePilot.Application.Backtesting.Models;
-using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Domain.Enums;
 
 namespace TradePilot.Application.Trading.Models;
