@@ -34,6 +34,8 @@ public sealed class CandleIngestionService : ICandleIngestionService
         _logger = logger;
     }
 
+    public Exchange Exchange => Exchange.Hyperliquid;
+
     public async Task<IngestionResult> IngestAsync(IngestionRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);

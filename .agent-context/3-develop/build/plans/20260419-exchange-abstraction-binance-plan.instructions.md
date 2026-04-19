@@ -1,9 +1,9 @@
 ---
 applyTo: ".agent-context/3-develop/build/changes/20260419-exchange-abstraction-binance-changes.md"
-currentAgent: "Implementation Planner"
-agentStartedAt: "2026-04-19T18:58:29Z"
-status: "planned"
-lastUpdated: "2026-04-19T19:46:47Z"
+currentAgent: "Plan Implementer"
+agentStartedAt: "2026-04-19T20:18:04Z"
+status: "in-progress"
+lastUpdated: "2026-04-19T20:18:04Z"
 ---
 
 <!-- markdownlint-disable-file -->
@@ -16,6 +16,8 @@ Introduce a capability-based exchange abstraction so the platform can preserve t
 
 The immediate goal is not to replace all exchange-specific code in one pass. The goal is to establish canonical domain types for market identity and exchange selection, create stable Application-layer contracts for exchange capabilities, adapt Hyperliquid behind those contracts first, and then plug Binance into the same seams in phases.
 
+This plan is intentionally split into a low-risk first implementation and two follow-on plans. The first implementation stops after the Hyperliquid-first abstraction seam is in place. Persistence-wide canonical symbol migration and actual Binance runtime enablement are deferred so they can be estimated, tested, and reviewed independently.
+
 ## Objectives
 
 - Preserve the current live trading behavior for Hyperliquid
@@ -27,6 +29,162 @@ The immediate goal is not to replace all exchange-specific code in one pass. The
 - Make exchange differences explicit through capabilities instead of implicit rules
 - Introduce a canonical `TradingPair` value object as the single internal market identifier
 - Create a low-risk path for adding Binance as a second exchange
+
+## Delivery Split
+
+### Implementation Plan A: Exchange Seam Introduction
+
+This is the scope of the current implementation plan.
+
+- Phase 0: Domain foundations that do not require persistence migration
+- Phase 1: Neutral Application-layer contracts
+- Phase 2: Hyperliquid adapters and cleanup
+- Phase 3: Migrate the first exchange-neutral Application consumers
+
+Target outcome:
+
+- Hyperliquid keeps working as the only live venue
+- Application code depends on exchange capabilities where that adds value now
+- No database-wide symbol rewrite is attempted in the same delivery
+
+### Follow-on Plan B: Canonical Market Persistence Migration
+
+This becomes a separate implementation plan after Plan A is complete.
+
+- Current Phase 3b moves here unchanged in intent
+- Includes entity format migration, EF/repository updates, and existing data migration
+- Requires dedicated regression testing because it changes storage format and read/write semantics across the system
+
+### Follow-on Plan C: Runtime Selection And Binance Enablement
+
+This becomes a separate implementation plan after Plan A, and after Plan B if canonical storage is required first.
+
+- Current Phases 4 and 5 move here
+- Includes keyed DI, exchange resolution, and deciding whether Binance is read-only or live-execution capable
+- Should not start until the first seam-based abstractions are proven stable under Hyperliquid
+
+## Recommended PR Sequence For Plan A
+
+Plan A is still too large for a single safe PR. Break it into the following implementation sequence.
+
+### PR 1: Domain And Contract Foundations
+
+Scope:
+
+- Phase 0 in full
+- Phase 1 in full
+
+Include:
+
+- `TradingPair` value object
+- `Exchange` enum
+- `AssetType` relocation to Domain
+- Removal of redundant `IBinanceCandleIngestionService`
+- New exchange-neutral interfaces in `TradePilot.Application`
+- Unit tests for `TradingPair`
+
+Exclude:
+
+- Any refactor of existing Hyperliquid runtime behavior
+- Any mapper call-site migration
+- Any DI rewiring beyond what is required to compile
+- Any persistence/entity storage migration
+
+Why this is the first PR:
+
+- It creates the vocabulary and contracts without touching hot execution paths
+- It is the easiest point to review naming, boundaries, and API shape before adapters are built
+- Failures here are compile-time and test-time, not runtime behavioral regressions
+
+Acceptance focus:
+
+- Solution compiles cleanly
+- Existing tests stay green
+- New abstractions are stable enough that later PRs can target them without renaming churn
+
+### PR 2: Hyperliquid Adapters And Cleanup
+
+Scope:
+
+- Phase 2 in full
+
+Include:
+
+- `StateRecoveryService` cleanup to stop using raw `PostInfoAsync` for open orders
+- Hyperliquid market metadata adapter
+- Hyperliquid account adapter
+- Hyperliquid capabilities implementation
+- Refactor `HyperliquidAssetMapper` to injectable service
+- Refactor `BinanceAssetMapper` to injectable service, but only to establish the seam
+
+Exclude:
+
+- `LiveMarketContextBuilder` consumer migration
+- Broad controller rewiring
+- Persistence/entity migration
+- Runtime exchange selection
+
+Why this is the second PR:
+
+- It keeps runtime changes localized to adapter seams and one cleanup target
+- It proves the new contracts can wrap Hyperliquid without forcing broad consumer changes yet
+- It isolates mapper refactor fallout before touching higher-level orchestration
+
+Acceptance focus:
+
+- Hyperliquid live behavior is unchanged
+- New adapters are covered with targeted tests where practical
+- No raw protocol-level open-order query remains in `StateRecoveryService`
+
+### PR 3: First Consumer Migration
+
+Scope:
+
+- Phase 3.1 and Phase 3.2 are required
+- Phase 3.3 is optional and should only include clearly exchange-neutral read paths
+- Phase 3.4 remains the guardrail
+
+Include:
+
+- `LiveMarketContextBuilder` migration to `IExchangeMarketMetadataProvider`
+- `StateRecoveryService` migration to `IExchangeAccountClient`
+- Minimal supporting DI changes
+
+Exclude:
+
+- Opportunistic migration of every Hyperliquid dependency in the API and Worker
+- WebSocket abstraction work
+- Entity storage migration
+- Binance registration and keyed DI
+
+Why this is the third PR:
+
+- It is the first point where the Application layer meaningfully consumes the new abstractions
+- The blast radius is still bounded to a small number of consumers
+- It gives a clean checkpoint to evaluate whether the abstractions are actually buying anything before continuing
+
+Acceptance focus:
+
+- Both services behave the same under Hyperliquid
+- DI remains explicit and understandable
+- No broad follow-on churn is required to land the PR
+
+### Explicitly Not In Plan A
+
+The following work must stay out of the first implementation wave even if it appears mechanically close:
+
+- Canonical persistence migration for `Symbol`, `Market`, `Source`, and `Exchange`
+- SQLite data migration scripts for existing rows
+- Broad repository and EF rewrites to canonical storage
+- Keyed DI runtime exchange resolution
+- Binance runtime support beyond seam-level mapper and adapter preparation
+
+### Recommended Landing Order
+
+1. PR 1: Domain and contract foundations
+2. PR 2: Hyperliquid adapters and cleanup
+3. PR 3: First consumer migration
+4. Reassess before creating Plan B and Plan C branches
 
 ### Discovery References
 
@@ -283,11 +441,11 @@ Acceptance criteria:
 - `StateRecoveryService` no longer depends directly on `IHyperliquidRestClient`
 - Targeted trading tests continue to pass with no runtime behavior change
 
-### [ ] Phase 3b: Migrate Entity Fields To Canonical Types
+### [ ] Deferred To Follow-on Plan B: Migrate Entity Fields To Canonical Types
 
 **Complexity**: Medium | **Risk**: Medium
 
-Migrate domain entity fields from free strings to the canonical `TradingPair` and `Exchange` types introduced in Phase 0. This phase is separated from the consumer migration (Phase 3) because it requires database schema changes.
+This work is intentionally split out of the current implementation plan. It migrates domain entity fields from free strings to the canonical `TradingPair` and `Exchange` types introduced in Phase 0. It is separated from the consumer migration (Phase 3) because it requires database schema changes, data migration, and broad regression coverage.
 
 **Entities with `Symbol` (free string → `TradingPair.Canonical` string format):**
 
@@ -327,7 +485,7 @@ Acceptance criteria:
 - All queries, repositories, and services work with the new format
 - Legacy format strings (`"BTC-PERP"`, `"BTC"`) are no longer written by any code path
 
-### [ ] Phase 4: Runtime Selection And DI Composition
+### [ ] Deferred To Follow-on Plan C: Runtime Selection And DI Composition
 
 **Complexity**: Medium | **Risk**: Medium
 
@@ -344,7 +502,7 @@ Acceptance criteria:
 - Hyperliquid network routing remains per-user where currently supported
 - DI composition is explicit and testable
 
-### [ ] Phase 5: Add Binance Through The New Seams (Future)
+### [ ] Deferred To Follow-on Plan C: Add Binance Through The New Seams
 
 **Complexity**: High | **Risk**: Medium
 
@@ -390,7 +548,7 @@ Acceptance criteria:
 - [ ] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidCapabilities.cs` (new)
 - [ ] `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` (refactor: static → injectable `IExchangeSymbolMapper`)
 
-### [ ] Phase 3b initial file set
+### [ ] Follow-on Plan B initial file set
 
 - [ ] `src/TradePilot.Domain/ValueObjects/TradingPairConverter.cs` (new — legacy format → canonical converter)
 - [ ] `src/TradePilot.Domain/Entities/Candle.cs` (update `Symbol` format, `Source` to `Exchange` enum)
@@ -408,6 +566,12 @@ Acceptance criteria:
 - [ ] `tests/TradePilot.Domain.Tests/ValueObjects/TradingPairConverterTests.cs` (new)
 
 ## Risks And Design Concerns
+
+### Scope Bundling Risk
+
+- Combining abstraction seams, canonical persistence migration, and Binance runtime enablement in one implementation would create a large blast radius across Application, Domain, Infrastructure, Persistence, and seed data
+- The split above keeps the first delivery focused on dependency direction and adapter seams rather than storage rewrites
+- Plan B and Plan C should be reviewed as separate deliveries with their own verification strategy and rollback thinking
 
 ### Symbol Mapping Risk
 
@@ -473,17 +637,19 @@ Acceptance criteria:
 
 ## Success Criteria
 
+- The current implementation finishes at the abstraction seam introduced by Phases 0-3
 - Application services stop depending directly on Hyperliquid contracts where exchange-neutral behavior is sufficient
 - Hyperliquid remains the current live trading venue with no behavior regression
 - Exchange capabilities are explicit and testable
-- Binance can be introduced behind the same market-data and account seams
+- Binance can be introduced behind the same market-data and account seams in a follow-on plan
 - The worker key-custody model remains intact
 - Hyperliquid DCA on perps remains unchanged
 
 ## Resolved Decisions
 
 - **Canonical quote currency**: `USD`. Exchange-specific quotes (USDT, USDC) are normalized at the `IExchangeSymbolMapper` boundary. Domain entities always store `USD`.
-- **Entity migration timing**: Included in this plan as Phase 3b, after Application consumers are migrated but before DI composition.
+- **Entity migration timing**: Deferred to a dedicated follow-on plan after the initial abstraction seam is implemented and verified.
+- **Delivery shape**: The work is split into Plan A (abstractions), Plan B (canonical persistence migration), and Plan C (runtime selection plus Binance enablement).
 
 ## Open Questions
 
@@ -495,8 +661,11 @@ Acceptance criteria:
 
 Proceed with capability interfaces first and keep `IExecutionEngine` as the current execution seam for the first migration wave. Do not introduce a large god-interface `IExchangeClient`. If a top-level exchange root is added, keep it as a thin aggregator over smaller capabilities.
 
+Stop the current implementation after Phase 3. Treat the old Phase 3b and Phases 4-5 as separate follow-on plans so storage migration and Binance runtime enablement are not coupled to the first abstraction pass.
+
 ## Agent Log
 
 | Agent | Status | Started | Completed |
 |-------|--------|---------|-----------|
 | Implementation Planner | planned | 2026-04-19T18:58:29Z | 2026-04-19T18:58:29Z |
+| Plan Implementer | in-progress | 2026-04-19T20:18:04Z | - |

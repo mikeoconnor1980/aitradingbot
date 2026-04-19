@@ -14,9 +14,9 @@ public sealed class IngestCandlesCommandHandler : CommandHandler<IngestCandlesCo
 {
     private readonly ICandleIngestionService _ingestionService;
 
-    public IngestCandlesCommandHandler(ICandleIngestionService ingestionService)
+    public IngestCandlesCommandHandler(IEnumerable<ICandleIngestionService> ingestionServices)
     {
-        _ingestionService = ingestionService;
+        _ingestionService = ResolveIngestionService(ingestionServices, Exchange.Hyperliquid);
     }
 
     public override async Task<IngestionResult> Handle(IngestCandlesCommand request, CancellationToken cancellationToken)
@@ -33,5 +33,14 @@ public sealed class IngestCandlesCommandHandler : CommandHandler<IngestCandlesCo
                 EndTime = request.EndTime,
             },
             cancellationToken);
+    }
+
+    private static ICandleIngestionService ResolveIngestionService(
+        IEnumerable<ICandleIngestionService> ingestionServices,
+        Exchange exchange)
+    {
+        var service = ingestionServices.FirstOrDefault(candidate => candidate.Exchange == exchange);
+        return service
+            ?? throw new InvalidOperationException($"No candle ingestion service is registered for exchange '{exchange}'.");
     }
 }

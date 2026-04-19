@@ -16,6 +16,7 @@ using TradePilot.Application.Trading.Signals.Abstractions;
 using TradePilot.Application.Trading.Signals.Implementations;
 using TradePilot.Application.Trading.Signals.Registry;
 using TradePilot.Application.Trading.Services;
+using TradePilot.Infrastructure.Hyperliquid;
 using TradePilot.Infrastructure.Services;
 using TradePilot.Persistence;
 using TradePilot.Persistence.Services;
@@ -136,7 +137,7 @@ builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
         sp.GetService<ILlmContextProvider>(),
         sp.GetService<IFearGreedSnapshotProvider>(),
         sp.GetRequiredService<IServiceScopeFactory>(),
-        sp.GetRequiredService<IHyperliquidRestClient>(),
+        new HyperliquidMarketMetadataProvider(sp.GetRequiredService<IHyperliquidRestClient>()),
         sp.GetRequiredService<ILoggerFactory>().CreateLogger<LiveMarketContextBuilder>()));
 builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
 builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();
@@ -231,6 +232,7 @@ if (!string.IsNullOrWhiteSpace(signalRConnectionString))
     builder.Services.AddSingleton(serviceManager);
     builder.Services.AddSingleton<ISignalRPublisher, AzureSignalRPublisher>();
     builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
+    builder.Services.AddSingleton<IExchangeAccountClient, HyperliquidAccountAdapter>();
     builder.Services.AddHostedService<MarketDataStreamService>();
 }
 else
