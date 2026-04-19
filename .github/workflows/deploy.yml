@@ -169,8 +169,22 @@ jobs:
               --resource-group rg-tradepilot-dev \
               --image ${{ env.API_IMAGE }}:${{ needs.build-api-image.outputs.image-tag }} \
               --set-env-vars \
+                "Deployment__Version=${{ needs.build-api-image.outputs.image-tag }}" \
+                "Deployment__CommitSha=${{ github.sha }}" \
+                "Deployment__BuildTimeUtc=${{ github.event.head_commit.timestamp }}" \
+                "Deployment__RunId=${{ github.run_id }}" \
                 "Telegram__BotToken=secretref:telegram-bot-token" \
                 "Telegram__BotUsername=${{ secrets.TELEGRAM_BOT_USERNAME }}"
+
+      - name: Verify deployed API revision
+        run: |
+          version_url="https://${{ secrets.API_FQDN }}/api/version?expectedVersion=${{ needs.build-api-image.outputs.image-tag }}&expectedCommit=${{ github.sha }}"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            response=$(curl --silent --show-error --fail "$version_url") && break
+            sleep 10
+          done
+          echo "$response"
+          echo "$response" | grep '"isExpectedBuild":true'
 
   deploy-frontend:
     needs: build-frontend

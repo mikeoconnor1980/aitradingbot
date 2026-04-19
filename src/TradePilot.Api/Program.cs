@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Polly;
 using TradePilot.AI;
+using TradePilot.Api.Configuration;
 using TradePilot.Api.Hubs;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Api.Infrastructure.Filters;
@@ -55,6 +56,8 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IdentityService>();
 builder.Services.AddScoped<IAdminAuthorizationService, DbAdminAuthorizationService>();
+builder.Services.AddOptions<DeploymentVersionOptions>()
+    .Bind(builder.Configuration.GetSection(DeploymentVersionOptions.SectionName));
 
 // JWT Authentication
 builder.Services.AddOptions<JwtOptions>()

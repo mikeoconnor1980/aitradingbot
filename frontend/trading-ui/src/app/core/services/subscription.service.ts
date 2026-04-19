@@ -1,6 +1,6 @@
-import { HttpClient, HttpContext } from "@angular/common/http";
+import { HttpClient, HttpContext, HttpErrorResponse } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
-import { BehaviorSubject, Observable, tap, catchError, of, timer, switchMap, map } from "rxjs";
+import { BehaviorSubject, Observable, tap, catchError, of, timer, switchMap, map, throwError } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { SKIP_ERROR_NOTIFICATION } from "../interceptors/http-context-tokens";
 
@@ -61,13 +61,29 @@ export class SubscriptionService {
   }
 
   public subscribe(tier: "beginner" | "pro"): Observable<{ id: string }> {
-    return this._http
+    const request = this._http
       .post<{ id: string }>(`${this._url}/subscribe`, { tier })
       .pipe(tap(() => this.loadStatus()));
+
+    if (tier === "beginner") {
+      return request.pipe(
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 404) {
+            return this.subscribeFreeTier();
+          }
+
+          return throwError(() => error);
+        })
+      );
+    }
+
+    return request;
   }
 
   public subscribeFreeTier(): Observable<{ id: string }> {
-    return this.subscribe("beginner");
+    return this._http
+      .post<{ id: string }>(`${this._url}/free`, {})
+      .pipe(tap(() => this.loadStatus()));
   }
 
   public cancelSubscription(): Observable<void> {

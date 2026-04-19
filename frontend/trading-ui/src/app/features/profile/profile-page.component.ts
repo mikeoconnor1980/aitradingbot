@@ -12,6 +12,7 @@ import { map, catchError, of, combineLatest } from "rxjs";
 import { AuthService } from "../../core/services/auth.service";
 import { AgentService } from "../../core/services/agent.service";
 import { InstallerInfo } from "../../core/models/installer-info.model";
+import { ApiVersionInfo, ApiVersionService } from "../../core/services/api-version.service";
 import { HealthService } from "../../core/services/health.service";
 import { ProfileService } from "../../core/services/profile.service";
 import { SubscriptionService } from "../../core/services/subscription.service";
@@ -19,6 +20,11 @@ import { WalletService } from "../../core/services/wallet.service";
 import { ActivatedRoute, Router } from "@angular/router";
 import { environment } from "../../../environments/environment";
 import { TelegramLinkComponent } from "./telegram-link.component";
+
+interface ApiVersionViewModel {
+  data: ApiVersionInfo | null;
+  error: boolean;
+}
 
 @Component({
   selector: "app-profile-page",
@@ -31,6 +37,7 @@ export class ProfilePageComponent implements OnInit {
   private readonly _authService = inject(AuthService);
   private readonly _agentService = inject(AgentService);
   private readonly _healthService = inject(HealthService);
+  private readonly _apiVersionService = inject(ApiVersionService);
   private readonly _profileService = inject(ProfileService);
   private readonly _walletService = inject(WalletService);
   private readonly _subscriptionService = inject(SubscriptionService);
@@ -63,6 +70,10 @@ export class ProfilePageComponent implements OnInit {
     map((info) => ({ data: info, error: false })),
     catchError(() => of({ data: null as InstallerInfo | null, error: true }))
   );
+  public readonly apiVersionInfo$ = this._apiVersionService.getVersion().pipe(
+    map((info) => ({ data: info, error: false })),
+    catchError(() => of({ data: null as ApiVersionInfo | null, error: true }))
+  ) as import("rxjs").Observable<ApiVersionViewModel>;
   public readonly hasConnectedAgent$ = this._agentService.agents$.pipe(
     map((agents) => agents.some((a) => a.state !== "disconnected" && a.state !== "killed"))
   );
@@ -106,6 +117,15 @@ export class ProfilePageComponent implements OnInit {
       },
       error: (err) => {
         this.subscribing.set(false);
+        if (err.status === 404) {
+          this.subscribeError.set(
+            tier === "pro"
+              ? "This deployed API revision does not support Pro subscriptions yet. Redeploy the API to pick up the latest subscription endpoints."
+              : "This deployed API revision does not support tiered subscriptions yet. The app will fall back to the legacy Beginner trial route when available."
+          );
+          return;
+        }
+
         this.subscribeError.set(err.error?.errorMessage ?? "Failed to activate subscription.");
       }
     });
@@ -208,6 +228,22 @@ export class ProfilePageComponent implements OnInit {
     if (status === "expired") return "Expired";
     if (status === "cancelled") return "Cancelled";
     return "None";
+  }
+
+  public formatCommit(commitSha: string): string {
+    if (!commitSha || commitSha === "unknown") {
+      return "Unknown";
+    }
+
+    return commitSha.slice(0, 7);
+  }
+
+  public formatBuildTime(value: string): string | null {
+    if (!value || value === "unknown") {
+      return null;
+    }
+
+    return value;
   }
 
   private getUpgradePromptLabel(value: string | null): string | null {

@@ -295,6 +295,47 @@
 
     <mat-card class="profile-page__card">
       <mat-card-header>
+        <mat-card-title>API Runtime</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (apiVersionInfo$ | async; as result) {
+          @if (result.error) {
+            <p class="profile-page__placeholder">Unable to load deployed API version information.</p>
+          } @else {
+            <dl class="profile-page__details">
+              <div class="profile-page__detail">
+                <dt>API Version</dt>
+                <dd class="profile-page__detail-row">
+                  <span class="profile-page__badge">{{ result.data!.version }}</span>
+                  <span class="profile-page__badge">{{ result.data!.environmentName }}</span>
+                </dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>Commit</dt>
+                <dd class="profile-page__mono">{{ formatCommit(result.data!.commitSha) }}</dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>Build Time</dt>
+                <dd>{{ formatBuildTime(result.data!.buildTimeUtc) ? (result.data!.buildTimeUtc | date:'medium') : 'Unknown' }}</dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>Deploy Run</dt>
+                <dd class="profile-page__mono">{{ result.data!.runId === 'unknown' ? 'Unknown' : result.data!.runId }}</dd>
+              </div>
+            </dl>
+
+            <p class="profile-page__runtime-hint">
+              Use this when checking whether the deployed API picked up the latest backend revision.
+            </p>
+          }
+        } @else {
+          <p class="profile-page__placeholder">Loading deployed API version...</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="profile-page__card">
+      <mat-card-header>
         <mat-card-title>Preferences</mat-card-title>
       </mat-card-header>
       <mat-card-content>

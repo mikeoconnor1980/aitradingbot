@@ -234,6 +234,12 @@
     margin: 0.75rem 0 0.25rem;
   }
 
+  &__runtime-hint {
+    color: var(--colour-muted);
+    font-size: 0.875rem;
+    margin: 0.85rem 0 0;
+  }
+
   &__installer-req {
     color: var(--colour-muted);
     font-size: 0.75rem;
