@@ -9,6 +9,9 @@ export interface SubscriptionStatusResponse {
   status: string | null;
   expiresAtUtc: number | null;
   isActive: boolean;
+  features: string[];
+  allowedAssets: string[];
+  maxLeverage: number | null;
 }
 
 @Injectable({ providedIn: "root" })
@@ -27,7 +30,10 @@ export class SubscriptionService {
     tier: null,
     status: null,
     expiresAtUtc: null,
-    isActive: false
+    isActive: false,
+    features: [],
+    allowedAssets: [],
+    maxLeverage: null
   };
 
   public loadStatus(): void {
@@ -51,10 +57,25 @@ export class SubscriptionService {
       .pipe(catchError(() => of(SubscriptionService._noSubscription)));
   }
 
-  public subscribeFreeTier(): Observable<{ id: string }> {
+  public subscribe(tier: "beginner" | "pro"): Observable<{ id: string }> {
     return this._http
-      .post<{ id: string }>(`${this._url}/free`, {})
+      .post<{ id: string }>(`${this._url}/subscribe`, { tier })
       .pipe(tap(() => this.loadStatus()));
+  }
+
+  public subscribeFreeTier(): Observable<{ id: string }> {
+    return this.subscribe("beginner");
+  }
+
+  public cancelSubscription(): Observable<void> {
+    return this._http
+      .post<void>(`${this._url}/cancel`, {})
+      .pipe(tap(() => this.loadStatus()));
+  }
+
+  public hasFeature(feature: string): boolean {
+    const normalizedFeature = feature.trim().toLowerCase();
+    return this.currentStatus?.features.some((item) => item.toLowerCase() === normalizedFeature) ?? false;
   }
 
   public clearCache(): void {

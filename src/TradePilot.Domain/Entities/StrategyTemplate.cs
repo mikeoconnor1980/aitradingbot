@@ -13,6 +13,7 @@ public sealed class StrategyTemplate
     public string ConfigJson { get; private set; } = string.Empty;
     public int SortOrder { get; private set; }
     public bool IsSystemTemplate { get; private set; }
+    public bool IsBeginnerVisible { get; private set; }
     public bool IsActive { get; private set; }
     public long CreatedAtUtc { get; private set; }
     public long UpdatedAtUtc { get; private set; }
@@ -78,6 +79,12 @@ public sealed class StrategyTemplate
         ConfigJson = configJson;
         SortOrder = sortOrder;
         IsSystemTemplate = isSystemTemplate;
+        UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    }
+
+    public void SetBeginnerVisibility(bool isBeginnerVisible)
+    {
+        IsBeginnerVisible = isBeginnerVisible;
         UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 

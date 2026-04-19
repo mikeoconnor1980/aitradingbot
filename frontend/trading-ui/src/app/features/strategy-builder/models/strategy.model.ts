@@ -275,6 +275,7 @@ export interface StrategyTemplateDto {
   config: StrategyConfig;
   sortOrder: number;
   isSystemTemplate: boolean;
+  isBeginnerVisible: boolean;
   createdAtUtc: number;
   updatedAtUtc: number;
 }

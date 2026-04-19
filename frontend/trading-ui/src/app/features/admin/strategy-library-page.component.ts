@@ -42,11 +42,12 @@ export class StrategyLibraryPageComponent implements OnInit {
   private readonly _notifications = inject(NotificationFacade);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
-  public readonly displayedColumns = ["name", "source", "mode", "tags", "updatedAt", "actions"];
+  public readonly displayedColumns = ["name", "source", "beginner", "mode", "tags", "updatedAt", "actions"];
   public templates: StrategyTemplateDto[] = [];
   public isLoading = true;
   public renamingTemplateId: string | null = null;
   public removingTemplateId: string | null = null;
+  public beginnerVisibilityTemplateId: string | null = null;
 
   public ngOnInit(): void {
     this._loadTemplates();
@@ -54,6 +55,25 @@ export class StrategyLibraryPageComponent implements OnInit {
 
   public canManage(template: StrategyTemplateDto): boolean {
     return !template.isSystemTemplate;
+  }
+
+  public onToggleBeginnerVisibility(template: StrategyTemplateDto): void {
+    if (this.beginnerVisibilityTemplateId !== null) {
+      return;
+    }
+
+    this.beginnerVisibilityTemplateId = template.id;
+    this._strategyApi.setBeginnerVisibility(template.id, !template.isBeginnerVisible, this._localErrorContext).subscribe({
+      next: () => {
+        this.beginnerVisibilityTemplateId = null;
+        this._notifications.success(`Updated Beginner visibility for '${template.name}'.`);
+        this._loadTemplates();
+      },
+      error: () => {
+        this.beginnerVisibilityTemplateId = null;
+        this._notifications.error("Failed to update Beginner visibility.");
+      }
+    });
   }
 
   public onRename(template: StrategyTemplateDto): void {

@@ -13,6 +13,7 @@ public sealed class StrategyTemplateDto
     public StrategyConfig Config { get; init; } = new();
     public int SortOrder { get; init; }
     public bool IsSystemTemplate { get; init; }
+    public bool IsBeginnerVisible { get; init; }
     public long CreatedAtUtc { get; init; }
     public long UpdatedAtUtc { get; init; }
 }

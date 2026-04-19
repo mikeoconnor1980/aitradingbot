@@ -8,6 +8,7 @@ using TradePilot.Api.Models;
 using TradePilot.Api.Services;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Subscriptions.Services;
 using System.Linq;
 
 namespace TradePilot.Api.Controllers;
@@ -24,6 +25,7 @@ public sealed class OrdersController : ControllerBase
     private readonly IHyperliquidAssetMetadataCache _metadataCache;
     private readonly IUserWalletAddressRepository _walletRepo;
     private readonly ISignerProvider _signerProvider;
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
 
     public OrdersController(
         IHyperliquidOrderService orderService,
@@ -31,7 +33,8 @@ public sealed class OrdersController : ControllerBase
         IHyperliquidRestClient restClient,
         IHyperliquidAssetMetadataCache metadataCache,
         IUserWalletAddressRepository walletRepo,
-        ISignerProvider signerProvider)
+        ISignerProvider signerProvider,
+        ISubscriptionFeatureService subscriptionFeatureService)
     {
         _orderService = orderService;
         _accountService = accountService;
@@ -39,6 +42,45 @@ public sealed class OrdersController : ControllerBase
         _metadataCache = metadataCache;
         _walletRepo = walletRepo;
         _signerProvider = signerProvider;
+        _subscriptionFeatureService = subscriptionFeatureService;
+    }
+
+    private Guid GetUserId()
+    {
+        var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (claim is null || !Guid.TryParse(claim, out var userId))
+        {
+            throw new DomainException("Unable to resolve the current user.");
+        }
+
+        return userId;
+    }
+
+    private async Task EnsureAssetAllowedAsync(string asset, CancellationToken ct)
+    {
+        var policy = await _subscriptionFeatureService.GetPolicyAsync(GetUserId(), ct)
+            ?? throw new DomainException("An active subscription is required to trade.");
+
+        if (!_subscriptionFeatureService.IsAssetAllowed(policy.AllowedAssets, asset))
+        {
+            throw new DomainException($"Your current tier only supports {string.Join(", ", policy.AllowedAssets)} assets.");
+        }
+    }
+
+    private async Task EnsureLeverageAllowedAsync(string asset, int leverage, CancellationToken ct)
+    {
+        var policy = await _subscriptionFeatureService.GetPolicyAsync(GetUserId(), ct)
+            ?? throw new DomainException("An active subscription is required to trade.");
+
+        if (!_subscriptionFeatureService.IsAssetAllowed(policy.AllowedAssets, asset))
+        {
+            throw new DomainException($"Your current tier only supports {string.Join(", ", policy.AllowedAssets)} assets.");
+        }
+
+        if (policy.MaxLeverage.HasValue && leverage > policy.MaxLeverage.Value)
+        {
+            throw new DomainException($"Your current tier supports a maximum of {policy.MaxLeverage.Value}x leverage.");
+        }
     }
 
     private async Task<string?> GetWalletAddressAsync(CancellationToken ct)
@@ -121,12 +163,14 @@ public sealed class OrdersController : ControllerBase
     public async Task<IActionResult> GetAvailableAssetsAsync(CancellationToken ct)
     {
         var all = await _metadataCache.GetAllAsync(ct);
+        var allowedAssets = await _subscriptionFeatureService.GetAllowedAssetsAsync(GetUserId(), ct);
 
         var priorityIndex = PriorityCoins
             .Select((coin, idx) => (coin, idx))
             .ToDictionary(x => x.coin, x => x.idx, StringComparer.OrdinalIgnoreCase);
 
         var sorted = all
+            .Where(kvp => allowedAssets.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
             .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
             .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
             .Select(kvp => new TradableAssetDto
@@ -149,6 +193,7 @@ public sealed class OrdersController : ControllerBase
     {
         try
         {
+            await EnsureAssetAllowedAsync(request.Asset, ct);
             var result = await _orderService.PlaceOrderAsync(request, ct);
 
             if (!result.Success)
@@ -172,6 +217,7 @@ public sealed class OrdersController : ControllerBase
     {
         try
         {
+            await EnsureAssetAllowedAsync(request.Asset, ct);
             var result = await _orderService.PlaceTriggerOrderAsync(request, ct);
 
             if (!result.Success)
@@ -308,6 +354,7 @@ public sealed class OrdersController : ControllerBase
     {
         try
         {
+            await EnsureLeverageAllowedAsync(request.Asset, request.Leverage, ct);
             await _orderService.UpdateLeverageAsync(request.Asset, request.Leverage, request.IsCross, ct);
             return NoContent();
         }

@@ -10,6 +10,7 @@ public interface IStrategyTemplateRepository
     Task<bool> ExistsWithNameAsync(string name, CancellationToken cancellationToken = default);
     Task<bool> ExistsWithSlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<int> GetNextSortOrderAsync(CancellationToken cancellationToken = default);
+    Task<int> CountBeginnerVisibleAsync(CancellationToken cancellationToken = default);
     Task AddAsync(StrategyTemplate template, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }

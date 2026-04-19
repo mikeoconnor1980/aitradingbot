@@ -18,6 +18,33 @@ export class HelpService {
 
   public readonly topics: HelpTopic[] = [
     {
+      id: "subscriptions",
+      title: "Subscriptions & Tiers",
+      icon: "workspace_premium",
+      content: `## Subscriptions & Tiers
+
+TradePilot currently offers two testing tiers with a **1-year trial** period.
+
+### Beginner
+- Access to **2 admin-selected strategy-library templates**
+- Can trade **BTC** and **ETH** only
+- Maximum **5x leverage**
+- **No AI review**
+- **No Macro Calendar**
+- **No Strategy Optimizer**
+
+### Pro
+- Access to the **full strategy library**
+- Can trade **all supported assets**
+- Uses the normal asset-level exchange leverage limits
+- Includes **AI review**, **Macro Calendar**, and **Strategy Optimizer**
+
+### Managing your tier
+- Open **Profile** to start a Beginner or Pro trial
+- You can cancel your current tier from **Profile**
+- The platform enforces tier restrictions in both the UI and the API`
+    },
+    {
       id: "dashboard",
       title: "Dashboard",
       icon: "dashboard",
@@ -63,6 +90,12 @@ The **Market Data** page provides real-time price charts and market information 
       content: `## Order Entry
 
 The **Order Entry** page lets you place manual orders on Hyperliquid.
+
+    ### Subscription-aware behavior
+    - The **asset dropdown** only shows assets allowed by your current tier
+    - The **leverage slider** is capped by your tier
+    - Beginner users are limited to **BTC/ETH** and **5x leverage**
+    - The API will reject disallowed assets or leverage even if a stale page tries to submit them
 
 ### Order types
 - **Market orders** — execute immediately at the best available price
@@ -126,6 +159,9 @@ Backtesting quality depends entirely on the quality and completeness of your can
 
 The **Optimizer** helps you find the best parameter combinations for your trading strategies.
 
+    ### Access
+    - The Optimizer is available to **Pro** users only
+
 ### How it works
 1. **Select a strategy** to optimize
 2. **Define parameter ranges** — min, max, and step for each parameter you want to test
@@ -152,8 +188,13 @@ The **Strategies** page is where you create, edit, and manage your trading strat
 
 ### Strategy builder
 - **Visual configuration** — build strategies with entry conditions, exit rules, and risk parameters
-- **AI review** — get an LLM-powered review of your strategy before deploying
+- **AI review** — get an LLM-powered review of your strategy before deploying (Pro only)
 - **Natural language** — describe a strategy in plain English and let the AI interpret it into configuration
+
+### Subscription-aware behavior
+- Beginner users only see the **2 strategy-library templates** explicitly marked as Beginner-visible by admins
+- Beginner strategies are limited to **BTC/ETH** and **5x leverage**
+- Strategy validation and template cloning enforce those limits on the server as well as in the UI
 
 ### Strategy modes
 The platform supports two strategy modes:
@@ -209,6 +250,26 @@ The **Connection Status** page shows the health of your connection to the Hyperl
 - If disconnected, the system will automatically attempt to reconnect.
 - Check that the backend API is running.
 - Verify your Hyperliquid API keys are configured correctly.`
+    },
+    {
+      id: "macro-calendar",
+      title: "Macro Calendar",
+      icon: "event_note",
+      content: `## Macro Calendar
+
+The **Macro Calendar** shows upcoming high-impact economic events and the active trade-block windows around them.
+
+### Access
+- The Macro Calendar is available to **Pro** users only
+
+### What it does
+- Shows upcoming events such as CPI, FOMC, and payroll releases
+- Surfaces active block windows in the UI
+- Supports manual refresh with **Sync Now**
+
+### Trading behavior
+- High-impact events can block new entries for a configured time window
+- Existing risk controls such as stop loss, exit, and reduce-only actions remain allowed`
     }
   ];
 

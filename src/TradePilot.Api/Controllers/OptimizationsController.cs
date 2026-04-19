@@ -6,7 +6,9 @@ using TradePilot.Application.Abstractions.Models;
 using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Optimization;
 using TradePilot.Application.Optimization.Models;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Domain.Subscriptions;
 using TradePilot.Infrastructure.Binance;
 
 namespace TradePilot.Api.Controllers;
@@ -15,10 +17,15 @@ namespace TradePilot.Api.Controllers;
 public sealed class OptimizationsController : ApiController
 {
     private const string GetOptimizationByIdRouteName = "GetOptimizationById";
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
 
-    public OptimizationsController(IMediator mediator, IdentityService identityService)
+    public OptimizationsController(
+        IMediator mediator,
+        IdentityService identityService,
+        ISubscriptionFeatureService subscriptionFeatureService)
         : base(mediator, identityService)
     {
+        _subscriptionFeatureService = subscriptionFeatureService;
     }
 
     [HttpPost]
@@ -26,6 +33,7 @@ public sealed class OptimizationsController : ApiController
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RunAsync([FromBody] RunOptimizationRequest request, CancellationToken cancellationToken)
     {
+        await EnsureFeatureAsync(cancellationToken);
         ValidateRequest(request);
 
         var normalizedSymbol = BinanceAssetMapper.NormalizeSymbol(request.Symbol.Trim());
@@ -72,6 +80,8 @@ public sealed class OptimizationsController : ApiController
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
+        await EnsureFeatureAsync(cancellationToken);
+
         if (page < 1)
         {
             throw new DomainException("page must be greater than or equal to 1");
@@ -91,6 +101,7 @@ public sealed class OptimizationsController : ApiController
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
+        await EnsureFeatureAsync(cancellationToken);
         var response = await Mediator.Send(new GetOptimizationResultQuery(id), cancellationToken);
         return Ok(response);
     }
@@ -100,8 +111,18 @@ public sealed class OptimizationsController : ApiController
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelAsync(Guid id, CancellationToken cancellationToken)
     {
+        await EnsureFeatureAsync(cancellationToken);
         await Mediator.Send(new CancelOptimizationCommand(id), cancellationToken);
         return NoContent();
+    }
+
+    private async Task EnsureFeatureAsync(CancellationToken cancellationToken)
+    {
+        var userId = Guid.Parse(IdentityService.Identity.UserId);
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId, Feature.Optimizer, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("This feature requires a Pro subscription.");
+        }
     }
 
     private static void ValidateRequest(RunOptimizationRequest request)

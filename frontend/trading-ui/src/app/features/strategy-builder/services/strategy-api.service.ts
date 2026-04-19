@@ -135,6 +135,18 @@ export class StrategyApiService {
     return this._apiClient.patch<void>(`strategies/templates/${encodeURIComponent(templateId)}`, request, context);
   }
 
+  public setBeginnerVisibility(
+    templateId: string,
+    visible: boolean,
+    context?: HttpContext
+  ): Observable<void> {
+    return this._apiClient.patch<void>(
+      `strategies/templates/${encodeURIComponent(templateId)}/beginner-visibility`,
+      { visible },
+      context
+    );
+  }
+
   public promoteStrategyTemplate(
     id: string,
     request: PromoteStrategyTemplateRequest,

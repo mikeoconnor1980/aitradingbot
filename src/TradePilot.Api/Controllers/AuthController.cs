@@ -6,6 +6,7 @@ using TradePilot.Application.Abstractions.Auth;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
 
 namespace TradePilot.Api.Controllers;
 
@@ -19,19 +20,22 @@ public sealed class AuthController : ControllerBase
     private readonly IPasswordHasher _passwordHasher;
     private readonly IGoogleTokenValidator _googleTokenValidator;
     private readonly IAdminAuthorizationService _adminAuthorizationService;
+    private readonly ISubscriptionRepository _subscriptionRepository;
 
     public AuthController(
         IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
         IPasswordHasher passwordHasher,
         IGoogleTokenValidator googleTokenValidator,
-        IAdminAuthorizationService adminAuthorizationService)
+        IAdminAuthorizationService adminAuthorizationService,
+        ISubscriptionRepository subscriptionRepository)
     {
         _userRepository = userRepository;
         _jwtTokenService = jwtTokenService;
         _passwordHasher = passwordHasher;
         _googleTokenValidator = googleTokenValidator;
         _adminAuthorizationService = adminAuthorizationService;
+        _subscriptionRepository = subscriptionRepository;
     }
 
     [HttpPost("register")]
@@ -186,7 +190,12 @@ public sealed class AuthController : ControllerBase
         }
 
         var isAdmin = await _adminAuthorizationService.IsAdminAsync(email, cancellationToken);
-        return Ok(new MeResponse(Guid.Parse(userId), email, displayName ?? email, isAdmin));
+        var subscription = await _subscriptionRepository.GetActiveByUserIdAsync(Guid.Parse(userId), cancellationToken);
+        SubscriptionTier? subscriptionTier = subscription is not null && !subscription.IsExpired(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+            ? subscription.Tier == SubscriptionTier.Free ? SubscriptionTier.Beginner : subscription.Tier
+            : null;
+
+        return Ok(new MeResponse(Guid.Parse(userId), email, displayName ?? email, isAdmin, subscriptionTier));
     }
 
     private static bool IsPasswordComplex(string password)
@@ -205,4 +214,4 @@ public sealed record RefreshRequest(string RefreshToken);
 public sealed record GoogleAuthRequest(string IdToken);
 public sealed record AuthResponse(string Token, string RefreshToken, UserInfo User);
 public sealed record UserInfo(Guid Id, string Email, string DisplayName, bool IsAdmin);
-public sealed record MeResponse(Guid Id, string Email, string DisplayName, bool IsAdmin);
+public sealed record MeResponse(Guid Id, string Email, string DisplayName, bool IsAdmin, SubscriptionTier? SubscriptionTier);

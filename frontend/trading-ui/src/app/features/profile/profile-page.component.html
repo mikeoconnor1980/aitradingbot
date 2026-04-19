@@ -53,29 +53,74 @@
                 <dd>{{ sub.expiresAtUtc | date:'mediumDate' }}</dd>
               </div>
             </dl>
+            <div class="profile-page__subscription-actions">
+              <button
+                mat-stroked-button
+                color="warn"
+                [disabled]="cancellingSubscription()"
+                (click)="onCancelSubscription()">
+                <mat-icon>cancel</mat-icon>
+                {{ cancellingSubscription() ? 'Cancelling...' : 'Cancel Subscription' }}
+              </button>
+            </div>
           } @else if (sub.status === 'expired') {
-            <p class="profile-page__placeholder">Your subscription has expired. Renew to continue using trading features.</p>
+            <p class="profile-page__placeholder">Your subscription has expired. Choose a tier to continue using trading features.</p>
             <div class="profile-page__subscription-actions">
               <button
                 mat-flat-button
                 color="primary"
                 [disabled]="subscribing()"
-                (click)="onSubscribeFreeTier()">
+                (click)="onSubscribe('beginner')">
                 <mat-icon>refresh</mat-icon>
-                {{ subscribing() ? 'Renewing...' : 'Renew Free Tier' }}
+                {{ subscribing() ? 'Starting...' : 'Start Beginner Trial' }}
+              </button>
+              <button
+                mat-stroked-button
+                [disabled]="subscribing()"
+                (click)="onSubscribe('pro')">
+                <mat-icon>bolt</mat-icon>
+                Start Pro Trial
               </button>
             </div>
           } @else {
-            <p class="profile-page__placeholder">No active subscription. Activate the free tier to access trading features.</p>
-            <div class="profile-page__subscription-actions">
-              <button
-                mat-flat-button
-                color="primary"
-                [disabled]="subscribing()"
-                (click)="onSubscribeFreeTier()">
-                <mat-icon>rocket_launch</mat-icon>
-                {{ subscribing() ? 'Activating...' : 'Activate Free Tier' }}
-              </button>
+            <p class="profile-page__placeholder">Choose your free 1-year testing tier.</p>
+            <div class="profile-page__tier-grid">
+              <div class="profile-page__tier-card">
+                <h3>Beginner</h3>
+                <p class="profile-page__tier-tagline">Start Smart. Trade Simple.</p>
+                <ul class="profile-page__tier-list">
+                  <li>2 curated strategies</li>
+                  <li>BTC & ETH only</li>
+                  <li>Up to 5x leverage</li>
+                  <li>No optimizer, macro calendar, or AI review</li>
+                </ul>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  [disabled]="subscribing()"
+                  (click)="onSubscribe('beginner')">
+                  <mat-icon>rocket_launch</mat-icon>
+                  {{ subscribing() ? 'Activating...' : 'Start Beginner Trial' }}
+                </button>
+              </div>
+
+              <div class="profile-page__tier-card profile-page__tier-card--pro">
+                <h3>Pro</h3>
+                <p class="profile-page__tier-tagline">Every Tool. Every Market. Zero Limits.</p>
+                <ul class="profile-page__tier-list">
+                  <li>Full strategy library</li>
+                  <li>All supported assets</li>
+                  <li>Macro calendar, optimizer, AI review</li>
+                  <li>Platform max leverage per market</li>
+                </ul>
+                <button
+                  mat-stroked-button
+                  [disabled]="subscribing()"
+                  (click)="onSubscribe('pro')">
+                  <mat-icon>bolt</mat-icon>
+                  Start Pro Trial
+                </button>
+              </div>
             </div>
           }
           @if (subscribeError(); as error) {

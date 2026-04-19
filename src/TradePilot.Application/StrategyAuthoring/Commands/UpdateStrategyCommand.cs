@@ -20,17 +20,20 @@ public sealed class UpdateStrategyCommandHandler : CommandHandler<UpdateStrategy
     private readonly IStrategyRevisionRepository _revisionRepository;
     private readonly IChangeSummaryGenerator _changeSummaryGenerator;
     private readonly IStrategyValidator _validator;
+    private readonly StrategyTierConstraintValidator _strategyTierConstraintValidator;
 
     public UpdateStrategyCommandHandler(
         IStrategyRepository repository,
         IStrategyRevisionRepository revisionRepository,
         IChangeSummaryGenerator changeSummaryGenerator,
-        IStrategyValidator validator)
+        IStrategyValidator validator,
+        StrategyTierConstraintValidator strategyTierConstraintValidator)
     {
         _repository = repository;
         _revisionRepository = revisionRepository;
         _changeSummaryGenerator = changeSummaryGenerator;
         _validator = validator;
+        _strategyTierConstraintValidator = strategyTierConstraintValidator;
     }
 
     public override async Task<Unit> Handle(UpdateStrategyCommand request, CancellationToken cancellationToken)
@@ -51,6 +54,12 @@ public sealed class UpdateStrategyCommandHandler : CommandHandler<UpdateStrategy
             var firstError = validationResult.Errors.First();
             throw new DomainException(firstError.Message);
         }
+
+        await _strategyTierConstraintValidator.ValidateAsync(
+            request.Identity,
+            request.Config,
+            templateIsBeginnerVisible: true,
+            cancellationToken);
 
         var nameExists = await _repository.ExistsWithNameAsync(
             request.Identity.UserId,

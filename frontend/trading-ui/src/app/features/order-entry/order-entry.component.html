@@ -22,7 +22,7 @@
       <div class="order-entry__field order-entry__asset-field">
         <mat-form-field appearance="outline" class="order-entry__input">
           <mat-label>Asset</mat-label>
-          <mat-select [value]="selectedAsset" (selectionChange)="onAssetChange($event.value)" panelClass="asset-select-panel">
+          <mat-select [value]="selectedAsset" [disabled]="isLoadingAssets || assets.length === 0" (selectionChange)="onAssetChange($event.value)" panelClass="asset-select-panel">
             @for (asset of assets; track asset.symbol) {
               <mat-option [value]="asset.symbol">{{ asset.symbol }} — {{ asset.name }}</mat-option>
             }
@@ -44,6 +44,7 @@
         <mat-slider min="1" [max]="maxLeverage" step="1" discrete class="order-entry__leverage-slider">
           <input matSliderThumb [value]="leverage" (valueChange)="onLeverageChange($event)" />
         </mat-slider>
+        <span class="order-entry__leverage-status">Tier cap: {{ maxLeverage }}x</span>
         <mat-button-toggle-group [value]="marginMode" (change)="onMarginModeChange($event.value)" class="order-entry__margin-toggle" aria-label="Margin Mode">
           <mat-button-toggle value="cross">Cross</mat-button-toggle>
           <mat-button-toggle value="isolated">Isolated</mat-button-toggle>

@@ -33,6 +33,7 @@ public static class StrategyTemplateSeeder
                     configJson,
                     definition.SortOrder,
                     isSystemTemplate: true);
+                existing.SetBeginnerVisibility(definition.IsBeginnerVisible);
             }
             else
             {
@@ -47,6 +48,7 @@ public static class StrategyTemplateSeeder
                     configJson,
                     definition.SortOrder,
                     isSystemTemplate: true);
+                template.SetBeginnerVisibility(definition.IsBeginnerVisible);
 
                 db.StrategyTemplates.Add(template);
             }
@@ -69,6 +71,7 @@ public static class StrategyTemplateSeeder
         Description: "Buy pullbacks in an established uptrend. Waits for price to pull back to the 20 EMA in a bullish trend confirmed by the 50 EMA, then enters on a bullish candle pattern.",
         Tags: ["starter", "trend", "ema"],
         SortOrder: 1,
+        IsBeginnerVisible: true,
         Config: new StrategyConfig
         {
             SchemaVersion = 1,
@@ -176,6 +179,7 @@ public static class StrategyTemplateSeeder
         Description: "Buy intraday pullbacks in an uptrend. Uses EMA 9 as a proxy for VWAP support and enters on bullish continuation patterns. Best suited for London and New York sessions.",
         Tags: ["daytrading", "vwap", "intraday"],
         SortOrder: 2,
+        IsBeginnerVisible: true,
         Config: new StrategyConfig
         {
             SchemaVersion = 1,
@@ -257,6 +261,7 @@ public static class StrategyTemplateSeeder
         Description: "Buy at support in a sideways range. Enters when RSI is oversold and price is near support with a bullish rejection candle. Works best in low-volatility ranging markets.",
         Tags: ["range", "mean_reversion", "rsi"],
         SortOrder: 3,
+        IsBeginnerVisible: false,
         Config: new StrategyConfig
         {
             SchemaVersion = 1,
@@ -365,6 +370,7 @@ public static class StrategyTemplateSeeder
         Description: "Staged accumulation of BTC when price trades at or below $90,000. Places $50 orders at 1.5% intervals down to a $400 budget cap. Pauses below $75,000 for safety.",
         Tags: ["dca", "accumulator"],
         SortOrder: 4,
+        IsBeginnerVisible: false,
         Config: new StrategyConfig
         {
             SchemaVersion = 1,
@@ -450,5 +456,6 @@ public static class StrategyTemplateSeeder
         string Description,
         string[] Tags,
         int SortOrder,
+        bool IsBeginnerVisible,
         StrategyConfig Config);
 }

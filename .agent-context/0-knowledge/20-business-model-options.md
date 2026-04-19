@@ -26,6 +26,13 @@ The current implementation is a split operational model:
 - private keys remain local to the agent
 - the API can start, stop, and supervise execution, but it does not sign orders
 
+The current product also has a non-billed entitlement model layered on top of Option C:
+
+- Beginner and Pro tiers exist as application entitlements
+- both tiers use a 1-year testing trial
+- Profile supports self-service subscribe/cancel actions
+- billing and payment collection are still deferred
+
 The implementation is slightly more execution-heavy on the agent than the earliest Option C wording implied. In practice, the live trading session, exchange connectivity, and signing all run on the agent while the control plane handles configuration, orchestration, monitoring, and fleet control.
 
 ## Option Summary
@@ -57,8 +64,20 @@ Option C keeps the strongest benefit of self-custody, but it does add real opera
 
 Those tradeoffs are preferable to holding customer private keys in the API platform.
 
+## Entitlement Model Status
+
+| Capability | Status |
+|---|---|
+| Beginner tier | Implemented |
+| Pro tier | Implemented |
+| Trial-only access | Implemented |
+| Paid billing | Not implemented |
+| Stripe checkout | Not implemented |
+
+This means the business model is still pre-commercial even though the product now exposes tier-specific capability differences.
+
 ## Future Recommendations
 
-- Define whether future paid tiers will differentiate on hosted control-plane features, not on key custody.
+- Define whether future paid tiers will differentiate on control-plane features, not on key custody.
 - Add stronger agent authentication and rollout controls before large-scale subscriber onboarding.
 - Revisit whether any limited hosted-execution offering is worth considering only after the regulatory and trust tradeoffs are explicitly accepted.

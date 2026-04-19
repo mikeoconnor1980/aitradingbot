@@ -10,6 +10,7 @@ import { MatSelectModule } from "@angular/material/select";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { catchError, of } from "rxjs";
 import { HyperliquidApiService } from "../../../../core/services/hyperliquid-api.service";
+import { SubscriptionService } from "../../../../core/services/subscription.service";
 import { InfoPopoverComponent } from "../info-popover/info-popover.component";
 
 @Component({
@@ -31,6 +32,7 @@ import { InfoPopoverComponent } from "../info-popover/info-popover.component";
 })
 export class RiskManagementCardComponent implements OnInit {
   private readonly _apiService = inject(HyperliquidApiService);
+  private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _maintenanceMarginRate = 0.01;
 
@@ -65,6 +67,10 @@ export class RiskManagementCardComponent implements OnInit {
     }
 
     return !this.group.get("autoLeverage")?.value;
+  }
+
+  public get leverageLimit(): number {
+    return this._subscriptionService.currentStatus?.maxLeverage ?? 50;
   }
 
   public get showRiskWarning(): boolean {
@@ -169,6 +175,9 @@ export class RiskManagementCardComponent implements OnInit {
     }
 
     leverageControl?.enable();
+    if (Number(leverageControl?.value ?? 1) > this.leverageLimit) {
+      leverageControl?.setValue(this.leverageLimit);
+    }
     this._recalcPreview();
   }
 

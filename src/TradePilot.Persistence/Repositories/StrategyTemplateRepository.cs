@@ -59,6 +59,13 @@ public sealed class StrategyTemplateRepository : IStrategyTemplateRepository
         return (maxSortOrder ?? 0) + 1;
     }
 
+    public async Task<int> CountBeginnerVisibleAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.StrategyTemplates
+            .Where(t => t.IsActive && t.IsBeginnerVisible)
+            .CountAsync(cancellationToken);
+    }
+
     public async Task AddAsync(StrategyTemplate template, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(template);

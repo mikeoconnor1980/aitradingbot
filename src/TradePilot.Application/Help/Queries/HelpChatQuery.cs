@@ -39,7 +39,18 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
 
         ### Order Entry
         Place manual orders on Hyperliquid — market or limit. Specify asset, side (long/short), size, and price.
-        All orders pass through the Risk Engine before submission. Open orders can be viewed and cancelled.
+                All orders pass through the Risk Engine before submission. Open orders can be viewed and cancelled.
+                Order entry is subscription-aware: Beginner users can trade BTC and ETH only and are limited to 5x leverage.
+                The API rejects disallowed assets or leverage even if a stale client tries to submit them.
+
+                ### Subscriptions
+                TradePilot currently exposes two entitlement tiers with a 1-year testing trial and no live billing flow.
+                - Beginner: 2 admin-selected strategy-library templates, BTC/ETH only, max 5x leverage, no AI review,
+                    no optimizer, and no macro calendar.
+                - Pro: full strategy library, all supported assets, exchange/asset leverage limits, AI review,
+                    optimizer, and macro calendar.
+                Users start or cancel their tier from the Profile page. `POST /api/subscriptions/free` remains as a
+                legacy Beginner alias; the main route is `POST /api/subscriptions/subscribe`.
 
         ### Backtesting
         Test strategies against historical data. Select a strategy, date range, and asset. Results include
@@ -53,6 +64,7 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         ### Strategy Optimizer
         Find optimal parameter combinations by backtesting across parameter ranges. Results include
         heatmaps, ranked combinations, and out-of-sample validation. Beware of overfitting.
+        This area is available to Pro users only.
 
         ### Strategies
         Create, edit, and manage trading strategies. Two strategy modes are supported:
@@ -64,6 +76,8 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         - Grid mode: deploy pullback grids with configurable levels, spacing, and breakdown protection.
         Risk management includes position sizing (percent wallet or fixed notional), leverage,
         max open trades, and cooldown between entries.
+        Strategy creation is subscription-aware: Beginner users only see Beginner-visible templates,
+        can only target BTC/ETH markets, are capped at 5x leverage, and cannot request AI reviews.
         Strategies execute on confirmed candle closes only for deterministic execution.
 
         ### Connected Agents
@@ -91,7 +105,8 @@ public sealed class HelpChatQueryHandler : QueryHandler<HelpChatQuery, HelpChatR
         remain allowed. The page includes a client-side text search to filter by event name, country,
         currency, category, or importance. Use the currency dropdown to narrow by specific currency.
         Events sync automatically in the background. Click "Sync Now" for an immediate refresh.
-        An orange banner appears at the top when a block window is currently active.
+        An orange banner appears at the top when a block window is currently active. Macro Calendar is
+        available to Pro users only.
 
         ## Glossary of Metrics
 

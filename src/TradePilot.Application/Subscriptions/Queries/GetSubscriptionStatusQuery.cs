@@ -1,7 +1,9 @@
 using MediatR;
 using TradePilot.Application.Abstractions.Queries;
 using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Domain.Enums;
+using TradePilot.Domain.Subscriptions;
 
 namespace TradePilot.Application.Subscriptions.Queries;
 
@@ -11,15 +13,22 @@ public sealed record SubscriptionStatusResponse(
     SubscriptionTier? Tier,
     SubscriptionStatus? Status,
     long? ExpiresAtUtc,
-    bool IsActive);
+    bool IsActive,
+    string[] Features,
+    string[] AllowedAssets,
+    int? MaxLeverage);
 
 public sealed class GetSubscriptionStatusQueryHandler : IRequestHandler<GetSubscriptionStatusQuery, SubscriptionStatusResponse>
 {
     private readonly ISubscriptionRepository _subscriptionRepository;
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
 
-    public GetSubscriptionStatusQueryHandler(ISubscriptionRepository subscriptionRepository)
+    public GetSubscriptionStatusQueryHandler(
+        ISubscriptionRepository subscriptionRepository,
+        ISubscriptionFeatureService subscriptionFeatureService)
     {
         _subscriptionRepository = subscriptionRepository;
+        _subscriptionFeatureService = subscriptionFeatureService;
     }
 
     public async Task<SubscriptionStatusResponse> Handle(GetSubscriptionStatusQuery request, CancellationToken cancellationToken)
@@ -28,7 +37,7 @@ public sealed class GetSubscriptionStatusQueryHandler : IRequestHandler<GetSubsc
 
         if (subscription is null)
         {
-            return new SubscriptionStatusResponse(null, null, null, false);
+            return new SubscriptionStatusResponse(null, null, null, false, [], [], null);
         }
 
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -42,13 +51,25 @@ public sealed class GetSubscriptionStatusQueryHandler : IRequestHandler<GetSubsc
                 subscription.Tier,
                 SubscriptionStatus.Expired,
                 subscription.ExpiresAtUtc,
-                false);
+                false,
+                [],
+                [],
+                null);
         }
 
+        var effectiveTier = subscription.Tier == SubscriptionTier.Free
+            ? SubscriptionTier.Beginner
+            : subscription.Tier;
+        var policy = await _subscriptionFeatureService.GetPolicyAsync(request.UserId, cancellationToken)
+            ?? TierFeaturePolicy.ForTier(effectiveTier);
+
         return new SubscriptionStatusResponse(
-            subscription.Tier,
+            effectiveTier,
             subscription.Status,
             subscription.ExpiresAtUtc,
-            true);
+            true,
+            [.. policy.Features.Select(feature => feature.ToString())],
+            [.. policy.AllowedAssets],
+            policy.MaxLeverage);
     }
 }

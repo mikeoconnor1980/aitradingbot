@@ -2,7 +2,7 @@ import { Routes } from "@angular/router";
 import { authGuard } from "./core/guards/auth.guard";
 import { adminRoleGuard } from "./core/guards/admin-role.guard";
 import { mobileRedirectGuard } from "./core/guards/mobile-redirect.guard";
-import { subscriptionGuard } from "./core/guards/subscription.guard";
+import { subscriptionGuard, tierFeatureGuard } from "./core/guards/subscription.guard";
 import { unsavedChangesGuard } from "./features/strategy-builder/guards/unsaved-changes.guard";
 
 export const routes: Routes = [
@@ -91,7 +91,7 @@ export const routes: Routes = [
   {
     path: "optimizer",
     loadComponent: () => import("./features/optimizer/optimizer-page.component").then((m) => m.OptimizerPageComponent),
-    canActivate: [authGuard, subscriptionGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, tierFeatureGuard("Optimizer"), mobileRedirectGuard],
     title: "Strategy Optimizer"
   },
   {
@@ -109,7 +109,7 @@ export const routes: Routes = [
   {
     path: "macro-calendar",
     loadComponent: () => import("./features/macro-calendar/macro-calendar-page.component").then((m) => m.MacroCalendarPageComponent),
-    canActivate: [authGuard, mobileRedirectGuard],
+    canActivate: [authGuard, subscriptionGuard, tierFeatureGuard("MacroCalendar"), mobileRedirectGuard],
     title: "Macro Calendar"
   },
   { path: "", redirectTo: "dashboard", pathMatch: "full" },

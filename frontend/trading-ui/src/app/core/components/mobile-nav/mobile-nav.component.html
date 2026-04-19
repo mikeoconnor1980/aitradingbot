@@ -18,12 +18,14 @@
     <span class="mobile-nav__label">Chart</span>
   </a>
 
-  <a
-    class="mobile-nav__tab"
-    routerLink="/order-entry"
-    routerLinkActive="mobile-nav__tab--active"
-    aria-label="Order Entry">
-    <mat-icon class="mobile-nav__icon">swap_vert</mat-icon>
-    <span class="mobile-nav__label">Order Entry</span>
-  </a>
+  @if (canAccessOrderEntry) {
+    <a
+      class="mobile-nav__tab"
+      routerLink="/order-entry"
+      routerLinkActive="mobile-nav__tab--active"
+      aria-label="Order Entry">
+      <mat-icon class="mobile-nav__icon">swap_vert</mat-icon>
+      <span class="mobile-nav__label">Order Entry</span>
+    </a>
+  }
 </nav>

@@ -85,7 +85,7 @@ Persistence notes:
 
 ### Subscription
 
-`Subscription` records access entitlement. The current product model only exposes the free tier.
+`Subscription` records access entitlement. The current product model exposes Beginner and Pro tiers, while the legacy `Free` enum value is treated as Beginner for compatibility.
 
 | Field | Notes |
 |---|---|
@@ -101,16 +101,42 @@ Enums currently implemented:
 
 | Enum | Values |
 |---|---|
-| SubscriptionTier | `Free = 0` |
+| SubscriptionTier | `Free = 0`, `Beginner = 1`, `Pro = 2` |
 | SubscriptionStatus | `Active = 0`, `Expired = 1`, `Cancelled = 2` |
 
 Key behaviours:
 
 - `Subscription.Create(userId, tier, durationDays)` creates an active subscription.
+- `Subscription.Cancel()` transitions the status to `Cancelled`.
 - `Expire()` transitions the status to `Expired`.
 - `IsExpired(nowUtcMs)` evaluates expiry without mutating state.
 
 There is no `Paused` status and no external billing identifier because billing integration is not implemented.
+
+### Tier Policy And Template Visibility
+
+Subscription entitlement rules are not stored entirely on `Subscription`. The codebase resolves runtime policy through `TierFeaturePolicy` and `SubscriptionFeatureService`.
+
+| Concept | Location | Purpose |
+|---|---|---|
+| `Feature` | `src/TradePilot.Domain/Subscriptions/Feature.cs` | Enumerates gated capabilities such as `MacroCalendar`, `AiReview`, and `Optimizer` |
+| `TierFeaturePolicy` | `src/TradePilot.Domain/Subscriptions/TierFeaturePolicy.cs` | Defines allowed features, assets, and leverage per tier |
+| `SubscriptionFeatureService` | `src/TradePilot.Application/Subscriptions/Services/SubscriptionFeatureService.cs` | Resolves the effective policy for a user |
+
+Current policy summary:
+
+| Tier | Allowed Assets | Max Leverage | Gated Features |
+|---|---|---|---|
+| Beginner | BTC, ETH | 5x | No AI review, no optimizer, no macro calendar, no full library |
+| Pro | All supported assets | Exchange/asset maximum | Full feature set |
+
+`StrategyTemplate` also carries tier visibility metadata.
+
+| Field | Notes |
+|---|---|
+| `IsBeginnerVisible` | Whether the template is visible and cloneable for Beginner users |
+
+That flag is configured by admins through the shared strategy-library UI and enforced in template queries and clone validation.
 
 ### UserWalletAddress
 

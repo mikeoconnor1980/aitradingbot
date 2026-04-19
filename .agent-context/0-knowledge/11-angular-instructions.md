@@ -72,6 +72,7 @@ All feature routes live in `app.routes.ts` and are lazy loaded with `loadCompone
 |---|---|
 | `authGuard` | Allows access only when `AuthService.isAuthenticated` is true; otherwise redirects to `/login` |
 | `subscriptionGuard` | Checks `SubscriptionService.currentStatus`, falls back to `/subscriptions/status`, and redirects inactive users to `/dashboard?needsSubscription=true` |
+| `tierFeatureGuard(feature)` | Blocks active subscribers who lack a specific entitlement and redirects to `/dashboard?upgrade=true` |
 | `mobileRedirectGuard` | Blocks desktop-only pages on small screens and shows a snackbar before redirecting to `/dashboard` |
 | `unsavedChangesGuard` | `CanDeactivateFn` for the strategy builder |
 
@@ -86,6 +87,13 @@ All feature routes live in `app.routes.ts` and are lazy loaded with `loadCompone
 ```
 
 Default route and wildcard both redirect to `dashboard`.
+
+Implemented tier gating examples:
+
+- `optimizer` uses `tierFeatureGuard("Optimizer")`
+- `macro-calendar` uses `tierFeatureGuard("MacroCalendar")`
+- sidebar visibility is driven by `SubscriptionService.status$.features`
+- order entry filters available assets and leverage using the same subscription state
 
 ## Service Patterns
 
@@ -130,6 +138,7 @@ Components and services use `inject()` rather than constructor injection unless 
 | `NotificationService` | Snackbar wrapper with `success`, `error`, `warning`, and `info` helpers |
 | `ResponsiveDialogService` | Opens bottom-anchored full-width dialogs on mobile |
 | `LayoutService` | Exposes `isMobile` as an Angular `Signal<boolean>` via `BreakpointObserver` |
+| `SubscriptionService` | Loads subscription status, exposes `features`, `allowedAssets`, `maxLeverage`, and performs subscribe/cancel actions |
 | `StrategyDraftService` | Saves strategy-wizard drafts to `sessionStorage` under `strategy_draft` |
 | `SignalRService` | Realtime price/fill and connection state orchestration |
 | `HelpService` | Toggles the contextual help drawer |
@@ -160,8 +169,20 @@ This is a deliberate current-state choice and should be treated as part of the i
 Examples:
 
 - `DashboardComponent` composes tables, summary cards, and dialog flows.
-- `StrategyBuilderPageComponent` coordinates interpretation, validation, revision history, and AI review.
+- `StrategyBuilderPageComponent` coordinates interpretation, validation, revision history, and Pro-only AI review.
 - `AppComponent` owns shell-level connection/auth/help state.
+
+## Subscription-Aware UI Patterns
+
+Several frontend surfaces now assume subscription-aware behavior:
+
+| Area | Current Pattern |
+|---|---|
+| Profile | Users start Beginner or Pro trials and can cancel from Profile |
+| Sidebar | Pro-only items are hidden when `features` does not include the relevant capability |
+| Strategy library admin | Admins toggle `isBeginnerVisible` per template |
+| Strategy builder | AI review button is hidden for users without `AiReview` |
+| Order entry | Asset dropdown is filtered by `allowedAssets`; leverage slider is clamped to `maxLeverage` |
 
 ## Angular Material Theme
 

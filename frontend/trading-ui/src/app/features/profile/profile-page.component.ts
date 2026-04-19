@@ -46,6 +46,7 @@ export class ProfilePageComponent implements OnInit {
 
   public readonly subscription$ = this._subscriptionService.status$;
   public readonly subscribing = signal(false);
+  public readonly cancellingSubscription = signal(false);
   public readonly subscribeError = signal<string | null>(null);
 
   public readonly wallet$ = this._healthService.health$.pipe(
@@ -91,11 +92,11 @@ export class ProfilePageComponent implements OnInit {
     });
   }
 
-  public onSubscribeFreeTier(): void {
+  public onSubscribe(tier: "beginner" | "pro"): void {
     this.subscribing.set(true);
     this.subscribeError.set(null);
 
-    this._subscriptionService.subscribeFreeTier().subscribe({
+    this._subscriptionService.subscribe(tier).subscribe({
       next: () => {
         this.subscribing.set(false);
         this._profileService.load();
@@ -103,6 +104,22 @@ export class ProfilePageComponent implements OnInit {
       error: (err) => {
         this.subscribing.set(false);
         this.subscribeError.set(err.error?.errorMessage ?? "Failed to activate subscription.");
+      }
+    });
+  }
+
+  public onCancelSubscription(): void {
+    this.cancellingSubscription.set(true);
+    this.subscribeError.set(null);
+
+    this._subscriptionService.cancelSubscription().subscribe({
+      next: () => {
+        this.cancellingSubscription.set(false);
+        this._profileService.load();
+      },
+      error: (err) => {
+        this.cancellingSubscription.set(false);
+        this.subscribeError.set(err.error?.errorMessage ?? "Failed to cancel subscription.");
       }
     });
   }
@@ -172,7 +189,9 @@ export class ProfilePageComponent implements OnInit {
   }
 
   public getTierName(tier: string | null): string {
-    if (tier === "free") return "Free";
+    if (tier === "beginner") return "Beginner";
+    if (tier === "pro") return "Pro";
+    if (tier === "free") return "Beginner";
     return "Unknown";
   }
 

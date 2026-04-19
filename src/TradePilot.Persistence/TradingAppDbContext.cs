@@ -992,6 +992,9 @@ public sealed class TradePilotDbContext : DbContext
             entity.Property(t => t.IsSystemTemplate)
                 .IsRequired();
 
+            entity.Property(t => t.IsBeginnerVisible)
+                .IsRequired();
+
             entity.Property(t => t.IsActive)
                 .IsRequired();
 

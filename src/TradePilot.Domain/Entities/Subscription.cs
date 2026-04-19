@@ -5,6 +5,7 @@ namespace TradePilot.Domain.Entities;
 public sealed class Subscription
 {
     public const int FreeTierDurationDays = 30;
+    public const int TrialDurationDays = 365;
 
     public Guid Id { get; private set; }
     public Guid UserId { get; private set; }
@@ -43,5 +44,10 @@ public sealed class Subscription
     public void Expire()
     {
         Status = SubscriptionStatus.Expired;
+    }
+
+    public void Cancel()
+    {
+        Status = SubscriptionStatus.Cancelled;
     }
 }

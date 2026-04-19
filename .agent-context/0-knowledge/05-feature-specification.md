@@ -7,7 +7,7 @@ This document describes the current product surface as implemented in the codeba
 | Feature Area | Status | What Exists Today |
 |---|---|---|
 | Authentication | Implemented | Email/password registration and login, JWT access and refresh tokens, `GET /api/auth/me`, and Google SSO via `POST /api/auth/google` |
-| Subscription access | Implemented, limited | `POST /api/subscriptions/free` creates a 30-day free subscription; guards in the Angular app use subscription status to gate trading features |
+| Subscription access | Implemented | Beginner and Pro tiers, 1-year testing trial, profile-based subscribe/cancel flows, tier-aware route guards, and server-side entitlement enforcement |
 | Wallet connection | Implemented | Users store wallet addresses in the platform profile while private keys remain on the execution agent |
 | Strategy builder | Implemented | JSON-backed strategy authoring, validation, save/load, revision history, diff/restore, and strategy review retrieval |
 | Strategy wizard | Implemented | A guided 7-step creation flow at `/strategies/wizard` with educational prompts and a review step |
@@ -25,29 +25,43 @@ This document describes the current product surface as implemented in the codeba
 Current onboarding is:
 
 1. Register or sign in with email/password or Google.
-2. Activate the free subscription tier.
+2. Choose a Beginner or Pro subscription tier from Profile.
 3. Configure a wallet address and any preferred network settings.
 4. Create a strategy through the builder, the wizard, or the NLP interpreter.
 5. Backtest or optimize the strategy.
 6. Start or stop execution through a connected agent.
 
-There is no paid-plan purchase, upgrade, downgrade, or billing-history flow in the current application.
+There is no paid-plan purchase, Stripe checkout, or billing-history flow in the current application. Tier selection is a product entitlement flow only.
 
 ## Subscription Model
 
-The shipped subscription model is intentionally narrow.
+The shipped subscription model now has real feature entitlements, but billing is still deferred.
 
 | Capability | Current State |
 |---|---|
-| Free access | Implemented via `POST /api/subscriptions/free` |
-| Duration | 30 days |
-| Paid plans | NOT IMPLEMENTED |
+| Beginner tier | Implemented |
+| Pro tier | Implemented |
+| Trial duration | 365 days for both tiers |
+| Subscribe flow | Implemented via `POST /api/subscriptions/subscribe` |
+| Legacy free alias | `POST /api/subscriptions/free` maps to Beginner |
+| Self-service cancellation | Implemented via `POST /api/subscriptions/cancel` and Profile UI |
+| Paid billing | NOT IMPLEMENTED |
 | Stripe integration | NOT IMPLEMENTED |
-| Upgrade or downgrade flows | NOT IMPLEMENTED |
 | Billing history | NOT IMPLEMENTED |
-| Self-service cancellation | NOT IMPLEMENTED |
+| In-place commercial upgrade flow | NOT IMPLEMENTED |
 
-The knowledge base should treat the app as free-tier-only until a real billing system exists.
+### Tier Entitlements
+
+| Capability | Beginner | Pro |
+|---|---|---|
+| Strategy library | 2 admin-configurable Beginner-visible templates only | Full library |
+| Manual and strategy-trading assets | BTC, ETH only | All supported assets |
+| Max leverage | 5x | Exchange/asset maximum |
+| AI review | Not available | Available |
+| Macro calendar | Not available | Available |
+| Optimizer | Not available | Available |
+
+Tier restrictions are enforced in both the Angular app and the API. Order entry, strategy validation, template cloning, and feature routes should all be treated as entitlement-aware.
 
 ## Strategy Authoring and Review
 
@@ -58,8 +72,9 @@ Implemented capabilities include:
 - direct builder editing for strategy JSON-backed configuration
 - immutable `StrategyRevision` history with diff and restore support
 - natural-language interpretation into strategy configuration
-- AI review of saved revisions
+- AI review of saved revisions for Pro-tier users
 - strategy wizard guidance for new users
+- tier-aware template visibility so Beginner users only see the subset explicitly marked for Beginner access
 
 This means the strategy surface is no longer just CRUD. It is a mixed authoring workflow spanning manual editing, guided creation, AI generation, and AI review.
 
@@ -70,8 +85,14 @@ Operational features available to end users today include:
 - dashboard views for market context, positions, orders, and subscription status
 - agent command routing for start, stop, order, cancellation, leverage, and trigger-order actions
 - kill-switch management from the Agents page
-- macro calendar visibility with active event blocking surfaced in the UI
+- macro calendar visibility with active event blocking surfaced in the UI for Pro-tier users
 - help content and chat guidance inside the control plane
+
+Manual order entry is now also entitlement-aware:
+
+- the asset list is filtered by the current subscription tier
+- leverage updates are clamped and validated against the tier max leverage
+- the API rejects disallowed assets or leverage even if a stale client attempts them
 
 ## NOT IMPLEMENTED
 
@@ -82,13 +103,13 @@ The following features should not be described as shipped:
 - admin error-monitoring UI
 - admin-visible global tenant operations panel
 - Stripe or any other payment integration
-- paid plan selection or billing lifecycle management
+- payment-backed plan selection or billing lifecycle management
 
 There are agent operational controls, but there is no separate administrator product surface yet.
 
 ## Future Recommendations
 
-- Add paid tiers and Stripe-backed billing only after entitlement and expiry policy are fully defined.
+- Add commercial billing only after the entitlement model is stable and upgrade/downgrade policy is explicitly defined.
 - Add a real admin console for incident response, tenant diagnostics, and support operations.
-- Add explicit subscription lifecycle actions such as renewal, downgrade, cancellation, and billing history.
+- Add explicit subscription lifecycle actions such as renewal, downgrade handling, and billing history.
 - Add feature-flagged operator views for fleet health, update rollout status, and kill-switch audits.

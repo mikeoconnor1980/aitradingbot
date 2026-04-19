@@ -23,6 +23,7 @@ import { NotificationFacade } from "../../core/services/notification-facade.serv
 import { OrderService } from "../../core/services/order.service";
 import { AgentInfo, AgentService } from "../../core/services/agent.service";
 import { SignalRService } from "../../core/services/signalr.service";
+import { SubscriptionService } from "../../core/services/subscription.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { ConfirmDialogComponent, ConfirmDialogData } from "./confirm-dialog/confirm-dialog.component";
@@ -66,6 +67,7 @@ export class OrderEntryComponent implements OnInit {
   private readonly _signalRService = inject(SignalRService);
   private readonly _dialog = inject(MatDialog);
   private readonly _notifications = inject(NotificationFacade);
+  private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public orderForm!: FormGroup<OrderEntryForm>;
@@ -74,7 +76,7 @@ export class OrderEntryComponent implements OnInit {
   public markPrice: number | null = null;
   public livePrice: number | null = null;
   public leverage = 5;
-  public maxLeverage = 40;
+  public maxLeverage = 5;
   public marginMode: "cross" | "isolated" = "cross";
   public leverageStatus: string | null = null;
   public leverageError = false;
@@ -82,11 +84,13 @@ export class OrderEntryComponent implements OnInit {
   public currentPositionLiquidationPrice: number | null = null;
   public availableMargin: number | null = null;
 
-  public assets: TradableAsset[] = [{ symbol: "BTC-PERP", name: "Bitcoin", maxLeverage: 40, szDecimals: 5 }];
+  public assets: TradableAsset[] = [];
   public isLoadingAssets = true;
   public selectedAsset = "BTC-PERP";
   public connectedAgents: AgentInfo[] = [];
   public selectedAgentId: string | null = null;
+  private _allAssets: TradableAsset[] = [];
+  private _subscriptionResolved = false;
 
   public get selectedCoin(): string {
     return this.selectedAsset.replace("-PERP", "");
@@ -138,10 +142,21 @@ export class OrderEntryComponent implements OnInit {
     this._loadAvailableMargin();
     this._subscribeToPriceUpdates();
 
+    if (this._subscriptionService.currentStatus === null) {
+      this._subscriptionService.loadStatus();
+    }
+
+    this._subscriptionService.status$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((status) => {
+        this._subscriptionResolved = status !== null;
+        this._applySubscriptionRestrictions();
+      });
+
     this._orderService.getAvailableAssets().subscribe({
       next: (assets) => {
-        this.assets = assets;
-        this.isLoadingAssets = false;
+        this._allAssets = assets;
+        this._applySubscriptionRestrictions();
       },
       error: () => {
         this.isLoadingAssets = false;
@@ -183,6 +198,10 @@ export class OrderEntryComponent implements OnInit {
   }
 
   public onAssetChange(asset: string): void {
+    if (!this.assets.some((item) => item.symbol === asset)) {
+      return;
+    }
+
     this.selectedAsset = asset;
     this.midPrice = null;
     this.markPrice = null;
@@ -190,13 +209,7 @@ export class OrderEntryComponent implements OnInit {
     this.leverageStatus = null;
     this.orderForm.controls.price.setValue(null);
 
-    const info = this.selectedAssetInfo;
-    if (info) {
-      this.maxLeverage = info.maxLeverage;
-      if (this.leverage > info.maxLeverage) {
-        this.leverage = info.maxLeverage;
-      }
-    }
+    this._syncLeverageCap();
 
     this._loadMidPrice();
     this._loadPositionContext();
@@ -318,7 +331,7 @@ export class OrderEntryComponent implements OnInit {
   }
 
   public onLeverageChange(value: number): void {
-    this.leverage = value;
+    this.leverage = Math.min(value, this.maxLeverage);
     this._applyLeverage();
   }
 
@@ -328,6 +341,11 @@ export class OrderEntryComponent implements OnInit {
   }
 
   private _applyLeverage(): void {
+    if (!this.selectedAsset) {
+      return;
+    }
+
+    this.leverage = Math.min(this.leverage, this.maxLeverage);
     this.leverageStatus = "Updating...";
     this.leverageError = false;
 
@@ -347,6 +365,44 @@ export class OrderEntryComponent implements OnInit {
           this.leverageError = true;
         }
       });
+  }
+
+  private _applySubscriptionRestrictions(): void {
+    if (!this._subscriptionResolved) {
+      return;
+    }
+
+    const allowedAssets = this._subscriptionService.currentStatus?.allowedAssets ?? [];
+    const allowedSymbols = new Set(allowedAssets.map((asset) => `${asset.toUpperCase()}-PERP`));
+
+    this.assets = this._allAssets.filter((asset) => allowedSymbols.has(asset.symbol.toUpperCase()));
+    this.isLoadingAssets = false;
+
+    if (this.assets.length === 0) {
+      this.selectedAsset = "";
+      this.maxLeverage = this._subscriptionService.currentStatus?.maxLeverage ?? 1;
+      return;
+    }
+
+    if (!this.assets.some((asset) => asset.symbol === this.selectedAsset)) {
+      this.selectedAsset = this.assets[0].symbol;
+      this._loadMidPrice();
+      this._loadPositionContext();
+    }
+
+    this._syncLeverageCap();
+  }
+
+  private _syncLeverageCap(): void {
+    const assetMaxLeverage = this.selectedAssetInfo?.maxLeverage ?? 1;
+    const subscriptionMaxLeverage = this._subscriptionService.currentStatus?.maxLeverage;
+    this.maxLeverage = subscriptionMaxLeverage === null || subscriptionMaxLeverage === undefined
+      ? assetMaxLeverage
+      : Math.min(assetMaxLeverage, subscriptionMaxLeverage);
+
+    if (this.leverage > this.maxLeverage) {
+      this.leverage = this.maxLeverage;
+    }
   }
 
   public onSubmit(): void {

@@ -106,6 +106,44 @@
     flex-wrap: wrap;
   }
 
+  &__tier-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 1rem;
+  }
+
+  &__tier-card {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--colour-border-light);
+    background: rgba(121, 207, 195, 0.04);
+
+    h3 {
+      margin: 0;
+      color: #f8fafc;
+    }
+  }
+
+  &__tier-card--pro {
+    background: rgba(121, 207, 195, 0.08);
+  }
+
+  &__tier-tagline {
+    margin: 0;
+    color: var(--colour-accent, #79cfc3);
+    font-weight: 600;
+  }
+
+  &__tier-list {
+    margin: 0;
+    padding-left: 1rem;
+    color: #f8fafc;
+    font-size: 0.9rem;
+  }
+
   &__badge {
     display: inline-block;
     font-size: 0.82rem;

@@ -21,6 +21,9 @@ export class SidebarNavComponent {
   @Input()
   public isAdmin = false;
 
+  @Input()
+  public features: string[] = [];
+
   public expanded = true;
 
   private readonly _baseNavItems: NavItem[] = [
@@ -37,12 +40,25 @@ export class SidebarNavComponent {
   ];
 
   public get navItems(): NavItem[] {
+    const normalizedFeatures = new Set(this.features.map((feature) => feature.toLowerCase()));
+    const baseItems = this._baseNavItems.filter((item) => {
+      if (item.route === "/optimizer") {
+        return normalizedFeatures.has("optimizer");
+      }
+
+      if (item.route === "/macro-calendar") {
+        return normalizedFeatures.has("macrocalendar");
+      }
+
+      return true;
+    });
+
     if (!this.isAdmin) {
-      return this._baseNavItems;
+      return baseItems;
     }
 
     return [
-      ...this._baseNavItems,
+      ...baseItems,
       { route: "/admin/strategy-library", icon: "admin_panel_settings", label: "Strategy Library" },
       { route: "/admin/users", icon: "manage_accounts", label: "Admin Users" }
     ];

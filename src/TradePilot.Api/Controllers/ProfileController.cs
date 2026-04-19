@@ -94,7 +94,7 @@ public sealed class ProfileController : ControllerBase
             user.PreferredNetwork,
             new LlmModelsInfo(_llmOptions.ModelName, _llmReviewOptions.ModelName),
             hasActiveSubscription,
-            subscription?.Tier,
+            subscription?.Tier == SubscriptionTier.Free ? SubscriptionTier.Beginner : subscription?.Tier,
             subscription?.Status,
             subscription?.ExpiresAtUtc);
     }

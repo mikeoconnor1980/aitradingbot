@@ -6,11 +6,14 @@ using TradePilot.Api.Models;
 using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Models;
 using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Backtesting;
 using TradePilot.Application.StrategyAuthoring.Commands;
 using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.StrategyAuthoring.Queries;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Application.StrategyAuthoring.Validation;
+using TradePilot.Domain.Subscriptions;
 
 namespace TradePilot.Api.Controllers;
 
@@ -19,24 +22,58 @@ public sealed class StrategiesController : ApiController
 {
     private readonly IStrategyRepository _strategyRepository;
     private readonly IStrategyValidator _validator;
+    private readonly IAdminAuthorizationService _adminAuthorizationService;
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
+    private readonly IStrategyTemplateRepository _strategyTemplateRepository;
+    private readonly StrategyTierConstraintValidator _strategyTierConstraintValidator;
 
     public StrategiesController(
         IMediator mediator,
         IdentityService identityService,
         IStrategyRepository strategyRepository,
-        IStrategyValidator validator)
+        IStrategyValidator validator,
+        IAdminAuthorizationService adminAuthorizationService,
+        ISubscriptionFeatureService subscriptionFeatureService,
+        IStrategyTemplateRepository strategyTemplateRepository,
+        StrategyTierConstraintValidator strategyTierConstraintValidator)
         : base(mediator, identityService)
     {
         _strategyRepository = strategyRepository;
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+        _adminAuthorizationService = adminAuthorizationService;
+        _subscriptionFeatureService = subscriptionFeatureService;
+        _strategyTemplateRepository = strategyTemplateRepository;
+        _strategyTierConstraintValidator = strategyTierConstraintValidator;
     }
 
     [HttpPost("validate")]
     [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
-    public IActionResult Validate([FromBody] StrategyConfig config)
+    public async Task<IActionResult> Validate([FromBody] StrategyConfig config, CancellationToken cancellationToken)
     {
         var result = _validator.Validate(config);
+        if (result.IsValid)
+        {
+            try
+            {
+                await _strategyTierConstraintValidator.ValidateAsync(
+                    IdentityService.Identity,
+                    config,
+                    templateIsBeginnerVisible: true,
+                    cancellationToken);
+            }
+            catch (DomainException ex)
+            {
+                result.Add(new ValidationError
+                {
+                    Severity = ValidationSeverity.Error,
+                    FieldPath = "subscription",
+                    Code = "subscription_restricted",
+                    Message = ex.Message
+                });
+            }
+        }
+
         return Ok(result);
     }
 
@@ -44,8 +81,45 @@ public sealed class StrategiesController : ApiController
     [ProducesResponseType(typeof(IReadOnlyList<StrategyTemplateDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTemplates(CancellationToken cancellationToken)
     {
-        var templates = await Mediator.Send(new GetStrategyTemplatesQuery(), cancellationToken);
+        var includeAll = await _adminAuthorizationService.IsAdminAsync(IdentityService.Identity.Email, cancellationToken);
+        var templates = await Mediator.Send(new GetStrategyTemplatesQuery(IdentityService.Identity, includeAll), cancellationToken);
         return Ok(templates);
+    }
+
+    [HttpPatch("templates/{templateId:guid}/beginner-visibility")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetBeginnerVisibility(
+        Guid templateId,
+        [FromBody] SetBeginnerVisibilityRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!await _adminAuthorizationService.IsAdminAsync(IdentityService.Identity.Email, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("Administrator access is required.");
+        }
+
+        var template = await _strategyTemplateRepository.GetByIdForUpdateAsync(templateId, cancellationToken);
+        if (template is null || !template.IsActive)
+        {
+            throw new NotFoundException(nameof(Domain.Entities.StrategyTemplate), templateId);
+        }
+
+        if (request.Visible)
+        {
+            var visibleCount = await _strategyTemplateRepository.CountBeginnerVisibleAsync(cancellationToken);
+            if (!template.IsBeginnerVisible && visibleCount >= 2)
+            {
+                throw new DomainException("Beginner tier can only expose two strategy templates at a time.");
+            }
+        }
+
+        template.SetBeginnerVisibility(request.Visible);
+        await _strategyTemplateRepository.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
     }
 
     [HttpPost("templates/{templateId:guid}/clone")]
@@ -261,6 +335,12 @@ public sealed class StrategiesController : ApiController
         int rev,
         CancellationToken cancellationToken = default)
     {
+        var userId = Guid.Parse(IdentityService.Identity.UserId);
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId, Feature.AiReview, cancellationToken))
+        {
+            throw new UnauthorizedAccessException("This feature requires a Pro subscription.");
+        }
+
         if (rev < 1)
         {
             throw new DomainException("rev must be greater than or equal to 1");
@@ -405,3 +485,5 @@ public sealed class StrategiesController : ApiController
                 : $"{strategy.Name} (deleted)"));
     }
 }
+
+public sealed record SetBeginnerVisibilityRequest(bool Visible);

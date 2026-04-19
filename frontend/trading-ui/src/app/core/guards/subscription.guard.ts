@@ -28,3 +28,18 @@ export const subscriptionGuard: CanActivateFn = () => {
     catchError(() => of(denyTree))
   );
 };
+
+export const tierFeatureGuard = (feature: string): CanActivateFn => {
+  return () => {
+    const subscriptionService = inject(SubscriptionService);
+    const router = inject(Router);
+    const denyTree = router.createUrlTree(["/dashboard"], { queryParams: { upgrade: "true" } });
+
+    const cached = subscriptionService.currentStatus;
+    if (cached === null) {
+      return router.createUrlTree(["/dashboard"], { queryParams: { needsSubscription: "true" } });
+    }
+
+    return cached.isActive && subscriptionService.hasFeature(feature) ? true : denyTree;
+  };
+};

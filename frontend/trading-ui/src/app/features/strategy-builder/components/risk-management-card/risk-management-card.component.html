@@ -69,7 +69,7 @@
       @if (showLeverage) {
         <mat-form-field appearance="outline">
           <mat-label>Leverage</mat-label>
-          <input matInput type="number" formControlName="leverage" min="1" max="50" step="1" />
+          <input matInput type="number" formControlName="leverage" min="1" [max]="leverageLimit" step="1" />
           <app-info-popover
             matSuffix
             title="Leverage"
@@ -79,7 +79,7 @@
             <mat-error>Leverage is required.</mat-error>
           }
           @if (hasError("leverage", "min") || hasError("leverage", "max")) {
-            <mat-error>Leverage must be between 1 and 50.</mat-error>
+            <mat-error>Leverage must be between 1 and {{ leverageLimit }}.</mat-error>
           }
         </mat-form-field>
       }

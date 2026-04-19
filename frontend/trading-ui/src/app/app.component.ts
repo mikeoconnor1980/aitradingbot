@@ -18,6 +18,7 @@ import { HelpService } from "./core/services/help.service";
 import { LayoutService } from "./core/services/layout.service";
 import { NotificationStoreService } from "./core/services/notification-store.service";
 import { ProfileService } from "./core/services/profile.service";
+import { SubscriptionService } from "./core/services/subscription.service";
 import { SignalRService } from "./core/services/signalr.service";
 
 @Component({
@@ -33,6 +34,7 @@ export class AppComponent implements OnInit {
   private readonly _helpService = inject(HelpService);
   private readonly _authService = inject(AuthService);
   private readonly _profileService = inject(ProfileService);
+  private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _layoutService = inject(LayoutService);
   private readonly _notificationStore = inject(NotificationStoreService);
   private readonly _destroyRef = inject(DestroyRef);
@@ -53,6 +55,7 @@ export class AppComponent implements OnInit {
   };
   public health: HealthResponse | null = null;
   public preferredNetwork: string | null = null;
+  public subscriptionFeatures: string[] = [];
   public notificationPanelOpen = false;
   public readonly unreadCount = this._notificationStore.unreadCount;
 
@@ -81,6 +84,7 @@ export class AppComponent implements OnInit {
         this.isAuthenticated = auth;
         if (auth) {
           this._profileService.load();
+          this._subscriptionService.loadStatus();
           this._authService.syncCurrentUser().subscribe({
             error: () => undefined
           });
@@ -91,6 +95,12 @@ export class AppComponent implements OnInit {
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((profile) => {
         this.preferredNetwork = profile?.preferredNetwork ?? null;
+      });
+
+    this._subscriptionService.status$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((status) => {
+        this.subscriptionFeatures = status?.features ?? [];
       });
   }
 

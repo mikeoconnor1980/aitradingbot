@@ -1,21 +1,28 @@
 using System.Text.Json;
+using TradePilot.Application.Abstractions.Identity;
 using TradePilot.Application.Abstractions.Queries;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.StrategyAuthoring.Serialization;
+using TradePilot.Application.Subscriptions.Services;
+using TradePilot.Domain.Subscriptions;
 
 namespace TradePilot.Application.StrategyAuthoring.Queries;
 
-public sealed record GetStrategyTemplatesQuery : Query<IReadOnlyList<StrategyTemplateDto>>;
+public sealed record GetStrategyTemplatesQuery(AppIdentity Identity, bool IncludeAll = false) : Query<IReadOnlyList<StrategyTemplateDto>>;
 
 public sealed class GetStrategyTemplatesQueryHandler
     : QueryHandler<GetStrategyTemplatesQuery, IReadOnlyList<StrategyTemplateDto>>
 {
     private readonly IStrategyTemplateRepository _repository;
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
 
-    public GetStrategyTemplatesQueryHandler(IStrategyTemplateRepository repository)
+    public GetStrategyTemplatesQueryHandler(
+        IStrategyTemplateRepository repository,
+        ISubscriptionFeatureService subscriptionFeatureService)
     {
         _repository = repository;
+        _subscriptionFeatureService = subscriptionFeatureService;
     }
 
     public override async Task<IReadOnlyList<StrategyTemplateDto>> Handle(
@@ -24,7 +31,17 @@ public sealed class GetStrategyTemplatesQueryHandler
     {
         var templates = await _repository.GetActiveOrderedAsync(cancellationToken);
 
-        return templates.Select(t =>
+        var filteredTemplates = templates;
+        if (!request.IncludeAll && Guid.TryParse(request.Identity.UserId, out var userId))
+        {
+            var policy = await _subscriptionFeatureService.GetPolicyAsync(userId, cancellationToken);
+            if (policy?.HasFeature(Feature.FullStrategyLibrary) != true)
+            {
+                filteredTemplates = templates.Where(template => template.IsBeginnerVisible).ToList();
+            }
+        }
+
+        return filteredTemplates.Select(t =>
         {
             StrategyConfig config;
             try
@@ -60,6 +77,7 @@ public sealed class GetStrategyTemplatesQueryHandler
                 Config = config,
                 SortOrder = t.SortOrder,
                 IsSystemTemplate = t.IsSystemTemplate,
+                IsBeginnerVisible = t.IsBeginnerVisible,
                 CreatedAtUtc = t.CreatedAtUtc,
                 UpdatedAtUtc = t.UpdatedAtUtc,
             };

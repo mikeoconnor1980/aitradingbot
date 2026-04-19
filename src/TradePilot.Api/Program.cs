@@ -26,6 +26,7 @@ using TradePilot.Application.MarketData.Queries;
 using TradePilot.Application.Optimization;
 using TradePilot.Application.Optimization.Services;
 using TradePilot.Application.Scheduling;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.StrategyAuthoring.Services;
 using TradePilot.Application.StrategyAuthoring.Validation;
@@ -233,6 +234,8 @@ builder.Services.AddSingleton<SchemaValidator>();
 builder.Services.AddSingleton<BusinessRuleValidator>();
 builder.Services.AddSingleton<CrossFieldValidator>();
 builder.Services.AddSingleton<IStrategyValidator, CompositeStrategyValidator>();
+builder.Services.AddScoped<ISubscriptionFeatureService, SubscriptionFeatureService>();
+builder.Services.AddScoped<StrategyTierConstraintValidator>();
 builder.Services.AddHostedService<BacktestProcessorService>();
 builder.Services.AddHostedService<OptimizationProcessorService>();
 builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>

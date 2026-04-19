@@ -21,19 +21,22 @@ public sealed class CreateStrategyFromTemplateCommandHandler : CreateCommandHand
     private readonly IStrategyRevisionRepository _revisionRepository;
     private readonly IChangeSummaryGenerator _changeSummaryGenerator;
     private readonly IStrategyValidator _validator;
+    private readonly StrategyTierConstraintValidator _strategyTierConstraintValidator;
 
     public CreateStrategyFromTemplateCommandHandler(
         IStrategyTemplateRepository templateRepository,
         IStrategyRepository strategyRepository,
         IStrategyRevisionRepository revisionRepository,
         IChangeSummaryGenerator changeSummaryGenerator,
-        IStrategyValidator validator)
+        IStrategyValidator validator,
+        StrategyTierConstraintValidator strategyTierConstraintValidator)
     {
         _templateRepository = templateRepository;
         _strategyRepository = strategyRepository;
         _revisionRepository = revisionRepository;
         _changeSummaryGenerator = changeSummaryGenerator;
         _validator = validator;
+        _strategyTierConstraintValidator = strategyTierConstraintValidator;
     }
 
     public override async Task<Guid> Handle(
@@ -57,6 +60,12 @@ public sealed class CreateStrategyFromTemplateCommandHandler : CreateCommandHand
             var firstError = validationResult.Errors.First();
             throw new DomainException(firstError.Message);
         }
+
+        await _strategyTierConstraintValidator.ValidateAsync(
+            request.Identity,
+            config,
+            template.IsBeginnerVisible,
+            cancellationToken);
 
         // Ensure unique name for this user — append a suffix if needed
         var baseName = config.StrategyName;

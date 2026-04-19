@@ -6,22 +6,24 @@
     </div>
 
     <div class="builder-page__actions">
-      <span class="builder-page__action-wrapper" [matTooltip]="aiReviewTooltip" [matTooltipDisabled]="aiReviewTooltip.length === 0">
-        <button
-          mat-stroked-button
-          type="button"
-          class="builder-page__action-button"
-          [disabled]="!canRequestReview"
-          (click)="onRequestReview()">
-          @if (isReviewing) {
-            <mat-spinner diameter="18"></mat-spinner>
-          } @else {
-            <mat-icon>rate_review</mat-icon>
-          }
+      @if (canAccessAiReview) {
+        <span class="builder-page__action-wrapper" [matTooltip]="aiReviewTooltip" [matTooltipDisabled]="aiReviewTooltip.length === 0">
+          <button
+            mat-stroked-button
+            type="button"
+            class="builder-page__action-button"
+            [disabled]="!canRequestReview"
+            (click)="onRequestReview()">
+            @if (isReviewing) {
+              <mat-spinner diameter="18"></mat-spinner>
+            } @else {
+              <mat-icon>rate_review</mat-icon>
+            }
 
-          <span>{{ aiReviewButtonLabel }}</span>
-        </button>
-      </span>
+            <span>{{ aiReviewButtonLabel }}</span>
+          </button>
+        </span>
+      }
 
       @if (editId) {
         <span class="builder-page__action-wrapper" [matTooltip]="promoteTooltip" [matTooltipDisabled]="promoteTooltip.length === 0">

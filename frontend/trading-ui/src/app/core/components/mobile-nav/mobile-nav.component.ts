@@ -1,6 +1,7 @@
-import { Component } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { RouterLink, RouterLinkActive } from "@angular/router";
+import { SubscriptionService } from "../../services/subscription.service";
 
 @Component({
   selector: "app-mobile-nav",
@@ -9,4 +10,10 @@ import { RouterLink, RouterLinkActive } from "@angular/router";
   templateUrl: "./mobile-nav.component.html",
   styleUrl: "./mobile-nav.component.scss"
 })
-export class MobileNavComponent {}
+export class MobileNavComponent {
+  private readonly _subscriptionService = inject(SubscriptionService);
+
+  public get canAccessOrderEntry(): boolean {
+    return this._subscriptionService.currentStatus?.isActive ?? false;
+  }
+}
