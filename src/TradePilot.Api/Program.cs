@@ -189,8 +189,8 @@ builder.Services.AddScoped<IHyperliquidAccountService, TradePilot.Infrastructure
 builder.Services.AddScoped<IExchangeAccountClient, TradePilot.Infrastructure.Hyperliquid.HyperliquidAccountAdapter>();
 builder.Services.AddScoped<IExchangeMarketMetadataProvider, TradePilot.Infrastructure.Hyperliquid.HyperliquidMarketMetadataProvider>();
 builder.Services.AddSingleton<IExchangeCapabilities, TradePilot.Infrastructure.Hyperliquid.HyperliquidCapabilities>();
-builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Hyperliquid.HyperliquidSymbolMapper>();
-builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Binance.BinanceSymbolMapper>();
+builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Hyperliquid.HyperliquidAssetMapper>();
+builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Binance.BinanceAssetMapper>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();

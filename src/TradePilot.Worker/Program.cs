@@ -97,6 +97,8 @@ builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidWebSocketClient, HyperliquidWebSocketClient>();
 builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventClient>();
 builder.Services.AddSingleton<IFearGreedSnapshotProvider, ControlPlaneFearGreedSnapshotProvider>();
+builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
+builder.Services.AddSingleton<IExchangeAccountClient, HyperliquidAccountAdapter>();
 
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<IExecutionEngine, LiveExecutionEngine>();
@@ -231,8 +233,6 @@ if (!string.IsNullOrWhiteSpace(signalRConnectionString))
 
     builder.Services.AddSingleton(serviceManager);
     builder.Services.AddSingleton<ISignalRPublisher, AzureSignalRPublisher>();
-    builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
-    builder.Services.AddSingleton<IExchangeAccountClient, HyperliquidAccountAdapter>();
     builder.Services.AddHostedService<MarketDataStreamService>();
 }
 else

@@ -407,16 +407,16 @@ Acceptance criteria:
 - No existing Hyperliquid integration is removed in this phase
 - The abstractions are generic enough for Hyperliquid and Binance without exposing signing details
 
-### [ ] Phase 2: Hyperliquid Adapters And Pre-Migration Cleanup
+### [x] Phase 2: Hyperliquid Adapters And Pre-Migration Cleanup
 
 **Complexity**: Medium | **Risk**: Low
 
-- [ ] Task 2.1: Refactor `StateRecoveryService` to use `IHyperliquidAccountService.GetOpenOrdersAsync()` instead of raw `PostInfoAsync<JsonElement>(new { type = "openOrders", user = ... })` — this is a Hyperliquid-internal cleanup that makes Phase 3 migration straightforward
-- [ ] Task 2.2: Create a Hyperliquid market-metadata adapter implementing `IExchangeMarketMetadataProvider` over `IHyperliquidRestClient.GetMarketInfoAsync`
-- [ ] Task 2.3: Create a Hyperliquid account adapter implementing `IExchangeAccountClient` over `IHyperliquidAccountService`
-- [ ] Task 2.4: Refactor `HyperliquidAssetMapper` from a static class to an injectable `IExchangeSymbolMapper` implementation using `TradingPair`
-- [ ] Task 2.5: Add a Hyperliquid capabilities implementation capturing current venue support (`SupportedProductTypes = {Perp}`, leverage = true, etc.)
-- [ ] Task 2.6: Similarly refactor `BinanceAssetMapper` from a static class to an injectable `IExchangeSymbolMapper` implementation
+- [x] Task 2.1: Refactor `StateRecoveryService` to use `IHyperliquidAccountService.GetOpenOrdersAsync()` instead of raw `PostInfoAsync<JsonElement>(new { type = "openOrders", user = ... })` — this is a Hyperliquid-internal cleanup that makes Phase 3 migration straightforward
+- [x] Task 2.2: Create a Hyperliquid market-metadata adapter implementing `IExchangeMarketMetadataProvider` over `IHyperliquidRestClient.GetMarketInfoAsync`
+- [x] Task 2.3: Create a Hyperliquid account adapter implementing `IExchangeAccountClient` over `IHyperliquidAccountService`
+- [x] Task 2.4: Refactor `HyperliquidAssetMapper` from a static class to an injectable `IExchangeSymbolMapper` implementation using `TradingPair`
+- [x] Task 2.5: Add a Hyperliquid capabilities implementation capturing current venue support (`SupportedProductTypes = {Perp}`, leverage = true, etc.)
+- [x] Task 2.6: Similarly refactor `BinanceAssetMapper` from a static class to an injectable `IExchangeSymbolMapper` implementation
 
 Acceptance criteria:
 
@@ -539,14 +539,14 @@ Acceptance criteria:
 - [ ] `src/TradePilot.Application/Abstractions/Services/IExchangeCapabilities.cs` (new)
 - [ ] `src/TradePilot.Application/Abstractions/Services/IExchangeSymbolMapper.cs` (new)
 
-### [ ] Phase 2 initial file set
+### [x] Phase 2 initial file set
 
-- [ ] `src/TradePilot.Application/Trading/Services/StateRecoveryService.cs` (cleanup: replace raw `PostInfoAsync` with `IHyperliquidAccountService`)
-- [ ] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidMarketMetadataProvider.cs` (new adapter)
-- [ ] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAccountAdapter.cs` (new adapter)
-- [ ] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` (refactor: static → injectable `IExchangeSymbolMapper`)
-- [ ] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidCapabilities.cs` (new)
-- [ ] `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` (refactor: static → injectable `IExchangeSymbolMapper`)
+- [x] `src/TradePilot.Application/Trading/Services/StateRecoveryService.cs` (cleanup: replace raw `PostInfoAsync` with `IHyperliquidAccountService`)
+- [x] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidMarketMetadataProvider.cs` (new adapter)
+- [x] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAccountAdapter.cs` (new adapter)
+- [x] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` (refactor: static → injectable `IExchangeSymbolMapper`)
+- [x] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidCapabilities.cs` (new)
+- [x] `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` (refactor: static → injectable `IExchangeSymbolMapper`)
 
 ### [ ] Follow-on Plan B initial file set
 
