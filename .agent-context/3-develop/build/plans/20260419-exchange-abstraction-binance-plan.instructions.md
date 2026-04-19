@@ -426,14 +426,14 @@ Acceptance criteria:
 - Symbol mapping and asset-type behavior remain unchanged for current live flows
 - Both mappers are injectable and testable, not static
 
-### [ ] Phase 3: Migrate Application Consumers
+### [x] Phase 3: Migrate Application Consumers
 
 **Complexity**: High | **Risk**: Medium
 
-- [ ] Task 3.1: Refactor `LiveMarketContextBuilder` to depend on `IExchangeMarketMetadataProvider` instead of `IHyperliquidRestClient` (only used for `GetMarketInfoAsync` / max leverage)
-- [ ] Task 3.2: Refactor `StateRecoveryService` to depend on `IExchangeAccountClient` instead of `IHyperliquidRestClient` (now clean after Phase 2 cleanup)
-- [ ] Task 3.3: Review health checks and market-data queries for direct `IHyperliquid*` dependencies and migrate the read-side ones that are truly exchange-neutral
-- [ ] Task 3.4: Keep any Hyperliquid-only orchestration in place where a generic abstraction would be premature
+- [x] Task 3.1: Refactor `LiveMarketContextBuilder` to depend on `IExchangeMarketMetadataProvider` instead of `IHyperliquidRestClient` (only used for `GetMarketInfoAsync` / max leverage)
+- [x] Task 3.2: Refactor `StateRecoveryService` to depend on `IExchangeAccountClient` instead of `IHyperliquidRestClient` (now clean after Phase 2 cleanup)
+- [x] Task 3.3: Review health checks and market-data queries for direct `IHyperliquid*` dependencies and migrate the read-side ones that are truly exchange-neutral
+- [x] Task 3.4: Keep any Hyperliquid-only orchestration in place where a generic abstraction would be premature
 
 Acceptance criteria:
 

@@ -99,6 +99,8 @@ builder.Services.AddSingleton<IHyperliquidUserEventClient, HyperliquidUserEventC
 builder.Services.AddSingleton<IFearGreedSnapshotProvider, ControlPlaneFearGreedSnapshotProvider>();
 builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountService>();
 builder.Services.AddSingleton<IExchangeAccountClient, HyperliquidAccountAdapter>();
+builder.Services.AddSingleton<IExchangeMarketMetadataProvider, HyperliquidMarketMetadataProvider>();
+builder.Services.AddSingleton<IExchangeHistoricalDataClient, HyperliquidHistoricalDataClient>();
 
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<IExecutionEngine, LiveExecutionEngine>();
@@ -139,7 +141,7 @@ builder.Services.AddSingleton<IMarketContextBuilder>(sp =>
         sp.GetService<ILlmContextProvider>(),
         sp.GetService<IFearGreedSnapshotProvider>(),
         sp.GetRequiredService<IServiceScopeFactory>(),
-        new HyperliquidMarketMetadataProvider(sp.GetRequiredService<IHyperliquidRestClient>()),
+        sp.GetRequiredService<IExchangeMarketMetadataProvider>(),
         sp.GetRequiredService<ILoggerFactory>().CreateLogger<LiveMarketContextBuilder>()));
 builder.Services.AddSingleton<IOrderTracker, InMemoryOrderTracker>();
 builder.Services.AddScoped<IStateRecoveryService, StateRecoveryService>();
