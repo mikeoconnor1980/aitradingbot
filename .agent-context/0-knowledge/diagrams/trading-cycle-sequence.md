@@ -1,4 +1,4 @@
-# TradingApp - Trading Cycle Sequence
+# TradePilot - Trading Cycle Sequence
 
 This sequence reflects the current worker-driven live trading loop and the control path used by the API to start and stop that loop.
 
@@ -7,7 +7,7 @@ sequenceDiagram
     autonumber
 
     participant UI as Browser UI
-    participant API as TradingApp.Api
+    participant API as TradePilot.Api
     participant ACI as AgentCheckInService
     participant TS as TradingSession
     participant WS as HyperliquidWebSocketClient
@@ -20,7 +20,7 @@ sequenceDiagram
     participant PM as LivePositionManager
     participant EXE as LiveExecutionEngine
     participant EX as Hyperliquid
-    participant DB as TradingAppDbContext
+    participant DB as TradePilotDbContext
     participant AI as ILlmContextClient (Optional)
 
     UI->>API: Start trading command

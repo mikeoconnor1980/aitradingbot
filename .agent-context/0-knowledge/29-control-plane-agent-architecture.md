@@ -20,13 +20,13 @@ Angular dashboard
 
 | Component | Project | Purpose |
 |---|---|---|
-| `AgentController` | `TradingApp.Api` | Receives heartbeats, exposes agent state, kill-switch actions, and update metadata |
-| `TradingController` | `TradingApp.Api` | Queues start, stop, order, cancel, leverage, and trigger-order commands |
-| `AgentCommandStore` | `TradingApp.Application` | In-memory registry of agents, pending commands, kill state, and heartbeat-derived status |
-| `AgentHeartbeat` / `HeartbeatResponse` | `TradingApp.Application` | Shared control-plane protocol models |
-| `AgentCheckInService` | `TradingApp.Worker` | Worker `BackgroundService` that sends heartbeats, receives commands, and reports order results |
-| `TradingSession` | `TradingApp.Worker` | On-demand live execution session created when a Start command is received |
-| `UpdateCheckerService` | `TradingApp.Worker` | Hosted background service that applies installer-based updates when the heartbeat advertises a newer version |
+| `AgentController` | `TradePilot.Api` | Receives heartbeats, exposes agent state, kill-switch actions, and update metadata |
+| `TradingController` | `TradePilot.Api` | Queues start, stop, order, cancel, leverage, and trigger-order commands |
+| `AgentCommandStore` | `TradePilot.Application` | In-memory registry of agents, pending commands, kill state, and heartbeat-derived status |
+| `AgentHeartbeat` / `HeartbeatResponse` | `TradePilot.Application` | Shared control-plane protocol models |
+| `AgentCheckInService` | `TradePilot.Worker` | Worker `BackgroundService` that sends heartbeats, receives commands, and reports order results |
+| `TradingSession` | `TradePilot.Worker` | On-demand live execution session created when a Start command is received |
+| `UpdateCheckerService` | `TradePilot.Worker` | Hosted background service that applies installer-based updates when the heartbeat advertises a newer version |
 
 ## Heartbeat Contract
 
@@ -108,13 +108,13 @@ Kill-switch behaviour is controlled through `AgentCommandStore`, `AgentControlle
 
 | File | Purpose |
 |---|---|
-| `src/TradingApp.Api/Controllers/AgentController.cs` | Heartbeat endpoint, kill switch, reinstate, and update advertisement |
-| `src/TradingApp.Api/Controllers/TradingController.cs` | Dashboard command routing |
-| `src/TradingApp.Application/Agent/Services/AgentCommandStore.cs` | Agent registry and command queue |
-| `src/TradingApp.Application/Agent/Models/AgentHeartbeat.cs` | Shared heartbeat request/response models and `UpdateState` enum |
-| `src/TradingApp.Worker/Services/AgentCheckInService.cs` | Heartbeat loop, command dispatch, and manual session creation |
-| `src/TradingApp.Worker/Services/UpdateCheckerService.cs` | Auto-update workflow |
-| `src/TradingApp.Worker/Services/TradingSession.cs` | Live trading session runtime |
+| `src/TradePilot.Api/Controllers/AgentController.cs` | Heartbeat endpoint, kill switch, reinstate, and update advertisement |
+| `src/TradePilot.Api/Controllers/TradingController.cs` | Dashboard command routing |
+| `src/TradePilot.Application/Agent/Services/AgentCommandStore.cs` | Agent registry and command queue |
+| `src/TradePilot.Application/Agent/Models/AgentHeartbeat.cs` | Shared heartbeat request/response models and `UpdateState` enum |
+| `src/TradePilot.Worker/Services/AgentCheckInService.cs` | Heartbeat loop, command dispatch, and manual session creation |
+| `src/TradePilot.Worker/Services/UpdateCheckerService.cs` | Auto-update workflow |
+| `src/TradePilot.Worker/Services/TradingSession.cs` | Live trading session runtime |
 
 ## Future Recommendations
 

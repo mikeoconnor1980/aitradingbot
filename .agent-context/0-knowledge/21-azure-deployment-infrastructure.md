@@ -9,7 +9,7 @@ The system is deployed as two operational planes:
 | Plane | Hosting | Purpose |
 |---|---|---|
 | Control Plane | Azure Container Apps + Azure Static Web Apps + Azure SQL + Azure SignalR | API, UI, persistence, and browser-facing real-time features |
-| Execution Plane | Subscriber Windows machine | `TradingApp.ExecutionAgent` Windows Service for local signing and live execution |
+| Execution Plane | Subscriber Windows machine | `TradePilot.ExecutionAgent` Windows Service for local signing and live execution |
 
 ## Azure Resource Inventory
 
@@ -99,7 +99,7 @@ Artifacts include:
 
 ### Worker Build Shape
 
-`TradingApp.ExecutionAgent` is published as:
+`TradePilot.ExecutionAgent` is published as:
 
 - self-contained
 - single-file in Release

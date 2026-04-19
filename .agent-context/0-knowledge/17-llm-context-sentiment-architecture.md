@@ -10,7 +10,7 @@ The platform uses three separate LLM integrations, each with a different interfa
 | Strategy review | `IReviewLlmClient` | `ReviewLlmClient` | `LlmReview` | Critique saved strategy revisions |
 | Market context | `ILlmContextClient` | `LlmContextClient` | `LlmContext` | Produce qualitative market context and regime guidance |
 
-All three use the OpenAI-compatible HTTP protocol implemented in `src/TradingApp.AI`, but they are configured and registered independently so one feature can be enabled without forcing the others to share a model or runtime profile.
+All three use the OpenAI-compatible HTTP protocol implemented in `src/TradePilot.AI`, but they are configured and registered independently so one feature can be enabled without forcing the others to share a model or runtime profile.
 
 The important runtime rule is that the live trading path does not depend on an external LLM being available. `SyntheticRegimeProvider` remains the always-on classifier, and the market-context LLM is an optional overlay.
 
@@ -28,7 +28,7 @@ The trading system still enters and exits only through `IStrategyEngine`, `IGrid
 
 ## Context Model
 
-`LlmContext` lives in `src/TradingApp.Application/Trading/Models/LlmContext.cs`.
+`LlmContext` lives in `src/TradePilot.Application/Trading/Models/LlmContext.cs`.
 
 | Field | Type | Notes |
 |------|------|-------|
@@ -59,7 +59,7 @@ In practice the flow works like this:
 
 ## SyntheticRegimeProvider Is The Primary Classifier
 
-`SyntheticRegimeProvider` in `src/TradingApp.Application/Trading/Services/SyntheticRegimeProvider.cs` is the always-available regime classifier.
+`SyntheticRegimeProvider` in `src/TradePilot.Application/Trading/Services/SyntheticRegimeProvider.cs` is the always-available regime classifier.
 
 It is rule-based and derives regime from the indicator snapshot, including:
 
@@ -73,9 +73,9 @@ This means the system does not depend on an external LLM to classify markets. Th
 
 | Client | Location | Request characteristics |
 |--------|----------|-------------------------|
-| `OpenAiCompatibleLlmClient` | `src/TradingApp.AI/Services/OpenAiCompatibleLlmClient.cs` | Strategy interpretation, OpenAI-compatible chat completions |
-| `ReviewLlmClient` | `src/TradingApp.AI/Services/ReviewLlmClient.cs` | Uses `LlmReviewOptions`, `Temperature = 0.4`, text response |
-| `LlmContextClient` | `src/TradingApp.AI/Services/LlmContextClient.cs` | Uses `LlmContextOptions`, `Temperature = 0.2`, JSON response |
+| `OpenAiCompatibleLlmClient` | `src/TradePilot.AI/Services/OpenAiCompatibleLlmClient.cs` | Strategy interpretation, OpenAI-compatible chat completions |
+| `ReviewLlmClient` | `src/TradePilot.AI/Services/ReviewLlmClient.cs` | Uses `LlmReviewOptions`, `Temperature = 0.4`, text response |
+| `LlmContextClient` | `src/TradePilot.AI/Services/LlmContextClient.cs` | Uses `LlmContextOptions`, `Temperature = 0.2`, JSON response |
 
 The context-specific provider stack is:
 
@@ -116,11 +116,11 @@ There are two registration patterns in the codebase today.
 
 ### API Host
 
-`TradingApp.Api` calls `builder.Services.AddAI(builder.Configuration)`, which wires all three AI clients and registers `ILlmContextProvider` through the shared AI extension.
+`TradePilot.Api` calls `builder.Services.AddAI(builder.Configuration)`, which wires all three AI clients and registers `ILlmContextProvider` through the shared AI extension.
 
 ### Worker Host
 
-`TradingApp.Worker` uses conditional registration for the market-context provider. It only wires `ILlmContextClient` and `ILlmContextProvider` when the `LlmContext:ApiKey` setting is present. Otherwise:
+`TradePilot.Worker` uses conditional registration for the market-context provider. It only wires `ILlmContextClient` and `ILlmContextProvider` when the `LlmContext:ApiKey` setting is present. Otherwise:
 
 - no LLM context provider is registered
 - `LiveMarketContextBuilder` receives `null` for `ILlmContextProvider`

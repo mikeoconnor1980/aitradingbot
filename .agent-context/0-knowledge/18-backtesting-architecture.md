@@ -32,11 +32,11 @@ Backtests are queued and processed in the API host rather than executed inline i
 
 | Component | Location | Purpose |
 |---|---|---|
-| `RunBacktestCommand` | `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` | Creates a queued `BacktestRun`, persists it, and enqueues a `BacktestJob` |
-| `BacktestJobQueue` | `src/TradingApp.Application/Backtesting/BacktestJobQueue.cs` | Bounded channel used for queued replay work |
-| `BacktestCancellationManager` | `src/TradingApp.Application/Backtesting/BacktestCancellationManager.cs` | Registers per-job cancellation tokens and powers `/cancel` |
-| `BacktestProcessorService` | `src/TradingApp.Api/Services/BacktestProcessorService.cs` | Hosted service that dequeues jobs, runs `IBacktestRunner`, updates persistence, and broadcasts progress |
-| `BacktestRun` | `src/TradingApp.Domain/Entities/BacktestRun.cs` | Persistent status + metrics record for `Queued`, `Running`, `Completed`, `Failed`, and `Cancelled` states |
+| `RunBacktestCommand` | `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` | Creates a queued `BacktestRun`, persists it, and enqueues a `BacktestJob` |
+| `BacktestJobQueue` | `src/TradePilot.Application/Backtesting/BacktestJobQueue.cs` | Bounded channel used for queued replay work |
+| `BacktestCancellationManager` | `src/TradePilot.Application/Backtesting/BacktestCancellationManager.cs` | Registers per-job cancellation tokens and powers `/cancel` |
+| `BacktestProcessorService` | `src/TradePilot.Api/Services/BacktestProcessorService.cs` | Hosted service that dequeues jobs, runs `IBacktestRunner`, updates persistence, and broadcasts progress |
+| `BacktestRun` | `src/TradePilot.Domain/Entities/BacktestRun.cs` | Persistent status + metrics record for `Queued`, `Running`, `Completed`, `Failed`, and `Cancelled` states |
 
 The API returns `202 Accepted` for new runs. Progress is pushed through SignalR using the `ReceiveBacktestProgress` event.
 
@@ -78,7 +78,7 @@ Backtesting processes candles sequentially and preserves time order. The replay 
 
 ## BacktestConfig
 
-`BacktestConfig` lives in `src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs`.
+`BacktestConfig` lives in `src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs`.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -117,7 +117,7 @@ Important implemented behaviors:
 
 ## BacktestResult
 
-`BacktestResult` lives in `src/TradingApp.Application/Backtesting/Models/BacktestResult.cs`.
+`BacktestResult` lives in `src/TradePilot.Application/Backtesting/Models/BacktestResult.cs`.
 
 Key fields include:
 
@@ -144,7 +144,7 @@ The result model also carries audit logs and R-oriented review metrics such as `
 
 ## BacktestRun Persistence
 
-`BacktestRun` in `src/TradingApp.Domain/Entities/BacktestRun.cs` is the persisted representation of a queued or completed run.
+`BacktestRun` in `src/TradePilot.Domain/Entities/BacktestRun.cs` is the persisted representation of a queued or completed run.
 
 Important entity fields include:
 
@@ -161,8 +161,8 @@ The strategy-review system consumes backtest summaries through dedicated project
 
 | Model | Location | Purpose |
 |---|---|---|
-| `BacktestSummaryForReview` | `src/TradingApp.Application/Backtesting/Models/BacktestSummaryForReview.cs` | Converts `BacktestRun` persistence data into a review-friendly summary |
-| `RegimeSegmentationSummary` | `src/TradingApp.Application/Backtesting/Models/RegimeSegmentationSummary.cs` | Segments completed cycles by trend, volatility, funding, and session buckets |
+| `BacktestSummaryForReview` | `src/TradePilot.Application/Backtesting/Models/BacktestSummaryForReview.cs` | Converts `BacktestRun` persistence data into a review-friendly summary |
+| `RegimeSegmentationSummary` | `src/TradePilot.Application/Backtesting/Models/RegimeSegmentationSummary.cs` | Segments completed cycles by trend, volatility, funding, and session buckets |
 
 These models are used by `StrategyReviewer` to add historical performance context to AI-generated reviews.
 
@@ -170,19 +170,19 @@ These models are used by `StrategyReviewer` to add historical performance contex
 
 | Component | Purpose | File |
 |---|---|---|
-| `BacktestRunner` | Orchestrates validation, replay, and metric calculation | `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` |
-| `CandleReplayEngine` | Loads and aligns historical candles | `src/TradingApp.Application/Backtesting/Services/CandleReplayEngine.cs` |
-| `SimulatedExecutionEngine` | In-memory execution engine for replay | `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
-| `BacktestExecutionContextAccessor` | Async-local bridge exposing current execution engine and timestamp | `src/TradingApp.Application/Backtesting/BacktestExecutionContextAccessor.cs` |
-| `BacktestMetricsCalculator` | Computes summary statistics | `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
-| `BacktestJobQueue` | Queued work channel | `src/TradingApp.Application/Backtesting/BacktestJobQueue.cs` |
-| `BacktestCancellationManager` | Per-run cancellation registry | `src/TradingApp.Application/Backtesting/BacktestCancellationManager.cs` |
-| `BacktestProcessorService` | Hosted service executing queued runs | `src/TradingApp.Api/Services/BacktestProcessorService.cs` |
-| `IBacktestAuditCollector` / `NullBacktestAuditCollector` | Audit collection boundary and no-op fallback | `src/TradingApp.Application/Backtesting/Services/` |
+| `BacktestRunner` | Orchestrates validation, replay, and metric calculation | `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` |
+| `CandleReplayEngine` | Loads and aligns historical candles | `src/TradePilot.Application/Backtesting/Services/CandleReplayEngine.cs` |
+| `SimulatedExecutionEngine` | In-memory execution engine for replay | `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
+| `BacktestExecutionContextAccessor` | Async-local bridge exposing current execution engine and timestamp | `src/TradePilot.Application/Backtesting/BacktestExecutionContextAccessor.cs` |
+| `BacktestMetricsCalculator` | Computes summary statistics | `src/TradePilot.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
+| `BacktestJobQueue` | Queued work channel | `src/TradePilot.Application/Backtesting/BacktestJobQueue.cs` |
+| `BacktestCancellationManager` | Per-run cancellation registry | `src/TradePilot.Application/Backtesting/BacktestCancellationManager.cs` |
+| `BacktestProcessorService` | Hosted service executing queued runs | `src/TradePilot.Api/Services/BacktestProcessorService.cs` |
+| `IBacktestAuditCollector` / `NullBacktestAuditCollector` | Audit collection boundary and no-op fallback | `src/TradePilot.Application/Backtesting/Services/` |
 
 ## API And UI
 
-Implemented API endpoints in `src/TradingApp.Api/Controllers/BacktestsController.cs`:
+Implemented API endpoints in `src/TradePilot.Api/Controllers/BacktestsController.cs`:
 
 | Method | Route | Description |
 |---|---|---|
@@ -272,7 +272,7 @@ Minimum viable backtesting input:
 
 The GridStrategy can run on these timeframes without needing tick-level data.
 
-OHLCV candles are persisted to the database via `ICandleRepository` (interface: `src/TradingApp.Application/Abstractions/Repositories/ICandleRepository.cs`, implementation: `src/TradingApp.Persistence/Repositories/CandleRepository.cs`). The `HistoricalDataProvider` component should query `ICandleRepository.GetCandlesAsync(symbol, interval, startTime, endTime)` to supply the replay engine with ordered candle data.
+OHLCV candles are persisted to the database via `ICandleRepository` (interface: `src/TradePilot.Application/Abstractions/Repositories/ICandleRepository.cs`, implementation: `src/TradePilot.Persistence/Repositories/CandleRepository.cs`). The `HistoricalDataProvider` component should query `ICandleRepository.GetCandlesAsync(symbol, interval, startTime, endTime)` to supply the replay engine with ordered candle data.
 
 ---
 
@@ -296,7 +296,7 @@ The replay must preserve time order.
 
 # BacktestConfig
 
-`BacktestConfig` (`src/TradingApp.Application/Backtesting/Models/BacktestConfig.cs`):
+`BacktestConfig` (`src/TradePilot.Application/Backtesting/Models/BacktestConfig.cs`):
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -305,12 +305,12 @@ The replay must preserve time order.
 | `StartDateUtc` | `long` | — | Unix ms — start of evaluation period (after warmup) |
 | `EndDateUtc` | `long` | — | Unix ms — end of evaluation period |
 | `InitialCapital` | `decimal` | — | Starting equity for PnL simulation |
-| `Strategy` | `IStrategyConfig` | — | Typed strategy config passed to the pipeline. In v1, always a `StrategyConfig` (`src/TradingApp.Application/StrategyAuthoring/Models/StrategyConfig.cs`). |
+| `Strategy` | `IStrategyConfig` | — | Typed strategy config passed to the pipeline. In v1, always a `StrategyConfig` (`src/TradePilot.Application/StrategyAuthoring/Models/StrategyConfig.cs`). |
 | `Execution` | `ExecutionConfig` | — | Fee model for this run (see `FeeModel.Default`). Leverage is in `StrategyConfig.Risk.Leverage`. |
 | `WarmupPeriod` | `int` | `200` | 15m candles fed to indicator state before evaluation starts |
 | `EnableAuditLog` | `bool` | `true` | When `true`, per-candle, order-event, and grid-cycle audit entries are collected and persisted as JSON blob columns on `BacktestRun` |
 
-`FeeModel` (`src/TradingApp.Domain/Trading/FeeModel.cs`): `MakerFeeRate` (default 0.0001), `TakerFeeRate` (default 0.00035), `SlippageRate` (default 0). Use `FeeModel.Default` for standard Hyperliquid rates. Provides `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`. Owned by `ExecutionConfig` — not a direct field on `BacktestConfig`.
+`FeeModel` (`src/TradePilot.Domain/Trading/FeeModel.cs`): `MakerFeeRate` (default 0.0001), `TakerFeeRate` (default 0.00035), `SlippageRate` (default 0). Use `FeeModel.Default` for standard Hyperliquid rates. Provides `CalculateFee(size, price, isMaker)` and `ApplySlippage(price, side)`. Owned by `ExecutionConfig` — not a direct field on `BacktestConfig`.
 
 ---
 
@@ -358,7 +358,7 @@ For each open position, `SimulatedExecutionEngine` computes a **liquidation pric
 
 Key methods: `TryProcessProtectionOrLiquidation`, `TryCreateLiquidationFill`, `IsLiquidationBreached`
 
-File: `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
+File: `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs`
 
 ---
 
@@ -396,7 +396,7 @@ Without fees and slippage, results will look unrealistically strong.
 
 # Backtest Result Model
 
-`BacktestResult` (`src/TradingApp.Application/Backtesting/Models/BacktestResult.cs`):
+`BacktestResult` (`src/TradePilot.Application/Backtesting/Models/BacktestResult.cs`):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -425,7 +425,7 @@ Without fees and slippage, results will look unrealistically strong.
 | `HalfKellyPercent` | `decimal?` | Conservative half-Kelly allocation (KellyPercent / 2). Recommended for live use |
 | `WinLossRRatio` | `decimal?` | AvgWinR / |AvgLossR| — reward-risk asymmetry ratio |
 
-`TradeType` enum (`src/TradingApp.Application/Trading/Models/TradeType.cs`): `GridFill`, `TakeProfit`, `HedgeOpen`, `HedgeClose`.
+`TradeType` enum (`src/TradePilot.Application/Trading/Models/TradeType.cs`): `GridFill`, `TakeProfit`, `HedgeOpen`, `HedgeClose`.
 
 ---
 
@@ -433,7 +433,7 @@ Without fees and slippage, results will look unrealistically strong.
 
 Completed runs are persisted as `BacktestRun` domain entities immediately after `IBacktestRunner.RunAsync` completes.
 
-`BacktestRun` (`src/TradingApp.Domain/Entities/BacktestRun.cs`):
+`BacktestRun` (`src/TradePilot.Domain/Entities/BacktestRun.cs`):
 
 - Created via `BacktestRun.CreateQueued(...)` for the async background path (status: `Queued → Running → Completed/Failed`) or `BacktestRun.Create(...)` for direct creation with final metrics
 - Summary metrics (TotalTrades, WinRate, TotalPnl, MaxDrawdown, etc.) stored as scalar columns
@@ -445,7 +445,7 @@ Completed runs are persisted as `BacktestRun` domain entities immediately after 
 
 **What is NOT persisted:** `FinalEquity`, `MaxDrawdownPercent`, and `GridCycles` from `BacktestResult` are not stored. Only `MaxDrawdown` (absolute) is stored. `EquityTimeSeriesJson` **is** persisted. Derived R-metrics (`AvgWinR`, `AvgLossR`, `RWinRate`, `RDistribution`) are not persisted — they are recomputed from trade data at query time.
 
-`IBacktestRunRepository` (`src/TradingApp.Application/Abstractions/Repositories/IBacktestRunRepository.cs`):
+`IBacktestRunRepository` (`src/TradePilot.Application/Abstractions/Repositories/IBacktestRunRepository.cs`):
 
 | Method | Description |
 |--------|-------------|
@@ -453,9 +453,9 @@ Completed runs are persisted as `BacktestRun` domain entities immediately after 
 | `GetByIdAsync(Guid, ct)` | Full run by ID; returns null if absent |
 | `GetPagedSummariesAsync(page, pageSize, ct)` | `PagedResult<BacktestRunSummary>` — summary projection without trades |
 
-Implementation: `src/TradingApp.Persistence/Repositories/BacktestRunRepository.cs`
+Implementation: `src/TradePilot.Persistence/Repositories/BacktestRunRepository.cs`
 
-`BacktestRunResponseMapper` (`src/TradingApp.Application/Backtesting/BacktestRunResponseMapper.cs`): internal static helper that serializes `GridStrategyConfig`/trades to JSON for storage, and maps `BacktestRun` entity → `BacktestRunResponse` for API responses.
+`BacktestRunResponseMapper` (`src/TradePilot.Application/Backtesting/BacktestRunResponseMapper.cs`): internal static helper that serializes `GridStrategyConfig`/trades to JSON for storage, and maps `BacktestRun` entity → `BacktestRunResponse` for API responses.
 
 ---
 
@@ -505,27 +505,27 @@ A sweep runs many backtests automatically and compares performance.
 
 | Component | Purpose | File |
 |-----------|---------|------|
-| `BacktestRunner` | Orchestrates the full backtest: validation → data load → warmup → candle loop → metrics | `src/TradingApp.Application/Backtesting/Services/BacktestRunner.cs` |
-| `CandleReplayEngine` | Loads and aligns historical candles from the database; resolves warmup boundary; provides `GetLatestClosedCandle` for HTF context | `src/TradingApp.Application/Backtesting/Services/CandleReplayEngine.cs` |
-| `SimulatedExecutionEngine` | Pure in-memory `IExecutionEngine`; accepts `OrderRequest`s, processes candles, simulates fills, tracks position and fees; computes liquidation prices, simulates liquidation triggers, force-closes gapped positions | `src/TradingApp.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
-| `BacktestMetricsCalculator` | Computes summary statistics from the trade log and equity curve | `src/TradingApp.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
-| `IBacktestRunner` | Public contract for the orchestrator | `src/TradingApp.Application/Abstractions/Services/IBacktestRunner.cs` |
-| `IExecutionEngine` | Execution boundary; `SimulatedExecutionEngine` (backtest) and a future `LiveExecutionEngine` both implement this | `src/TradingApp.Application/Abstractions/Services/IExecutionEngine.cs` |
-| `RunBacktestCommand` | CQRS command: maps request → `BacktestConfig`, runs via `IBacktestRunner`, persists `BacktestRun` entity, enforces 5-minute server-side timeout | `src/TradingApp.Application/Backtesting/RunBacktestCommand.cs` |
-| `GetBacktestResultQuery` | CQRS query: loads `BacktestRun` by Guid; throws `NotFoundException` if absent | `src/TradingApp.Application/Backtesting/GetBacktestResultQuery.cs` |
-| `GetBacktestListQuery` | CQRS query: returns `PagedResult<BacktestRunSummary>` from repository | `src/TradingApp.Application/Backtesting/GetBacktestListQuery.cs` |
-| `GetCandleCoverageQuery` | CQRS query: calls `ICandleRepository.GetCoverageAsync` per interval; returns `CandleCoverageResponse` | `src/TradingApp.Application/Backtesting/GetCandleCoverageQuery.cs` |
-| `UnavailableBacktestRunner` | API-host placeholder `IBacktestRunner` — throws `InvalidOperationException` because the full strategy pipeline is not yet composed in the API host | `src/TradingApp.Api/Services/UnavailableBacktestRunner.cs` |
-| `IBacktestAuditCollector` | Contract for collecting audit entries during replay: `LogCandleEvaluation`, `LogOrderEvent`, `LogGridCycleCompleted`. Injected into `StrategyScheduler` and `BacktestPositionManager`. | `src/TradingApp.Application/Backtesting/Services/IBacktestAuditCollector.cs` |
-| `BacktestAuditCollector` | Thread-safe in-memory implementation; accumulates entries via `ConcurrentQueue<T>`; exposes `CandleEvaluations`, `OrderEvents`, `GridCycles` read-only lists at run end | `src/TradingApp.Application/Backtesting/Services/BacktestAuditCollector.cs` |
-| `NullBacktestAuditCollector` | Singleton no-op implementation (`NullBacktestAuditCollector.Instance`); used when `EnableAuditLog = false` — null-object pattern avoids null checks in callers | `src/TradingApp.Application/Backtesting/Services/NullBacktestAuditCollector.cs` |
-| `GetBacktestDebugQuery` | CQRS query: deserialises `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson` from a saved run and filters all three collections by `CycleId`; returns `BacktestDebugResponse` | `src/TradingApp.Application/Backtesting/GetBacktestDebugQuery.cs` |
+| `BacktestRunner` | Orchestrates the full backtest: validation → data load → warmup → candle loop → metrics | `src/TradePilot.Application/Backtesting/Services/BacktestRunner.cs` |
+| `CandleReplayEngine` | Loads and aligns historical candles from the database; resolves warmup boundary; provides `GetLatestClosedCandle` for HTF context | `src/TradePilot.Application/Backtesting/Services/CandleReplayEngine.cs` |
+| `SimulatedExecutionEngine` | Pure in-memory `IExecutionEngine`; accepts `OrderRequest`s, processes candles, simulates fills, tracks position and fees; computes liquidation prices, simulates liquidation triggers, force-closes gapped positions | `src/TradePilot.Application/Backtesting/Services/SimulatedExecutionEngine.cs` |
+| `BacktestMetricsCalculator` | Computes summary statistics from the trade log and equity curve | `src/TradePilot.Application/Backtesting/Services/BacktestMetricsCalculator.cs` |
+| `IBacktestRunner` | Public contract for the orchestrator | `src/TradePilot.Application/Abstractions/Services/IBacktestRunner.cs` |
+| `IExecutionEngine` | Execution boundary; `SimulatedExecutionEngine` (backtest) and a future `LiveExecutionEngine` both implement this | `src/TradePilot.Application/Abstractions/Services/IExecutionEngine.cs` |
+| `RunBacktestCommand` | CQRS command: maps request → `BacktestConfig`, runs via `IBacktestRunner`, persists `BacktestRun` entity, enforces 5-minute server-side timeout | `src/TradePilot.Application/Backtesting/RunBacktestCommand.cs` |
+| `GetBacktestResultQuery` | CQRS query: loads `BacktestRun` by Guid; throws `NotFoundException` if absent | `src/TradePilot.Application/Backtesting/GetBacktestResultQuery.cs` |
+| `GetBacktestListQuery` | CQRS query: returns `PagedResult<BacktestRunSummary>` from repository | `src/TradePilot.Application/Backtesting/GetBacktestListQuery.cs` |
+| `GetCandleCoverageQuery` | CQRS query: calls `ICandleRepository.GetCoverageAsync` per interval; returns `CandleCoverageResponse` | `src/TradePilot.Application/Backtesting/GetCandleCoverageQuery.cs` |
+| `UnavailableBacktestRunner` | API-host placeholder `IBacktestRunner` — throws `InvalidOperationException` because the full strategy pipeline is not yet composed in the API host | `src/TradePilot.Api/Services/UnavailableBacktestRunner.cs` |
+| `IBacktestAuditCollector` | Contract for collecting audit entries during replay: `LogCandleEvaluation`, `LogOrderEvent`, `LogGridCycleCompleted`. Injected into `StrategyScheduler` and `BacktestPositionManager`. | `src/TradePilot.Application/Backtesting/Services/IBacktestAuditCollector.cs` |
+| `BacktestAuditCollector` | Thread-safe in-memory implementation; accumulates entries via `ConcurrentQueue<T>`; exposes `CandleEvaluations`, `OrderEvents`, `GridCycles` read-only lists at run end | `src/TradePilot.Application/Backtesting/Services/BacktestAuditCollector.cs` |
+| `NullBacktestAuditCollector` | Singleton no-op implementation (`NullBacktestAuditCollector.Instance`); used when `EnableAuditLog = false` — null-object pattern avoids null checks in callers | `src/TradePilot.Application/Backtesting/Services/NullBacktestAuditCollector.cs` |
+| `GetBacktestDebugQuery` | CQRS query: deserialises `CandleLogJson`, `OrderEventLogJson`, `GridCycleLogJson` from a saved run and filters all three collections by `CycleId`; returns `BacktestDebugResponse` | `src/TradePilot.Application/Backtesting/GetBacktestDebugQuery.cs` |
 
 ---
 
 # API
 
-Implemented in `src/TradingApp.Api/Controllers/BacktestsController.cs`:
+Implemented in `src/TradePilot.Api/Controllers/BacktestsController.cs`:
 
 | Method | Route | Description |
 |--------|-------|-------------|
@@ -538,8 +538,8 @@ Implemented in `src/TradingApp.Api/Controllers/BacktestsController.cs`:
 `BacktestsController` extends `ApiController` and dispatches all operations via MediatR.
 
 **Response types:**
-- `BacktestSummaryDto` (`src/TradingApp.Api/Models/BacktestSummaryDto.cs`) — the API-layer projection returned by `GET /api/backtests` (mapped from `BacktestRunSummary`; same fields).
-- `PagedResult<T>` (`src/TradingApp.Application/Abstractions/Models/PagedResult.cs`) — generic paging envelope: `Items`, `Page`, `PageSize`, `TotalCount`, `TotalPages` (computed). Used by both the repository interface and the API response.
+- `BacktestSummaryDto` (`src/TradePilot.Api/Models/BacktestSummaryDto.cs`) — the API-layer projection returned by `GET /api/backtests` (mapped from `BacktestRunSummary`; same fields).
+- `PagedResult<T>` (`src/TradePilot.Application/Abstractions/Models/PagedResult.cs`) — generic paging envelope: `Items`, `Page`, `PageSize`, `TotalCount`, `TotalPages` (computed). Used by both the repository interface and the API response.
 
 # UI
 
