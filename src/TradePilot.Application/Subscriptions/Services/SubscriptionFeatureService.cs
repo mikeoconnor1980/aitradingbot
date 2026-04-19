@@ -16,6 +16,7 @@ public interface ISubscriptionFeatureService
 
 public sealed class SubscriptionFeatureService : ISubscriptionFeatureService
 {
+    private static readonly string[] QuoteSuffixes = ["USDT", "USDC", "USD"];
     private readonly ISubscriptionRepository _subscriptionRepository;
 
     public SubscriptionFeatureService(ISubscriptionRepository subscriptionRepository)
@@ -72,7 +73,9 @@ public sealed class SubscriptionFeatureService : ISubscriptionFeatureService
         }
 
         var asset = ExtractAsset(market);
-        return allowedAssets.Contains(asset, StringComparer.OrdinalIgnoreCase);
+        return allowedAssets
+            .Select(ExtractAsset)
+            .Contains(asset, StringComparer.OrdinalIgnoreCase);
     }
 
     private static string ExtractAsset(string market)
@@ -82,11 +85,34 @@ public sealed class SubscriptionFeatureService : ISubscriptionFeatureService
             return string.Empty;
         }
 
-        var assetChars = market.Trim()
-            .TakeWhile(char.IsLetter)
-            .Select(char.ToUpperInvariant)
-            .ToArray();
+        var normalized = market.Trim().ToUpperInvariant();
 
-        return new string(assetChars);
+        if (normalized.EndsWith(".P", StringComparison.Ordinal))
+        {
+            normalized = normalized[..^2];
+        }
+
+        if (normalized.EndsWith("-PERP", StringComparison.Ordinal))
+        {
+            normalized = normalized[..^5];
+        }
+        else if (normalized.EndsWith("PERP", StringComparison.Ordinal))
+        {
+            normalized = normalized[..^4];
+        }
+
+        normalized = normalized.Replace('/', '-');
+        var baseSegment = normalized.Split('-', StringSplitOptions.RemoveEmptyEntries)[0];
+
+        foreach (var suffix in QuoteSuffixes)
+        {
+            if (baseSegment.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                baseSegment = baseSegment[..^suffix.Length];
+                break;
+            }
+        }
+
+        return new string(baseSegment.Where(char.IsLetterOrDigit).ToArray());
     }
 }
