@@ -10,6 +10,8 @@ import { MacdOperator, PriceVsEmaDistanceType, PriceVsEmaOperator, RsiOperator, 
   styleUrl: "./preview-summary-card.component.scss"
 })
 export class PreviewSummaryCardComponent {
+  private readonly _dayLabels = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
   @Input()
   public set formValue(value: Record<string, unknown> | null) {
     this._formValue.set(value);
@@ -129,11 +131,11 @@ export class PreviewSummaryCardComponent {
       : `${interval} at ${timeOfDayUtc} UTC`;
     const parts = [`Spot DCA on ${market}: buy $${baseAmountUsd} ${scheduleText}.`];
 
-    if (interval === "weekly" || interval === "biweekly") {
-      parts.push(`Scheduled weekday index: ${this._formatNumber(dca["dayOfWeek"])}.`);
+    if (rawInterval === "weekly" || rawInterval === "biweekly") {
+      parts.push(`Scheduled for ${this._dayOfWeekText(dca["dayOfWeek"])}.`);
     }
 
-    if (interval === "monthly") {
+    if (rawInterval === "monthly") {
       parts.push(`Scheduled day of month: ${this._formatNumber(dca["dayOfMonth"])}.`);
     }
 
@@ -142,8 +144,14 @@ export class PreviewSummaryCardComponent {
       parts.push(`Only buy at or below $${this._formatNumber(maxPriceUsd)}.`);
     }
 
+    const minFearGreedIndex = this._toNullableNumber(gateConditions?.["minFearGreedIndex"]);
     const maxFearGreedIndex = this._toNullableNumber(gateConditions?.["maxFearGreedIndex"]);
-    if (maxFearGreedIndex !== null) {
+
+    if (minFearGreedIndex !== null && maxFearGreedIndex !== null) {
+      parts.push(`Fear & Greed must stay between ${this._formatNumber(minFearGreedIndex)} and ${this._formatNumber(maxFearGreedIndex)}.`);
+    } else if (minFearGreedIndex !== null) {
+      parts.push(`Fear & Greed must be ${this._formatNumber(minFearGreedIndex)} or higher.`);
+    } else if (maxFearGreedIndex !== null) {
       parts.push(`Fear & Greed must be ${this._formatNumber(maxFearGreedIndex)} or lower.`);
     }
 
@@ -356,6 +364,16 @@ export class PreviewSummaryCardComponent {
 
     const parsedValue = Number(value);
     return Number.isNaN(parsedValue) ? null : parsedValue;
+  }
+
+  private _dayOfWeekText(value: unknown): string {
+    const dayIndex = this._toNullableNumber(value);
+
+    if (dayIndex === null || dayIndex < 0 || dayIndex > 6) {
+      return "the selected weekday";
+    }
+
+    return this._dayLabels[dayIndex] ?? "the selected weekday";
   }
 
   private _formatNumber(value: unknown): string {

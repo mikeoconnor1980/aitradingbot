@@ -12,32 +12,37 @@ import { StrategyMapperService } from "./services/strategy-mapper.service";
 import { StrategyValidationService } from "./services/strategy-validation.service";
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
 import { NotificationFacade } from "../../core/services/notification-facade.service";
+import { SubscriptionService } from "../../core/services/subscription.service";
 
 describe("StrategyBuilderPageComponent", () => {
   let fixture: ComponentFixture<StrategyBuilderPageComponent>;
   let component: StrategyBuilderPageComponent;
   let routerSpy: jasmine.SpyObj<Router>;
   let dialogSpy: jasmine.SpyObj<MatDialog>;
+  let activatedRouteStub: {
+    snapshot: {
+      paramMap: ReturnType<typeof convertToParamMap>;
+      queryParamMap: ReturnType<typeof convertToParamMap>;
+    };
+  };
 
   beforeEach(async () => {
     routerSpy = jasmine.createSpyObj<Router>("Router", ["navigate"]);
     routerSpy.navigate.and.resolveTo(true);
     dialogSpy = jasmine.createSpyObj<MatDialog>("MatDialog", ["open"]);
     dialogSpy.open.and.returnValue({ afterClosed: () => of(true) } as never);
+    activatedRouteStub = {
+      snapshot: {
+        paramMap: convertToParamMap({}),
+        queryParamMap: convertToParamMap({})
+      }
+    };
 
     await TestBed.configureTestingModule({
       imports: [StrategyBuilderPageComponent, NoopAnimationsModule],
       providers: [
         { provide: Router, useValue: routerSpy },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            snapshot: {
-              paramMap: convertToParamMap({}),
-              queryParamMap: convertToParamMap({})
-            }
-          }
-        },
+        { provide: ActivatedRoute, useValue: activatedRouteStub },
         {
           provide: StrategyApiService,
           useValue: jasmine.createSpyObj("StrategyApiService", ["getStrategy", "createStrategy", "updateStrategy", "interpretStrategy"])
@@ -108,6 +113,12 @@ describe("StrategyBuilderPageComponent", () => {
           useValue: jasmine.createSpyObj("NotificationFacade", ["success", "error"])
         },
         {
+          provide: SubscriptionService,
+          useValue: {
+            hasFeature: () => true,
+          }
+        },
+        {
           provide: HyperliquidApiService,
           useValue: {
             getAccountSummary: () => of({
@@ -163,6 +174,22 @@ describe("StrategyBuilderPageComponent", () => {
     expect(component.form.get("timeframe")?.value).toBe("1h");
     expect(component.form.get("direction")?.value).toBe("long");
     expect(component.form.get("dca.baseAmountUsd")?.value).toBe(100);
+  });
+
+  it("should initialize DCA mode from the mode query param", () => {
+    activatedRouteStub.snapshot.queryParamMap = convertToParamMap({ mode: "dca" });
+
+    const dcaFixture = TestBed.createComponent(StrategyBuilderPageComponent);
+    const dcaComponent = dcaFixture.componentInstance;
+
+    dcaFixture.detectChanges();
+
+    expect(dcaComponent.isDcaMode).toBeTrue();
+    expect(dcaComponent.selectedTemplateId).toBe("dca");
+    expect(dcaComponent.form.get("timeframe")?.value).toBe("1h");
+    expect(dcaComponent.form.get("direction")?.value).toBe("long");
+    expect(dcaComponent.form.pristine).toBeTrue();
+    expect(dcaComponent.hasUnsavedChanges()).toBeFalse();
   });
 
   it("should include risk-based controls in the risk form group", () => {

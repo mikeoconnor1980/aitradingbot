@@ -93,10 +93,9 @@ export class StrategyValidationService {
         }
 
         const stopLossEnabled = Boolean(stopLoss?.["enabled"] ?? false);
-        const stopLossType = String(stopLoss?.["type"] ?? "");
 
-        if (!stopLossEnabled || stopLossType !== "fixed_percent") {
-          errors.push(this._error("risk.positionSizeType", "SL_REQUIRED", "Risk-based sizing requires a fixed-percent stop-loss to be enabled."));
+        if (!stopLossEnabled) {
+          errors.push(this._error("risk.positionSizeType", "SL_REQUIRED", "Risk-based sizing requires a stop-loss. Enable a stop-loss in the exit rules section."));
         }
       } else if (positionSizeValue < 0.01 || positionSizeValue > 100) {
         errors.push(this._error("risk.positionSizeValue", "RANGE", "Position size must be between 0.01 and 100."));

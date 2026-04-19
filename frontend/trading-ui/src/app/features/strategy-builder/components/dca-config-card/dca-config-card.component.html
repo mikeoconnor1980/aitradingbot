@@ -1,12 +1,12 @@
 <mat-card class="dca-card" [formGroup]="group">
   <mat-card-header>
     <mat-card-title>DCA Schedule</mat-card-title>
-    <mat-card-subtitle>Single-market spot DCA for builder and backtest testing.</mat-card-subtitle>
+    <mat-card-subtitle>Recurring spot accumulation with optional price and sentiment gates.</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
     <p class="dca-card__hint">
-      Live spot execution is still blocked until Hyperliquid spot order support is added. You can configure and backtest the strategy now.
+      Configure recurring buys, optional sentiment filters, and price-based scaling. Live spot execution remains unavailable until Hyperliquid spot order support is added.
     </p>
 
     <div class="dca-card__grid">
@@ -65,6 +65,12 @@
           <mat-label>Max price gate</mat-label>
           <input matInput type="number" formControlName="maxPriceUsd" min="0.00000001" step="0.01" />
           <mat-hint>Optional. Only buy when price is at or below this level.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Min Fear &amp; Greed</mat-label>
+          <input matInput type="number" formControlName="minFearGreedIndex" min="0" max="100" step="1" />
+          <mat-hint>Optional. Only buy when the index is at or above this value.</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="outline">

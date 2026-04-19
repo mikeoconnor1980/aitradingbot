@@ -125,7 +125,6 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   public ngOnInit(): void {
     this.editId = this._route.snapshot.paramMap.get("id");
     this._setupValidationStream();
-    this._savedFormSnapshot = this._createFormSnapshot();
 
     if (this.editId !== null) {
       this._loadStrategy(this.editId);
@@ -138,6 +137,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
         const prefillConfig = history.state?.["prefillConfig"] as StrategyConfig | undefined;
         if (prefillConfig !== undefined) {
           this._populateFormFromIntent({ config: prefillConfig });
+        } else if (this._applyRequestedTemplateFromQuery()) {
+          this._savedFormSnapshot = this._createFormSnapshot();
+          this.form.markAsPristine();
+        } else {
+          this._savedFormSnapshot = this._createFormSnapshot();
         }
       }
     }
@@ -307,6 +311,10 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   }
 
   public onTemplateSelected(templateId: string): void {
+    this._applyTemplateSelection(templateId);
+  }
+
+  private _applyTemplateSelection(templateId: string, markDirty: boolean = true): void {
     const mode = this._isDcaTemplate(templateId) ? "dca"
       : this._isSignalTemplate(templateId) ? "signal"
       : "grid";
@@ -316,7 +324,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     this._applyModeState(templateId);
 
     if (mode === "dca") {
-      this._applyDcaTemplate();
+      this._applyDcaTemplate(markDirty);
       return;
     }
 
@@ -804,7 +812,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     this.form.updateValueAndValidity();
   }
 
-  private _applyDcaTemplate(): void {
+  private _applyDcaTemplate(markDirty: boolean = true): void {
     this.form.get("direction")?.setValue("long", { emitEvent: false });
     this.form.get("timeframe")?.setValue("1h", { emitEvent: false });
     this.dcaFormGroup.patchValue({
@@ -820,7 +828,11 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       },
     });
     this._setDcaScalingBands([]);
-    this.form.markAsDirty();
+
+    if (markDirty) {
+      this.form.markAsDirty();
+    }
+
     this.form.updateValueAndValidity();
   }
 
@@ -1109,6 +1121,31 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
 
     this.form.markAsDirty();
     this.form.updateValueAndValidity();
+  }
+
+  private _applyRequestedTemplateFromQuery(): boolean {
+    const requestedMode = String(this._route.snapshot.queryParamMap.get("mode") ?? "").trim().toLowerCase();
+
+    if (requestedMode.length === 0) {
+      return false;
+    }
+
+    if (requestedMode === "dca") {
+      this._applyTemplateSelection("dca", false);
+      return true;
+    }
+
+    if (requestedMode === "signal") {
+      this._applyTemplateSelection("custom_signal", false);
+      return true;
+    }
+
+    if (requestedMode === "grid") {
+      this._applyTemplateSelection("grid", false);
+      return true;
+    }
+
+    return false;
   }
 
   private _shouldConfirmInterpretation(): boolean {

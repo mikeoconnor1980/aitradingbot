@@ -7,6 +7,8 @@
         <span>Add at least one entry condition to continue to the next step.</span>
       </div>
     }
+  } @else if (isDcaMode) {
+    <app-dca-config-card [group]="dcaGroup"></app-dca-config-card>
   } @else {
     <app-grid-config-card [group]="gridGroup"></app-grid-config-card>
   }

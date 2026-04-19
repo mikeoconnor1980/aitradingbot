@@ -11,7 +11,7 @@ import { debounceTime, map, startWith, switchMap, tap } from "rxjs";
 import { of } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { NotificationFacade } from "../../../core/services/notification-facade.service";
-import { StrategyConfig, StrategyTemplateDto, ServerValidationResult, ValidationError } from "../models/strategy.model";
+import { DcaScalingBand, StrategyConfig, StrategyTemplateDto, ServerValidationResult, ValidationError } from "../models/strategy.model";
 import { StrategyApiService } from "../services/strategy-api.service";
 import { StrategyMapperService } from "../services/strategy-mapper.service";
 import { StrategyValidationService } from "../services/strategy-validation.service";
@@ -66,6 +66,11 @@ export class StrategyWizardPageComponent implements OnInit {
     ["signal", "signal"],
     ["dca", "dca"],
   ]);
+  private readonly _wizardStepEducationIndices: Record<"grid" | "signal" | "dca", number[]> = {
+    grid: [0, 1, 2, 3, 4, 6],
+    signal: [0, 1, 2, 3, 4, 5, 6],
+    dca: [0, 1, 2, 6],
+  };
 
   public form: FormGroup = this._buildForm();
   public entryStepForm: FormGroup = this._fb.group({}, { validators: [this._entryStepValidator()] });
@@ -104,8 +109,19 @@ export class StrategyWizardPageComponent implements OnInit {
     return this.isSignalMode;
   }
 
+  public get showExitStep(): boolean {
+    return !this.isDcaMode;
+  }
+
+  public get showRiskStep(): boolean {
+    return !this.isDcaMode;
+  }
+
   public get currentStepEducation(): WizardStepEducation {
-    return this._education.getStepEducation(this.currentStepIndex);
+    const visibleIndices = this._wizardStepEducationIndices[this.selectedTemplateMode] ?? this._wizardStepEducationIndices.grid;
+    const educationIndex = visibleIndices[this.currentStepIndex] ?? visibleIndices[0] ?? 0;
+
+    return this._education.getStepEducation(educationIndex);
   }
 
   public get marketGroup(): FormGroup {
@@ -114,6 +130,10 @@ export class StrategyWizardPageComponent implements OnInit {
 
   public get gridGroup(): FormGroup {
     return this.form.get("grid") as FormGroup;
+  }
+
+  public get dcaGroup(): FormGroup {
+    return this.form.get("dca") as FormGroup;
   }
 
   public get exitGroup(): FormGroup {
@@ -137,6 +157,10 @@ export class StrategyWizardPageComponent implements OnInit {
   }
 
   public get entryStepErrorMessage(): string {
+    if (this.isDcaMode) {
+      return "DCA schedule is incomplete";
+    }
+
     if (this.isSignalMode) {
       return "At least one entry condition required";
     }
@@ -184,35 +208,14 @@ export class StrategyWizardPageComponent implements OnInit {
   }
 
   public onTemplateSelected(templateId: string): void {
-    if (templateId === "dca") {
-      void this._router.navigate(["/strategies/new"], { queryParams: { mode: "dca" } });
-
-      return;
-    }
-
     this.form.patchValue({ templateId });
-
-    if (this._templateModeMap.get(templateId) === "signal") {
-      this.form.get("grid")?.disable();
-    } else {
-      this.form.get("grid")?.enable();
-    }
-
+    this._applyModeState();
     this._applyTemplateDefaults(templateId);
     this._maybeAutoName();
     this.entryStepForm.updateValueAndValidity();
   }
 
   public onLibraryTemplateSelected(template: StrategyTemplateDto): void {
-    if (template.strategyMode === "dca") {
-      void this._router.navigate(["/strategies/new"], {
-        queryParams: { mode: "dca" },
-        state: { prefillConfig: template.config }
-      });
-
-      return;
-    }
-
     this._applyLibraryTemplateToForm(template);
     this.stepper.next();
   }
@@ -272,6 +275,19 @@ export class StrategyWizardPageComponent implements OnInit {
       market: ["BTC-USD", Validators.required],
       timeframe: ["15m", Validators.required],
       direction: ["long", Validators.required],
+      dca: this._fb.group({
+        interval: ["weekly", Validators.required],
+        dayOfWeek: [1, [Validators.min(0), Validators.max(6)]],
+        dayOfMonth: [null, [Validators.min(1), Validators.max(31)]],
+        timeOfDayUtc: ["00:00", [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
+        baseAmountUsd: [100, [Validators.required, Validators.min(0.01)]],
+        gateConditions: this._fb.group({
+          maxPriceUsd: [null, [Validators.min(0.00000001)]],
+          minFearGreedIndex: [null, [Validators.min(0), Validators.max(100)]],
+          maxFearGreedIndex: [null, [Validators.min(0), Validators.max(100)]],
+        }),
+        scalingBands: this._fb.array([]),
+      }),
       grid: this._fb.group({
         levels: [10, [Validators.required, Validators.min(1), Validators.max(50)]],
         spacing: [0.5, [Validators.required, Validators.min(0.01), Validators.max(10)]],
@@ -438,7 +454,8 @@ export class StrategyWizardPageComponent implements OnInit {
         this._resetGridDefaults();
         break;
       case "dca":
-        // DCA bypasses the wizard — no defaults to apply
+        this.conditionsArray.clear();
+        this._resetDcaDefaults();
         break;
     }
 
@@ -461,17 +478,32 @@ export class StrategyWizardPageComponent implements OnInit {
     });
   }
 
+  private _resetDcaDefaults(): void {
+    this.dcaGroup.patchValue({
+      interval: "weekly",
+      dayOfWeek: 1,
+      dayOfMonth: null,
+      timeOfDayUtc: "00:00",
+      baseAmountUsd: 100,
+      gateConditions: {
+        maxPriceUsd: null,
+        minFearGreedIndex: null,
+        maxFearGreedIndex: null,
+      },
+    });
+    this._setDcaScalingBands([]);
+  }
+
   private _applyLibraryTemplateToForm(template: StrategyTemplateDto): void {
     const config = template.config;
 
-    const templateId = config.strategyMode === "signal" ? "signal" : "grid";
+    const templateId = config.strategyMode === "dca"
+      ? "dca"
+      : config.strategyMode === "signal"
+        ? "signal"
+        : "grid";
     this.form.patchValue({ templateId });
-
-    if (templateId === "signal") {
-      this.form.get("grid")?.disable();
-    } else {
-      this.form.get("grid")?.enable();
-    }
+    this._applyModeState();
 
     this.form.patchValue({
       strategyName: template.name,
@@ -484,6 +516,22 @@ export class StrategyWizardPageComponent implements OnInit {
         notes: config.metadata?.notes ?? "",
       },
     });
+
+    if (config.dca) {
+      this.dcaGroup.patchValue({
+        interval: config.dca.interval,
+        dayOfWeek: config.dca.dayOfWeek ?? 1,
+        dayOfMonth: config.dca.dayOfMonth ?? null,
+        timeOfDayUtc: config.dca.timeOfDayUtc,
+        baseAmountUsd: config.dca.baseAmountUsd,
+        gateConditions: {
+          maxPriceUsd: config.dca.gateConditions?.maxPriceUsd ?? null,
+          minFearGreedIndex: config.dca.gateConditions?.minFearGreedIndex ?? null,
+          maxFearGreedIndex: config.dca.gateConditions?.maxFearGreedIndex ?? null,
+        },
+      });
+      this._setDcaScalingBands(config.dca.scalingBands ?? []);
+    }
 
     this._userEditedName = true;
 
@@ -528,6 +576,10 @@ export class StrategyWizardPageComponent implements OnInit {
     this.gridGroup.statusChanges.pipe(
       takeUntilDestroyed(this._destroyRef)
     ).subscribe(() => this.entryStepForm.updateValueAndValidity());
+
+    this.dcaGroup.statusChanges.pipe(
+      takeUntilDestroyed(this._destroyRef)
+    ).subscribe(() => this.entryStepForm.updateValueAndValidity());
   }
 
   private _entryStepValidator(): ValidatorFn {
@@ -540,6 +592,12 @@ export class StrategyWizardPageComponent implements OnInit {
         const conditions = this.form.get("conditions") as FormArray;
 
         return conditions && conditions.length > 0 ? null : { entryConditionsRequired: true };
+      }
+
+      if (this.isDcaMode) {
+        const dca = this.form.get("dca") as FormGroup;
+
+        return dca && dca.valid ? null : { dcaInvalid: true };
       }
 
       const grid = this.form.get("grid") as FormGroup;
@@ -564,6 +622,24 @@ export class StrategyWizardPageComponent implements OnInit {
       metadata: config.metadata ?? { tags: [], notes: "" },
     });
 
+    this._applyModeState();
+
+    if (config.dca) {
+      this.dcaGroup.patchValue({
+        interval: config.dca.interval,
+        dayOfWeek: config.dca.dayOfWeek ?? 1,
+        dayOfMonth: config.dca.dayOfMonth ?? null,
+        timeOfDayUtc: config.dca.timeOfDayUtc,
+        baseAmountUsd: config.dca.baseAmountUsd,
+        gateConditions: {
+          maxPriceUsd: config.dca.gateConditions?.maxPriceUsd ?? null,
+          minFearGreedIndex: config.dca.gateConditions?.minFearGreedIndex ?? null,
+          maxFearGreedIndex: config.dca.gateConditions?.maxFearGreedIndex ?? null,
+        },
+      });
+      this._setDcaScalingBands(config.dca.scalingBands ?? []);
+    }
+
     if (config.grid) {
       this.form.get("grid")?.patchValue(config.grid);
     }
@@ -585,6 +661,42 @@ export class StrategyWizardPageComponent implements OnInit {
     }
 
     this.form.updateValueAndValidity();
+  }
+
+  private _applyModeState(): void {
+    if (this.isSignalMode || this.isDcaMode) {
+      this.gridGroup.disable({ emitEvent: false });
+    } else {
+      this.gridGroup.enable({ emitEvent: false });
+    }
+
+    if (this.isDcaMode) {
+      this.form.get("timeframe")?.setValue("1h", { emitEvent: false });
+      this.form.get("direction")?.setValue("long", { emitEvent: false });
+      this.form.get("timeframe")?.disable({ emitEvent: false });
+      this.form.get("direction")?.disable({ emitEvent: false });
+      return;
+    }
+
+    this.form.get("timeframe")?.enable({ emitEvent: false });
+    this.form.get("direction")?.enable({ emitEvent: false });
+  }
+
+  private _setDcaScalingBands(bands: readonly DcaScalingBand[]): void {
+    const scalingBands = this.dcaGroup.get("scalingBands") as FormArray;
+    scalingBands.clear();
+
+    for (const band of bands) {
+      scalingBands.push(this._createDcaScalingBandGroup(band));
+    }
+  }
+
+  private _createDcaScalingBandGroup(band?: DcaScalingBand): FormGroup {
+    return this._fb.group({
+      priceLowerUsd: [band?.priceLowerUsd ?? null, [Validators.min(0.00000001)]],
+      priceUpperUsd: [band?.priceUpperUsd ?? null, [Validators.min(0.00000001)]],
+      scalingPercent: [band?.scalingPercent ?? 0, [Validators.required, Validators.min(-100), Validators.max(500)]],
+    });
   }
 
   private _loadLibraryTemplates(): void {

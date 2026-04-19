@@ -73,7 +73,9 @@
           <h3 class="strategy-wizard__question">{{ _education.getStepEducation(2).question }}</h3>
           <app-wizard-entry-step
             [isSignalMode]="isSignalMode"
+            [isDcaMode]="isDcaMode"
             [gridGroup]="gridGroup"
+            [dcaGroup]="dcaGroup"
             [conditionsArray]="conditionsArray"
             [entryLogicControl]="entryLogicControl">
           </app-wizard-entry-step>
@@ -99,6 +101,7 @@
       </mat-step>
 
       <!-- Step 4: Exit Rules -->
+      @if (showExitStep) {
       <mat-step [stepControl]="exitGroup" [editable]="true" label="Exits">
         <div class="strategy-wizard__step-content">
           <h3 class="strategy-wizard__question">{{ _education.getStepEducation(3).question }}</h3>
@@ -123,8 +126,10 @@
           </div>
         </div>
       </mat-step>
+      }
 
       <!-- Step 5: Risk Management -->
+      @if (showRiskStep) {
       <mat-step [stepControl]="riskGroup" [editable]="true" label="Risk">
         <div class="strategy-wizard__step-content">
           <h3 class="strategy-wizard__question">{{ _education.getStepEducation(4).question }}</h3>
@@ -149,6 +154,7 @@
           </div>
         </div>
       </mat-step>
+      }
 
       <!-- Optional Step: Trend Filter (signal mode only) -->
       @if (showFilterStep) {
@@ -240,7 +246,16 @@
               <dd>{{ conditionsArray.length }}</dd>
             </div>
           }
-          @if (!isSignalMode) {
+          @if (isDcaMode) {
+            <div class="strategy-wizard__summary-row">
+              <dt>Schedule</dt>
+              <dd>{{ form.get("dca.interval")?.value }}</dd>
+            </div>
+            <div class="strategy-wizard__summary-row">
+              <dt>Base Buy</dt>
+              <dd>${{ form.get("dca.baseAmountUsd")?.value }}</dd>
+            </div>
+          } @else if (!isSignalMode) {
             <div class="strategy-wizard__summary-row">
               <dt>Grid Levels</dt>
               <dd>{{ form.get("grid.levels")?.value }}</dd>
@@ -250,18 +265,19 @@
               <dd>{{ form.get("grid.spacing")?.value }}%</dd>
             </div>
           }
-          @if (form.get("exit.takeProfit.enabled")?.value) {
+          @if (!isDcaMode && form.get("exit.takeProfit.enabled")?.value) {
             <div class="strategy-wizard__summary-row">
               <dt>Take Profit</dt>
               <dd>{{ form.get("exit.takeProfit.value")?.value }}%</dd>
             </div>
           }
-          @if (form.get("exit.stopLoss.enabled")?.value) {
+          @if (!isDcaMode && form.get("exit.stopLoss.enabled")?.value) {
             <div class="strategy-wizard__summary-row">
               <dt>Stop Loss</dt>
               <dd>{{ form.get("exit.stopLoss.type")?.value === "fixed_percent" ? form.get("exit.stopLoss.value")?.value + "%" : form.get("exit.stopLoss.type")?.value }}</dd>
             </div>
           }
+          @if (!isDcaMode) {
           <div class="strategy-wizard__summary-row">
             <dt>Position Size</dt>
             <dd>{{ form.get("risk.positionSizeValue")?.value }}%</dd>
@@ -270,6 +286,7 @@
             <dt>Leverage</dt>
             <dd>{{ form.get("risk.leverage")?.value }}x</dd>
           </div>
+          }
         </dl>
       </aside>
     }
