@@ -136,6 +136,46 @@ describe("StrategyValidationService", () => {
     expect(errors.some((error) => error.fieldPath === "exit.stopLoss.lookback" && error.code === "REQUIRED")).toBeTrue();
   });
 
+  it("should allow risk-based sizing with a swing low stop loss", () => {
+    const errors = service.validate({
+      ...baseFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "r_multiple", value: 2 },
+        stopLoss: { enabled: true, type: "swing_low", value: null, lookback: 10 }
+      },
+      risk: {
+        positionSizeType: "risk_based",
+        positionSizeValue: 0,
+        riskPerTradePercent: 1,
+        leverage: 1,
+        maxOpenTrades: 1,
+        cooldownValue: 0,
+      },
+    });
+
+    expect(errors.some((error) => error.fieldPath === "risk.positionSizeType" && error.code === "SL_REQUIRED")).toBeFalse();
+  });
+
+  it("should require an enabled stop loss for risk-based sizing", () => {
+    const errors = service.validate({
+      ...baseFormValue(),
+      exit: {
+        takeProfit: { enabled: true, type: "r_multiple", value: 2 },
+        stopLoss: { enabled: false, type: "swing_low", value: null, lookback: 10 }
+      },
+      risk: {
+        positionSizeType: "risk_based",
+        positionSizeValue: 0,
+        riskPerTradePercent: 1,
+        leverage: 1,
+        maxOpenTrades: 1,
+        cooldownValue: 0,
+      },
+    });
+
+    expect(errors.some((error) => error.fieldPath === "risk.positionSizeType" && error.code === "SL_REQUIRED")).toBeTrue();
+  });
+
   describe("DCA mode validation", () => {
     it("should accept a valid DCA form", () => {
       const errors = service.validate(validDcaFormValue());
