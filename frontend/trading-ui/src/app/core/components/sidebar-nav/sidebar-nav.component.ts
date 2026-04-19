@@ -8,6 +8,8 @@ export interface NavItem {
   icon: string;
   label: string;
   exact?: boolean;
+  feature?: string;
+  upgradePrompt?: string;
 }
 
 @Component({
@@ -33,40 +35,59 @@ export class SidebarNavComponent {
     { route: "/strategies/wizard", icon: "auto_fix_high", label: "Strategy Wizard" },
     { route: "/backtesting", icon: "history", label: "Backtesting" },
     { route: "/candle-data", icon: "candlestick_chart", label: "Data Management" },
-    { route: "/optimizer", icon: "auto_graph", label: "Optimizer" },
-    { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar" },
     { route: "/agents", icon: "devices", label: "Agents" },
-    { route: "/settings/webhooks", icon: "hub", label: "Webhooks" },
     { route: "/order-entry", icon: "swap_vert", label: "Order Entry" }
   ];
 
+  private readonly _proNavItems: NavItem[] = [
+    { route: "/optimizer", icon: "auto_graph", label: "Optimizer", feature: "optimizer", upgradePrompt: "optimizer" },
+    { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar", feature: "macrocalendar", upgradePrompt: "macro-calendar" },
+    { route: "/settings/webhooks", icon: "hub", label: "Webhooks", feature: "webhooks", upgradePrompt: "webhooks" }
+  ];
+
+  private readonly _adminNavItems: NavItem[] = [
+    { route: "/admin/strategy-library", icon: "admin_panel_settings", label: "Strategy Library" },
+    { route: "/admin/users", icon: "manage_accounts", label: "Admin Users" }
+  ];
+
   public get navItems(): NavItem[] {
-    const normalizedFeatures = new Set(this.features.map((feature) => feature.toLowerCase()));
-    const baseItems = this._baseNavItems.filter((item) => {
-      if (item.route === "/optimizer") {
-        return normalizedFeatures.has("optimizer");
-      }
+    return this._baseNavItems;
+  }
 
-      if (item.route === "/macro-calendar") {
-        return normalizedFeatures.has("macrocalendar");
-      }
+  public get proNavItems(): NavItem[] {
+    return this._proNavItems;
+  }
 
-      if (item.route === "/settings/webhooks") {
-        return normalizedFeatures.has("webhooks");
-      }
+  public get adminNavItems(): NavItem[] {
+    return this.isAdmin ? this._adminNavItems : [];
+  }
 
+  public get hasLockedProItems(): boolean {
+    return this._proNavItems.some((item) => !this.hasFeature(item.feature));
+  }
+
+  public hasFeature(feature: string | undefined): boolean {
+    if (!feature) {
       return true;
-    });
-
-    if (!this.isAdmin) {
-      return baseItems;
     }
 
-    return [
-      ...baseItems,
-      { route: "/admin/strategy-library", icon: "admin_panel_settings", label: "Strategy Library" },
-      { route: "/admin/users", icon: "manage_accounts", label: "Admin Users" }
-    ];
+    return this.features.some((item) => item.toLowerCase() === feature.toLowerCase());
+  }
+
+  public getUpgradeQueryParams(item: NavItem): Record<string, string> {
+    return {
+      upgrade: item.upgradePrompt ?? item.label.toLowerCase()
+    };
+  }
+
+  public getTooltip(item: NavItem): string {
+    if (this.expanded) {
+      return "";
+    }
+
+    return this.hasFeature(item.feature)
+      ? item.label
+      : `${item.label} · Pro required`;
   }
 
   public readonly logoutClicked = output();

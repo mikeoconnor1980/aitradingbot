@@ -33,6 +33,15 @@
         <mat-card-title>Subscription</mat-card-title>
       </mat-card-header>
       <mat-card-content>
+        @if (upgradePrompt(); as featureName) {
+          <div class="profile-page__upgrade-banner">
+            <mat-icon>lock</mat-icon>
+            <div>
+              <p class="profile-page__upgrade-title">{{ featureName }} is available on Pro</p>
+              <p class="profile-page__upgrade-copy">Upgrade to Pro to unlock this feature and the rest of the advanced toolset.</p>
+            </div>
+          </div>
+        }
         @if (subscription$ | async; as sub) {
           @if (sub.isActive) {
             <dl class="profile-page__details">

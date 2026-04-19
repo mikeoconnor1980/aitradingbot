@@ -28,17 +28,76 @@
   </div>
 
   <nav class="sidebar__nav">
-    @for (item of navItems; track item.route) {
-      <a
-        class="sidebar__link"
-        [routerLink]="item.route"
-        routerLinkActive="sidebar__link--active"
-        [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-        [matTooltip]="expanded ? '' : item.label"
-        matTooltipPosition="right">
-        <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
-        <span class="sidebar__label">{{ item.label }}</span>
-      </a>
+    <div class="sidebar__group">
+      @for (item of navItems; track item.route) {
+        <a
+          class="sidebar__link"
+          [routerLink]="item.route"
+          routerLinkActive="sidebar__link--active"
+          [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          [matTooltip]="getTooltip(item)"
+          matTooltipPosition="right">
+          <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
+          <span class="sidebar__label">{{ item.label }}</span>
+        </a>
+      }
+    </div>
+
+    <div class="sidebar__group sidebar__group--pro">
+      <div class="sidebar__group-header">
+        <span class="sidebar__group-title">Pro</span>
+        @if (hasLockedProItems) {
+          <span class="sidebar__group-badge">Unlock</span>
+        }
+      </div>
+
+      @for (item of proNavItems; track item.route) {
+        @if (hasFeature(item.feature)) {
+          <a
+            class="sidebar__link sidebar__link--pro"
+            [routerLink]="item.route"
+            routerLinkActive="sidebar__link--active"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+            [matTooltip]="getTooltip(item)"
+            matTooltipPosition="right">
+            <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
+            <span class="sidebar__label">{{ item.label }}</span>
+            <span class="sidebar__chip">Pro</span>
+          </a>
+        } @else {
+          <a
+            class="sidebar__link sidebar__link--locked"
+            routerLink="/profile"
+            [queryParams]="getUpgradeQueryParams(item)"
+            [matTooltip]="getTooltip(item)"
+            matTooltipPosition="right">
+            <mat-icon class="sidebar__icon">lock</mat-icon>
+            <span class="sidebar__label">{{ item.label }}</span>
+            <span class="sidebar__meta">Pro</span>
+          </a>
+        }
+      }
+    </div>
+
+    @if (adminNavItems.length > 0) {
+      <div class="sidebar__group sidebar__group--admin">
+        <div class="sidebar__group-header">
+          <span class="sidebar__group-title">Admin</span>
+        </div>
+
+        @for (item of adminNavItems; track item.route) {
+          <a
+            class="sidebar__link"
+            [routerLink]="item.route"
+            routerLinkActive="sidebar__link--active"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+            [matTooltip]="getTooltip(item)"
+            matTooltipPosition="right">
+            <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
+            <span class="sidebar__label">{{ item.label }}</span>
+          </a>
+        }
+      </div>
     }
   </nav>
 

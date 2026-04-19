@@ -16,7 +16,7 @@ import { HealthService } from "../../core/services/health.service";
 import { ProfileService } from "../../core/services/profile.service";
 import { SubscriptionService } from "../../core/services/subscription.service";
 import { WalletService } from "../../core/services/wallet.service";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { environment } from "../../../environments/environment";
 import { TelegramLinkComponent } from "./telegram-link.component";
 
@@ -35,6 +35,7 @@ export class ProfilePageComponent implements OnInit {
   private readonly _walletService = inject(WalletService);
   private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _router = inject(Router);
+  private readonly _route = inject(ActivatedRoute);
 
   public get user() {
     const current = this._authService.currentUser;
@@ -48,6 +49,7 @@ export class ProfilePageComponent implements OnInit {
   public readonly subscribing = signal(false);
   public readonly cancellingSubscription = signal(false);
   public readonly subscribeError = signal<string | null>(null);
+  public readonly upgradePrompt = signal<string | null>(null);
 
   public readonly wallet$ = this._healthService.health$.pipe(
     map((h) => h ? { address: h.walletAddress, network: h.network } : null)
@@ -85,6 +87,7 @@ export class ProfilePageComponent implements OnInit {
     this._profileService.load();
     this._subscriptionService.loadStatus();
     this._agentService.refreshAgents();
+    this.upgradePrompt.set(this.getUpgradePromptLabel(this._route.snapshot.queryParamMap.get("upgrade")));
     this.profile$.subscribe((profile) => {
       if (profile) {
         this.networkControl.setValue(profile.preferredNetwork, { emitEvent: false });
@@ -205,5 +208,27 @@ export class ProfilePageComponent implements OnInit {
     if (status === "expired") return "Expired";
     if (status === "cancelled") return "Cancelled";
     return "None";
+  }
+
+  private getUpgradePromptLabel(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const normalized = value.trim().toLowerCase();
+
+    if (normalized === "macro-calendar") {
+      return "Macro Calendar";
+    }
+
+    if (normalized === "optimizer") {
+      return "Optimizer";
+    }
+
+    if (normalized === "webhooks") {
+      return "TradingView Webhooks";
+    }
+
+    return "this feature";
   }
 }
