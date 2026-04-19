@@ -12,6 +12,7 @@ public sealed class AgentCommand
     public required AgentCommandType Type { get; init; }
     public StrategyConfig? StrategyConfig { get; init; }
     public OrderCommandPayload? OrderPayload { get; init; }
+    public ClosePositionPayload? ClosePositionPayload { get; init; }
     public CancelOrderPayload? CancelPayload { get; init; }
     public CancelAllOrdersPayload? CancelAllPayload { get; init; }
     public SetLeveragePayload? LeveragePayload { get; init; }
@@ -25,6 +26,7 @@ public enum AgentCommandType
     Start,
     Stop,
     PlaceOrder,
+    ClosePosition,
     CancelOrder,
     CancelAllOrders,
     SetLeverage,

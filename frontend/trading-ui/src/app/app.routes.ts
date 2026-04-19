@@ -101,6 +101,12 @@ export const routes: Routes = [
     title: "Agents"
   },
   {
+    path: "settings/webhooks",
+    loadComponent: () => import("./features/webhooks/webhooks-page.component").then((m) => m.WebhooksPageComponent),
+    canActivate: [authGuard],
+    title: "TradingView Webhooks"
+  },
+  {
     path: "profile",
     loadComponent: () => import("./features/profile/profile-page.component").then((m) => m.ProfilePageComponent),
     canActivate: [authGuard],

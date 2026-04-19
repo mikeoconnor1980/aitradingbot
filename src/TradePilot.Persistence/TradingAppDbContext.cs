@@ -29,6 +29,7 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<AdminUserGrant> AdminUserGrants => Set<AdminUserGrant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
+    public DbSet<WebhookConfig> WebhookConfigs => Set<WebhookConfig>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ExecutionLog> ExecutionLogs => Set<ExecutionLog>();
     public DbSet<TelegramLinkCode> TelegramLinkCodes => Set<TelegramLinkCode>();
@@ -811,6 +812,37 @@ public sealed class TradePilotDbContext : DbContext
 
             entity.HasIndex(e => new { e.UserId, e.IsActive })
                 .HasDatabaseName("IX_UserWalletAddresses_UserId_IsActive");
+        });
+
+        modelBuilder.Entity<WebhookConfig>(entity =>
+        {
+            entity.ToTable("WebhookConfigs");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.Label)
+                .HasMaxLength(120)
+                .IsRequired();
+
+            entity.Property(e => e.Token)
+                .HasMaxLength(64)
+                .IsRequired();
+
+            entity.Property(e => e.DefaultAsset)
+                .HasMaxLength(20);
+
+            entity.Property(e => e.TargetAgentId)
+                .HasMaxLength(120);
+
+            entity.HasIndex(e => e.Token)
+                .IsUnique()
+                .HasDatabaseName("IX_WebhookConfigs_Token");
+
+            entity.HasIndex(e => e.UserId)
+                .HasDatabaseName("IX_WebhookConfigs_UserId");
         });
 
         modelBuilder.Entity<Subscription>(entity =>

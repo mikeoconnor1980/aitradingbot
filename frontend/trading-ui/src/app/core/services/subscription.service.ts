@@ -1,6 +1,6 @@
 import { HttpClient, HttpContext } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
-import { BehaviorSubject, Observable, tap, catchError, of, timer, switchMap } from "rxjs";
+import { BehaviorSubject, Observable, tap, catchError, of, timer, switchMap, map } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { SKIP_ERROR_NOTIFICATION } from "../interceptors/http-context-tokens";
 
@@ -54,7 +54,10 @@ export class SubscriptionService {
       .get<SubscriptionStatusResponse>(`${this._url}/status`, {
         context: new HttpContext().set(SKIP_ERROR_NOTIFICATION, true)
       })
-      .pipe(catchError(() => of(SubscriptionService._noSubscription)));
+      .pipe(
+        map((status) => SubscriptionService._normalizeStatus(status)),
+        catchError(() => of(SubscriptionService._noSubscription))
+      );
   }
 
   public subscribe(tier: "beginner" | "pro"): Observable<{ id: string }> {
@@ -83,6 +86,66 @@ export class SubscriptionService {
   }
 
   public setStatus(status: SubscriptionStatusResponse): void {
-    this._status$.next(status);
+    this._status$.next(SubscriptionService._normalizeStatus(status));
+  }
+
+  private static _normalizeStatus(status: SubscriptionStatusResponse | null | undefined): SubscriptionStatusResponse {
+    if (!status) {
+      return SubscriptionService._noSubscription;
+    }
+
+    return {
+      tier: SubscriptionService._normalizeTier(status.tier),
+      status: SubscriptionService._normalizeLifecycle(status.status),
+      expiresAtUtc: status.expiresAtUtc,
+      isActive: status.isActive,
+      features: Array.isArray(status.features) ? status.features : [],
+      allowedAssets: Array.isArray(status.allowedAssets) ? status.allowedAssets : [],
+      maxLeverage: status.maxLeverage
+    };
+  }
+
+  private static _normalizeTier(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    const normalized = String(value).trim().toLowerCase();
+
+    if (normalized === "0" || normalized === "free") {
+      return "beginner";
+    }
+
+    if (normalized === "1" || normalized === "beginner" || normalized === "beginner_trial") {
+      return "beginner";
+    }
+
+    if (normalized === "2" || normalized === "pro" || normalized === "pro_trial") {
+      return "pro";
+    }
+
+    return normalized;
+  }
+
+  private static _normalizeLifecycle(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    const normalized = String(value).trim().toLowerCase();
+
+    if (normalized === "0" || normalized === "active") {
+      return "active";
+    }
+
+    if (normalized === "1" || normalized === "expired") {
+      return "expired";
+    }
+
+    if (normalized === "2" || normalized === "cancelled" || normalized === "canceled") {
+      return "cancelled";
+    }
+
+    return normalized;
   }
 }

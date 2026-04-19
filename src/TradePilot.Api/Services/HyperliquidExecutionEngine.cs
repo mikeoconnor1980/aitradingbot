@@ -39,6 +39,7 @@ public sealed class HyperliquidExecutionEngine : IExecutionEngine
             OrderType = MapOrderType(order.OrderType),
             Price = order.OrderType == OrderType.Limit ? order.Price : null,
             Size = order.Size,
+            ReduceOnly = order.ReduceOnly,
         };
 
         _logger.LogInformation(

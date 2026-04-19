@@ -327,6 +327,10 @@ public sealed class AgentCheckInService : BackgroundService
                 await HandlePlaceOrderAsync(command, cancellationToken);
                 break;
 
+            case AgentCommandType.ClosePosition:
+                await HandleClosePositionAsync(command, cancellationToken);
+                break;
+
             case AgentCommandType.CancelOrder:
                 await HandleCancelOrderAsync(command, cancellationToken);
                 break;
@@ -525,6 +529,8 @@ public sealed class AgentCheckInService : BackgroundService
 
             var orderId = await executionEngine.PlaceOrderAsync(orderRequest, cancellationToken);
 
+            await PlaceCompanionTriggerOrdersAsync(executionEngine, payload, cancellationToken);
+
             var success = !string.IsNullOrEmpty(orderId);
             _logger.LogInformation(
                 "Order command completed: CommandId={CommandId}, Success={Success}, OrderId={OrderId}",
@@ -547,6 +553,149 @@ public sealed class AgentCheckInService : BackgroundService
                 Success = false,
                 Detail = ex.Message
             });
+        }
+    }
+
+    private async Task HandleClosePositionAsync(AgentCommand command, CancellationToken cancellationToken)
+    {
+        if (command.ClosePositionPayload is null)
+        {
+            _logger.LogError("ClosePosition command missing payload. CommandId={CommandId}", command.CommandId);
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Missing close-position payload."
+            });
+            return;
+        }
+
+        if (!_signerProvider.IsConfigured)
+        {
+            _logger.LogError("Cannot close position — wallet not configured.");
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Wallet not configured on agent."
+            });
+            return;
+        }
+
+        var payload = command.ClosePositionPayload;
+        if (payload.Amount is <= 0m)
+        {
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Close amount must be positive when provided."
+            });
+            return;
+        }
+
+        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        if (executionEngine is not IPositionQueryable positionQueryable)
+        {
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Execution engine does not support live position queries."
+            });
+            return;
+        }
+
+        try
+        {
+            await executionEngine.CancelAllOrdersAsync(payload.Asset, cancellationToken);
+
+            var position = await positionQueryable.QueryPositionAsync(payload.Asset, cancellationToken);
+            var absoluteSize = Math.Abs(position.Size);
+
+            if (absoluteSize <= 0m)
+            {
+                _pendingResults.Enqueue(new OrderCommandResult
+                {
+                    CommandId = command.CommandId,
+                    Success = true,
+                    Detail = "No open position found. Cleared open orders for asset."
+                });
+                return;
+            }
+
+            var sizeToClose = payload.Amount.HasValue
+                ? Math.Min(payload.Amount.Value, absoluteSize)
+                : absoluteSize;
+
+            var orderId = await executionEngine.PlaceOrderAsync(
+                new OrderRequest
+                {
+                    Symbol = payload.Asset,
+                    Side = position.Size > 0m ? OrderSide.Sell : OrderSide.Buy,
+                    OrderType = OrderType.Market,
+                    Price = 0m,
+                    Size = sizeToClose,
+                    TradeType = TradeType.Manual,
+                    ReduceOnly = true,
+                },
+                cancellationToken);
+
+            var success = !string.IsNullOrWhiteSpace(orderId);
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = success,
+                OrderId = orderId,
+                Detail = success
+                    ? $"Submitted reduce-only close for {sizeToClose} {payload.Asset}."
+                    : "Close position order rejected by exchange."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Close position failed: CommandId={CommandId}, Asset={Asset}", command.CommandId, payload.Asset);
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = ex.Message
+            });
+        }
+    }
+
+    private async Task PlaceCompanionTriggerOrdersAsync(
+        IExecutionEngine executionEngine,
+        OrderCommandPayload payload,
+        CancellationToken cancellationToken)
+    {
+        if (!payload.StopLossPrice.HasValue && !payload.TakeProfitPrice.HasValue)
+        {
+            return;
+        }
+
+        var closingSide = payload.Side.Equals("buy", StringComparison.OrdinalIgnoreCase) ? "sell" : "buy";
+
+        if (payload.StopLossPrice.HasValue)
+        {
+            await executionEngine.PlaceTriggerOrderAsync(
+                payload.Asset,
+                closingSide,
+                payload.Size,
+                payload.StopLossPrice.Value,
+                "sl",
+                cancellationToken);
+        }
+
+        if (payload.TakeProfitPrice.HasValue)
+        {
+            await executionEngine.PlaceTriggerOrderAsync(
+                payload.Asset,
+                closingSide,
+                payload.Size,
+                payload.TakeProfitPrice.Value,
+                "tp",
+                cancellationToken);
         }
     }
 

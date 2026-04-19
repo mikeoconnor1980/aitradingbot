@@ -81,6 +81,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
             isBuy: isBuy,
             price: price,
             size: order.Size,
+            reduceOnly: order.ReduceOnly,
             tif: tif);
 
         var nonce = _nonceProvider.GetNextNonce();

@@ -134,6 +134,48 @@ public sealed class LiveExecutionEngineTests
     }
 
     [TestMethod]
+    public async Task GivenReduceOnlyOrder_WhenPlaceOrderAsync_ThenSetsReduceOnlyFlag()
+    {
+        var exchangeResponse = BuildSuccessResponse(45678L);
+        var marketInfo = new TradePilot.Application.MarketData.Models.MarketInfoDto
+        {
+            Asset = "BTC-PERP",
+            MidPrice = 50000m,
+            MarkPrice = 50000m,
+            IndexPrice = 50000m,
+            FundingRate = 0.0001m,
+            Volume24h = 1000000m,
+            OpenInterest = 500000m,
+            PriceChange24hPercent = 1.5m
+        };
+
+        _restClient.Setup(r => r.GetMarketInfoAsync("BTC-PERP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(marketInfo);
+
+        _restClient.Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(exchangeResponse);
+
+        var order = new OrderRequest
+        {
+            Symbol = "BTC-PERP",
+            Side = OrderSide.Sell,
+            OrderType = OrderType.Market,
+            Price = 0m,
+            Size = 0.02m,
+            TradeType = TradeType.Manual,
+            ReduceOnly = true,
+        };
+
+        var orderId = await _sut.PlaceOrderAsync(order);
+
+        orderId.Should().Be("45678");
+        _restClient.Verify(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+            It.Is<object>(payload => PayloadHasReduceOnly(payload)),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
     public async Task GivenSpotMarketOrder_WhenPlaceOrderAsync_ThenUsesSpotPairIndexWithoutPerpMidPriceLookup()
     {
         var exchangeResponse = BuildSuccessResponse(54321L);
@@ -381,6 +423,14 @@ public sealed class LiveExecutionEngineTests
 
         return orders.GetArrayLength() > 0
             && orders[0].GetProperty("a").GetInt32() == assetIndex;
+    }
+
+    private static bool PayloadHasReduceOnly(object payload)
+    {
+        var json = JsonSerializer.SerializeToElement(payload);
+        var orders = json.GetProperty("action").GetProperty("orders");
+
+        return orders.GetArrayLength() > 0 && orders[0].GetProperty("r").GetBoolean();
     }
 
     private static bool IsInfoRequestType(object request, string type)

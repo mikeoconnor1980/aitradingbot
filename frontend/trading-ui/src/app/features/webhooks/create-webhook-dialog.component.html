@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>Create TradingView Webhook</h2>
+
+<mat-dialog-content class="webhook-dialog">
+  <form [formGroup]="form" class="webhook-dialog__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Label</mat-label>
+      <input matInput formControlName="label" maxlength="120" placeholder="BTC breakout alerts" />
+      <mat-error>Label is required.</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Default asset</mat-label>
+      <mat-select formControlName="defaultAsset">
+        <mat-option [value]="null">Resolve from TradingView ticker</mat-option>
+        @for (asset of data.assets; track asset.symbol) {
+          <mat-option [value]="asset.symbol">{{ asset.symbol }} · {{ asset.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Target agent</mat-label>
+      <mat-select formControlName="targetAgentId">
+        <mat-option [value]="null">Auto-route to active wallet agent</mat-option>
+        @for (agent of data.agents; track agent.agentId) {
+          <mat-option [value]="agent.agentId">{{ agent.agentId }} · {{ agent.machineName }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()">Cancel</button>
+  <button mat-flat-button color="primary" type="button" (click)="onCreate()">Create</button>
+</mat-dialog-actions>

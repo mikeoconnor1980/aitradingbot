@@ -36,6 +36,7 @@ export class SidebarNavComponent {
     { route: "/optimizer", icon: "auto_graph", label: "Optimizer" },
     { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar" },
     { route: "/agents", icon: "devices", label: "Agents" },
+    { route: "/settings/webhooks", icon: "hub", label: "Webhooks" },
     { route: "/order-entry", icon: "swap_vert", label: "Order Entry" }
   ];
 

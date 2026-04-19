@@ -119,6 +119,11 @@ export class ProfilePageComponent implements OnInit {
       },
       error: (err) => {
         this.cancellingSubscription.set(false);
+        if (err.status === 404) {
+          this.subscribeError.set("This deployed API revision does not support subscription cancellation yet. Redeploy the API to pick up the latest subscription endpoints.");
+          return;
+        }
+
         this.subscribeError.set(err.error?.errorMessage ?? "Failed to cancel subscription.");
       }
     });

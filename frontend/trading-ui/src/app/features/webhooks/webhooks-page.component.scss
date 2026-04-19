@@ -1,0 +1,98 @@
+.webhooks-page {
+  padding: 1.5rem;
+}
+
+.webhooks-page__card {
+  padding: 1.5rem;
+}
+
+.webhooks-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  h2 {
+    margin: 0 0 0.35rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--colour-muted);
+    max-width: 52rem;
+  }
+}
+
+.webhooks-page__table {
+  width: 100%;
+}
+
+.webhooks-page__label {
+  font-weight: 600;
+}
+
+.webhooks-page__status,
+.webhooks-page__actions,
+.webhooks-page__url {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.webhooks-page__url {
+  max-width: 28rem;
+
+  code {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.35rem;
+    background: rgba(121, 207, 195, 0.08);
+  }
+}
+
+.webhooks-page__state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 14rem;
+  color: var(--colour-muted);
+}
+
+.webhooks-page__state--empty {
+  flex-direction: column;
+  text-align: center;
+
+  h3 {
+    margin: 0 0 0.35rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  mat-icon {
+    width: 2rem;
+    height: 2rem;
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 960px) {
+  .webhooks-page {
+    padding: 1rem;
+  }
+
+  .webhooks-page__header {
+    flex-direction: column;
+  }
+
+  .webhooks-page__url {
+    max-width: 16rem;
+  }
+}

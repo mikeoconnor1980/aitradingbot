@@ -17,4 +17,5 @@ public sealed class OrderRequest
     public string? GridCycleId { get; init; }
     public CancellationReason? CloseReason { get; init; }
     public string? ClientOrderId { get; init; }
+    public bool ReduceOnly { get; init; }
 }

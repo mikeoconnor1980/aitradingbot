@@ -73,6 +73,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
             isBuy: isBuy,
             price: price,
             size: request.Size,
+            reduceOnly: request.ReduceOnly,
             tif: tif);
 
         var nonce = _nonceProvider.GetNextNonce();

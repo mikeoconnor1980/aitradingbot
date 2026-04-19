@@ -26,4 +26,6 @@ public sealed class PlaceOrderRequest
 
     [Range(0.000001, double.MaxValue, ErrorMessage = "Take profit price must be positive.")]
     public decimal? TakeProfitPrice { get; set; }
+
+    public bool ReduceOnly { get; set; }
 }
