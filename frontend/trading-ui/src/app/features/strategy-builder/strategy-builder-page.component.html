@@ -91,10 +91,12 @@
           </div>
         }
 
-        <app-strategy-template-selector
-          [selectedTemplateId]="selectedTemplateId"
-          (templateSelected)="onTemplateSelected($event)"
-        />
+        @if (editId === null) {
+          <app-strategy-template-selector
+            [selectedTemplateId]="selectedTemplateId"
+            (templateSelected)="onTemplateSelected($event)"
+          />
+        }
 
         <app-strategy-details-card [group]="form" />
         @if (isDcaMode) {

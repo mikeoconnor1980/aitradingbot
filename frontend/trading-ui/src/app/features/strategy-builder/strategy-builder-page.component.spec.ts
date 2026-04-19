@@ -1,5 +1,6 @@
 import { convertToParamMap } from "@angular/router";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
+import { By } from "@angular/platform-browser";
 import { MatDialog } from "@angular/material/dialog";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { ActivatedRoute, Router } from "@angular/router";
@@ -13,6 +14,7 @@ import { StrategyValidationService } from "./services/strategy-validation.servic
 import { HyperliquidApiService } from "../../core/services/hyperliquid-api.service";
 import { NotificationFacade } from "../../core/services/notification-facade.service";
 import { SubscriptionService } from "../../core/services/subscription.service";
+import { StrategyTemplateSelectorComponent } from "./components/strategy-template-selector/strategy-template-selector.component";
 
 describe("StrategyBuilderPageComponent", () => {
   let fixture: ComponentFixture<StrategyBuilderPageComponent>;
@@ -45,7 +47,7 @@ describe("StrategyBuilderPageComponent", () => {
         { provide: ActivatedRoute, useValue: activatedRouteStub },
         {
           provide: StrategyApiService,
-          useValue: jasmine.createSpyObj("StrategyApiService", ["getStrategy", "createStrategy", "updateStrategy", "interpretStrategy"])
+          useValue: jasmine.createSpyObj("StrategyApiService", ["getStrategy", "getTemplates", "createStrategy", "updateStrategy", "interpretStrategy"])
         },
         {
           provide: StrategyMapperService,
@@ -190,6 +192,77 @@ describe("StrategyBuilderPageComponent", () => {
     expect(dcaComponent.form.get("direction")?.value).toBe("long");
     expect(dcaComponent.form.pristine).toBeTrue();
     expect(dcaComponent.hasUnsavedChanges()).toBeFalse();
+  });
+
+  it("should hide the template selector when editing an existing strategy", () => {
+    activatedRouteStub.snapshot.paramMap = convertToParamMap({ id: "strategy-1" });
+
+    const strategyApi = TestBed.inject(StrategyApiService) as jasmine.SpyObj<StrategyApiService>;
+    strategyApi.getTemplates.and.returnValue(of([]));
+    strategyApi.getStrategy.and.returnValue(of({
+      id: "strategy-1",
+      name: "BTC DCA",
+      strategyType: "dca",
+      version: 1,
+      createdAt: "2026-04-19T00:00:00Z",
+      updatedAt: "2026-04-19T00:00:00Z",
+      config: {
+        schemaVersion: 1,
+        strategyMode: "dca",
+        strategyName: "BTC DCA",
+        exchange: "Hyperliquid",
+        market: "BTC-USD",
+        timeframe: "1h",
+        direction: "long",
+        enabled: true,
+        templateId: "dca",
+        dca: {
+          interval: "weekly",
+          dayOfWeek: 1,
+          dayOfMonth: null,
+          timeOfDayUtc: "00:00",
+          baseAmountUsd: 100,
+          allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+          gateConditions: {
+            maxPriceUsd: null,
+            minFearGreedIndex: null,
+            maxFearGreedIndex: null,
+          },
+          scalingBands: [],
+          profitTaking: null,
+          budgetCapUsd: null,
+        },
+        exit: {
+          takeProfit: { enabled: false, type: "fixed_percent", value: null },
+          stopLoss: { enabled: false, type: "fixed_percent", value: null },
+          exitOnOppositeSignal: false,
+        },
+        risk: {
+          positionSizeType: "fixed_notional",
+          positionSizeValue: 100,
+          riskPerTradePercent: 1,
+          autoLeverage: true,
+          leverage: 1,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false,
+        },
+        source: {
+          entryPoint: "ui_builder",
+          summary: "Created in strategy builder",
+          sourceText: null,
+        }
+      }
+    }));
+
+    const editFixture = TestBed.createComponent(StrategyBuilderPageComponent);
+    const editComponent = editFixture.componentInstance;
+
+    editFixture.detectChanges();
+
+    expect(editComponent.editId).toBe("strategy-1");
+    expect(editFixture.debugElement.query(By.directive(StrategyTemplateSelectorComponent))).toBeNull();
   });
 
   it("should include risk-based controls in the risk form group", () => {
