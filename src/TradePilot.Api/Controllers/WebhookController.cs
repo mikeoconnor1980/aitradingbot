@@ -5,9 +5,11 @@ using Microsoft.EntityFrameworkCore;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Application.Webhooks.Models;
 using TradePilot.Application.Webhooks.Services;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Subscriptions;
 using TradePilot.Persistence;
 
 namespace TradePilot.Api.Controllers;
@@ -30,6 +32,7 @@ public sealed class WebhookController : ControllerBase
     private readonly AgentCommandStore _commandStore;
     private readonly TradePilotDbContext _db;
     private readonly IWebHostEnvironment _environment;
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
     private readonly ILogger<WebhookController> _logger;
 
     public WebhookController(
@@ -37,12 +40,14 @@ public sealed class WebhookController : ControllerBase
         AgentCommandStore commandStore,
         TradePilotDbContext db,
         IWebHostEnvironment environment,
+        ISubscriptionFeatureService subscriptionFeatureService,
         ILogger<WebhookController> logger)
     {
         _webhookRepository = webhookRepository;
         _commandStore = commandStore;
         _db = db;
         _environment = environment;
+        _subscriptionFeatureService = subscriptionFeatureService;
         _logger = logger;
     }
 
@@ -62,6 +67,15 @@ public sealed class WebhookController : ControllerBase
         if (webhook is null || !webhook.IsEnabled)
         {
             return NotFound();
+        }
+
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(webhook.UserId, Feature.Webhooks, cancellationToken))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Title = "Pro subscription required",
+                Detail = "TradingView webhooks require a Pro subscription."
+            });
         }
 
         var agentId = await ResolveAgentIdAsync(webhook, cancellationToken);

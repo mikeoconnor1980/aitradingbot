@@ -103,7 +103,7 @@ export const routes: Routes = [
   {
     path: "settings/webhooks",
     loadComponent: () => import("./features/webhooks/webhooks-page.component").then((m) => m.WebhooksPageComponent),
-    canActivate: [authGuard],
+    canActivate: [authGuard, subscriptionGuard, tierFeatureGuard("Webhooks"), mobileRedirectGuard],
     title: "TradingView Webhooks"
   },
   {

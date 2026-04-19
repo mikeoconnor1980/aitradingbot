@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradePilot.Api.Models;
 using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Subscriptions;
 
 namespace TradePilot.Api.Controllers;
 
@@ -14,10 +16,14 @@ namespace TradePilot.Api.Controllers;
 public sealed class WebhookManagementController : ControllerBase
 {
     private readonly IWebhookConfigRepository _webhookRepository;
+    private readonly ISubscriptionFeatureService _subscriptionFeatureService;
 
-    public WebhookManagementController(IWebhookConfigRepository webhookRepository)
+    public WebhookManagementController(
+        IWebhookConfigRepository webhookRepository,
+        ISubscriptionFeatureService subscriptionFeatureService)
     {
         _webhookRepository = webhookRepository;
+        _subscriptionFeatureService = subscriptionFeatureService;
     }
 
     [HttpGet]
@@ -28,6 +34,11 @@ public sealed class WebhookManagementController : ControllerBase
         if (!userId.HasValue)
         {
             return Unauthorized();
+        }
+
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId.Value, Feature.Webhooks, cancellationToken))
+        {
+            return Forbid();
         }
 
         var webhooks = await _webhookRepository.GetByUserIdAsync(userId.Value, cancellationToken);
@@ -44,6 +55,11 @@ public sealed class WebhookManagementController : ControllerBase
             return Unauthorized();
         }
 
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId.Value, Feature.Webhooks, cancellationToken))
+        {
+            return Forbid();
+        }
+
         var webhook = WebhookConfig.Create(userId.Value, request.Label, request.DefaultAsset, request.TargetAgentId);
         await _webhookRepository.AddAsync(webhook, cancellationToken);
         await _webhookRepository.SaveChangesAsync(cancellationToken);
@@ -56,6 +72,17 @@ public sealed class WebhookManagementController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateWebhookRequest request, CancellationToken cancellationToken)
     {
+        var userId = GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId.Value, Feature.Webhooks, cancellationToken))
+        {
+            return Forbid();
+        }
+
         var webhook = await GetOwnedWebhookAsync(id, cancellationToken);
         if (webhook is null)
         {
@@ -73,6 +100,17 @@ public sealed class WebhookManagementController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Regenerate(Guid id, CancellationToken cancellationToken)
     {
+        var userId = GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId.Value, Feature.Webhooks, cancellationToken))
+        {
+            return Forbid();
+        }
+
         var webhook = await GetOwnedWebhookAsync(id, cancellationToken);
         if (webhook is null)
         {
@@ -90,6 +128,17 @@ public sealed class WebhookManagementController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
+        var userId = GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId.Value, Feature.Webhooks, cancellationToken))
+        {
+            return Forbid();
+        }
+
         var webhook = await GetOwnedWebhookAsync(id, cancellationToken);
         if (webhook is null)
         {

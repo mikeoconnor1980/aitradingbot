@@ -8,6 +8,7 @@ using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
 using TradePilot.Persistence;
 
 namespace TradePilot.Api.Tests.Controllers;
@@ -49,7 +50,7 @@ public sealed class WebhookControllerTests : BaseControllerTests
     public async Task GivenBuyWebhook_WhenPosted_ThenQueuesPlaceOrderCommand()
     {
         var client = GetTestClient(authenticate: false);
-        var token = await SeedWebhookAsync("BTC alerts");
+        var token = await SeedWebhookAsync("BTC alerts", SubscriptionTier.Pro);
 
         var response = await client.PostAsJsonAsync(
             $"api/webhooks/tradingview/{token}",
@@ -79,7 +80,7 @@ public sealed class WebhookControllerTests : BaseControllerTests
     public async Task GivenCloseWebhook_WhenPosted_ThenQueuesClosePositionCommand()
     {
         var client = GetTestClient(authenticate: false);
-        var token = await SeedWebhookAsync("ETH alerts");
+        var token = await SeedWebhookAsync("ETH alerts", SubscriptionTier.Pro);
 
         var response = await client.PostAsJsonAsync(
             $"api/webhooks/tradingview/{token}",
@@ -104,7 +105,30 @@ public sealed class WebhookControllerTests : BaseControllerTests
         command.ClosePositionPayload.Amount.Should().Be(1.5m);
     }
 
-    private async Task<string> SeedWebhookAsync(string label)
+    [TestMethod]
+    public async Task GivenBeginnerWebhook_WhenPosted_ThenReturnsForbidden()
+    {
+        var client = GetTestClient(authenticate: false);
+        var token = await SeedWebhookAsync("BTC alerts", SubscriptionTier.Beginner);
+
+        var response = await client.PostAsJsonAsync(
+            $"api/webhooks/tradingview/{token}",
+            new
+            {
+                action = "buy",
+                ticker = "BTCUSDT",
+                contracts = 0.02m,
+                orderType = "market"
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        using var scope = GetCurrentFactory().Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<AgentCommandStore>();
+        store.GetPendingCommands(AgentId).Should().BeEmpty();
+    }
+
+    private async Task<string> SeedWebhookAsync(string label, SubscriptionTier tier)
     {
         using var scope = GetCurrentFactory().Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
@@ -113,6 +137,9 @@ public sealed class WebhookControllerTests : BaseControllerTests
         {
             db.UserWalletAddresses.Add(UserWalletAddress.Create(UserId, WalletAddress));
         }
+
+        db.Subscriptions.RemoveRange(db.Subscriptions.Where(x => x.UserId == UserId));
+        db.Subscriptions.Add(Subscription.Create(UserId, tier, Subscription.TrialDurationDays));
 
         var webhook = WebhookConfig.Create(UserId, label, null, null);
         db.WebhookConfigs.Add(webhook);

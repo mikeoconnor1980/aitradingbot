@@ -8,4 +8,5 @@ public enum Feature
     FullStrategyLibrary = 3,
     AllAssets = 4,
     UnrestrictedLeverage = 5,
+    Webhooks = 6,
 }

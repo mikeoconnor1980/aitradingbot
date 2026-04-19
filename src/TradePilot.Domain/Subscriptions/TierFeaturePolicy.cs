@@ -40,6 +40,7 @@ public sealed class TierFeaturePolicy
                     Feature.FullStrategyLibrary,
                     Feature.AllAssets,
                     Feature.UnrestrictedLeverage,
+                    Feature.Webhooks,
                 },
                 ["BTC", "ETH", "SOL", "DOGE", "AVAX", "ARB", "LINK", "OP"],
                 null),

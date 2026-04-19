@@ -51,6 +51,10 @@ export class SidebarNavComponent {
         return normalizedFeatures.has("macrocalendar");
       }
 
+      if (item.route === "/settings/webhooks") {
+        return normalizedFeatures.has("webhooks");
+      }
+
       return true;
     });
 
