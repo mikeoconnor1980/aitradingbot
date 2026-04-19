@@ -17,6 +17,7 @@ This document describes the current product surface as implemented in the codeba
 | Strategy optimizer | Implemented | Sweep and evolutionary optimization, persisted runs/results, progress tracking, and optimizer UI |
 | Live trading control plane | Implemented | Dashboard, market data, position/order views, strategy activation through the agent, and risk-aware execution controls |
 | Agents page | Implemented | Agent listing, start/stop, pending command visibility, kill switch, reinstate, and update-state reporting |
+| TradingView webhooks | Implemented | Pro-tier webhook management UI, public TradingView ingress endpoint, buy/sell/close mapping, and worker execution through connected agents |
 | Macro calendar | Implemented | Event browser, active block visibility, sync endpoint, and live entry blocking through `MacroEventRiskCheck` |
 | Help and tutorial system | Implemented | Global help panel, curated topics, and `POST /api/help/chat` assistant-style guidance |
 
@@ -60,6 +61,7 @@ The shipped subscription model now has real feature entitlements, but billing is
 | AI review | Not available | Available |
 | Macro calendar | Not available | Available |
 | Optimizer | Not available | Available |
+| TradingView webhooks | Not available | Available |
 
 Tier restrictions are enforced in both the Angular app and the API. Order entry, strategy validation, template cloning, and feature routes should all be treated as entitlement-aware.
 
