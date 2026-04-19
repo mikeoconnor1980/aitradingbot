@@ -42,7 +42,7 @@
       </mat-step>
 
       <!-- Step 2: Market & Timeframe -->
-      <mat-step [stepControl]="marketGroup" [editable]="true" label="Market">
+      <mat-step [stepControl]="marketStepForm" [editable]="true" label="Market">
         <div class="strategy-wizard__step-content">
           <h3 class="strategy-wizard__question">{{ _education.getStepEducation(1).question }}</h3>
           <app-wizard-market-step [group]="marketGroup"></app-wizard-market-step>

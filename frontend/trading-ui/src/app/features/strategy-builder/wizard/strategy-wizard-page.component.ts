@@ -73,6 +73,7 @@ export class StrategyWizardPageComponent implements OnInit {
   };
 
   public form: FormGroup = this._buildForm();
+  public marketStepForm: FormGroup = this._fb.group({}, { validators: [this._marketStepValidator()] });
   public entryStepForm: FormGroup = this._fb.group({}, { validators: [this._entryStepValidator()] });
   public isSaving = false;
   public isLoadingLibrary = false;
@@ -202,6 +203,7 @@ export class StrategyWizardPageComponent implements OnInit {
     }
 
     this._setupValidationStream();
+    this._setupMarketStepValidation();
     this._setupEntryStepValidation();
     this._setupAutoSaveDraft();
     this._setupAutoName();
@@ -416,6 +418,35 @@ export class StrategyWizardPageComponent implements OnInit {
     this.form.get("direction")!.valueChanges.pipe(
       takeUntilDestroyed(this._destroyRef)
     ).subscribe(() => this._maybeAutoName());
+  }
+
+  private _setupMarketStepValidation(): void {
+    this.form.valueChanges.pipe(
+      takeUntilDestroyed(this._destroyRef)
+    ).subscribe(() => this.marketStepForm.updateValueAndValidity({ emitEvent: false }));
+
+    this.form.statusChanges.pipe(
+      takeUntilDestroyed(this._destroyRef)
+    ).subscribe(() => this.marketStepForm.updateValueAndValidity({ emitEvent: false }));
+  }
+
+  private _marketStepValidator(): ValidatorFn {
+    return (): ValidationErrors | null => {
+      if (!this.form) {
+        return null;
+      }
+
+      const exchangeControl = this.form.get("exchange");
+      const marketControl = this.form.get("market");
+      const strategyNameControl = this.form.get("strategyName");
+      const timeframeControl = this.form.get("timeframe");
+      const directionControl = this.form.get("direction");
+
+      const hasVisibleControlError = [exchangeControl, marketControl, strategyNameControl].some((control) => control?.invalid === true)
+        || (!this.isDcaMode && [timeframeControl, directionControl].some((control) => control?.invalid === true));
+
+      return hasVisibleControlError ? { marketStepInvalid: true } : null;
+    };
   }
 
   private _maybeAutoName(): void {
@@ -680,6 +711,7 @@ export class StrategyWizardPageComponent implements OnInit {
 
     this.form.get("timeframe")?.enable({ emitEvent: false });
     this.form.get("direction")?.enable({ emitEvent: false });
+    this.marketStepForm.updateValueAndValidity({ emitEvent: false });
   }
 
   private _setDcaScalingBands(bands: readonly DcaScalingBand[]): void {

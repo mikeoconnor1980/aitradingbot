@@ -191,4 +191,72 @@ describe("StrategyWizardPageComponent", () => {
     expect(component.form.get("strategyName")?.value).toBe("BTC DCA");
     expect(component.form.get("dca.baseAmountUsd")?.value).toBe(250);
   });
+
+  it("should keep the DCA market step valid even when hidden risk controls are invalid", () => {
+    const template: StrategyTemplateDto = {
+      id: "template-1",
+      slug: "btc-dca",
+      name: "BTC DCA",
+      description: "Five minute BTC accumulation",
+      strategyMode: "dca",
+      direction: "long",
+      market: "BTC-USD",
+      tags: ["dca"],
+      config: {
+        schemaVersion: 1,
+        strategyMode: "dca",
+        strategyName: "BTC DCA",
+        exchange: "Hyperliquid",
+        assetType: "spot",
+        market: "BTC-USD",
+        timeframe: "5m",
+        direction: "long",
+        enabled: true,
+        templateId: "dca",
+        dca: {
+          interval: "five_minutes",
+          dayOfWeek: null,
+          dayOfMonth: null,
+          timeOfDayUtc: "00:00",
+          baseAmountUsd: 50,
+          allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+          gateConditions: {
+            maxPriceUsd: 90000,
+            minFearGreedIndex: null,
+            maxFearGreedIndex: null,
+          },
+          scalingBands: [],
+          profitTaking: null,
+          budgetCapUsd: null,
+        },
+        exit: {
+          takeProfit: { enabled: false, type: "fixed_percent", value: null },
+          stopLoss: { enabled: false, type: "fixed_percent", value: null },
+          exitOnOppositeSignal: false,
+        },
+        risk: {
+          positionSizeType: "fixed_notional",
+          positionSizeValue: 250,
+          leverage: 1,
+          maxOpenTrades: 1,
+          cooldownValue: 0,
+          cooldownUnit: "candles",
+          allowSameCandleReentry: false,
+        },
+      },
+      sortOrder: 1,
+      isSystemTemplate: true,
+      isBeginnerVisible: true,
+      createdAtUtc: 0,
+      updatedAtUtc: 0,
+    };
+
+    component.stepper = { next: jasmine.createSpy("next") } as unknown as typeof component.stepper;
+
+    component.onLibraryTemplateSelected(template);
+
+    expect(component.isDcaMode).toBeTrue();
+    expect(component.form.invalid).toBeTrue();
+    expect(component.marketStepForm.valid).toBeTrue();
+  });
 });
