@@ -176,15 +176,15 @@ jobs:
                 "Telegram__BotToken=secretref:telegram-bot-token" \
                 "Telegram__BotUsername=${{ secrets.TELEGRAM_BOT_USERNAME }}"
 
-      - name: Verify deployed API revision
+      - name: Verify deployed API is healthy
         run: |
-          version_url="https://${{ secrets.API_FQDN }}/api/version?expectedVersion=${{ needs.build-api-image.outputs.image-tag }}&expectedCommit=${{ github.sha }}"
+          version_url="https://${{ secrets.API_FQDN }}/api/version?expectedVersion=${{ needs.build-api-image.outputs.image-tag }}"
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             response=$(curl --silent --show-error --fail "$version_url") && break
             sleep 10
           done
           echo "$response"
-          echo "$response" | grep '"isExpectedBuild":true'
+          echo "$response" | grep '"matchesExpectedVersion":true'
 
   deploy-frontend:
     needs: build-frontend

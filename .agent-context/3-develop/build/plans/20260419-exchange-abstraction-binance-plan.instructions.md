@@ -73,20 +73,30 @@ A `TradingPair` captures the base asset, quote currency, and product type in one
 public sealed record TradingPair
 {
     public string Base { get; init; }          // "BTC", "ETH", "SOL"
-    public string Quote { get; init; }         // "USD", "USDT"
+    public string Quote { get; init; }         // "USD" (canonical), "USDT" (Binance-specific)
     public AssetType ProductType { get; init; } // Perp, Spot
 
-    // Canonical string format: "BTC/USD:PERP", "ETH/USDT:SPOT"
+    // Canonical string format: "BTC/USD:PERP", "ETH/USD:SPOT"
     public string Canonical => $"{Base}/{Quote}:{ProductType}";
 
     public static TradingPair Parse(string canonical) { /* parse from canonical string */ }
 }
 ```
 
+#### Canonical Quote Currency: `USD`
+
+**Decision**: The application-internal quote currency is always **`USD`**. Exchange-specific quote conventions (`USDT` for Binance, implicit USD for Hyperliquid) are handled by `IExchangeSymbolMapper` at the boundary — never stored in domain entities.
+
+- `BTC/USD:PERP` is the canonical form, regardless of whether the exchange quotes in USD, USDT, or USDC
+- The symbol mapper normalizes: Binance `BTCUSDT` → `BTC/USD:PERP`, Hyperliquid `BTC` → `BTC/USD:PERP`
+- If an exchange uses USDT as the actual settlement currency, that is an exchange-level detail, not a domain-level one
+- This avoids proliferating `BTC/USD:PERP` vs `BTC/USDT:PERP` as separate markets for the same logical position
+
 This resolves:
 - **Ambiguity**: `"BTC"` alone doesn't tell you spot vs perp — `TradingPair` makes it explicit
 - **Mapping direction**: Each exchange mapper converts to/from `TradingPair`, not from free strings
 - **Spot support**: Hyperliquid is perps-only, Binance supports spot. The `ProductType` field makes this a first-class concern rather than an implicit assumption
+- **Quote normalization**: No duplication of logical markets due to exchange-specific quote currency naming
 
 #### `Exchange` Enum (Domain)
 
@@ -105,9 +115,10 @@ public enum Exchange { Hyperliquid, Binance }
 
 | Application canonical | Hyperliquid API | Binance Futures API | Notes |
 |---|---|---|---|
-| `BTC/USD:PERP` | `BTC` (bare coin) | `BTCUSDT` | Different quote conventions |
+| `BTC/USD:PERP` | `BTC` (bare coin) | `BTCUSDT` | Both map to same canonical; quote normalized to USD |
 | `ETH/USD:PERP` | `ETH` | `ETHUSDT` | |
-| `BTC/USDT:SPOT` | N/A (not supported) | `BTCUSDT` | Spot not available on Hyperliquid |
+| `SOL/USD:PERP` | `SOL` | `SOLUSDT` | |
+| `BTC/USD:SPOT` | N/A (not supported) | `BTCUSDT` | Spot not available on Hyperliquid; `IExchangeCapabilities` rejects |
 
 ### Capability Interfaces
 
@@ -210,16 +221,15 @@ Attempting to unify these would be a leaky abstraction. `ISignerProvider` remain
 - [ ] Task 0.2: Move `AssetType` enum from `src/TradePilot.Application/StrategyAuthoring/Models/` to `src/TradePilot.Domain/Enums/` and update all references
 - [ ] Task 0.3: Add `Exchange` enum to `src/TradePilot.Domain/Enums/` with values `Hyperliquid`, `Binance`
 - [ ] Task 0.4: Remove redundant `IBinanceCandleIngestionService` — it has the identical signature as the neutral `ICandleIngestionService` and should be consolidated
-- [ ] Task 0.5: Unit tests for `TradingPair` parsing, canonical format round-trip, and equality
+- [ ] Task 0.5: Unit tests for `TradingPair` parsing, canonical format round-trip, equality, and quote normalization
 
 Acceptance criteria:
 
 - `TradingPair` compiles and is usable from Domain and Application layers
+- `TradingPair` always uses `USD` as the canonical quote currency
 - `AssetType` is a Domain enum, all existing references update cleanly
-- `Exchange` enum exists but does **not** yet replace free strings in entities (that migration is deferred to avoid schema churn in Phase 0)
+- `Exchange` enum exists but does **not** yet replace free strings in entities (entity migration is Phase 3b)
 - Existing tests pass with no behavior change
-
-> **Note**: Migrating `Candle.Source`, `UserWalletAddress.Exchange`, and entity `Symbol` fields to use `Exchange` enum / `TradingPair` is deferred. These are database-backed columns requiring migration scripts and should be planned as a separate incremental step after the abstractions prove stable.
 
 ### [ ] Phase 1: Introduce Neutral Contracts
 
@@ -272,6 +282,50 @@ Acceptance criteria:
 - `LiveMarketContextBuilder` no longer depends directly on `IHyperliquidRestClient`
 - `StateRecoveryService` no longer depends directly on `IHyperliquidRestClient`
 - Targeted trading tests continue to pass with no runtime behavior change
+
+### [ ] Phase 3b: Migrate Entity Fields To Canonical Types
+
+**Complexity**: Medium | **Risk**: Medium
+
+Migrate domain entity fields from free strings to the canonical `TradingPair` and `Exchange` types introduced in Phase 0. This phase is separated from the consumer migration (Phase 3) because it requires database schema changes.
+
+**Entities with `Symbol` (free string → `TradingPair.Canonical` string format):**
+
+| Entity | Current field | Current format | Canonical format |
+|---|---|---|---|
+| `Candle` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `GridCycle` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `LiveOrder` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `LiveFill` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `BacktestRun` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `FundingRate` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `LlmContextSnapshot` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `OptimizationRun` | `Symbol` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+| `StrategyTemplate` | `Market` | `"BTC-PERP"` | `"BTC/USD:PERP"` |
+
+**Entities with `Exchange`/`Source` (free string → `Exchange` enum stored as string):**
+
+| Entity | Current field | Current value | New value |
+|---|---|---|---|
+| `Candle` | `Source` | `"Hyperliquid"` | `Exchange.Hyperliquid` (stored as `"Hyperliquid"`) |
+| `UserWalletAddress` | `Exchange` | `"Hyperliquid"` | `Exchange.Hyperliquid` (stored as `"Hyperliquid"`) |
+
+- [ ] Task 3b.1: Add a `TradingPairConverter` utility that maps legacy symbol formats (`"BTC-PERP"`, `"BTC"`) to canonical `TradingPair` format (`"BTC/USD:PERP"`)
+- [ ] Task 3b.2: Write a SQLite data migration script to update existing `Symbol` / `Market` values in all affected tables
+- [ ] Task 3b.3: Update entity `Create()` factories and setters to validate/normalize to canonical format on write
+- [ ] Task 3b.4: Update entity `Source` / `Exchange` fields to use `Exchange` enum (stored as string for SQLite compatibility)
+- [ ] Task 3b.5: Update all repository queries and EF configurations for the new formats
+- [ ] Task 3b.6: Update `OrderRequest.Symbol` to use canonical format
+- [ ] Task 3b.7: Update `TierFeaturePolicy.AllowedAssets` to use canonical base asset names
+- [ ] Task 3b.8: Comprehensive test pass — verify all existing integration and domain tests pass with canonical formats
+
+Acceptance criteria:
+
+- All entity `Symbol` fields store canonical `TradingPair` format (`BTC/USD:PERP`)
+- All entity `Source`/`Exchange` fields use the `Exchange` enum
+- Existing data is migrated via script — no data loss
+- All queries, repositories, and services work with the new format
+- Legacy format strings (`"BTC-PERP"`, `"BTC"`) are no longer written by any code path
 
 ### [ ] Phase 4: Runtime Selection And DI Composition
 
@@ -336,14 +390,30 @@ Acceptance criteria:
 - [ ] `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidCapabilities.cs` (new)
 - [ ] `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` (refactor: static → injectable `IExchangeSymbolMapper`)
 
+### [ ] Phase 3b initial file set
+
+- [ ] `src/TradePilot.Domain/ValueObjects/TradingPairConverter.cs` (new — legacy format → canonical converter)
+- [ ] `src/TradePilot.Domain/Entities/Candle.cs` (update `Symbol` format, `Source` to `Exchange` enum)
+- [ ] `src/TradePilot.Domain/Entities/GridCycle.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/LiveOrder.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/LiveFill.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/BacktestRun.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/FundingRate.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/LlmContextSnapshot.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/OptimizationRun.cs` (update `Symbol` format)
+- [ ] `src/TradePilot.Domain/Entities/StrategyTemplate.cs` (update `Market` format)
+- [ ] `src/TradePilot.Domain/Entities/UserWalletAddress.cs` (update `Exchange` to enum)
+- [ ] `src/TradePilot.Application/Trading/Models/OrderRequest.cs` (update `Symbol` format)
+- [ ] SQLite migration script (new — data migration for existing rows)
+- [ ] `tests/TradePilot.Domain.Tests/ValueObjects/TradingPairConverterTests.cs` (new)
+
 ## Risks And Design Concerns
 
 ### Symbol Mapping Risk
 
 - Hyperliquid uses bare coin names (`BTC`), Binance uses pair symbols (`BTCUSDT`)
 - Both current mappers are static classes with hardcoded dictionaries — refactoring to injectable services requires updating all call sites
-- The canonical `TradingPair` format (`BTC/USD:PERP`) is new — existing entity `Symbol` fields remain free strings until a dedicated migration phase
-- Entity migration (changing `Candle.Symbol`, `GridCycle.Symbol`, etc. to use `TradingPair.Canonical`) requires database migration scripts and should be deferred
+- The canonical `TradingPair` format (`BTC/USD:PERP`) with `USD` as the standard quote normalizes both exchanges to a single market identity
 
 ### Spot vs Perps Risk
 
@@ -410,13 +480,16 @@ Acceptance criteria:
 - The worker key-custody model remains intact
 - Hyperliquid DCA on perps remains unchanged
 
+## Resolved Decisions
+
+- **Canonical quote currency**: `USD`. Exchange-specific quotes (USDT, USDC) are normalized at the `IExchangeSymbolMapper` boundary. Domain entities always store `USD`.
+- **Entity migration timing**: Included in this plan as Phase 3b, after Application consumers are migrated but before DI composition.
+
 ## Open Questions
 
 - Should Binance initial support be historical/read-only or live-execution capable?
 - Should `IExecutionEngine` be renamed, or is keeping it stable the better migration path?
 - Is a thin `IExchangeClient` aggregator useful enough to justify the extra layer now, or should keyed DI handle resolution without it?
-- When should entity `Symbol` fields migrate from free strings to `TradingPair.Canonical`? (requires DB migration — recommended as a separate follow-up after abstractions prove stable)
-- What is the canonical quote currency for the application? (Candidates: `USD` for Hyperliquid perps, `USDT` for Binance. May need normalization rules in `TradingPair`)
 
 ## Recommendation
 
