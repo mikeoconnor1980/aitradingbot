@@ -45,20 +45,21 @@ public sealed class OrdersController : ControllerBase
         _subscriptionFeatureService = subscriptionFeatureService;
     }
 
-    private Guid GetUserId()
+    private Guid? TryGetUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (claim is null || !Guid.TryParse(claim, out var userId))
-        {
-            throw new DomainException("Unable to resolve the current user.");
-        }
-
-        return userId;
+        return claim is not null && Guid.TryParse(claim, out var userId) ? userId : null;
     }
 
     private async Task EnsureAssetAllowedAsync(string asset, CancellationToken ct)
     {
-        var policy = await _subscriptionFeatureService.GetPolicyAsync(GetUserId(), ct)
+        var userId = TryGetUserId();
+        if (!userId.HasValue)
+        {
+            return;
+        }
+
+        var policy = await _subscriptionFeatureService.GetPolicyAsync(userId.Value, ct)
             ?? throw new DomainException("An active subscription is required to trade.");
 
         if (!_subscriptionFeatureService.IsAssetAllowed(policy.AllowedAssets, asset))
@@ -69,7 +70,13 @@ public sealed class OrdersController : ControllerBase
 
     private async Task EnsureLeverageAllowedAsync(string asset, int leverage, CancellationToken ct)
     {
-        var policy = await _subscriptionFeatureService.GetPolicyAsync(GetUserId(), ct)
+        var userId = TryGetUserId();
+        if (!userId.HasValue)
+        {
+            return;
+        }
+
+        var policy = await _subscriptionFeatureService.GetPolicyAsync(userId.Value, ct)
             ?? throw new DomainException("An active subscription is required to trade.");
 
         if (!_subscriptionFeatureService.IsAssetAllowed(policy.AllowedAssets, asset))
@@ -163,7 +170,10 @@ public sealed class OrdersController : ControllerBase
     public async Task<IActionResult> GetAvailableAssetsAsync(CancellationToken ct)
     {
         var all = await _metadataCache.GetAllAsync(ct);
-        var allowedAssets = await _subscriptionFeatureService.GetAllowedAssetsAsync(GetUserId(), ct);
+        var userId = TryGetUserId();
+        var allowedAssets = userId.HasValue
+            ? await _subscriptionFeatureService.GetAllowedAssetsAsync(userId.Value, ct)
+            : [];
 
         var priorityIndex = PriorityCoins
             .Select((coin, idx) => (coin, idx))

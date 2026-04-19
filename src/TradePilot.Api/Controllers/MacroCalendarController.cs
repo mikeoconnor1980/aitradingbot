@@ -72,8 +72,8 @@ public sealed class MacroCalendarController : ApiController
 
     private async Task EnsureFeatureAsync(Feature feature, CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(IdentityService.Identity.UserId);
-        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId, feature, cancellationToken))
+        if (Guid.TryParse(IdentityService.Identity.UserId, out var userId)
+            && !await _subscriptionFeatureService.CanAccessFeatureAsync(userId, feature, cancellationToken))
         {
             throw new UnauthorizedAccessException("This feature requires a Pro subscription.");
         }

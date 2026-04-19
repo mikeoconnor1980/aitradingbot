@@ -25,8 +25,9 @@ public sealed class ReferenceDataController : ApiController
     [ProducesResponseType(typeof(ReferenceDataResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMarkets(CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(IdentityService.Identity.UserId);
-        var allowedAssets = await _subscriptionFeatureService.GetAllowedAssetsAsync(userId, cancellationToken);
+        var allowedAssets = Guid.TryParse(IdentityService.Identity.UserId, out var userId)
+            ? await _subscriptionFeatureService.GetAllowedAssetsAsync(userId, cancellationToken)
+            : [];
         var coins = allowedAssets.Count > 0
             ? allowedAssets
             : HyperliquidAssetMapper.GetSupportedCoins().ToList();

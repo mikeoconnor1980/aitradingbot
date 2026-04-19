@@ -118,8 +118,8 @@ public sealed class OptimizationsController : ApiController
 
     private async Task EnsureFeatureAsync(CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(IdentityService.Identity.UserId);
-        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId, Feature.Optimizer, cancellationToken))
+        if (Guid.TryParse(IdentityService.Identity.UserId, out var userId)
+            && !await _subscriptionFeatureService.CanAccessFeatureAsync(userId, Feature.Optimizer, cancellationToken))
         {
             throw new UnauthorizedAccessException("This feature requires a Pro subscription.");
         }

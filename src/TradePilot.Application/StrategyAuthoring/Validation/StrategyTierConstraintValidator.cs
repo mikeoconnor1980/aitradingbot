@@ -26,7 +26,7 @@ public sealed class StrategyTierConstraintValidator
 
         if (!Guid.TryParse(identity.UserId, out var userId))
         {
-            throw new DomainException("Unable to resolve the current user.");
+            return;
         }
 
         var policy = await _subscriptionFeatureService.GetPolicyAsync(userId, cancellationToken);

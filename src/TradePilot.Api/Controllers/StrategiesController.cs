@@ -335,8 +335,8 @@ public sealed class StrategiesController : ApiController
         int rev,
         CancellationToken cancellationToken = default)
     {
-        var userId = Guid.Parse(IdentityService.Identity.UserId);
-        if (!await _subscriptionFeatureService.CanAccessFeatureAsync(userId, Feature.AiReview, cancellationToken))
+        if (Guid.TryParse(IdentityService.Identity.UserId, out var userId)
+            && !await _subscriptionFeatureService.CanAccessFeatureAsync(userId, Feature.AiReview, cancellationToken))
         {
             throw new UnauthorizedAccessException("This feature requires a Pro subscription.");
         }
