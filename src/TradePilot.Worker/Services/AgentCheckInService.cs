@@ -1001,6 +1001,7 @@ public sealed class AgentCheckInService : BackgroundService
             strategyConfig,
             _serviceProvider.GetRequiredService<IHyperliquidWebSocketClient>(),
             _serviceProvider.GetRequiredService<IHyperliquidUserEventClient>(),
+            _serviceProvider.GetRequiredService<IHyperliquidRestClient>(),
             _serviceProvider.GetRequiredService<CandleBuilder>(),
             _serviceProvider.GetRequiredService<CandleClock>(),
             _serviceProvider.GetRequiredService<IMarketContextBuilder>(),

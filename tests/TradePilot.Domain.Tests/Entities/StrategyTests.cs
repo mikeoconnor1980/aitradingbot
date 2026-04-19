@@ -89,6 +89,7 @@ public sealed class StrategyTests
         strategy.SoftDelete();
 
         strategy.IsActive.Should().BeFalse();
+        strategy.AssignedAgentId.Should().BeNull();
     }
 
     [TestMethod]
@@ -110,6 +111,32 @@ public sealed class StrategyTests
         strategy.SetRunningState(false);
 
         strategy.IsRunning.Should().BeFalse();
+        strategy.AssignedAgentId.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void GivenStrategy_WhenAssignToAgentAndStart_ThenRunningStateAndAssignmentAreUpdated()
+    {
+        var strategy = Strategy.Create("user-1", "Test", "GridStrategy", "{}");
+
+        strategy.AssignToAgentAndStart("worker-1");
+
+        strategy.IsRunning.Should().BeTrue();
+        strategy.AssignedAgentId.Should().Be("worker-1");
+        strategy.LastStartedAtUtc.Should().NotBeNull();
+    }
+
+    [TestMethod]
+    public void GivenAssignedRunningStrategy_WhenStopLiveTrading_ThenRunningStateAndAssignmentAreCleared()
+    {
+        var strategy = Strategy.Create("user-1", "Test", "GridStrategy", "{}");
+        strategy.AssignToAgentAndStart("worker-1");
+
+        strategy.StopLiveTrading();
+
+        strategy.IsRunning.Should().BeFalse();
+        strategy.AssignedAgentId.Should().BeNull();
+        strategy.LastStoppedAtUtc.Should().NotBeNull();
     }
 
     [TestMethod]

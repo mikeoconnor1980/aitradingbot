@@ -55,7 +55,7 @@ export class StrategyMapperService {
       strategyMode: isDcaMode ? "dca" : isSignalMode ? "signal" : "grid",
       strategyName: String(formValue["strategyName"] ?? "").trim(),
       exchange: String(formValue["exchange"] ?? "Hyperliquid"),
-      assetType: isDcaMode ? "spot" : null,
+      assetType: isDcaMode ? "perp" : null,
       market: String(formValue["market"] ?? ""),
       timeframe: isDcaMode ? dcaTimeframe : String(formValue["timeframe"] ?? "15m"),
       direction: isDcaMode ? "long" : (formValue["direction"] as Direction | undefined) ?? "long",

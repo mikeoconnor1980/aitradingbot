@@ -5,14 +5,20 @@ import { Pipe, PipeTransform } from "@angular/core";
   standalone: true
 })
 export class RelativeTimePipe implements PipeTransform {
-  public transform(value: string | null | undefined): string {
+  public transform(value: string | null | undefined, _refreshToken?: number): string {
     if (!value) {
       return "";
     }
 
     const date = new Date(value);
+    const timestamp = date.getTime();
+
+    if (Number.isNaN(timestamp)) {
+      return "";
+    }
+
     const now = Date.now();
-    const diffMs = now - date.getTime();
+    const diffMs = now - timestamp;
 
     if (diffMs < 0) {
       return "just now";

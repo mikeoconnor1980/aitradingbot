@@ -19,6 +19,18 @@ public sealed class StrategyRepository : IStrategyRepository
             .FirstOrDefaultAsync(strategy => strategy.Id == id, cancellationToken);
     }
 
+    public async Task<Strategy?> GetRunningAssignedToAgentAsync(
+        string agentId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Strategies
+            .FirstOrDefaultAsync(
+                strategy => strategy.IsActive
+                    && strategy.IsRunning
+                    && strategy.AssignedAgentId == agentId,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Strategy>> GetByIdsAsync(
         IReadOnlyList<Guid> ids,
         CancellationToken cancellationToken = default)

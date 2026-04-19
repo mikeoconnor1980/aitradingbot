@@ -49,7 +49,7 @@ public sealed class LiveExecutionEngineTests
             .ReturnsAsync(metaJson);
 
         var spotMetaJson = JsonSerializer.Deserialize<JsonElement>(
-            """{"tokens":[{"name":"USDC","index":0},{"name":"BTC","index":69}],"universe":[{"tokens":[69,0],"name":"@50","index":50,"isCanonical":false}]}""");
+            """{"tokens":[{"name":"USDC","index":0,"szDecimals":8,"weiDecimals":8},{"name":"BTC","index":69,"szDecimals":0,"weiDecimals":5},{"name":"IBTC","index":499,"szDecimals":2,"weiDecimals":8}],"universe":[{"tokens":[69,0],"name":"@50","index":50,"isCanonical":false},{"tokens":[499,0],"name":"@51","index":51,"isCanonical":false}]}""");
         _restClient.Setup(r => r.PostInfoAsync<JsonElement>(
                 It.Is<object>(o => IsInfoRequestType(o, "spotMeta")),
                 It.IsAny<CancellationToken>()))
@@ -176,7 +176,7 @@ public sealed class LiveExecutionEngineTests
     }
 
     [TestMethod]
-    public async Task GivenSpotMarketOrder_WhenPlaceOrderAsync_ThenUsesSpotPairIndexWithoutPerpMidPriceLookup()
+    public async Task GivenFractionalSpotMarketOrder_WhenPlaceOrderAsync_ThenUsesSpotPairIndexWithoutPerpMidPriceLookup()
     {
         var exchangeResponse = BuildSuccessResponse(54321L);
         _restClient.Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
@@ -185,12 +185,12 @@ public sealed class LiveExecutionEngineTests
 
         var order = new OrderRequest
         {
-            Symbol = "BTC-USD",
+            Symbol = "IBTC-USD",
             AssetType = AssetType.Spot,
             Side = OrderSide.Buy,
             OrderType = OrderType.Market,
-            Price = 50000m,
-            Size = 0.01m,
+            Price = 5m,
+            Size = 2.27865m,
             TradeType = TradeType.DcaBuy
         };
 
@@ -199,8 +199,125 @@ public sealed class LiveExecutionEngineTests
         orderId.Should().Be("54321");
         _restClient.Verify(r => r.GetMarketInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _restClient.Verify(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
-            It.Is<object>(payload => PayloadHasOrderAsset(payload, 10050)),
+            It.Is<object>(payload => PayloadHasOrderAsset(payload, 10051) && PayloadHasOrderSize(payload, "2.27")),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenLowPricedFractionalSpotMarketOrder_WhenPlaceOrderAsync_ThenNormalizesPriceToSpotPrecision()
+    {
+        var exchangeResponse = BuildSuccessResponse(98765L);
+        _restClient.Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(exchangeResponse);
+
+        var order = new OrderRequest
+        {
+            Symbol = "IBTC-USD",
+            AssetType = AssetType.Spot,
+            Side = OrderSide.Buy,
+            OrderType = OrderType.Market,
+            Price = 0.002266m,
+            Size = 6640.1m,
+            TradeType = TradeType.DcaBuy
+        };
+
+        var orderId = await _sut.PlaceOrderAsync(order);
+
+        orderId.Should().Be("98765");
+        _restClient.Verify(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+            It.Is<object>(payload =>
+                PayloadHasOrderAsset(payload, 10051)
+                && PayloadHasOrderSize(payload, "6640.1")
+                && PayloadHasOrderPrice(payload, "0.002379")),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenRejectedFractionalSpotOrder_WhenPlaceOrderAsync_ThenLogsExchangeDetail()
+    {
+        var rejected = new HyperliquidExchangeResponse
+        {
+            Status = "ok",
+            Response = new HyperliquidExchangeResponseData
+            {
+                Type = "order",
+                Data = new HyperliquidOrderResponseData
+                {
+                    Statuses =
+                    [
+                        new HyperliquidOrderStatus
+                        {
+                            Error = "Invalid size precision"
+                        }
+                    ]
+                }
+            }
+        };
+
+        _restClient.Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(rejected);
+
+        var order = new OrderRequest
+        {
+            Symbol = "IBTC-USD",
+            AssetType = AssetType.Spot,
+            Side = OrderSide.Buy,
+            OrderType = OrderType.Market,
+            Price = 5m,
+            Size = 2.27865m,
+            TradeType = TradeType.DcaBuy
+        };
+
+        var orderId = await _sut.PlaceOrderAsync(order);
+
+        orderId.Should().BeEmpty();
+        VerifyLogged(LogLevel.Warning, "Invalid size precision");
+    }
+
+    [TestMethod]
+    public async Task GivenSpotOrderBelowMinimumNotional_WhenPlaceOrderAsync_ThenRejectsBeforeExchangeCall()
+    {
+        var order = new OrderRequest
+        {
+            Symbol = "IBTC-USD",
+            AssetType = AssetType.Spot,
+            Side = OrderSide.Buy,
+            OrderType = OrderType.Market,
+            Price = 5m,
+            Size = 1.23865m,
+            TradeType = TradeType.DcaBuy
+        };
+
+        var orderId = await _sut.PlaceOrderAsync(order);
+
+        orderId.Should().BeEmpty();
+        _restClient.Verify(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+            It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+        VerifyLogged(LogLevel.Warning, "Spot order below minimum notional");
+    }
+
+    [TestMethod]
+    public async Task GivenSpotOrderBelowTradingPrecision_WhenPlaceOrderAsync_ThenRejectsBeforeExchangeCall()
+    {
+        var order = new OrderRequest
+        {
+            Symbol = "BTC-USD",
+            AssetType = AssetType.Spot,
+            Side = OrderSide.Buy,
+            OrderType = OrderType.Market,
+            Price = 76146m,
+            Size = 0.00039398m,
+            TradeType = TradeType.DcaBuy
+        };
+
+        var orderId = await _sut.PlaceOrderAsync(order);
+
+        orderId.Should().BeEmpty();
+        _restClient.Verify(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+            It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+        VerifyLogged(LogLevel.Warning, "Order size rounded down to zero");
     }
 
     [TestMethod]
@@ -423,6 +540,24 @@ public sealed class LiveExecutionEngineTests
 
         return orders.GetArrayLength() > 0
             && orders[0].GetProperty("a").GetInt32() == assetIndex;
+    }
+
+    private static bool PayloadHasOrderSize(object payload, string expectedSize)
+    {
+        var json = JsonSerializer.SerializeToElement(payload);
+        var orders = json.GetProperty("action").GetProperty("orders");
+
+        return orders.GetArrayLength() > 0
+            && string.Equals(orders[0].GetProperty("s").GetString(), expectedSize, StringComparison.Ordinal);
+    }
+
+    private static bool PayloadHasOrderPrice(object payload, string expectedPrice)
+    {
+        var json = JsonSerializer.SerializeToElement(payload);
+        var orders = json.GetProperty("action").GetProperty("orders");
+
+        return orders.GetArrayLength() > 0
+            && string.Equals(orders[0].GetProperty("p").GetString(), expectedPrice, StringComparison.Ordinal);
     }
 
     private static bool PayloadHasReduceOnly(object payload)

@@ -41,6 +41,16 @@ public sealed class MarketStateStore
         return _accumulators.TryRemove(BuildKey(symbol, interval), out _);
     }
 
+    public void Clear()
+    {
+        _accumulators.Clear();
+    }
+
+    public IReadOnlyList<CandleAccumulator> Snapshot()
+    {
+        return _accumulators.Values.ToList();
+    }
+
     private static string BuildKey(string symbol, string interval) => $"{symbol}:{interval}";
 }
 

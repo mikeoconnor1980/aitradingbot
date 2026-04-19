@@ -323,6 +323,13 @@ public sealed class TradePilotDbContext : DbContext
             entity.Property(strategy => strategy.IsRunning)
                 .IsRequired();
 
+            entity.Property(strategy => strategy.AssignedAgentId)
+                .HasMaxLength(100);
+
+            entity.Property(strategy => strategy.LastStartedAtUtc);
+
+            entity.Property(strategy => strategy.LastStoppedAtUtc);
+
             entity.Property(strategy => strategy.CreatedAtUtc)
                 .IsRequired();
 

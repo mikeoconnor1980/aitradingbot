@@ -6,14 +6,14 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatSelectModule } from "@angular/material/select";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { StrategyApiService } from "../strategy-builder/services/strategy-api.service";
-import { StrategySummaryDto, StrategyConfig } from "../strategy-builder/models/strategy.model";
+import { StrategySummaryDto } from "../strategy-builder/models/strategy.model";
 
 export interface StartTradingDialogData {
   agentId: string;
 }
 
 export interface StartTradingDialogResult {
-  strategyConfig: StrategyConfig;
+  strategyId: string;
 }
 
 @Component({
@@ -144,18 +144,10 @@ export class StartTradingDialogComponent implements OnInit {
     const strategyId = this.strategyControl.value;
     if (!strategyId) return;
 
-    this.isStarting = true;
-    this._strategyApi.getStrategy(strategyId).subscribe({
-      next: (strategy) => {
-        this.isStarting = false;
-        const result: StartTradingDialogResult = {
-          strategyConfig: strategy.config,
-        };
-        this._dialogRef.close(result);
-      },
-      error: () => {
-        this.isStarting = false;
-      }
-    });
+    const result: StartTradingDialogResult = {
+      strategyId,
+    };
+
+    this._dialogRef.close(result);
   }
 }

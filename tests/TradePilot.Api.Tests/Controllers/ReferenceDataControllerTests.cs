@@ -33,9 +33,9 @@ public sealed class ReferenceDataControllerTests : BaseControllerTests
 
         var body = await response.ReadAndAssertSuccessAsync<ReferenceDataResponse>();
         body.Markets.Should().NotBeEmpty();
-        body.Markets.Should().OnlyContain(market => market != null && market.EndsWith("-USD"));
-        body.Markets.Should().Contain("BTC-USD");
-        body.Markets.Should().NotContain("BTC-PERP");
+        body.Markets.Should().OnlyContain(market => market != null && market.EndsWith("-PERP"));
+        body.Markets.Should().Contain("BTC-PERP");
+        body.Markets.Should().NotContain("IBTC-PERP");
         body.Timeframes.Should().Contain("15m");
     }
 }

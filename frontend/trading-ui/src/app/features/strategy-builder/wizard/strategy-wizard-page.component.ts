@@ -1,4 +1,4 @@
-import { HttpContext } from "@angular/common/http";
+import { HttpContext, HttpErrorResponse } from "@angular/common/http";
 import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from "@angular/forms";
@@ -11,6 +11,7 @@ import { debounceTime, map, startWith, switchMap, tap } from "rxjs";
 import { of } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { NotificationFacade } from "../../../core/services/notification-facade.service";
+import { extractErrorCode, formatErrorPayload } from "../../../core/utils/error-utils";
 import { DcaScalingBand, StrategyConfig, StrategyTemplateDto, ServerValidationResult, ValidationError } from "../models/strategy.model";
 import { StrategyApiService } from "../services/strategy-api.service";
 import { StrategyMapperService } from "../services/strategy-mapper.service";
@@ -83,6 +84,7 @@ export class StrategyWizardPageComponent implements OnInit {
   public serverWarnings: ValidationError[] = [];
   public currentStepIndex = 0;
   private _userEditedName = false;
+  private _serverSaveErrorSnapshot: string | null = null;
 
   public get selectedTemplateId(): string {
     return String(this.form.get("templateId")?.value ?? "grid");
@@ -248,9 +250,9 @@ export class StrategyWizardPageComponent implements OnInit {
         this._notifications.success("Strategy created successfully");
         void this._router.navigate(["/strategies", result.id, "edit"]);
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.isSaving = false;
-        this._notifications.error("Failed to create strategy.");
+        this._applyServerSaveError(error);
       }
     });
   }
@@ -274,7 +276,7 @@ export class StrategyWizardPageComponent implements OnInit {
       templateId: ["grid"],
       strategyName: ["", [Validators.required, Validators.maxLength(100)]],
       exchange: ["Hyperliquid", Validators.required],
-      market: ["BTC-USD", Validators.required],
+      market: ["BTC-PERP", Validators.required],
       timeframe: ["15m", Validators.required],
       direction: ["long", Validators.required],
       dca: this._fb.group({
@@ -354,6 +356,10 @@ export class StrategyWizardPageComponent implements OnInit {
       debounceTime(400),
       map(() => this.form.getRawValue() as Record<string, unknown>),
       tap((rawValue) => {
+        if (this._serverSaveErrorSnapshot !== null && JSON.stringify(rawValue) !== this._serverSaveErrorSnapshot) {
+          this._serverSaveErrorSnapshot = null;
+        }
+
         this.clientErrors = this._strategyValidator.validate(rawValue);
       }),
       map((rawValue) => {
@@ -373,6 +379,10 @@ export class StrategyWizardPageComponent implements OnInit {
         );
       })
     ).subscribe((result) => {
+      if (this._serverSaveErrorSnapshot !== null) {
+        return;
+      }
+
       if (result !== null) {
         this.serverErrors = result.errors;
         this.serverWarnings = result.warnings;
@@ -396,6 +406,8 @@ export class StrategyWizardPageComponent implements OnInit {
     nameControl.valueChanges.pipe(
       takeUntilDestroyed(this._destroyRef)
     ).subscribe((value: string) => {
+      this._clearStrategyNameDuplicateError();
+
       const generated = this._generateName();
 
       if (value && value !== generated) {
@@ -466,7 +478,7 @@ export class StrategyWizardPageComponent implements OnInit {
     };
 
     const templateId = String(this.form.get("templateId")?.value ?? "grid");
-    const market = String(this.form.get("market")?.value ?? "BTC-USD");
+    const market = String(this.form.get("market")?.value ?? "BTC-PERP");
     const timeframe = String(this.form.get("timeframe")?.value ?? "15m");
     const direction = String(this.form.get("direction")?.value ?? "long");
     const templateLabel = templateLabels[templateId] ?? "Strategy";
@@ -743,5 +755,57 @@ export class StrategyWizardPageComponent implements OnInit {
         this.isLoadingLibrary = false;
       }
     });
+  }
+
+  private _applyServerSaveError(error: HttpErrorResponse): void {
+    const errorMessage = formatErrorPayload(error);
+    const errorCode = extractErrorCode(error) ?? "server_error";
+    const fieldPath = errorCode === "duplicate_name" ? "strategyName" : "form";
+
+    this._clearStrategyNameDuplicateError();
+
+    this.serverErrors = [{
+      severity: "error",
+      fieldPath,
+      code: errorCode,
+      message: errorMessage,
+    }];
+    this.serverWarnings = [];
+    this._serverSaveErrorSnapshot = JSON.stringify(this.form.getRawValue());
+
+    if (fieldPath === "strategyName") {
+      const strategyNameControl = this.form.get("strategyName");
+      const existingErrors = strategyNameControl?.errors ?? {};
+
+      strategyNameControl?.setErrors({
+        ...existingErrors,
+        duplicateName: errorMessage,
+      });
+      strategyNameControl?.markAsTouched();
+
+      if (this.stepper) {
+        this.stepper.selectedIndex = 1;
+      }
+    }
+
+    this._notifications.error(errorMessage);
+  }
+
+  private _clearStrategyNameDuplicateError(): void {
+    const strategyNameControl = this.form.get("strategyName");
+
+    if (strategyNameControl === null) {
+      return;
+    }
+
+    const errors = { ...(strategyNameControl.errors ?? {}) };
+    delete errors["duplicateName"];
+
+    strategyNameControl.setErrors(Object.keys(errors).length > 0 ? errors : null);
+    this.serverErrors = this.serverErrors.filter((error) => !(error.fieldPath === "strategyName" && error.code === "duplicate_name"));
+
+    if (!this.serverErrors.some((error) => error.code === "duplicate_name")) {
+      this._serverSaveErrorSnapshot = null;
+    }
   }
 }

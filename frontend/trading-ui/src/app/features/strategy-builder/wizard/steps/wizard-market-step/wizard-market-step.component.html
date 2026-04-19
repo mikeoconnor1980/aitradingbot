@@ -45,6 +45,8 @@
       <input matInput formControlName="strategyName" placeholder="e.g. BTC Grid 15m" maxlength="100" />
       @if (hasError("strategyName", "required")) {
         <mat-error>Strategy name is required</mat-error>
+      } @else if (group.get("strategyName")?.hasError("duplicateName")) {
+        <mat-error>{{ group.get("strategyName")?.getError("duplicateName") }}</mat-error>
       }
     </mat-form-field>
   </div>

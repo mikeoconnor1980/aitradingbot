@@ -1,5 +1,6 @@
 import { HttpContext } from "@angular/common/http";
-import { Component, OnInit, inject } from "@angular/core";
+import { Component, DestroyRef, OnInit, inject, signal } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
@@ -9,6 +10,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { interval } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { RelativeTimePipe } from "../../core/components/notification-panel/relative-time.pipe";
 import { TradableAsset } from "../../core/models/tradable-asset.model";
@@ -52,14 +54,24 @@ export class WebhooksPageComponent implements OnInit {
   private readonly _orderService = inject(OrderService);
   private readonly _agentService = inject(AgentService);
   private readonly _notifications = inject(NotificationFacade);
+  private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   public readonly displayedColumns = ["label", "asset", "agent", "status", "url", "lastTriggered", "actions"];
+  public readonly relativeTimeRefresh = signal(Date.now());
   public webhooks: WebhookConfigDto[] = [];
   public assets: TradableAsset[] = [];
   public agents: AgentInfo[] = [];
   public isLoading = true;
   public busyWebhookId: string | null = null;
+
+  public constructor() {
+    interval(10000)
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => {
+        this.relativeTimeRefresh.set(Date.now());
+      });
+  }
 
   public ngOnInit(): void {
     this._agentService.refreshAgents();

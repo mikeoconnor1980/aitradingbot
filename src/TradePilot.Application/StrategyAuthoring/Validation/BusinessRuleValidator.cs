@@ -632,7 +632,7 @@ public sealed class BusinessRuleValidator
                 Severity = ValidationSeverity.Error,
                 FieldPath = "risk.autoLeverage",
                 Code = "DCA_AUTO_LEVERAGE_NOT_SUPPORTED",
-                Message = "Auto-leverage is not supported for DCA spot accumulation.",
+                Message = "Auto-leverage is not supported for DCA accumulation.",
             });
         }
 
@@ -643,7 +643,7 @@ public sealed class BusinessRuleValidator
                 Severity = ValidationSeverity.Error,
                 FieldPath = "risk.leverage",
                 Code = "DCA_LEVERAGE_NOT_SUPPORTED",
-                Message = "Leverage must remain 1 for DCA spot accumulation.",
+                Message = "Leverage must remain 1 for DCA accumulation.",
             });
         }
     }

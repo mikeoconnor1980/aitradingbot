@@ -23,7 +23,7 @@ public sealed class DcaControllerTests
             [
                 new DcaAllocation
                 {
-                    Market = "BTC-USD",
+                    Market = "BTC-PERP",
                     WeightPercent = 100m,
                 }
             ],
@@ -52,9 +52,39 @@ public sealed class DcaControllerTests
         var parameters = signal.Parameters!;
 
         signal.SignalType.Should().Be("OpenPosition");
+        signal.Symbol.Should().Be("BTC-PERP");
         parameters["tradeType"].Should().Be(TradeType.DcaBuy.ToString());
         parameters["notionalUsd"].Should().Be(60m);
         parameters["size"].Should().Be(0.66666667m);
+    }
+
+    [TestMethod]
+    public async Task GivenPerpContextSymbol_WhenProcessAsync_ThenEmitsConfiguredPerpMarket()
+    {
+        var config = CreateConfig(new DcaConfig
+        {
+            Interval = DcaInterval.Hourly,
+            TimeOfDayUtc = "00:00",
+            BaseAmountUsd = 100m,
+            Allocations =
+            [
+                new DcaAllocation
+                {
+                    Market = "BTC-PERP",
+                    WeightPercent = 100m,
+                }
+            ],
+        }, AssetType.Perp, "BTC-PERP");
+
+        var signals = await _sut.ProcessAsync(
+            new StrategyEvaluation { SetupDetected = true },
+            CreateContext("BTC-PERP", 95m, new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero)),
+            new GridState(),
+            new PositionState(),
+            config);
+
+        signals.Should().ContainSingle();
+        signals[0].Symbol.Should().Be("BTC-PERP");
     }
 
     [TestMethod]
@@ -69,7 +99,7 @@ public sealed class DcaControllerTests
             [
                 new DcaAllocation
                 {
-                    Market = "BTC-USD",
+                    Market = "BTC-PERP",
                     WeightPercent = 100m,
                 }
             ],
@@ -97,7 +127,7 @@ public sealed class DcaControllerTests
             [
                 new DcaAllocation
                 {
-                    Market = "BTC-USD",
+                    Market = "BTC-PERP",
                     WeightPercent = 100m,
                 }
             ],
@@ -126,7 +156,7 @@ public sealed class DcaControllerTests
             [
                 new DcaAllocation
                 {
-                    Market = "BTC-USD",
+                    Market = "BTC-PERP",
                     WeightPercent = 100m,
                 }
             ],
@@ -170,7 +200,7 @@ public sealed class DcaControllerTests
         signals.Should().BeEmpty();
     }
 
-    private static StrategyConfig CreateConfig(DcaConfig dca)
+    private static StrategyConfig CreateConfig(DcaConfig dca, AssetType assetType = AssetType.Perp, string market = "BTC-PERP")
     {
         return new StrategyConfig
         {
@@ -178,8 +208,8 @@ public sealed class DcaControllerTests
             StrategyMode = StrategyMode.Dca,
             StrategyName = "Test DCA",
             Exchange = "Hyperliquid",
-            AssetType = AssetType.Spot,
-            Market = "BTC-USD",
+            AssetType = assetType,
+            Market = market,
             Timeframe = "1h",
             Direction = Direction.Long,
             Dca = dca,

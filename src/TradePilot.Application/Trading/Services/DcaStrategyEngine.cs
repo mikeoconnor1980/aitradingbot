@@ -27,11 +27,6 @@ public sealed class DcaStrategyEngine : IStrategyEngine
             return Task.FromResult(Fail("DCA configuration is incomplete."));
         }
 
-        if (config.AssetType != AssetType.Spot)
-        {
-            return Task.FromResult(Fail("DCA currently supports spot asset accumulation only."));
-        }
-
         if (config.Direction != Direction.Long)
         {
             return Task.FromResult(Fail("DCA currently supports long accumulation only."));

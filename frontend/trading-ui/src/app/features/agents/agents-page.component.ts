@@ -119,7 +119,7 @@ export class AgentsPageComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe((result: StartTradingDialogResult | undefined) => {
       if (result) {
-        this._agentService.startTrading(agent.agentId, result.strategyConfig).subscribe({
+        this._agentService.startTrading(agent.agentId, result.strategyId).subscribe({
           error: (err) => console.error("Failed to start trading:", err)
         });
       }

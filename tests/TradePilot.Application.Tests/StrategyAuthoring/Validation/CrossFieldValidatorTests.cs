@@ -94,7 +94,7 @@ public sealed class CrossFieldValidatorTests
     }
 
     [TestMethod]
-    public void GivenDcaModeWithPerpAssetType_WhenValidated_ThenError()
+    public void GivenDcaModeWithPerpAssetType_WhenValidated_ThenNoAssetTypeError()
     {
         var config = new StrategyConfig
         {
@@ -114,7 +114,7 @@ public sealed class CrossFieldValidatorTests
 
         _sut.Validate(config, result);
 
-        result.Errors.Should().Contain(error => error.Code == "DCA_REQUIRES_SPOT_ASSET_TYPE");
+        result.Errors.Should().NotContain(error => error.FieldPath == "assetType");
     }
 
     [TestMethod]

@@ -182,6 +182,8 @@ export interface StrategyDto {
   name: string;
   strategyType: string;
   config: StrategyConfig;
+  isRunning: boolean;
+  assignedAgentId?: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -194,6 +196,8 @@ export interface StrategySummaryDto {
   timeframe: string;
   direction: string;
   strategyMode: string;
+  isRunning: boolean;
+  assignedAgentId?: string | null;
   version: number;
   createdAt: string;
   updatedAt: string;

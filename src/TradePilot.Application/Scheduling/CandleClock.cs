@@ -13,6 +13,11 @@ public sealed class CandleClock
 
     public event Func<CandleClosedEvent, Task>? CandleClosed;
 
+    public void Reset()
+    {
+        _lastClosed.Clear();
+    }
+
     public async Task ProcessCandleAsync(Candle candle)
     {
         ArgumentNullException.ThrowIfNull(candle);

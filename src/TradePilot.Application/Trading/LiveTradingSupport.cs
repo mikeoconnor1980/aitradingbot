@@ -15,12 +15,6 @@ public static class LiveTradingSupport
             return true;
         }
 
-        if (config.AssetType != AssetType.Spot)
-        {
-            reason = "Live DCA requires a spot asset type.";
-            return false;
-        }
-
         if (config.Direction != Direction.Long)
         {
             reason = "Live DCA currently supports long accumulation only.";

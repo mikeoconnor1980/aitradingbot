@@ -10,6 +10,7 @@ public sealed class AgentCommand
     public required string CommandId { get; init; }
     public required string AgentId { get; init; }
     public required AgentCommandType Type { get; init; }
+    public Guid? StrategyId { get; init; }
     public StrategyConfig? StrategyConfig { get; init; }
     public OrderCommandPayload? OrderPayload { get; init; }
     public ClosePositionPayload? ClosePositionPayload { get; init; }

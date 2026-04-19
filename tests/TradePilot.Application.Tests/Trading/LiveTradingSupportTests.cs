@@ -36,15 +36,15 @@ public sealed class LiveTradingSupportTests
     }
 
     [TestMethod]
-    public void GivenSpotDcaStrategy_WhenValidateLiveTrading_ThenReturnsSupported()
+    public void GivenPerpDcaStrategy_WhenValidateLiveTrading_ThenReturnsSupported()
     {
         var config = new StrategyConfig
         {
             StrategyMode = StrategyMode.Dca,
             StrategyName = "DCA",
             Exchange = "Hyperliquid",
-            AssetType = AssetType.Spot,
-            Market = "BTC-USD",
+            AssetType = AssetType.Perp,
+            Market = "BTC-PERP",
             Timeframe = "1h",
             Direction = Direction.Long,
             Dca = new DcaConfig
@@ -56,7 +56,7 @@ public sealed class LiveTradingSupportTests
                 [
                     new DcaAllocation
                     {
-                        Market = "BTC-USD",
+                        Market = "BTC-PERP",
                         WeightPercent = 100m,
                     }
                 ],
@@ -78,7 +78,7 @@ public sealed class LiveTradingSupportTests
     }
 
     [TestMethod]
-    public void GivenPerpDcaStrategy_WhenValidateLiveTrading_ThenReturnsUnsupported()
+    public void GivenShortDcaStrategy_WhenValidateLiveTrading_ThenReturnsUnsupported()
     {
         var config = new StrategyConfig
         {
@@ -86,9 +86,9 @@ public sealed class LiveTradingSupportTests
             StrategyName = "DCA",
             Exchange = "Hyperliquid",
             AssetType = AssetType.Perp,
-            Market = "BTC-USD",
+            Market = "BTC-PERP",
             Timeframe = "1h",
-            Direction = Direction.Long,
+            Direction = Direction.Short,
             Dca = new DcaConfig
             {
                 Interval = DcaInterval.Hourly,
@@ -98,7 +98,7 @@ public sealed class LiveTradingSupportTests
                 [
                     new DcaAllocation
                     {
-                        Market = "BTC-USD",
+                        Market = "BTC-PERP",
                         WeightPercent = 100m,
                     }
                 ],
@@ -116,6 +116,6 @@ public sealed class LiveTradingSupportTests
         var isSupported = LiveTradingSupport.TryValidate(config, out var reason);
 
         isSupported.Should().BeFalse();
-        reason.Should().Be("Live DCA requires a spot asset type.");
+        reason.Should().Be("Live DCA currently supports long accumulation only.");
     }
 }

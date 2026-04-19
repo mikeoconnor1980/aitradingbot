@@ -219,11 +219,16 @@ public sealed class LivePositionManager : IPositionManager
             return;
         }
 
+        var assetType = ResolveAssetType(signal, tradeType);
+        var symbol = assetType == AssetType.Spot
+            ? NormalizeSpotMarket(signal.Symbol)
+            : signal.Symbol;
+
         var orderId = await _executionEngine.PlaceOrderAsync(
             new OrderRequest
             {
-                Symbol = signal.Symbol,
-                AssetType = tradeType == TradeType.DcaBuy ? AssetType.Spot : AssetType.Perp,
+                Symbol = symbol,
+                AssetType = assetType,
                 Side = OrderSide.Buy,
                 OrderType = OrderType.Market,
                 Price = entryPrice,
@@ -233,7 +238,7 @@ public sealed class LivePositionManager : IPositionManager
             },
             cancellationToken);
 
-        _orderTracker.TrackOrder(orderId, gridCycleId, 0, signal.Symbol,
+        _orderTracker.TrackOrder(orderId, gridCycleId, 0, symbol,
             OrderSide.Buy, entryPrice, size, tradeType);
     }
 
@@ -382,6 +387,24 @@ public sealed class LivePositionManager : IPositionManager
             : TradeType.SignalEntry;
     }
 
+    private static AssetType ResolveAssetType(TradingSignal signal, TradeType tradeType)
+    {
+        var rawAssetType = GetOptionalString(signal.Parameters, "assetType");
+        if (Enum.TryParse<AssetType>(rawAssetType, ignoreCase: true, out var assetType))
+        {
+            return assetType;
+        }
+
+        if (tradeType != TradeType.DcaBuy)
+        {
+            return AssetType.Perp;
+        }
+
+        return signal.Symbol.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
+            ? AssetType.Perp
+            : AssetType.Spot;
+    }
+
     private static int? GetOptionalInt(IReadOnlyDictionary<string, object>? parameters, string key)
     {
         if (parameters is null || !parameters.TryGetValue(key, out var value) || value is null)
@@ -444,6 +467,26 @@ public sealed class LivePositionManager : IPositionManager
         }
 
         return "default";
+    }
+
+    private static string NormalizeSpotMarket(string symbol)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
+        var trimmed = symbol.Trim();
+        if (trimmed.EndsWith("-USD", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed.ToUpperInvariant();
+        }
+
+        if (trimmed.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{trimmed[..^5].Trim().ToUpperInvariant()}-USD";
+        }
+
+        return trimmed.Contains('-')
+            ? trimmed.ToUpperInvariant()
+            : $"{trimmed.ToUpperInvariant()}-USD";
     }
 
     private static object GetRequiredValue(IReadOnlyDictionary<string, object>? parameters, string key)

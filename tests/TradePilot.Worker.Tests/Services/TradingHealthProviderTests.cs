@@ -18,8 +18,42 @@ public sealed class TradingHealthProviderTests
     public void InitialState_IsDisconnected_NoTradesOrCandles()
     {
         _sut.IsWebSocketConnected.Should().BeFalse();
+        _sut.IsTradingSessionActive.Should().BeFalse();
         _sut.LastTradeReceived.Should().BeNull();
         _sut.LastCandleClosed.Should().BeNull();
+    }
+
+    [TestMethod]
+    public void RecordTradingSessionStarted_SetsSessionActiveAndResetsTradingState()
+    {
+        _sut.RecordConnectionState(true);
+        _sut.RecordTradeReceived();
+        _sut.RecordCandleClosed("5m");
+
+        _sut.RecordTradingSessionStarted();
+
+        _sut.IsTradingSessionActive.Should().BeTrue();
+        _sut.IsWebSocketConnected.Should().BeFalse();
+        _sut.LastTradeReceived.Should().BeNull();
+        _sut.LastCandleClosed.Should().BeNull();
+        _sut.TradingSessionStartedUtc.Should().NotBeNull();
+    }
+
+    [TestMethod]
+    public void RecordTradingSessionStopped_ClearsSessionState()
+    {
+        _sut.RecordTradingSessionStarted();
+        _sut.RecordConnectionState(true);
+        _sut.RecordTradeReceived();
+        _sut.RecordCandleClosed("5m");
+
+        _sut.RecordTradingSessionStopped();
+
+        _sut.IsTradingSessionActive.Should().BeFalse();
+        _sut.IsWebSocketConnected.Should().BeFalse();
+        _sut.LastTradeReceived.Should().BeNull();
+        _sut.LastCandleClosed.Should().BeNull();
+        _sut.TradingSessionStartedUtc.Should().BeNull();
     }
 
     [TestMethod]
@@ -82,11 +116,25 @@ public sealed class TradingHealthProviderTests
         var snapshot = _sut.GetSnapshot();
 
         snapshot.IsWebSocketConnected.Should().BeTrue();
+        snapshot.IsTradingSessionActive.Should().BeFalse();
         snapshot.LastTradeReceived.Should().NotBeNull();
         snapshot.LastCandleClosed.Should().NotBeNull();
         snapshot.Uptime.Should().BeGreaterOrEqualTo(TimeSpan.Zero);
         snapshot.TimeSinceLastTrade.Should().NotBeNull();
         snapshot.TimeSinceLastCandle.Should().NotBeNull();
+    }
+
+    [TestMethod]
+    public void GetSnapshot_WhenSessionActive_IncludesTradingSessionUptime()
+    {
+        _sut.RecordServiceStarted();
+        _sut.RecordTradingSessionStarted();
+
+        var snapshot = _sut.GetSnapshot();
+
+        snapshot.IsTradingSessionActive.Should().BeTrue();
+        snapshot.TradingSessionStartedUtc.Should().NotBeNull();
+        snapshot.TradingSessionUptime.Should().NotBeNull();
     }
 
     [TestMethod]

@@ -33,7 +33,7 @@ public sealed class ReferenceDataController : ApiController
             : HyperliquidAssetMapper.GetSupportedCoins().ToList();
 
         var markets = coins
-            .Select(coin => $"{coin}-USD")
+            .Select(HyperliquidAssetMapper.ToDisplayName)
             .ToList();
 
         return Ok(new ReferenceDataResponse

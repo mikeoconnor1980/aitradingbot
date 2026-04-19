@@ -157,7 +157,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     }
 
     if (this.isDcaMode) {
-      return "Build a scheduled spot DCA strategy with optional price and sentiment gates.";
+      return "Build a scheduled DCA strategy with optional price and sentiment gates.";
     }
 
     return this.isSignalMode
@@ -533,7 +533,7 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       strategyMode: ["grid"],
       strategyName: ["", [Validators.required, Validators.maxLength(100)]],
       exchange: ["Hyperliquid", Validators.required],
-      market: ["BTC-USD", Validators.required],
+      market: ["BTC-PERP", Validators.required],
       timeframe: ["15m", Validators.required],
       direction: ["long", Validators.required],
       grid: this._fb.group({

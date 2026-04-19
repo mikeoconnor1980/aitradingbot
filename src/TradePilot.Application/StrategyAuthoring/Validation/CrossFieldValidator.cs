@@ -66,17 +66,6 @@ public sealed class CrossFieldValidator
                 });
             }
 
-            if (config.AssetType != AssetType.Spot)
-            {
-                result.Add(new ValidationError
-                {
-                    Severity = ValidationSeverity.Error,
-                    FieldPath = "assetType",
-                    Code = "DCA_REQUIRES_SPOT_ASSET_TYPE",
-                    Message = "DCA mode currently requires spot asset type.",
-                });
-            }
-
             if (config.Direction != Direction.Long)
             {
                 result.Add(new ValidationError

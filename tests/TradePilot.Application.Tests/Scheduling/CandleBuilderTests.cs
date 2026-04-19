@@ -162,6 +162,56 @@ public sealed class CandleBuilderTests
     }
 
     [TestMethod]
+    public async Task GivenStaleAccumulator_WhenResetBeforeNextSession_ThenNextTickDoesNotEmitOldCandle()
+    {
+        await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50000m, 0.1m, EpochBase + 1_000));
+
+        _sut.Reset();
+
+        var nextFiveMinuteBucket = EpochBase + (5L * 60L * 1000L);
+        await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50100m, 0.2m, nextFiveMinuteBucket + 1));
+
+        _emittedEvents.Should().BeEmpty();
+        _candleRepositoryMock.Verify(
+            r => r.BulkInsertAsync(It.IsAny<IEnumerable<Candle>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenClosedFiveMinuteBucketWithoutFollowOnTrade_WhenFlushedByWallClock_ThenEmitsConfirmedFiveMinuteCandle()
+    {
+        var tradeTime = EpochBase + 1_000;
+        await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50000m, 0.1m, tradeTime));
+
+        var closeTime = EpochBase + (5L * 60L * 1000L);
+        await _sut.FlushClosedCandlesAsync(DateTimeOffset.FromUnixTimeMilliseconds(closeTime));
+
+        _emittedEvents.Should().ContainSingle(evt => evt.Timeframe == "5m");
+        _candleRepositoryMock.Verify(
+            r => r.BulkInsertAsync(
+                It.Is<IEnumerable<Candle>>(candles => candles.Any(c =>
+                    c.Symbol == "BTC-PERP" &&
+                    c.Interval == "5m" &&
+                    c.Timestamp == EpochBase)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenOpenBucketBeforeCloseTime_WhenFlushedByWallClock_ThenDoesNotEmitCandle()
+    {
+        await _sut.ProcessTickAsync(CreateTick("BTC-PERP", 50000m, 0.1m, EpochBase + 1_000));
+
+        var beforeClose = DateTimeOffset.FromUnixTimeMilliseconds(EpochBase + (5L * 60L * 1000L) - 1);
+        await _sut.FlushClosedCandlesAsync(beforeClose);
+
+        _emittedEvents.Should().BeEmpty();
+        _candleRepositoryMock.Verify(
+            r => r.BulkInsertAsync(It.IsAny<IEnumerable<Candle>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
     public void GivenTimestamp_WhenGetBucketTimestamp_ThenAlignsToBucketBoundary()
     {
         // 15m = 900,000 ms

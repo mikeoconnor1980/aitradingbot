@@ -20,6 +20,7 @@ namespace TradePilot.Infrastructure.Services;
 public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 {
     private const int FallbackMaxLeverage = 20;
+    private const decimal MinimumSpotOrderValueUsd = 10m;
 
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidSigner _signer;
@@ -28,7 +29,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
     private readonly ILogger<LiveExecutionEngine> _logger;
 
     private readonly ConcurrentDictionary<string, string> _orderAssetMap = new();
-    private readonly ConcurrentDictionary<string, (int Index, int MaxLeverage)> _assetMetadataCache = new();
+    private readonly ConcurrentDictionary<string, (int Index, int MaxLeverage, int SizeDecimals)> _assetMetadataCache = new();
     private readonly SemaphoreSlim _metadataLock = new(1, 1);
 
     public LiveExecutionEngine(
@@ -50,37 +51,104 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentNullException.ThrowIfNull(order);
 
         var coin = HyperliquidAssetMapper.ToCoin(order.Symbol);
-        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, order.AssetType, cancellationToken);
+        var (assetIndex, _, sizeDecimals) = await ResolveAssetMetadataAsync(coin, order.AssetType, cancellationToken);
         var isBuy = order.Side == OrderSide.Buy;
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
         var isMarket = order.OrderType == OrderType.Market;
+        var normalizedSize = NormalizeOrderSize(order.Size, sizeDecimals);
+
+        if (normalizedSize <= 0m)
+        {
+            _logger.LogWarning(
+                "Order size rounded down to zero: Symbol={Symbol}, OriginalSize={OriginalSize}, SizeDecimals={SizeDecimals}, AssetType={AssetType}",
+                order.Symbol,
+                order.Size,
+                sizeDecimals,
+                order.AssetType);
+            return string.Empty;
+        }
+
+        if (normalizedSize != order.Size)
+        {
+            _logger.LogInformation(
+                "Normalized order size for exchange precision: Symbol={Symbol}, OriginalSize={OriginalSize}, NormalizedSize={NormalizedSize}, SizeDecimals={SizeDecimals}, AssetType={AssetType}",
+                order.Symbol,
+                order.Size,
+                normalizedSize,
+                sizeDecimals,
+                order.AssetType);
+        }
 
         decimal price;
         string tif;
+        decimal orderValueUsd;
+        decimal rawPrice;
+        decimal? referencePrice = null;
 
         if (isMarket)
         {
-            var referencePrice = order.AssetType == AssetType.Spot && order.Price > 0m
+            referencePrice = order.AssetType == AssetType.Spot && order.Price > 0m
                 ? order.Price
                 : await GetMidPriceAsync(coin, cancellationToken);
-            price = RoundToSignificantFigures(isBuy ? referencePrice * 1.05m : referencePrice * 0.95m, 5);
+            rawPrice = isBuy ? referencePrice.Value * 1.05m : referencePrice.Value * 0.95m;
             tif = "Ioc";
+            orderValueUsd = normalizedSize * referencePrice.Value;
+        }
+        else
+        {
+            rawPrice = order.Price;
+            tif = "Gtc";
+            orderValueUsd = normalizedSize * rawPrice;
+        }
 
+        price = NormalizeOrderPrice(rawPrice, sizeDecimals, order.AssetType);
+
+        if (price <= 0m)
+        {
+            _logger.LogWarning(
+                "Order price rounded down to zero: Symbol={Symbol}, OriginalPrice={OriginalPrice}, SizeDecimals={SizeDecimals}, AssetType={AssetType}",
+                order.Symbol,
+                rawPrice,
+                sizeDecimals,
+                order.AssetType);
+            return string.Empty;
+        }
+
+        if (price != rawPrice)
+        {
+            _logger.LogInformation(
+                "Normalized order price for exchange precision: Symbol={Symbol}, OriginalPrice={OriginalPrice}, NormalizedPrice={NormalizedPrice}, SizeDecimals={SizeDecimals}, AssetType={AssetType}",
+                order.Symbol,
+                rawPrice,
+                price,
+                sizeDecimals,
+                order.AssetType);
+        }
+
+        if (isMarket)
+        {
             _logger.LogInformation(
                 "Market order: Coin={Coin}, ReferencePrice={ReferencePrice}, SlippagePrice={SlippagePrice}, IsBuy={IsBuy}, AssetType={AssetType}",
                 coin, referencePrice, price, isBuy, order.AssetType);
         }
-        else
+
+        if (order.AssetType == AssetType.Spot && orderValueUsd < MinimumSpotOrderValueUsd)
         {
-            price = order.Price;
-            tif = "Gtc";
+            _logger.LogWarning(
+                "Spot order below minimum notional: Symbol={Symbol}, NotionalUsd={NotionalUsd}, MinimumUsd={MinimumUsd}, Size={Size}, ReferencePrice={ReferencePrice}",
+                order.Symbol,
+                orderValueUsd,
+                MinimumSpotOrderValueUsd,
+                normalizedSize,
+                order.Price > 0m ? order.Price : price);
+            return string.Empty;
         }
 
         var action = HyperliquidEip712.BuildOrderAction(
             assetIndex: assetIndex,
             isBuy: isBuy,
             price: price,
-            size: order.Size,
+            size: normalizedSize,
             reduceOnly: order.ReduceOnly,
             tif: tif);
 
@@ -99,7 +167,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 
         _logger.LogInformation(
             "Placing {OrderType} {Side} order: Symbol={Symbol}, Price={Price}, Size={Size}, TradeType={TradeType}",
-            order.OrderType, order.Side, order.Symbol, price, order.Size, order.TradeType);
+            order.OrderType, order.Side, order.Symbol, price, normalizedSize, order.TradeType);
 
         try
         {
@@ -110,7 +178,11 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 
             if (string.IsNullOrEmpty(orderId))
             {
-                _logger.LogWarning("Order rejected by exchange: Symbol={Symbol}", order.Symbol);
+                _logger.LogWarning(
+                    "Order rejected by exchange: Symbol={Symbol}, Status={Status}, Detail={Detail}",
+                    order.Symbol,
+                    exchangeResponse.Status,
+                    GetExchangeErrorDetail(exchangeResponse));
                 return string.Empty;
             }
 
@@ -148,7 +220,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(asset);
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
+        var (assetIndex, _, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
         var action = new Dictionary<string, object>
@@ -188,7 +260,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
         var coin = HyperliquidAssetMapper.ToCoin(symbol);
-        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
+        var (assetIndex, _, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
         var action = new Dictionary<string, object>
@@ -233,7 +305,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(asset);
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
+        var (assetIndex, _, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
         var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
@@ -276,7 +348,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(orderId);
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var (assetIndex, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
+        var (assetIndex, _, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
         var isBuy = side.Equals("buy", StringComparison.OrdinalIgnoreCase);
         var isMainnet = _options.Network.Equals("mainnet", StringComparison.OrdinalIgnoreCase);
 
@@ -333,7 +405,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         ArgumentException.ThrowIfNullOrWhiteSpace(asset);
 
         var coin = HyperliquidAssetMapper.ToCoin(asset);
-        var (assetIndex, maxLeverage) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
+        var (assetIndex, maxLeverage, _) = await ResolveAssetMetadataAsync(coin, AssetType.Perp, cancellationToken);
         var requestedLeverage = leverage;
         var clampedLeverage = Math.Clamp(requestedLeverage, 1, maxLeverage);
 
@@ -378,7 +450,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
             isIsolated);
     }
 
-    private async Task<(int Index, int MaxLeverage)> ResolveAssetMetadataAsync(
+    private async Task<(int Index, int MaxLeverage, int SizeDecimals)> ResolveAssetMetadataAsync(
         string asset,
         AssetType assetType,
         CancellationToken cancellationToken)
@@ -424,8 +496,13 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
                         && parsedMaxLeverage > 0
                         ? parsedMaxLeverage
                         : FallbackMaxLeverage;
+                    var sizeDecimals = item.TryGetProperty("szDecimals", out var sizeDecimalsElement)
+                        && sizeDecimalsElement.TryGetInt32(out var parsedSizeDecimals)
+                        && parsedSizeDecimals >= 0
+                        ? parsedSizeDecimals
+                        : 5;
 
-                    _assetMetadataCache[BuildAssetCacheKey(name, AssetType.Perp)] = (i, maxLeverage);
+                    _assetMetadataCache[BuildAssetCacheKey(name, AssetType.Perp)] = (i, maxLeverage, sizeDecimals);
                 }
             }
 
@@ -442,7 +519,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         }
     }
 
-    private async Task<(int Index, int MaxLeverage)> LoadSpotAssetMetadataAsync(string coin, CancellationToken cancellationToken)
+    private async Task<(int Index, int MaxLeverage, int SizeDecimals)> LoadSpotAssetMetadataAsync(string coin, CancellationToken cancellationToken)
     {
         var response = await _restClient.PostInfoAsync<JsonElement>(
             new { type = "spotMeta" }, cancellationToken);
@@ -459,6 +536,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
 
         var quoteTokenIndex = GetSpotTokenIndex(tokens, "USDC");
         var baseTokenIndex = GetSpotTokenIndex(tokens, coin);
+        var baseTokenDecimals = GetSpotTokenSizeDecimals(tokens, coin);
 
         foreach (var pair in universe.EnumerateArray())
         {
@@ -476,7 +554,7 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
                 ? pairIndexElement.GetInt32()
                 : throw new InvalidOperationException($"Hyperliquid spot pair '{coin}/USDC' did not include an index.");
 
-            return (10_000 + pairIndex, 1);
+            return (10_000 + pairIndex, 1, baseTokenDecimals);
         }
 
         throw new InvalidOperationException($"Spot pair '{coin}/USDC' not found in Hyperliquid spot metadata.");
@@ -501,6 +579,27 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         }
 
         throw new InvalidOperationException($"Spot token '{tokenName}' not found in Hyperliquid spot metadata.");
+    }
+
+    private static int GetSpotTokenSizeDecimals(JsonElement tokens, string tokenName)
+    {
+        foreach (var token in tokens.EnumerateArray())
+        {
+            if (!token.TryGetProperty("name", out var nameElement)
+                || !string.Equals(nameElement.GetString(), tokenName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (token.TryGetProperty("szDecimals", out var sizeDecimalsElement))
+            {
+                return sizeDecimalsElement.GetInt32();
+            }
+
+            break;
+        }
+
+        throw new InvalidOperationException($"Spot token '{tokenName}' did not include szDecimals in Hyperliquid spot metadata.");
     }
 
     private async Task<decimal> GetMidPriceAsync(string coin, CancellationToken cancellationToken)
@@ -533,6 +632,25 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         return first.Resting?.Oid.ToString() ?? first.Filled?.Oid.ToString();
     }
 
+    private static string GetExchangeErrorDetail(HyperliquidExchangeResponse response)
+    {
+        if (response.Response?.Data?.Statuses is { Count: > 0 } statuses)
+        {
+            var error = statuses[0].Error;
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                return error;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(response.Response?.ErrorMessage))
+        {
+            return response.Response.ErrorMessage;
+        }
+
+        return "No exchange detail returned.";
+    }
+
     private static string NormalizeCoin(string asset)
     {
         return asset.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
@@ -551,6 +669,41 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         var magnitude = (int)Math.Floor(Math.Log10((double)Math.Abs(value)));
         var factor = (decimal)Math.Pow(10, significantFigures - 1 - magnitude);
         return Math.Round(value * factor) / factor;
+    }
+
+    private static decimal NormalizeOrderSize(decimal size, int sizeDecimals)
+    {
+        if (sizeDecimals < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(sizeDecimals));
+        }
+
+        if (size == 0m)
+        {
+            return 0m;
+        }
+
+        var sign = Math.Sign(size);
+        var absoluteSize = Math.Abs(size);
+        var factor = (decimal)Math.Pow(10, sizeDecimals);
+        var normalized = decimal.Truncate(absoluteSize * factor) / factor;
+        return normalized * sign;
+    }
+
+    private static decimal NormalizeOrderPrice(decimal price, int sizeDecimals, AssetType assetType)
+    {
+        if (price == 0m)
+        {
+            return 0m;
+        }
+
+        var roundedToSigFigs = RoundToSignificantFigures(price, 5);
+        var maxDecimals = assetType == AssetType.Spot
+            ? Math.Max(0, 8 - sizeDecimals)
+            : Math.Max(0, 6 - sizeDecimals);
+        var factor = (decimal)Math.Pow(10, maxDecimals);
+
+        return decimal.Truncate(roundedToSigFigs * factor) / factor;
     }
 
     private static string ToWireDecimal(decimal value)

@@ -56,6 +56,34 @@ public sealed class LiveMarketContextBuilderTests
         context.FearGreed.Should().BeNull();
     }
 
+    [TestMethod]
+    public async Task GivenExistingIndicatorHistory_WhenReset_ThenNextSessionStartsFromCleanState()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var sut = new LiveMarketContextBuilder(
+            llmContextProvider: null,
+            fearGreedSnapshotProvider: null,
+            serviceScopeFactory: null,
+            restClient: null);
+
+        var firstCandle = CreateCandle(now.ToUnixTimeSeconds());
+        sut.UpdateIndicators(firstCandle);
+
+        sut.Reset();
+
+        var secondCandle = CreateCandle(now.AddHours(1).ToUnixTimeSeconds());
+        sut.UpdateIndicators(secondCandle);
+        var context = await sut.BuildAsync(secondCandle, secondCandle, secondCandle, requiredIndicators: null);
+
+        context.CandleHistory.Should().HaveCount(1);
+        context.CandleHistory![0].Timestamp.Should().Be(secondCandle.Timestamp);
+        context.PreviousCandle.Should().BeNull();
+        context.Indicators!.EmaFast.Should().Be(0m);
+        context.Indicators.EmaSlow.Should().Be(0m);
+        context.Indicators.Atr.Should().Be(0m);
+        context.Indicators.Rsi.Should().Be(50m);
+    }
+
     private static Candle CreateCandle(long timestamp)
     {
         return Candle.Create(

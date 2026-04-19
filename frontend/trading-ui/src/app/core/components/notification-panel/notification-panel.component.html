@@ -53,7 +53,7 @@
             @if (n.message) {
               <div class="notif-panel__card-message">{{ n.message }}</div>
             }
-            <div class="notif-panel__card-time">{{ n.timestamp | relativeTime }}</div>
+            <div class="notif-panel__card-time">{{ n.timestamp | relativeTime:relativeTimeRefresh() }}</div>
           </div>
         </div>
       }

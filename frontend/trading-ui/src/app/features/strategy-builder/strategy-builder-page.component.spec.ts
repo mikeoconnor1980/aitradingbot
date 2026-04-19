@@ -57,7 +57,7 @@ describe("StrategyBuilderPageComponent", () => {
               strategyMode: "grid",
               strategyName: String(formValue["strategyName"] ?? ""),
               exchange: String(formValue["exchange"] ?? "Hyperliquid"),
-              market: String(formValue["market"] ?? "BTC-USD"),
+              market: String(formValue["market"] ?? "BTC-PERP"),
               timeframe: String(formValue["timeframe"] ?? "15m"),
               direction: String(formValue["direction"] ?? "long"),
               enabled: true,
@@ -107,7 +107,7 @@ describe("StrategyBuilderPageComponent", () => {
         {
           provide: ReferenceDataService,
           useValue: {
-            getReferenceData: () => of({ markets: ["BTC-USD"], timeframes: ["15m", "1h"] })
+            getReferenceData: () => of({ markets: ["BTC-PERP"], timeframes: ["15m", "1h"] })
           }
         },
         {
@@ -211,7 +211,7 @@ describe("StrategyBuilderPageComponent", () => {
         strategyMode: "dca",
         strategyName: "BTC DCA",
         exchange: "Hyperliquid",
-        market: "BTC-USD",
+        market: "BTC-PERP",
         timeframe: "1h",
         direction: "long",
         enabled: true,
@@ -222,7 +222,7 @@ describe("StrategyBuilderPageComponent", () => {
           dayOfMonth: null,
           timeOfDayUtc: "00:00",
           baseAmountUsd: 100,
-          allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+          allocations: [{ market: "BTC-PERP", weightPercent: 100 }],
           gateConditions: {
             maxPriceUsd: null,
             minFearGreedIndex: null,

@@ -25,10 +25,13 @@ public sealed class HealthMonitorServiceTests
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: false,
+            IsTradingSessionActive: true,
             LastTradeReceived: DateTimeOffset.UtcNow,
             LastCandleClosed: DateTimeOffset.UtcNow,
             ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
+            TradingSessionStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
             Uptime: TimeSpan.FromMinutes(10),
+            TradingSessionUptime: TimeSpan.FromMinutes(10),
             TimeSinceLastTrade: TimeSpan.FromSeconds(30),
             TimeSinceLastCandle: TimeSpan.FromMinutes(2));
 
@@ -42,10 +45,13 @@ public sealed class HealthMonitorServiceTests
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
+            IsTradingSessionActive: true,
             LastTradeReceived: null,
             LastCandleClosed: null,
             ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
+            TradingSessionStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
             Uptime: TimeSpan.FromMinutes(10),
+            TradingSessionUptime: TimeSpan.FromMinutes(10),
             TimeSinceLastTrade: null,
             TimeSinceLastCandle: null);
 
@@ -59,10 +65,13 @@ public sealed class HealthMonitorServiceTests
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
+            IsTradingSessionActive: true,
             LastTradeReceived: DateTimeOffset.UtcNow.AddMinutes(-10),
             LastCandleClosed: DateTimeOffset.UtcNow,
             ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-20),
+            TradingSessionStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-20),
             Uptime: TimeSpan.FromMinutes(20),
+            TradingSessionUptime: TimeSpan.FromMinutes(20),
             TimeSinceLastTrade: TimeSpan.FromMinutes(10),
             TimeSinceLastCandle: TimeSpan.FromMinutes(1));
 
@@ -76,10 +85,13 @@ public sealed class HealthMonitorServiceTests
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
+            IsTradingSessionActive: true,
             LastTradeReceived: DateTimeOffset.UtcNow,
             LastCandleClosed: DateTimeOffset.UtcNow.AddMinutes(-25),
             ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-30),
+            TradingSessionStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-30),
             Uptime: TimeSpan.FromMinutes(30),
+            TradingSessionUptime: TimeSpan.FromMinutes(30),
             TimeSinceLastTrade: TimeSpan.FromSeconds(5),
             TimeSinceLastCandle: TimeSpan.FromMinutes(25));
 
@@ -93,10 +105,13 @@ public sealed class HealthMonitorServiceTests
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
+            IsTradingSessionActive: true,
             LastTradeReceived: DateTimeOffset.UtcNow,
             LastCandleClosed: DateTimeOffset.UtcNow,
             ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
+            TradingSessionStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
             Uptime: TimeSpan.FromMinutes(10),
+            TradingSessionUptime: TimeSpan.FromMinutes(10),
             TimeSinceLastTrade: TimeSpan.FromSeconds(5),
             TimeSinceLastCandle: TimeSpan.FromMinutes(2));
 
@@ -110,16 +125,40 @@ public sealed class HealthMonitorServiceTests
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
+            IsTradingSessionActive: true,
             LastTradeReceived: null,
             LastCandleClosed: null,
             ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-2),
+            TradingSessionStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-2),
             Uptime: TimeSpan.FromMinutes(2),
+            TradingSessionUptime: TimeSpan.FromMinutes(2),
             TimeSinceLastTrade: null,
             TimeSinceLastCandle: null);
 
         _sut.EvaluateHealth(snapshot);
 
         // Should log healthy info (connected, within grace period)
+        VerifyLogLevel(LogLevel.Information);
+        VerifyNoLogLevel(LogLevel.Warning);
+    }
+
+    [TestMethod]
+    public void EvaluateHealth_WhenIdle_LogsIdleInfoOnly()
+    {
+        var snapshot = new TradingHealthSnapshot(
+            IsWebSocketConnected: false,
+            IsTradingSessionActive: false,
+            LastTradeReceived: null,
+            LastCandleClosed: null,
+            ServiceStartedUtc: DateTimeOffset.UtcNow.AddMinutes(-10),
+            TradingSessionStartedUtc: null,
+            Uptime: TimeSpan.FromMinutes(10),
+            TradingSessionUptime: null,
+            TimeSinceLastTrade: null,
+            TimeSinceLastCandle: null);
+
+        _sut.EvaluateHealth(snapshot);
+
         VerifyLogLevel(LogLevel.Information);
         VerifyNoLogLevel(LogLevel.Warning);
     }

@@ -63,7 +63,7 @@ export class WizardEducationService {
       tips: [
         "Shorter timeframes (5m, 15m) generate more signals but are noisier — expect more false entries.",
         "Longer timeframes (4h, 1d) give fewer but higher-conviction signals.",
-        "BTC-USD is the most liquid market on Hyperliquid with the tightest spreads."
+        "BTC-PERP is the most liquid market on Hyperliquid with the tightest spreads."
       ]
     },
     {

@@ -16,6 +16,11 @@ public sealed class SyntheticRegimeProvider
         _atrPercentile.Add(atr);
     }
 
+    public void Reset()
+    {
+        _atrPercentile.Reset();
+    }
+
     public LlmContext Evaluate(IndicatorSnapshot indicators, long timestampUtc)
     {
         return Evaluate(indicators, timestampUtc, fearGreed: null);
@@ -195,5 +200,10 @@ internal sealed class RollingAtrPercentile
         {
             _values.Dequeue();
         }
+    }
+
+    public void Reset()
+    {
+        _values.Clear();
     }
 }

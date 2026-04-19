@@ -98,6 +98,50 @@ public sealed class LiveMarketContextBuilder : IMarketContextBuilder
         }
     }
 
+    public void Reset()
+    {
+        _candles.Clear();
+        _bars.Clear();
+
+        _emaFast.Reset();
+        _emaSlow.Reset();
+        _emaTrend.Reset();
+        _rsi14.Reset();
+        _atr14.Reset();
+        _syntheticRegimeProvider.Reset();
+
+        foreach (var (_, ema) in _dynamicEmas)
+        {
+            ema.Reset();
+        }
+
+        foreach (var (_, rsi) in _dynamicRsis)
+        {
+            rsi.Reset();
+        }
+
+        foreach (var (_, sma) in _dynamicSmas)
+        {
+            sma.Reset();
+        }
+
+        foreach (var (_, macd) in _dynamicMacds)
+        {
+            macd.Reset();
+        }
+
+        _dynamicEmas.Clear();
+        _dynamicRsis.Clear();
+        _dynamicSmas.Clear();
+        _dynamicMacds.Clear();
+        _prevEma.Clear();
+        _prevRsi.Clear();
+        _prevSma.Clear();
+        _prevMacd.Clear();
+        _prevSr.Clear();
+        _dynamicInitialized = false;
+    }
+
     public MarketContext Build(Candle triggerCandle, Candle? latestOneHourCandle, Candle? latestFourHourCandle)
     {
         return Build(triggerCandle, latestOneHourCandle, latestFourHourCandle, null);

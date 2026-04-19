@@ -82,9 +82,9 @@ export class AgentService {
     return this._http.get<AgentInfo>(`${this._baseUrl}/agent/${agentId}`);
   }
 
-  public startTrading(agentId: string, strategyConfig: unknown): Observable<CommandAcceptedResponse> {
+  public startTrading(agentId: string, strategyId: string): Observable<CommandAcceptedResponse> {
     return this._http
-      .post<CommandAcceptedResponse>(`${this._baseUrl}/trading/${agentId}/start`, { strategyConfig })
+      .post<CommandAcceptedResponse>(`${this._baseUrl}/trading/${agentId}/start`, { strategyId })
       .pipe(
         tap(() => {
           setTimeout(() => this.refreshAgents(), 1000);

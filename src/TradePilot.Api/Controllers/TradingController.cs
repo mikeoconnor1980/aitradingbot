@@ -1,8 +1,12 @@
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Serialization;
 using TradePilot.Application.Trading;
 
 namespace TradePilot.Api.Controllers;
@@ -17,10 +21,12 @@ namespace TradePilot.Api.Controllers;
 public sealed class TradingController : ControllerBase
 {
     private readonly AgentCommandStore _store;
+    private readonly IStrategyRepository _strategyRepository;
 
-    public TradingController(AgentCommandStore store)
+    public TradingController(AgentCommandStore store, IStrategyRepository strategyRepository)
     {
         _store = store;
+        _strategyRepository = strategyRepository;
     }
 
     /// <summary>
@@ -30,18 +36,49 @@ public sealed class TradingController : ControllerBase
     [ProducesResponseType(typeof(CommandAcceptedResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult Start(string agentId, [FromBody] StartTradingRequest request)
+    public async Task<IActionResult> Start(string agentId, [FromBody] StartTradingRequest request)
     {
-        if (request.StrategyConfig is null)
+        if (request.StrategyId is null || request.StrategyId == Guid.Empty)
         {
             return BadRequest(new ProblemDetails
             {
                 Title = "Invalid request",
-                Detail = "StrategyConfig is required."
+                Detail = "StrategyId is required."
             });
         }
 
-        if (!LiveTradingSupport.TryValidate(request.StrategyConfig, out var unsupportedReason))
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var strategy = await _strategyRepository.GetByIdAsync(request.StrategyId.Value, HttpContext.RequestAborted);
+        if (strategy is null || strategy.UserId != userId || !strategy.IsActive)
+        {
+            return NotFound(new ProblemDetails
+            {
+                Title = "Strategy not found",
+                Detail = $"No active strategy was found with ID '{request.StrategyId}'."
+            });
+        }
+
+        StrategyConfig strategyConfig;
+        try
+        {
+            strategyConfig = JsonSerializer.Deserialize<StrategyConfig>(strategy.ConfigJson, StrategyJsonOptions.Default)
+                ?? throw new JsonException("Strategy config deserialized to null.");
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid strategy configuration",
+                Detail = "The saved strategy configuration could not be loaded."
+            });
+        }
+
+        if (!LiveTradingSupport.TryValidate(strategyConfig, out var unsupportedReason))
         {
             return BadRequest(new ProblemDetails
             {
@@ -70,12 +107,23 @@ public sealed class TradingController : ControllerBase
             });
         }
 
+        var staleAssignedStrategy = await _strategyRepository.GetRunningAssignedToAgentAsync(agentId, HttpContext.RequestAborted);
+        if (staleAssignedStrategy is not null && staleAssignedStrategy.Id != strategy.Id)
+        {
+            staleAssignedStrategy.StopLiveTrading();
+            await _strategyRepository.UpdateAsync(staleAssignedStrategy, HttpContext.RequestAborted);
+        }
+
+        strategy.AssignToAgentAndStart(agentId);
+        await _strategyRepository.UpdateAsync(strategy, HttpContext.RequestAborted);
+
         var command = new AgentCommand
         {
             CommandId = Guid.NewGuid().ToString("N"),
             AgentId = agentId,
             Type = AgentCommandType.Start,
-            StrategyConfig = request.StrategyConfig,
+            StrategyId = strategy.Id,
+            StrategyConfig = strategyConfig,
             CreatedAtUtc = DateTimeOffset.UtcNow,
         };
 
@@ -90,7 +138,7 @@ public sealed class TradingController : ControllerBase
     [HttpPost("{agentId}/stop")]
     [ProducesResponseType(typeof(CommandAcceptedResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult Stop(string agentId)
+    public async Task<IActionResult> Stop(string agentId)
     {
         var agent = ValidateAgent(agentId);
         if (agent is null)
@@ -101,6 +149,19 @@ public sealed class TradingController : ControllerBase
         if (!IsAgentReachable(agent, out var offline))
         {
             return offline!;
+        }
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var assignedStrategy = await _strategyRepository.GetRunningAssignedToAgentAsync(agentId, HttpContext.RequestAborted);
+        if (assignedStrategy is not null && assignedStrategy.UserId == userId)
+        {
+            assignedStrategy.StopLiveTrading();
+            await _strategyRepository.UpdateAsync(assignedStrategy, HttpContext.RequestAborted);
         }
 
         var command = new AgentCommand
@@ -337,6 +398,6 @@ public sealed class TradingController : ControllerBase
     };
 }
 
-public sealed record StartTradingRequest(StrategyConfig? StrategyConfig);
+public sealed record StartTradingRequest(Guid? StrategyId);
 
 public sealed record CommandAcceptedResponse(string CommandId);

@@ -46,20 +46,30 @@ public sealed class HealthMonitorService : BackgroundService
 
     internal void EvaluateHealth(TradingHealthSnapshot snapshot)
     {
+        if (!snapshot.IsTradingSessionActive)
+        {
+            _logger.LogInformation(
+                "HEALTH: Idle — no active trading session. Uptime={Uptime:hh\\:mm\\:ss}",
+                snapshot.Uptime);
+            return;
+        }
+
+        var sessionUptime = snapshot.TradingSessionUptime ?? TimeSpan.Zero;
+
         // WebSocket disconnected
         if (!snapshot.IsWebSocketConnected)
         {
             _logger.LogWarning(
-                "HEALTH: WebSocket is DISCONNECTED. Uptime={Uptime:hh\\:mm\\:ss}",
-                snapshot.Uptime);
+                "HEALTH: Market WebSocket is DISCONNECTED. SessionUptime={SessionUptime:hh\\:mm\\:ss}",
+                sessionUptime);
         }
 
         // No trades received ever (after startup grace period)
-        if (snapshot.LastTradeReceived is null && snapshot.Uptime > TradeStaleThreshold)
+        if (snapshot.LastTradeReceived is null && sessionUptime > TradeStaleThreshold)
         {
             _logger.LogWarning(
-                "HEALTH: No trades received since startup ({Uptime:hh\\:mm\\:ss} ago).",
-                snapshot.Uptime);
+                "HEALTH: No trades received since session start ({SessionUptime:hh\\:mm\\:ss} ago).",
+                sessionUptime);
         }
         // Trades were received but have gone stale
         else if (snapshot.TimeSinceLastTrade > TradeStaleThreshold)
@@ -86,7 +96,7 @@ public sealed class HealthMonitorService : BackgroundService
                 snapshot.IsWebSocketConnected,
                 snapshot.TimeSinceLastTrade?.ToString("hh\\:mm\\:ss") ?? "none",
                 snapshot.TimeSinceLastCandle?.ToString("hh\\:mm\\:ss") ?? "none",
-                snapshot.Uptime);
+                sessionUptime);
         }
     }
 }

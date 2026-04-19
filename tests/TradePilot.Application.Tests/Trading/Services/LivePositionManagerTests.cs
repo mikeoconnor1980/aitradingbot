@@ -197,6 +197,7 @@ public sealed class LivePositionManagerTests
             {
                 ["entryPrice"] = 50000m,
                 ["size"] = 0.01m,
+                ["assetType"] = AssetType.Spot.ToString(),
                 ["tradeType"] = TradeType.DcaBuy.ToString(),
                 ["gridCycleId"] = "dca"
             }
@@ -208,6 +209,35 @@ public sealed class LivePositionManagerTests
             It.Is<OrderRequest>(o =>
                 o.Symbol == "BTC-USD" &&
                 o.AssetType == AssetType.Spot &&
+                o.OrderType == OrderType.Market &&
+                o.Side == OrderSide.Buy &&
+                o.TradeType == TradeType.DcaBuy),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenDcaOpenPositionSignalWithPerpSymbol_WhenExecuteSignalsAsync_ThenPlacesPerpMarketOrder()
+    {
+        var signal = new TradingSignal
+        {
+            SignalType = "OpenPosition",
+            Symbol = "BTC-PERP",
+            Parameters = new Dictionary<string, object>
+            {
+                ["entryPrice"] = 50000m,
+                ["size"] = 0.01m,
+                ["assetType"] = AssetType.Perp.ToString(),
+                ["tradeType"] = TradeType.DcaBuy.ToString(),
+                ["gridCycleId"] = "dca"
+            }
+        };
+
+        await _sut.ExecuteSignalsAsync([signal]);
+
+        _executionEngine.Verify(e => e.PlaceOrderAsync(
+            It.Is<OrderRequest>(o =>
+                o.Symbol == "BTC-PERP" &&
+                o.AssetType == AssetType.Perp &&
                 o.OrderType == OrderType.Market &&
                 o.Side == OrderSide.Buy &&
                 o.TradeType == TradeType.DcaBuy),

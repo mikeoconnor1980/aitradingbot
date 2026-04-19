@@ -32,12 +32,12 @@ describe("StrategyMapperService", () => {
     const config = service.mapFormToConfig(buildDcaFormValue());
 
     expect(config.strategyMode).toBe("dca");
-    expect(config.assetType).toBe("spot");
+    expect(config.assetType).toBe("perp");
     expect(config.timeframe).toBe("1h");
     expect(config.direction).toBe("long");
     expect(config.grid).toBeNull();
     expect(config.dca).not.toBeNull();
-    expect(config.dca?.allocations).toEqual([{ market: "BTC-USD", weightPercent: 100 }]);
+    expect(config.dca?.allocations).toEqual([{ market: "BTC-PERP", weightPercent: 100 }]);
     expect(config.risk.positionSizeType).toBe("fixed_notional");
     expect(config.exit.takeProfit.enabled).toBeFalse();
   });
@@ -202,7 +202,7 @@ describe("StrategyMapperService", () => {
       dayOfMonth: null,
       timeOfDayUtc: "00:00",
       baseAmountUsd: 150,
-      allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+      allocations: [{ market: "BTC-PERP", weightPercent: 100 }],
       gateConditions: {
         maxPriceUsd: 95000,
         minFearGreedIndex: null,
@@ -301,6 +301,7 @@ function buildDcaFormValue(): Record<string, unknown> {
   return {
     ...buildGridFormValue(),
     templateId: "dca",
+    market: "BTC-PERP",
     timeframe: "15m",
     direction: "short",
     dca: {

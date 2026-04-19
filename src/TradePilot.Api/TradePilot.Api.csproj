@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="TradePilot.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\TradePilot.AI\TradePilot.AI.csproj" />
     <ProjectReference Include="..\TradePilot.Application\TradePilot.Application.csproj" />
     <ProjectReference Include="..\TradePilot.Infrastructure\TradePilot.Infrastructure.csproj" />

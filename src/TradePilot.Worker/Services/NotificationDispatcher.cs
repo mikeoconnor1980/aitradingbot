@@ -30,6 +30,11 @@ public sealed class NotificationDispatcher : INotificationDispatcher
     public async Task NotifyFillAsync(FillEventDto fill, CancellationToken cancellationToken = default)
     {
         await _signalR.BroadcastFillEventAsync(fill, cancellationToken);
+
+        if (TryGetChatId(out var chatId))
+        {
+            await _telegram.NotifyFillAsync(chatId, fill, cancellationToken);
+        }
     }
 
     public async Task NotifyFillBatchAsync(IReadOnlyList<FillEventDto> fills, CancellationToken cancellationToken = default)

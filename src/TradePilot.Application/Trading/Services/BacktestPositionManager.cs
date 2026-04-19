@@ -2,6 +2,7 @@ using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Backtesting;
 using TradePilot.Application.Backtesting.Models;
 using TradePilot.Application.Backtesting.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Enums;
 using TradePilot.Domain.Trading;
@@ -161,11 +162,14 @@ public sealed class BacktestPositionManager : IPositionManager
             return;
         }
 
+        var assetType = ResolveAssetType(signal, tradeType);
+
         await PlaceAndLogOrderAsync(
             executionEngine,
             new OrderRequest
             {
                 Symbol = signal.Symbol,
+                AssetType = assetType,
                 Side = OrderSide.Buy,
                 OrderType = OrderType.Market,
                 Price = entryPrice,
@@ -294,6 +298,24 @@ public sealed class BacktestPositionManager : IPositionManager
         return Enum.TryParse<TradeType>(rawTradeType, ignoreCase: true, out var tradeType)
             ? tradeType
             : TradeType.SignalEntry;
+    }
+
+    private static AssetType ResolveAssetType(TradingSignal signal, TradeType tradeType)
+    {
+        var rawAssetType = GetOptionalString(signal.Parameters, "assetType");
+        if (Enum.TryParse<AssetType>(rawAssetType, ignoreCase: true, out var assetType))
+        {
+            return assetType;
+        }
+
+        if (tradeType != TradeType.DcaBuy)
+        {
+            return AssetType.Perp;
+        }
+
+        return signal.Symbol.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase)
+            ? AssetType.Perp
+            : AssetType.Spot;
     }
 
     private static int GetInt(IReadOnlyDictionary<string, object>? parameters, string key)

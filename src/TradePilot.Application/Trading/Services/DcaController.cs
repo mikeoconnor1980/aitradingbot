@@ -66,18 +66,21 @@ public sealed class DcaController : IDcaController
             return Task.FromResult<IReadOnlyList<TradingSignal>>(Array.Empty<TradingSignal>());
         }
 
+        var executionMarket = ResolveExecutionMarket(config, allocation, context.Symbol);
+
         return Task.FromResult<IReadOnlyList<TradingSignal>>(
         [
             new TradingSignal
             {
                 SignalType = "OpenPosition",
-                Symbol = context.Symbol,
+                Symbol = executionMarket,
                 Reason = $"Scheduled DCA buy ({config.Dca.Interval}).",
                 Parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["entryPrice"] = context.CurrentCandle.Close,
                     ["size"] = size,
                     ["notionalUsd"] = notionalUsd,
+                    ["assetType"] = config.AssetType.ToString(),
                     ["orderType"] = OrderType.Market.ToString(),
                     ["gridCycleId"] = "dca",
                     ["tradeType"] = TradeType.DcaBuy.ToString(),
@@ -86,6 +89,21 @@ public sealed class DcaController : IDcaController
                 }
             }
         ]);
+    }
+
+    private static string ResolveExecutionMarket(StrategyConfig config, DcaAllocation allocation, string symbol)
+    {
+        if (!string.IsNullOrWhiteSpace(allocation.Market))
+        {
+            return NormalizeExecutionMarket(allocation.Market, config.AssetType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(config.Market))
+        {
+            return NormalizeExecutionMarket(config.Market, config.AssetType);
+        }
+
+        return NormalizeExecutionMarket(symbol, config.AssetType);
     }
 
     private static bool IsDue(DcaConfig dca, long timestampUtc)
@@ -174,6 +192,27 @@ public sealed class DcaController : IDcaController
             .Replace("-USD", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Replace("-PERP", string.Empty, StringComparison.OrdinalIgnoreCase)
             .Trim();
+    }
+
+    private static string NormalizeExecutionMarket(string value, AssetType assetType)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        if (trimmed.EndsWith("-USD", StringComparison.OrdinalIgnoreCase)
+            || trimmed.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase))
+        {
+            return trimmed.ToUpperInvariant();
+        }
+
+        return trimmed.Contains('-')
+            ? trimmed.ToUpperInvariant()
+            : assetType == AssetType.Perp
+                ? $"{trimmed.ToUpperInvariant()}-PERP"
+                : $"{trimmed.ToUpperInvariant()}-USD";
     }
 
     private static decimal ResolveScalingFactor(IReadOnlyList<DcaScalingBand>? scalingBands, decimal price)

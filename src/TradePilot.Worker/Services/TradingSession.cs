@@ -23,10 +23,14 @@ public sealed class TradingSession : IAsyncDisposable
     private const int MaxRetryAttempts = 20;
     private const int InitialBackoffMs = 1_000;
     private const int MaxBackoffMs = 60_000;
+    private const long AllowedTradeTimestampSkewMs = 30_000;
+    private static readonly TimeSpan CandleFlushInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan RestCandleSyncInterval = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IHyperliquidWebSocketClient _wsClient;
     private readonly IHyperliquidUserEventClient _userEventClient;
+    private readonly IHyperliquidRestClient _restClient;
     private readonly CandleBuilder _candleBuilder;
     private readonly CandleClock _candleClock;
     private readonly IMarketContextBuilder _contextBuilder;
@@ -51,6 +55,7 @@ public sealed class TradingSession : IAsyncDisposable
     private CancellationTokenSource? _cts;
     private Task? _runTask;
     private int _retryCount;
+    private int _staleTradeDropCount;
     private Func<CandleClosedEvent, Task>? _candleClosedHandler;
     private Func<FillEventDto, Task>? _fillHandler;
     private Func<OrderUpdateDto, Task>? _orderUpdateHandler;
@@ -64,6 +69,7 @@ public sealed class TradingSession : IAsyncDisposable
         StrategyConfig strategyConfig,
         IHyperliquidWebSocketClient wsClient,
         IHyperliquidUserEventClient userEventClient,
+        IHyperliquidRestClient restClient,
         CandleBuilder candleBuilder,
         CandleClock candleClock,
         IMarketContextBuilder contextBuilder,
@@ -89,6 +95,7 @@ public sealed class TradingSession : IAsyncDisposable
         StrategyConfig = strategyConfig;
         _wsClient = wsClient;
         _userEventClient = userEventClient;
+        _restClient = restClient;
         _candleBuilder = candleBuilder;
         _candleClock = candleClock;
         _contextBuilder = contextBuilder;
@@ -116,6 +123,7 @@ public sealed class TradingSession : IAsyncDisposable
     {
         if (IsRunning) return;
 
+        _healthProvider.RecordTradingSessionStarted();
         _cts = new CancellationTokenSource();
         _runTask = RunAsync(_cts.Token);
     }
@@ -180,6 +188,7 @@ public sealed class TradingSession : IAsyncDisposable
         }
 
         UnregisterUserEventHandlers();
+        _healthProvider.RecordTradingSessionStopped();
 
         _logger.LogInformation("TradingSession stopped.");
     }
@@ -188,72 +197,86 @@ public sealed class TradingSession : IAsyncDisposable
     {
         var coin = HyperliquidAssetMapper.ToCoin(StrategyConfig.Market);
         var triggerTimeframe = ResolveTriggerTimeframe(StrategyConfig);
+        var sessionStartMs = StartedAtUtc.ToUnixTimeMilliseconds();
+        using var candleFlushCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        var restSyncIntervals = new[] { triggerTimeframe, "1h", "4h" }
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        _logger.LogInformation(
-            "TradingSession starting: Strategy={Strategy}, Market={Market}, Coin={Coin}, Timeframe={Timeframe}",
-            StrategyConfig.StrategyName, StrategyConfig.Market, coin, triggerTimeframe);
+        _candleBuilder.Reset();
+        _candleClock.Reset();
+        _contextBuilder.Reset();
 
-        // Attempt state recovery from DB + Hyperliquid
-        if (_stateRecoveryService is not null && _signerProvider.IsConfigured && _orderTracker is not null)
+        var candleFlushTask = RunCandleFlushLoopAsync(candleFlushCts.Token);
+        var restCandleSyncTask = RunRestCandleSyncLoopAsync(restSyncIntervals, sessionStartMs, candleFlushCts.Token);
+
+        try
         {
-            try
+            _logger.LogInformation(
+                "TradingSession starting: Strategy={Strategy}, Market={Market}, Coin={Coin}, Timeframe={Timeframe}",
+                StrategyConfig.StrategyName, StrategyConfig.Market, coin, triggerTimeframe);
+
+            // Attempt state recovery from DB + Hyperliquid
+            if (_stateRecoveryService is not null && _signerProvider.IsConfigured && _orderTracker is not null)
             {
-                var recoveredState = await _stateRecoveryService.RecoverAsync(
-                    StrategyConfig.StrategyName,
-                    StrategyConfig.Market,
-                    _signerProvider.WalletAddress,
-                    _orderTracker,
-                    stoppingToken);
-
-                // Copy recovered values into our shared GridState
-                GridState.Lifecycle = recoveredState.Lifecycle;
-                GridState.GridCycleId = recoveredState.GridCycleId;
-                GridState.FilledLevels = recoveredState.FilledLevels;
-                GridState.TotalLevels = recoveredState.TotalLevels;
-                GridState.TrailingStopHighWatermark = recoveredState.TrailingStopHighWatermark;
-                GridState.CandlesSinceEntry = recoveredState.CandlesSinceEntry;
-
-                // Recover protection order state (exchange-native TP/SL triggers)
-                if (recoveredState.ProtectionOrders.HasAny)
+                try
                 {
-                    GridState.ProtectionOrders.StopLossOrderId = recoveredState.ProtectionOrders.StopLossOrderId;
-                    GridState.ProtectionOrders.StopLossTriggerPrice = recoveredState.ProtectionOrders.StopLossTriggerPrice;
-                    GridState.ProtectionOrders.TakeProfitOrderId = recoveredState.ProtectionOrders.TakeProfitOrderId;
-                    GridState.ProtectionOrders.TakeProfitTriggerPrice = recoveredState.ProtectionOrders.TakeProfitTriggerPrice;
+                    var recoveredState = await _stateRecoveryService.RecoverAsync(
+                        StrategyConfig.StrategyName,
+                        StrategyConfig.Market,
+                        _signerProvider.WalletAddress,
+                        _orderTracker,
+                        stoppingToken);
+
+                    // Copy recovered values into our shared GridState
+                    GridState.Lifecycle = recoveredState.Lifecycle;
+                    GridState.GridCycleId = recoveredState.GridCycleId;
+                    GridState.FilledLevels = recoveredState.FilledLevels;
+                    GridState.TotalLevels = recoveredState.TotalLevels;
+                    GridState.TrailingStopHighWatermark = recoveredState.TrailingStopHighWatermark;
+                    GridState.CandlesSinceEntry = recoveredState.CandlesSinceEntry;
+
+                    // Recover protection order state (exchange-native TP/SL triggers)
+                    if (recoveredState.ProtectionOrders.HasAny)
+                    {
+                        GridState.ProtectionOrders.StopLossOrderId = recoveredState.ProtectionOrders.StopLossOrderId;
+                        GridState.ProtectionOrders.StopLossTriggerPrice = recoveredState.ProtectionOrders.StopLossTriggerPrice;
+                        GridState.ProtectionOrders.TakeProfitOrderId = recoveredState.ProtectionOrders.TakeProfitOrderId;
+                        GridState.ProtectionOrders.TakeProfitTriggerPrice = recoveredState.ProtectionOrders.TakeProfitTriggerPrice;
+                    }
+
+                    _logger.LogInformation(
+                        "State recovery complete: Lifecycle={Lifecycle}, FilledLevels={Filled}/{Total}",
+                        GridState.Lifecycle, GridState.FilledLevels, GridState.TotalLevels);
                 }
-
-                _logger.LogInformation(
-                    "State recovery complete: Lifecycle={Lifecycle}, FilledLevels={Filled}/{Total}",
-                    GridState.Lifecycle, GridState.FilledLevels, GridState.TotalLevels);
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "State recovery failed. Starting with fresh state. Strategy={Strategy}",
+                        StrategyConfig.StrategyName);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "State recovery failed. Starting with fresh state. Strategy={Strategy}",
-                    StrategyConfig.StrategyName);
-            }
-        }
 
-        Candle? latestOneHourCandle = null;
-        Candle? latestFourHourCandle = null;
+            Candle? latestOneHourCandle = null;
+            Candle? latestFourHourCandle = null;
 
-        // Query initial account equity from Hyperliquid REST
-        var initialCapital = await ResolveInitialEquityAsync(stoppingToken);
+            // Query initial account equity from Hyperliquid REST
+            var initialCapital = await ResolveInitialEquityAsync(stoppingToken);
 
-        var scheduler = new StrategyScheduler(
-            _contextBuilder,
-            _strategyEngine,
-            _gridController,
-            _riskEngine,
-            _positionManager,
-            StrategyConfig,
-            triggerTimeframe,
-            signalController: _signalController,
-            dcaController: _dcaController,
-            executionLogger: _executionLogger,
-            initialCapital: initialCapital,
-            gridState: GridState,
-            drawdownTiers: _drawdownTiers);
+            var scheduler = new StrategyScheduler(
+                _contextBuilder,
+                _strategyEngine,
+                _gridController,
+                _riskEngine,
+                _positionManager,
+                StrategyConfig,
+                triggerTimeframe,
+                signalController: _signalController,
+                dcaController: _dcaController,
+                executionLogger: _executionLogger,
+                initialCapital: initialCapital,
+                gridState: GridState,
+                drawdownTiers: _drawdownTiers);
 
         // Wire fill callback to update PositionState on the scheduler
         if (_fillProcessor is FillProcessor concreteProcessor)
@@ -351,6 +374,22 @@ public sealed class TradingSession : IAsyncDisposable
         {
             try
             {
+                if (!IsTradeTickCurrent(trade.TimestampMs, sessionStartMs))
+                {
+                    _staleTradeDropCount++;
+                    if (_staleTradeDropCount <= 5 || _staleTradeDropCount % 100 == 0)
+                    {
+                        _logger.LogWarning(
+                            "Ignoring stale trade tick for {Asset}: TradeTimestamp={TradeTimestamp}, SessionStart={SessionStart}, DroppedCount={DroppedCount}",
+                            trade.Asset,
+                            trade.TimestampMs,
+                            sessionStartMs,
+                            _staleTradeDropCount);
+                    }
+
+                    return;
+                }
+
                 _healthProvider.RecordTradeReceived();
                 await _candleBuilder.ProcessTickAsync(trade);
             }
@@ -394,52 +433,195 @@ public sealed class TradingSession : IAsyncDisposable
         _userEventClient.OnFillReceived(_fillHandler);
         _userEventClient.OnOrderUpdateReceived(_orderUpdateHandler);
 
-        while (!stoppingToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await _wsClient.ConnectAsync(stoppingToken);
+                    await _wsClient.SubscribeToTradesAsync(coin, stoppingToken);
+
+                    _logger.LogInformation("WebSocket connected. Subscribed to {Coin} trade stream.", coin);
+
+                    _retryCount = 0;
+
+                    var marketDataTask = _wsClient.ReceiveLoopAsync(stoppingToken);
+                    await marketDataTask;
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "WebSocket connection error for {Coin}", coin);
+                }
+
+                if (stoppingToken.IsCancellationRequested) break;
+
+                _retryCount++;
+                if (_retryCount > MaxRetryAttempts)
+                {
+                    _logger.LogCritical(
+                        "Max reconnection attempts ({MaxRetries}) exhausted. TradingSession stopping.",
+                        MaxRetryAttempts);
+                    break;
+                }
+
+                var backoffMs = (int)Math.Min(
+                    MaxBackoffMs,
+                    InitialBackoffMs * Math.Pow(2, Math.Min(_retryCount - 1, 20)));
+
+                _logger.LogWarning(
+                    "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
+                    backoffMs, _retryCount, MaxRetryAttempts);
+
+                await Task.Delay(backoffMs, stoppingToken);
+            }
+        }
+        finally
+        {
+            await candleFlushCts.CancelAsync();
+
+            try
+            {
+                await candleFlushTask;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested || candleFlushCts.IsCancellationRequested)
+            {
+            }
+
+            try
+            {
+                await restCandleSyncTask;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested || candleFlushCts.IsCancellationRequested)
+            {
+            }
+
+            _healthProvider.RecordTradingSessionStopped();
+            _logger.LogInformation("TradingSession loop exited.");
+        }
+    }
+
+    private async Task RunCandleFlushLoopAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(CandleFlushInterval);
+
+        while (await timer.WaitForNextTickAsync(cancellationToken))
         {
             try
             {
-                await _wsClient.ConnectAsync(stoppingToken);
-                await _wsClient.SubscribeToTradesAsync(coin, stoppingToken);
-
-                _logger.LogInformation("WebSocket connected. Subscribed to {Coin} trade stream.", coin);
-
-                _retryCount = 0;
-
-                var marketDataTask = _wsClient.ReceiveLoopAsync(stoppingToken);
-                await marketDataTask;
+                await _candleBuilder.FlushClosedCandlesAsync(DateTimeOffset.UtcNow, cancellationToken);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 break;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "WebSocket connection error for {Coin}", coin);
+                _logger.LogError(ex, "Error flushing closed candles for {Market}", StrategyConfig.Market);
             }
+        }
+    }
 
-            if (stoppingToken.IsCancellationRequested) break;
+    private async Task RunRestCandleSyncLoopAsync(
+        IReadOnlyList<string> intervals,
+        long sessionStartMs,
+        CancellationToken cancellationToken)
+    {
+        var lastSyncedBuckets = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        using var timer = new PeriodicTimer(RestCandleSyncInterval);
 
-            _retryCount++;
-            if (_retryCount > MaxRetryAttempts)
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            try
             {
-                _logger.LogCritical(
-                    "Max reconnection attempts ({MaxRetries}) exhausted. TradingSession stopping.",
-                    MaxRetryAttempts);
+                await SyncClosedCandlesFromRestAsync(intervals, sessionStartMs, lastSyncedBuckets, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
                 break;
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error syncing closed candles from REST for {Market}", StrategyConfig.Market);
+            }
+        }
+    }
 
-            var backoffMs = (int)Math.Min(
-                MaxBackoffMs,
-                InitialBackoffMs * Math.Pow(2, Math.Min(_retryCount - 1, 20)));
+    private async Task SyncClosedCandlesFromRestAsync(
+        IReadOnlyList<string> intervals,
+        long sessionStartMs,
+        IDictionary<string, long> lastSyncedBuckets,
+        CancellationToken cancellationToken)
+    {
+        var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            _logger.LogWarning(
-                "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
-                backoffMs, _retryCount, MaxRetryAttempts);
+        foreach (var interval in intervals)
+        {
+            var intervalMs = HyperliquidAssetMapper.GetIntervalMs(interval);
+            var latestClosedBucket = GetLatestEligibleClosedBucketOpenTime(nowMs, sessionStartMs, intervalMs);
+            if (latestClosedBucket is null)
+            {
+                continue;
+            }
 
-            await Task.Delay(backoffMs, stoppingToken);
+            if (lastSyncedBuckets.TryGetValue(interval, out var lastSyncedBucket) &&
+                lastSyncedBucket >= latestClosedBucket.Value)
+            {
+                continue;
+            }
+
+            var closeTime = latestClosedBucket.Value + intervalMs;
+            var snapshots = await _restClient.GetCandleSnapshotsAsync(
+                StrategyConfig.Market,
+                interval,
+                latestClosedBucket.Value,
+                closeTime,
+                cancellationToken);
+
+            var snapshot = snapshots
+                .FirstOrDefault(candle => candle.Timestamp == latestClosedBucket.Value);
+
+            if (snapshot is null)
+            {
+                continue;
+            }
+
+            var candle = Candle.Create(
+                "Hyperliquid",
+                StrategyConfig.Market,
+                interval,
+                snapshot.Timestamp,
+                snapshot.Open,
+                snapshot.High,
+                snapshot.Low,
+                snapshot.Close,
+                snapshot.Volume,
+                snapshot.NumTrades);
+
+            await _candleClock.ProcessCandleAsync(candle);
+            lastSyncedBuckets[interval] = latestClosedBucket.Value;
+        }
+    }
+
+    internal static bool IsTradeTickCurrent(long tradeTimestampMs, long sessionStartMs)
+    {
+        return tradeTimestampMs + AllowedTradeTimestampSkewMs >= sessionStartMs;
+    }
+
+    internal static long? GetLatestEligibleClosedBucketOpenTime(long nowMs, long sessionStartMs, long intervalMs)
+    {
+        var latestCloseBoundary = nowMs / intervalMs * intervalMs;
+        var latestClosedBucketOpen = latestCloseBoundary - intervalMs;
+        if (latestClosedBucketOpen < 0)
+        {
+            return null;
         }
 
-        _logger.LogInformation("TradingSession loop exited.");
+        return latestClosedBucketOpen + intervalMs >= sessionStartMs
+            ? latestClosedBucketOpen
+            : null;
     }
 
     private void UnregisterUserEventHandlers()

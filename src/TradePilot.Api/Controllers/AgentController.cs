@@ -4,9 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TradePilot.Application.Abstractions.Configuration;
+using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
+using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Serialization;
+using TradePilot.Application.Trading;
 using TradePilot.Domain.Entities;
 using TradePilot.Persistence;
 
@@ -35,6 +39,7 @@ public sealed class AgentController : ControllerBase
     private readonly TelegramOptions _telegramOptions;
     private readonly TradePilotDbContext _db;
     private readonly ISignalRPublisher _signalRPublisher;
+    private readonly IStrategyRepository _strategyRepository;
 
     public AgentController(
         ILogger<AgentController> logger,
@@ -44,7 +49,8 @@ public sealed class AgentController : ControllerBase
         IOptions<HyperliquidOptions> hyperliquidOptions,
         IOptions<TelegramOptions> telegramOptions,
         TradePilotDbContext db,
-        ISignalRPublisher signalRPublisher)
+        ISignalRPublisher signalRPublisher,
+        IStrategyRepository strategyRepository)
     {
         _logger = logger;
         _store = store;
@@ -54,6 +60,7 @@ public sealed class AgentController : ControllerBase
         _telegramOptions = telegramOptions.Value;
         _db = db;
         _signalRPublisher = signalRPublisher;
+        _strategyRepository = strategyRepository;
     }
 
     /// <summary>
@@ -120,6 +127,8 @@ public sealed class AgentController : ControllerBase
                 NotificationConfig = await BuildNotificationConfigAsync(heartbeat.WalletAddress),
             });
         }
+
+        await EnqueueAutoResumeCommandIfNeededAsync(heartbeat);
 
         var pendingCommands = _store.DrainCommands(heartbeat.AgentId);
 
@@ -426,6 +435,67 @@ public sealed class AgentController : ControllerBase
         }
 
         return false;
+    }
+
+    private async Task EnqueueAutoResumeCommandIfNeededAsync(AgentHeartbeat heartbeat)
+    {
+        if (heartbeat.State is not AgentState.Idle)
+        {
+            return;
+        }
+
+        var pendingCommands = _store.GetPendingCommands(heartbeat.AgentId);
+        if (pendingCommands.Any(command => command.Type == AgentCommandType.Start))
+        {
+            return;
+        }
+
+        var strategy = await _strategyRepository.GetRunningAssignedToAgentAsync(heartbeat.AgentId);
+        if (strategy is null)
+        {
+            return;
+        }
+
+        StrategyConfig strategyConfig;
+        try
+        {
+            strategyConfig = JsonSerializer.Deserialize<StrategyConfig>(strategy.ConfigJson, StrategyJsonOptions.Default)
+                ?? throw new JsonException("Strategy config deserialized to null.");
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Unable to auto-resume strategy {StrategyId} for agent {AgentId} because the config is invalid.",
+                strategy.Id,
+                heartbeat.AgentId);
+            return;
+        }
+
+        if (!LiveTradingSupport.TryValidate(strategyConfig, out var unsupportedReason))
+        {
+            _logger.LogWarning(
+                "Skipping auto-resume for strategy {StrategyId} on agent {AgentId}: {Reason}",
+                strategy.Id,
+                heartbeat.AgentId,
+                unsupportedReason);
+            return;
+        }
+
+        _store.EnqueueCommand(new AgentCommand
+        {
+            CommandId = Guid.NewGuid().ToString("N"),
+            AgentId = heartbeat.AgentId,
+            Type = AgentCommandType.Start,
+            StrategyId = strategy.Id,
+            StrategyConfig = strategyConfig,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+        });
+
+        _logger.LogInformation(
+            "Queued auto-resume for strategy {StrategyId} on agent {AgentId} after idle heartbeat.",
+            strategy.Id,
+            heartbeat.AgentId);
     }
 
     /// <summary>

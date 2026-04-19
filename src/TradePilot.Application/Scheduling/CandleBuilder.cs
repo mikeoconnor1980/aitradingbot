@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Domain.Entities;
+using System.Threading;
 
 namespace TradePilot.Application.Scheduling;
 
@@ -20,6 +21,7 @@ public sealed class CandleBuilder
     private readonly CandleClock _candleClock;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CandleBuilder> _logger;
+    private readonly SemaphoreSlim _gate = new(1, 1);
 
     public CandleBuilder(
         MarketStateStore stateStore,
@@ -37,29 +39,69 @@ public sealed class CandleBuilder
     {
         ArgumentNullException.ThrowIfNull(tick);
 
-        foreach (var interval in SupportedIntervals)
+        await _gate.WaitAsync();
+        try
         {
-            var intervalMs = GetIntervalMs(interval);
-            var bucketTimestamp = GetBucketTimestamp(tick.TimestampMs, intervalMs);
-
-            // Check if there's an existing accumulator from a previous bucket
-            var existing = _stateStore.TryGet(tick.Asset, interval);
-
-            if (existing is not null &&
-                existing.BucketTimestamp < bucketTimestamp &&
-                existing.HasData)
+            foreach (var interval in SupportedIntervals)
             {
-                // The existing candle has closed — emit it before switching to the new bucket
-                await EmitConfirmedCandleAsync(existing);
-            }
+                var intervalMs = GetIntervalMs(interval);
+                var bucketTimestamp = GetBucketTimestamp(tick.TimestampMs, intervalMs);
 
-            // Get or create the accumulator for the current bucket and add the tick
-            var accumulator = _stateStore.GetOrCreate(tick.Asset, interval, bucketTimestamp);
-            accumulator.AddTick(tick.Price, tick.Size);
+                // Check if there's an existing accumulator from a previous bucket
+                var existing = _stateStore.TryGet(tick.Asset, interval);
+
+                if (existing is not null &&
+                    existing.BucketTimestamp < bucketTimestamp &&
+                    existing.HasData)
+                {
+                    // The existing candle has closed — emit it before switching to the new bucket
+                    await EmitConfirmedCandleAsync(existing);
+                }
+
+                // Get or create the accumulator for the current bucket and add the tick
+                var accumulator = _stateStore.GetOrCreate(tick.Asset, interval, bucketTimestamp);
+                accumulator.AddTick(tick.Price, tick.Size);
+            }
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
-    private async Task EmitConfirmedCandleAsync(CandleAccumulator accumulator)
+    public async Task FlushClosedCandlesAsync(DateTimeOffset nowUtc, CancellationToken cancellationToken = default)
+    {
+        var nowMs = nowUtc.ToUnixTimeMilliseconds();
+
+        await _gate.WaitAsync(cancellationToken);
+        try
+        {
+            foreach (var accumulator in _stateStore.Snapshot())
+            {
+                if (!accumulator.HasData)
+                {
+                    continue;
+                }
+
+                var closeTimeMs = accumulator.BucketTimestamp + GetIntervalMs(accumulator.Interval);
+                if (closeTimeMs <= nowMs)
+                {
+                    await EmitConfirmedCandleAsync(accumulator, cancellationToken);
+                }
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public void Reset()
+    {
+        _stateStore.Clear();
+    }
+
+    private async Task EmitConfirmedCandleAsync(CandleAccumulator accumulator, CancellationToken cancellationToken = default)
     {
         Candle candle;
         try
@@ -81,7 +123,7 @@ public sealed class CandleBuilder
         using (var scope = _scopeFactory.CreateScope())
         {
             var candleRepository = scope.ServiceProvider.GetRequiredService<ICandleRepository>();
-            await candleRepository.BulkInsertAsync([candle]);
+            await candleRepository.BulkInsertAsync([candle], cancellationToken);
         }
 
         // Feed to CandleClock for downstream strategy scheduling

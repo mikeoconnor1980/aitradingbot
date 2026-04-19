@@ -10,6 +10,9 @@ public sealed class Strategy
     public int Version { get; private set; }
     public bool IsActive { get; private set; }
     public bool IsRunning { get; private set; }
+    public string? AssignedAgentId { get; private set; }
+    public long? LastStartedAtUtc { get; private set; }
+    public long? LastStoppedAtUtc { get; private set; }
     public decimal? HighWaterMarkUsd { get; private set; }
     public long CreatedAtUtc { get; private set; }
     public long UpdatedAtUtc { get; private set; }
@@ -61,6 +64,8 @@ public sealed class Strategy
     {
         IsActive = false;
         IsRunning = false;
+        AssignedAgentId = null;
+        LastStoppedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     }
 
@@ -73,6 +78,37 @@ public sealed class Strategy
 
         IsRunning = isRunning;
         UpdatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        if (!isRunning)
+        {
+            AssignedAgentId = null;
+            LastStoppedAtUtc = UpdatedAtUtc;
+        }
+    }
+
+    public void AssignToAgentAndStart(string agentId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+
+        if (!IsActive)
+        {
+            throw new InvalidOperationException("Cannot start an inactive strategy.");
+        }
+
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        IsRunning = true;
+        AssignedAgentId = agentId;
+        LastStartedAtUtc = now;
+        UpdatedAtUtc = now;
+    }
+
+    public void StopLiveTrading()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        IsRunning = false;
+        AssignedAgentId = null;
+        LastStoppedAtUtc = now;
+        UpdatedAtUtc = now;
     }
 
     public void UpdateHighWaterMark(decimal highWaterMark)

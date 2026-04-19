@@ -40,6 +40,8 @@ public sealed class GetStrategyByIdQueryHandler : QueryHandler<GetStrategyByIdQu
             Name = strategy.Name,
             StrategyType = strategy.StrategyType,
             Config = config,
+            IsRunning = strategy.IsRunning,
+            AssignedAgentId = strategy.AssignedAgentId,
             Version = strategy.Version,
             CreatedAt = DateTimeOffset.FromUnixTimeMilliseconds(strategy.CreatedAtUtc).UtcDateTime,
             UpdatedAt = DateTimeOffset.FromUnixTimeMilliseconds(strategy.UpdatedAtUtc).UtcDateTime,

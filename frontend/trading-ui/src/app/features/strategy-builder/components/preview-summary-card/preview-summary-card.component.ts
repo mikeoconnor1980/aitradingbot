@@ -129,7 +129,7 @@ export class PreviewSummaryCardComponent {
     const scheduleText = rawInterval === "five_minutes"
       ? `every 5 minutes aligned to ${timeOfDayUtc} UTC`
       : `${interval} at ${timeOfDayUtc} UTC`;
-    const parts = [`Spot DCA on ${market}: buy $${baseAmountUsd} ${scheduleText}.`];
+    const parts = [`DCA on ${market}: buy $${baseAmountUsd} ${scheduleText}.`];
 
     if (rawInterval === "weekly" || rawInterval === "biweekly") {
       parts.push(`Scheduled for ${this._dayOfWeekText(dca["dayOfWeek"])}.`);

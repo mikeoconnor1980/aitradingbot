@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradePilot.Application.Abstractions.Configuration;
@@ -20,6 +21,9 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
 
     private readonly ILogger<HyperliquidWebSocketClient> _logger;
     private readonly HyperliquidOptions _options;
+    private readonly IHyperliquidRestClient _restClient;
+    private readonly ConcurrentDictionary<string, string> _subscriptionCoinCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, string> _displayAssetCache = new(StringComparer.OrdinalIgnoreCase);
 
     private ClientWebSocket? _webSocket;
     private Func<TradeTickDto, Task>? _tradeHandler;
@@ -27,10 +31,12 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
 
     public HyperliquidWebSocketClient(
         ILogger<HyperliquidWebSocketClient> logger,
-        IOptions<HyperliquidOptions> options)
+        IOptions<HyperliquidOptions> options,
+        IHyperliquidRestClient restClient)
     {
         _logger = logger;
         _options = options.Value;
+        _restClient = restClient;
     }
 
     public bool IsConnected => _webSocket?.State == WebSocketState.Open;
@@ -87,18 +93,20 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
             throw new InvalidOperationException("WebSocket is not connected");
         }
 
+        var exchangeCoin = await ResolveSubscriptionCoinAsync(coin, cancellationToken);
+
         var request = new HyperliquidSubscribeRequest
         {
             Subscription = new HyperliquidSubscription
             {
-                Coin = coin,
+                Coin = exchangeCoin,
             },
         };
 
         var json = JsonSerializer.Serialize(request);
         var bytes = Encoding.UTF8.GetBytes(json);
 
-        _logger.LogInformation("Subscribing to trades for {Coin}", coin);
+        _logger.LogInformation("Subscribing to trades for {Coin}", exchangeCoin);
         await _webSocket.SendAsync(
             new ArraySegment<byte>(bytes),
             WebSocketMessageType.Text,
@@ -205,9 +213,11 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
                     continue;
                 }
 
+                var asset = await ResolveDisplayAssetAsync(trade.Coin);
+
                 var dto = new TradeTickDto
                 {
-                    Asset = HyperliquidAssetMapper.ToDisplayName(trade.Coin),
+                    Asset = asset,
                     Price = price,
                     Size = size,
                     Side = trade.Side,
@@ -221,6 +231,211 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
         {
             _logger.LogWarning(ex, "Failed to parse WebSocket message");
         }
+    }
+
+    internal async Task<string> ResolveSubscriptionCoinAsync(string coin, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(coin))
+        {
+            return string.Empty;
+        }
+
+        if (coin.StartsWith("@", StringComparison.Ordinal) || coin.Contains('/', StringComparison.Ordinal))
+        {
+            return coin;
+        }
+
+        if (_subscriptionCoinCache.TryGetValue(coin, out var cachedCoin))
+        {
+            return cachedCoin;
+        }
+
+        var perpResponse = await _restClient.PostInfoAsync<JsonElement>(new { type = "meta" }, cancellationToken);
+        if (IsPerpCoin(perpResponse, coin))
+        {
+            _subscriptionCoinCache[coin] = coin;
+            return coin;
+        }
+
+        var spotResponse = await _restClient.PostInfoAsync<JsonElement>(new { type = "spotMeta" }, cancellationToken);
+        var spotCoin = ResolveSpotPairCoin(spotResponse, coin);
+        _subscriptionCoinCache[coin] = spotCoin;
+        return spotCoin;
+    }
+
+    internal async Task<string> ResolveDisplayAssetAsync(string exchangeCoin, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(exchangeCoin))
+        {
+            return string.Empty;
+        }
+
+        if (_displayAssetCache.TryGetValue(exchangeCoin, out var cachedAsset))
+        {
+            return cachedAsset;
+        }
+
+        if (!exchangeCoin.StartsWith("@", StringComparison.Ordinal) && !exchangeCoin.Contains('/', StringComparison.Ordinal))
+        {
+            var perpAsset = HyperliquidAssetMapper.ToDisplayName(exchangeCoin);
+            _displayAssetCache[exchangeCoin] = perpAsset;
+            return perpAsset;
+        }
+
+        var spotResponse = await _restClient.PostInfoAsync<JsonElement>(new { type = "spotMeta" }, cancellationToken);
+        var spotAsset = ResolveSpotDisplayAsset(spotResponse, exchangeCoin);
+        _displayAssetCache[exchangeCoin] = spotAsset;
+        return spotAsset;
+    }
+
+    private static bool IsPerpCoin(JsonElement response, string coin)
+    {
+        if (!response.TryGetProperty("universe", out var universe) || universe.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var item in universe.EnumerateArray())
+        {
+            if (item.TryGetProperty("name", out var nameElement)
+                && string.Equals(nameElement.GetString(), coin, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string ResolveSpotPairCoin(JsonElement response, string baseCoin)
+    {
+        var (tokens, universe) = GetSpotMetadataSections(response);
+        var quoteTokenIndex = GetSpotTokenIndex(tokens, "USDC");
+        var baseTokenIndex = GetSpotTokenIndex(tokens, baseCoin);
+
+        foreach (var pair in universe.EnumerateArray())
+        {
+            if (!pair.TryGetProperty("tokens", out var pairTokens) || pairTokens.GetArrayLength() < 2)
+            {
+                continue;
+            }
+
+            if (pairTokens[0].GetInt32() != baseTokenIndex || pairTokens[1].GetInt32() != quoteTokenIndex)
+            {
+                continue;
+            }
+
+            if (pair.TryGetProperty("name", out var nameElement) && !string.IsNullOrWhiteSpace(nameElement.GetString()))
+            {
+                return nameElement.GetString()!;
+            }
+
+            if (pair.TryGetProperty("index", out var indexElement))
+            {
+                return $"@{indexElement.GetInt32()}";
+            }
+
+            break;
+        }
+
+        throw new InvalidOperationException($"Spot pair '{baseCoin}/USDC' not found in Hyperliquid spot metadata.");
+    }
+
+    private static string ResolveSpotDisplayAsset(JsonElement response, string exchangeCoin)
+    {
+        if (exchangeCoin.Contains('/', StringComparison.Ordinal))
+        {
+            return ToUsdMarket(exchangeCoin.Split('/')[0]);
+        }
+
+        var (tokens, universe) = GetSpotMetadataSections(response);
+        var pairId = exchangeCoin.StartsWith("@", StringComparison.Ordinal)
+            ? exchangeCoin[1..]
+            : exchangeCoin;
+
+        foreach (var pair in universe.EnumerateArray())
+        {
+            var matchesId = pair.TryGetProperty("index", out var indexElement)
+                && string.Equals(indexElement.GetInt32().ToString(CultureInfo.InvariantCulture), pairId, StringComparison.OrdinalIgnoreCase);
+            var matchesName = pair.TryGetProperty("name", out var nameElement)
+                && string.Equals(nameElement.GetString(), exchangeCoin, StringComparison.OrdinalIgnoreCase);
+
+            if (!matchesId && !matchesName)
+            {
+                continue;
+            }
+
+            if (!pair.TryGetProperty("tokens", out var pairTokens) || pairTokens.GetArrayLength() < 1)
+            {
+                break;
+            }
+
+            var baseTokenName = GetSpotTokenName(tokens, pairTokens[0].GetInt32());
+            return ToUsdMarket(baseTokenName);
+        }
+
+        throw new InvalidOperationException($"Spot trade coin '{exchangeCoin}' not found in Hyperliquid spot metadata.");
+    }
+
+    private static (JsonElement Tokens, JsonElement Universe) GetSpotMetadataSections(JsonElement response)
+    {
+        if (!response.TryGetProperty("tokens", out var tokens) || tokens.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("Hyperliquid spot metadata did not include tokens.");
+        }
+
+        if (!response.TryGetProperty("universe", out var universe) || universe.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidOperationException("Hyperliquid spot metadata did not include universe.");
+        }
+
+        return (tokens, universe);
+    }
+
+    private static int GetSpotTokenIndex(JsonElement tokens, string tokenName)
+    {
+        foreach (var token in tokens.EnumerateArray())
+        {
+            if (!token.TryGetProperty("name", out var nameElement)
+                || !string.Equals(nameElement.GetString(), tokenName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (token.TryGetProperty("index", out var indexElement))
+            {
+                return indexElement.GetInt32();
+            }
+
+            break;
+        }
+
+        throw new InvalidOperationException($"Spot token '{tokenName}' not found in Hyperliquid spot metadata.");
+    }
+
+    private static string GetSpotTokenName(JsonElement tokens, int tokenIndex)
+    {
+        foreach (var token in tokens.EnumerateArray())
+        {
+            if (!token.TryGetProperty("index", out var indexElement) || indexElement.GetInt32() != tokenIndex)
+            {
+                continue;
+            }
+
+            if (token.TryGetProperty("name", out var nameElement) && !string.IsNullOrWhiteSpace(nameElement.GetString()))
+            {
+                return nameElement.GetString()!;
+            }
+
+            break;
+        }
+
+        throw new InvalidOperationException($"Spot token index '{tokenIndex}' not found in Hyperliquid spot metadata.");
+    }
+
+    private static string ToUsdMarket(string baseCoin)
+    {
+        return $"{baseCoin}-USD";
     }
 
     private async Task NotifyStateChangeAsync(WebSocketConnectionState state)

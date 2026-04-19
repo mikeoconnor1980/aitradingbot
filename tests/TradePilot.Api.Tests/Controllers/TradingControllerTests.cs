@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -11,8 +12,11 @@ using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
+using TradePilot.Application.StrategyAuthoring.Serialization;
+using TradePilot.Domain.Entities;
 using TradePilot.Domain.Enums;
 using TradePilot.Domain.Trading;
+using TradePilot.Persistence;
 
 namespace TradePilot.Api.Tests.Controllers;
 
@@ -48,31 +52,39 @@ public sealed class TradingControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenDcaStrategy_WhenStartTrading_ThenQueuesCommand()
     {
+        var strategy = await SeedStrategyAsync(CreateDcaConfig(), "DcaStrategy");
         var client = GetTestClient();
 
         var response = await client.PostAsJsonAsync(
             $"api/trading/{AgentId}/start",
-            new StartTradingRequest(CreateDcaConfig()));
+            new StartTradingRequest(strategy.Id));
 
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
         using var scope = GetCurrentFactory().Services.CreateScope();
         var store = scope.ServiceProvider.GetRequiredService<AgentCommandStore>();
         var pendingCommands = store.GetPendingCommands(AgentId);
+        var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
+        var updatedStrategy = await db.Strategies.FindAsync(strategy.Id);
 
         pendingCommands.Should().ContainSingle();
         pendingCommands[0].Type.Should().Be(AgentCommandType.Start);
         pendingCommands[0].StrategyConfig!.StrategyMode.Should().Be(StrategyMode.Dca);
+        pendingCommands[0].StrategyId.Should().Be(strategy.Id);
+        updatedStrategy.Should().NotBeNull();
+        updatedStrategy!.IsRunning.Should().BeTrue();
+        updatedStrategy.AssignedAgentId.Should().Be(AgentId);
     }
 
     [TestMethod]
     public async Task GivenGridStrategy_WhenStartTrading_ThenQueuesCommand()
     {
+        var strategy = await SeedStrategyAsync(CreateGridConfig(), "GridStrategy");
         var client = GetTestClient();
 
         var response = await client.PostAsJsonAsync(
             $"api/trading/{AgentId}/start",
-            new StartTradingRequest(CreateGridConfig()));
+            new StartTradingRequest(strategy.Id));
 
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
 
@@ -83,6 +95,53 @@ public sealed class TradingControllerTests : BaseControllerTests
         pendingCommands.Should().ContainSingle();
         pendingCommands[0].Type.Should().Be(AgentCommandType.Start);
         pendingCommands[0].StrategyConfig!.StrategyMode.Should().Be(StrategyMode.Grid);
+        pendingCommands[0].StrategyId.Should().Be(strategy.Id);
+    }
+
+    [TestMethod]
+    public async Task GivenRunningAssignedStrategy_WhenStopTrading_ThenClearsPersistedRunningStateAndQueuesStop()
+    {
+        var strategy = await SeedStrategyAsync(CreateGridConfig(), "GridStrategy");
+
+        using (var seedDb = CreateTestDbContext())
+        {
+            var tracked = await seedDb.Strategies.FindAsync(strategy.Id);
+            tracked.Should().NotBeNull();
+            tracked!.AssignToAgentAndStart(AgentId);
+            await seedDb.SaveChangesAsync();
+        }
+
+        var client = GetTestClient();
+        var response = await client.PostAsJsonAsync($"api/trading/{AgentId}/stop", new { });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted);
+
+        using var scope = GetCurrentFactory().Services.CreateScope();
+        var store = scope.ServiceProvider.GetRequiredService<AgentCommandStore>();
+        var pendingCommands = store.GetPendingCommands(AgentId);
+        var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
+        var updatedStrategy = await db.Strategies.FindAsync(strategy.Id);
+
+        pendingCommands.Should().ContainSingle();
+        pendingCommands[0].Type.Should().Be(AgentCommandType.Stop);
+        updatedStrategy.Should().NotBeNull();
+        updatedStrategy!.IsRunning.Should().BeFalse();
+        updatedStrategy.AssignedAgentId.Should().BeNull();
+    }
+
+    private async Task<Strategy> SeedStrategyAsync(StrategyConfig config, string strategyType)
+    {
+        await using var db = CreateTestDbContext();
+        var strategy = Strategy.Create(
+            "dev-user",
+            config.StrategyName,
+            strategyType,
+            JsonSerializer.Serialize(config, StrategyJsonOptions.Default));
+
+        db.Strategies.Add(strategy);
+        await db.SaveChangesAsync();
+
+        return strategy;
     }
 
     private WebApplicationFactory<Program> GetCurrentFactory()

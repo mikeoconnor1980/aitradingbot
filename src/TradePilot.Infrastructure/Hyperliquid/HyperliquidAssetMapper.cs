@@ -4,6 +4,8 @@ namespace TradePilot.Infrastructure.Hyperliquid;
 
 public static class HyperliquidAssetMapper
 {
+    private static readonly string[] QuoteSuffixes = ["USDT", "USDC", "USD"];
+
     private static readonly Dictionary<string, string> DisplayToCoin = new(StringComparer.OrdinalIgnoreCase)
     {
         ["BTC-PERP"] = "BTC",
@@ -29,17 +31,46 @@ public static class HyperliquidAssetMapper
 
     public static string ToCoin(string displayName)
     {
-        if (displayName.EndsWith("-PERP", StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(displayName))
         {
-            return displayName[..^5];
+            return string.Empty;
         }
 
-        if (displayName.EndsWith("-USD", StringComparison.OrdinalIgnoreCase))
+        var normalized = displayName.Trim().ToUpperInvariant();
+
+        if (DisplayToCoin.TryGetValue(normalized, out var mappedCoin))
         {
-            return displayName[..^4];
+            return mappedCoin;
         }
 
-        return displayName;
+        normalized = normalized.Replace("/", "-", StringComparison.Ordinal);
+
+        if (normalized.EndsWith(".P", StringComparison.Ordinal))
+        {
+            normalized = normalized[..^2];
+        }
+
+        if (normalized.EndsWith("-PERP", StringComparison.Ordinal))
+        {
+            normalized = normalized[..^5];
+        }
+        else if (normalized.EndsWith("PERP", StringComparison.Ordinal))
+        {
+            normalized = normalized[..^4];
+        }
+
+        var baseSegment = normalized.Split('-', StringSplitOptions.RemoveEmptyEntries)[0];
+
+        foreach (var suffix in QuoteSuffixes)
+        {
+            if (baseSegment.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                baseSegment = baseSegment[..^suffix.Length];
+                break;
+            }
+        }
+
+        return baseSegment;
     }
 
     public static bool IsValidTimeframe(string timeframe)

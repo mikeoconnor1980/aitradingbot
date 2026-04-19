@@ -1,7 +1,9 @@
-import { Component, computed, EventEmitter, inject, Input, Output, signal } from "@angular/core";
+import { Component, DestroyRef, computed, EventEmitter, inject, Input, Output, signal } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { interval } from "rxjs";
 import { AppNotification, NotificationType } from "../../models/app-notification.model";
 import { NotificationStoreService } from "../../services/notification-store.service";
 import { RelativeTimePipe } from "./relative-time.pipe";
@@ -17,6 +19,7 @@ type FilterOption = "All" | "Fill" | "OrderUpdate" | "System" | "Connection";
 })
 export class NotificationPanelComponent {
   private readonly _store = inject(NotificationStoreService);
+  private readonly _destroyRef = inject(DestroyRef);
 
   @Input()
   public isOpen = false;
@@ -25,6 +28,15 @@ export class NotificationPanelComponent {
   public closed = new EventEmitter<void>();
 
   public readonly activeFilter = signal<FilterOption>("All");
+  public readonly relativeTimeRefresh = signal(Date.now());
+
+  public constructor() {
+    interval(10000)
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => {
+        this.relativeTimeRefresh.set(Date.now());
+      });
+  }
 
   public readonly notifications = computed(() => {
     const filter = this.activeFilter();

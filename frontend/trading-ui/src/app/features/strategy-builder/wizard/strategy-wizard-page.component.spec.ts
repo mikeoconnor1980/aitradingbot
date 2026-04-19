@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { NO_ERRORS_SCHEMA } from "@angular/core";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { Router } from "@angular/router";
-import { of } from "rxjs";
+import { of, throwError } from "rxjs";
 import { NotificationFacade } from "../../../core/services/notification-facade.service";
 import { StrategyConfig, StrategyTemplateDto } from "../models/strategy.model";
 import { StrategyApiService } from "../services/strategy-api.service";
@@ -15,23 +15,23 @@ describe("StrategyWizardPageComponent", () => {
   let fixture: ComponentFixture<StrategyWizardPageComponent>;
   let component: StrategyWizardPageComponent;
   let routerSpy: jasmine.SpyObj<Router>;
+  let strategyApiSpy: jasmine.SpyObj<StrategyApiService>;
+  let notificationsSpy: jasmine.SpyObj<NotificationFacade>;
 
   beforeEach(async () => {
     routerSpy = jasmine.createSpyObj<Router>("Router", ["navigate"]);
     routerSpy.navigate.and.resolveTo(true);
+    strategyApiSpy = jasmine.createSpyObj<StrategyApiService>("StrategyApiService", ["getTemplates", "validateStrategy", "createStrategy"]);
+    strategyApiSpy.getTemplates.and.returnValue(of([]));
+    strategyApiSpy.validateStrategy.and.returnValue(of({ isValid: true, errors: [], warnings: [], infoMessages: [] }));
+    strategyApiSpy.createStrategy.and.returnValue(of({ id: "strategy-1" }));
+    notificationsSpy = jasmine.createSpyObj<NotificationFacade>("NotificationFacade", ["success", "error"]);
 
     await TestBed.configureTestingModule({
       imports: [StrategyWizardPageComponent, NoopAnimationsModule],
       providers: [
         { provide: Router, useValue: routerSpy },
-        {
-          provide: StrategyApiService,
-          useValue: {
-            getTemplates: () => of([]),
-            validateStrategy: () => of({ isValid: true, errors: [], warnings: [], infoMessages: [] }),
-            createStrategy: () => of({ id: "strategy-1" }),
-          }
-        },
+        { provide: StrategyApiService, useValue: strategyApiSpy },
         {
           provide: StrategyMapperService,
           useValue: {
@@ -44,7 +44,7 @@ describe("StrategyWizardPageComponent", () => {
                   : "grid",
               strategyName: String(formValue["strategyName"] ?? ""),
               exchange: String(formValue["exchange"] ?? "Hyperliquid"),
-              market: String(formValue["market"] ?? "BTC-USD"),
+              market: String(formValue["market"] ?? "BTC-PERP"),
               timeframe: String(formValue["timeframe"] ?? "15m"),
               direction: String(formValue["direction"] ?? "long") as "long" | "short" | "both",
               enabled: true,
@@ -84,7 +84,7 @@ describe("StrategyWizardPageComponent", () => {
         },
         {
           provide: NotificationFacade,
-          useValue: jasmine.createSpyObj("NotificationFacade", ["success", "error"])
+          useValue: notificationsSpy,
         },
       ],
       schemas: [NO_ERRORS_SCHEMA],
@@ -131,15 +131,15 @@ describe("StrategyWizardPageComponent", () => {
       description: "Weekly BTC accumulation",
       strategyMode: "dca",
       direction: "long",
-      market: "BTC-USD",
+      market: "BTC-PERP",
       tags: ["dca"],
       config: {
         schemaVersion: 1,
         strategyMode: "dca",
         strategyName: "BTC DCA",
         exchange: "Hyperliquid",
-        assetType: "spot",
-        market: "BTC-USD",
+        assetType: "perp",
+        market: "BTC-PERP",
         timeframe: "1h",
         direction: "long",
         enabled: true,
@@ -150,7 +150,7 @@ describe("StrategyWizardPageComponent", () => {
           dayOfMonth: null,
           timeOfDayUtc: "00:00",
           baseAmountUsd: 250,
-          allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+          allocations: [{ market: "BTC-PERP", weightPercent: 100 }],
           gateConditions: {
             maxPriceUsd: 95000,
             minFearGreedIndex: null,
@@ -200,15 +200,15 @@ describe("StrategyWizardPageComponent", () => {
       description: "Five minute BTC accumulation",
       strategyMode: "dca",
       direction: "long",
-      market: "BTC-USD",
+      market: "BTC-PERP",
       tags: ["dca"],
       config: {
         schemaVersion: 1,
         strategyMode: "dca",
         strategyName: "BTC DCA",
         exchange: "Hyperliquid",
-        assetType: "spot",
-        market: "BTC-USD",
+        assetType: "perp",
+        market: "BTC-PERP",
         timeframe: "5m",
         direction: "long",
         enabled: true,
@@ -219,7 +219,7 @@ describe("StrategyWizardPageComponent", () => {
           dayOfMonth: null,
           timeOfDayUtc: "00:00",
           baseAmountUsd: 50,
-          allocations: [{ market: "BTC-USD", weightPercent: 100 }],
+          allocations: [{ market: "BTC-PERP", weightPercent: 100 }],
           gateConditions: {
             maxPriceUsd: 90000,
             minFearGreedIndex: null,
@@ -258,5 +258,46 @@ describe("StrategyWizardPageComponent", () => {
     expect(component.isDcaMode).toBeTrue();
     expect(component.form.invalid).toBeTrue();
     expect(component.marketStepForm.valid).toBeTrue();
+  });
+
+  it("should surface duplicate strategy names from the API when create fails", () => {
+    strategyApiSpy.createStrategy.and.returnValue(throwError(() => ({
+      status: 409,
+      error: {
+        errorMessage: "A strategy named 'BTC DCA Below $90,000' already exists.",
+        errorCode: "duplicate_name",
+      }
+    })));
+    component.stepper = { selectedIndex: 6 } as unknown as typeof component.stepper;
+
+    component.form.patchValue({ strategyName: "BTC DCA Below $90,000" });
+    component.serverErrors = [];
+    component.clientErrors = [];
+
+    component.onSave();
+
+    expect(notificationsSpy.error).toHaveBeenCalledWith("A strategy named 'BTC DCA Below $90,000' already exists.");
+    expect(component.serverErrors).toEqual([jasmine.objectContaining({
+      fieldPath: "strategyName",
+      code: "duplicate_name",
+      message: "A strategy named 'BTC DCA Below $90,000' already exists.",
+    })]);
+    expect(component.form.get("strategyName")?.getError("duplicateName")).toBe("A strategy named 'BTC DCA Below $90,000' already exists.");
+    expect(component.stepper.selectedIndex).toBe(1);
+  });
+
+  it("should clear duplicate name errors after the user edits the strategy name", () => {
+    component.serverErrors = [{
+      severity: "error",
+      fieldPath: "strategyName",
+      code: "duplicate_name",
+      message: "Duplicate name",
+    }];
+    component.form.get("strategyName")?.setErrors({ duplicateName: "Duplicate name" });
+
+    component.form.get("strategyName")?.setValue("BTC DCA Below $85,000");
+
+    expect(component.form.get("strategyName")?.hasError("duplicateName")).toBeFalse();
+    expect(component.serverErrors).toEqual([]);
   });
 });

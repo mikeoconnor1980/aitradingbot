@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,8 @@ public sealed class TelegramBotPollingService : BackgroundService
             return;
         }
 
+        await EnsurePollingModeAsync(stoppingToken);
+
         _logger.LogInformation("TelegramBotPollingService started.");
 
         while (!stoppingToken.IsCancellationRequested)
@@ -62,6 +65,13 @@ public sealed class TelegramBotPollingService : BackgroundService
             {
                 break;
             }
+            catch (HttpRequestException ex) when (IsConflict(ex))
+            {
+                _logger.LogError(
+                    ex,
+                    "Telegram polling conflict detected. Another webhook or polling consumer is using this bot token. Polling service is stopping until the app restarts.");
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Telegram polling error. Retrying in 5s.");
@@ -71,6 +81,43 @@ public sealed class TelegramBotPollingService : BackgroundService
         }
 
         _logger.LogInformation("TelegramBotPollingService stopped.");
+    }
+
+    internal async Task EnsurePollingModeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var payload = new
+            {
+                drop_pending_updates = false,
+            };
+
+            using var response = await _httpClient.PostAsJsonAsync("deleteWebhook", payload, cancellationToken);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Telegram webhook cleared. Polling mode active.");
+                return;
+            }
+
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogWarning(
+                "Telegram deleteWebhook returned {StatusCode}. Polling will continue. Body={Body}",
+                (int)response.StatusCode,
+                body);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clear Telegram webhook before polling. Polling will continue.");
+        }
+    }
+
+    internal static bool IsConflict(HttpRequestException exception)
+    {
+        return exception.StatusCode == HttpStatusCode.Conflict;
     }
 
     private async Task PollUpdatesAsync(CancellationToken cancellationToken)
