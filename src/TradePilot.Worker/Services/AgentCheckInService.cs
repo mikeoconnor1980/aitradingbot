@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TradePilot.Application.Abstractions.Configuration;
@@ -41,6 +42,7 @@ public sealed class AgentCheckInService : BackgroundService
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IServiceProvider _serviceProvider;
+    private readonly IExecutionEngineResolver _executionEngineResolver;
     private readonly ISignerProvider _signerProvider;
     private readonly ITradingHealthProvider _healthProvider;
     private readonly IUpdateNotifier _updateNotifier;
@@ -66,6 +68,7 @@ public sealed class AgentCheckInService : BackgroundService
     public AgentCheckInService(
         IHttpClientFactory httpClientFactory,
         IServiceProvider serviceProvider,
+        IExecutionEngineResolver executionEngineResolver,
         ISignerProvider signerProvider,
         ITradingHealthProvider healthProvider,
         IUpdateNotifier updateNotifier,
@@ -79,6 +82,7 @@ public sealed class AgentCheckInService : BackgroundService
     {
         _httpClientFactory = httpClientFactory;
         _serviceProvider = serviceProvider;
+        _executionEngineResolver = executionEngineResolver;
         _signerProvider = signerProvider;
         _healthProvider = healthProvider;
         _updateNotifier = updateNotifier;
@@ -513,7 +517,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.OrderPayload;
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
 
         try
         {
@@ -594,7 +598,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
         if (executionEngine is not IPositionQueryable positionQueryable)
         {
             _pendingResults.Enqueue(new OrderCommandResult
@@ -707,7 +711,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
 
         try
         {
@@ -728,7 +732,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
 
         try
         {
@@ -768,7 +772,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.LeveragePayload;
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
 
         try
         {
@@ -829,7 +833,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.TriggerPayload;
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
 
         try
         {
@@ -888,7 +892,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.ModifyTriggerPayload;
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
 
         try
         {
@@ -965,64 +969,110 @@ public sealed class AgentCheckInService : BackgroundService
 
     private TradingSession CreateSession(StrategyConfig strategyConfig)
     {
+        var exchange = ResolveStrategyExchange(strategyConfig);
         var gridState = new GridState();
         var orderTracker = _serviceProvider.GetRequiredService<IOrderTracker>();
         var riskEngine = _serviceProvider.GetRequiredService<IRiskEngine>();
+        var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+        var executionEngine = _executionEngineResolver.Resolve(exchange);
+        var marketMetadataProvider = _serviceProvider.GetRequiredKeyedService<IExchangeMarketMetadataProvider>(exchange.ToString());
+        var historicalDataClient = _serviceProvider.GetRequiredKeyedService<IExchangeHistoricalDataClient>(exchange.ToString());
+        var accountClient = _serviceProvider.GetRequiredKeyedService<IExchangeAccountClient>(exchange.ToString());
+        var symbolMapper = _serviceProvider.GetServices<IExchangeSymbolMapper>()
+            .First(mapper => mapper.Exchange == exchange);
 
         // Create a scope for scoped repository services — owned by TradingSession
         var scope = _serviceProvider.CreateScope();
         var userId = _signerProvider.IsConfigured ? _signerProvider.WalletAddress : null;
 
+        var triggerOrderManager = new TriggerOrderManager(
+            executionEngine,
+            loggerFactory.CreateLogger<TriggerOrderManager>());
+
+        var positionManager = new LivePositionManager(
+            executionEngine,
+            orderTracker,
+            riskEngine,
+            loggerFactory.CreateLogger<LivePositionManager>(),
+            triggerOrderManager);
+
+        var stateRecoveryService = new StateRecoveryService(
+            scope.ServiceProvider.GetRequiredService<IGridCycleRepository>(),
+            scope.ServiceProvider.GetRequiredService<ILiveOrderRepository>(),
+            accountClient,
+            loggerFactory.CreateLogger<StateRecoveryService>());
+
+        var contextBuilder = new LiveMarketContextBuilder(
+            _serviceProvider.GetService<ILlmContextProvider>(),
+            _serviceProvider.GetService<IFearGreedSnapshotProvider>(),
+            _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+            marketMetadataProvider,
+            loggerFactory.CreateLogger<LiveMarketContextBuilder>());
+
         var fillProcessor = new FillProcessor(
             orderTracker,
             gridState,
-            _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<FillProcessor>(),
+            loggerFactory.CreateLogger<FillProcessor>(),
             riskEngine,
             scope.ServiceProvider.GetService<ILiveOrderRepository>(),
             scope.ServiceProvider.GetService<ILiveFillRepository>(),
             scope.ServiceProvider.GetService<IGridCycleRepository>(),
             userId,
-            _serviceProvider.GetRequiredService<IExecutionEngine>());
+            executionEngine);
 
-        // Wire scoped repositories into the singleton LivePositionManager
-        var positionManager = _serviceProvider.GetRequiredService<IPositionManager>();
-        if (positionManager is LivePositionManager livePositionManager)
-        {
-            livePositionManager.ConfigureRepositories(
-                scope.ServiceProvider.GetService<IGridCycleRepository>(),
-                scope.ServiceProvider.GetService<ILiveOrderRepository>(),
-                userId);
-            livePositionManager.ConfigureProtectionState(gridState.ProtectionOrders);
-        }
-
-        var triggerOrderManager = _serviceProvider.GetService<ITriggerOrderManager>();
+        positionManager.ConfigureRepositories(
+            scope.ServiceProvider.GetService<IGridCycleRepository>(),
+            scope.ServiceProvider.GetService<ILiveOrderRepository>(),
+            userId);
+        positionManager.ConfigureProtectionState(gridState.ProtectionOrders);
 
         return new TradingSession(
             strategyConfig,
-            _serviceProvider.GetRequiredService<IHyperliquidWebSocketClient>(),
-            _serviceProvider.GetRequiredService<IHyperliquidUserEventClient>(),
-            _serviceProvider.GetRequiredService<IHyperliquidRestClient>(),
+            exchange,
+            exchange == Exchange.Hyperliquid ? _serviceProvider.GetRequiredService<IHyperliquidWebSocketClient>() : null,
+            exchange == Exchange.Hyperliquid ? _serviceProvider.GetRequiredService<IHyperliquidUserEventClient>() : null,
+            exchange == Exchange.Hyperliquid ? _serviceProvider.GetRequiredService<IHyperliquidRestClient>() : null,
+            historicalDataClient,
+            accountClient,
+            symbolMapper,
             _serviceProvider.GetRequiredService<CandleBuilder>(),
             _serviceProvider.GetRequiredService<CandleClock>(),
-            _serviceProvider.GetRequiredService<IMarketContextBuilder>(),
+            contextBuilder,
             _serviceProvider.GetRequiredService<IStrategyEngine>(),
             _serviceProvider.GetRequiredService<IGridController>(),
             riskEngine,
             positionManager,
             _serviceProvider.GetRequiredService<ISignalController>(),
-            _serviceProvider.GetRequiredService<IExecutionEngine>(),
+            executionEngine,
             fillProcessor,
             _signerProvider,
             _healthProvider,
-            _logger,
+            loggerFactory.CreateLogger<TradingSession>(),
             gridState,
-            scope.ServiceProvider.GetService<IStateRecoveryService>(),
+            stateRecoveryService,
             orderTracker,
             scope,
             triggerOrderManager,
             _serviceProvider.GetRequiredService<IOptions<RiskLimitsConfig>>(),
-                _executionLogger,
-                _serviceProvider.GetRequiredService<IDcaController>());
+            _executionLogger,
+            _serviceProvider.GetRequiredService<IDcaController>());
+    }
+
+    private Exchange ResolveCommandExchange()
+    {
+        lock (_sessionLock)
+        {
+            return _activeSession is null
+                ? Exchange.Hyperliquid
+                : ResolveStrategyExchange(_activeSession.StrategyConfig);
+        }
+    }
+
+    private static Exchange ResolveStrategyExchange(StrategyConfig strategyConfig)
+    {
+        return Enum.TryParse<Exchange>(strategyConfig.Exchange, ignoreCase: true, out var exchange)
+            ? exchange
+            : Exchange.Hyperliquid;
     }
 
     private static string GetAgentVersion()

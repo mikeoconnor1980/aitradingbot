@@ -86,4 +86,24 @@ public sealed class UserTests
 
         user.IsActive.Should().BeFalse();
     }
+
+    [TestMethod]
+    public void GivenUser_WhenUpdatePreferredExchange_ThenExchangeUpdated()
+    {
+        var user = User.Create("test@example.com", "Test", "hash");
+
+        user.UpdatePreferredExchange("Binance");
+
+        user.PreferredExchange.Should().Be("Binance");
+    }
+
+    [TestMethod]
+    public void GivenUser_WhenUpdatePreferredExchangeWithInvalidValue_ThenThrowsArgumentException()
+    {
+        var user = User.Create("test@example.com", "Test", "hash");
+
+        var act = () => user.UpdatePreferredExchange("Kraken");
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

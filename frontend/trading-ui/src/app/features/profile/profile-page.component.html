@@ -213,6 +213,81 @@
       </mat-card-content>
     </mat-card>
 
+    <mat-card class="profile-page__card">
+      <mat-card-header>
+        <mat-card-title>Binance API</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (credentialsLoading()) {
+          <p class="profile-page__placeholder">Loading stored credentials...</p>
+        } @else {
+          @if (activeBinanceCredential; as credential) {
+            <dl class="profile-page__details">
+              <div class="profile-page__detail">
+                <dt>Label</dt>
+                <dd>{{ credential.label }}</dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>API Key</dt>
+                <dd class="profile-page__mono">{{ credential.apiKey }}</dd>
+              </div>
+              <div class="profile-page__detail">
+                <dt>Secret</dt>
+                <dd class="profile-page__mono">{{ credential.maskedSecret }}</dd>
+              </div>
+            </dl>
+            <div class="profile-page__wallet-actions">
+              <button mat-stroked-button (click)="onTestBinanceCredential()" [disabled]="credentialTesting()">
+                <mat-icon>check_circle</mat-icon>
+                {{ credentialTesting() ? 'Testing...' : 'Test Connection' }}
+              </button>
+              <button mat-stroked-button color="warn" (click)="onDeleteCredential(credential.id)">
+                <mat-icon>delete</mat-icon>
+                Remove Credential
+              </button>
+            </div>
+          } @else {
+            <p class="profile-page__placeholder">No Binance API credential stored yet. Add one to enable direct Binance execution.</p>
+          }
+
+          <div class="profile-page__key-form">
+            <mat-form-field appearance="outline" class="profile-page__key-field">
+              <mat-label>Credential Label</mat-label>
+              <input matInput [formControl]="credentialLabelControl" placeholder="Primary Binance" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="profile-page__key-field">
+              <mat-label>API Key</mat-label>
+              <input matInput [formControl]="credentialApiKeyControl" autocomplete="off" spellcheck="false" />
+              @if (credentialApiKeyControl.hasError('required')) {
+                <mat-error>API key is required</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="profile-page__key-field">
+              <mat-label>API Secret</mat-label>
+              <input matInput type="password" [formControl]="credentialApiSecretControl" autocomplete="new-password" spellcheck="false" />
+              @if (credentialApiSecretControl.hasError('required')) {
+                <mat-error>API secret is required</mat-error>
+              }
+              <mat-hint>The secret is encrypted before storage.</mat-hint>
+            </mat-form-field>
+
+            @if (credentialError(); as error) {
+              <p class="profile-page__error">{{ error }}</p>
+            }
+            @if (credentialSuccess(); as message) {
+              <p class="profile-page__success">{{ message }}</p>
+            }
+
+            <div class="profile-page__key-actions">
+              <button mat-flat-button color="primary" [disabled]="credentialSaving()" (click)="onSaveBinanceCredential()">
+                {{ credentialSaving() ? 'Saving...' : 'Save Binance Credential' }}
+              </button>
+            </div>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
     <app-telegram-link></app-telegram-link>
 
     <mat-card class="profile-page__card">
@@ -340,6 +415,16 @@
       </mat-card-header>
       <mat-card-content>
         <div class="profile-page__details">
+          <div class="profile-page__detail">
+            <mat-form-field appearance="outline" class="profile-page__network-field">
+              <mat-label>Exchange</mat-label>
+              <mat-select [formControl]="exchangeControl" (selectionChange)="onExchangeChange($event.value)">
+                <mat-option value="Hyperliquid">Hyperliquid</mat-option>
+                <mat-option value="Binance">Binance</mat-option>
+              </mat-select>
+              <mat-hint>Select which exchange to use for market data and direct execution</mat-hint>
+            </mat-form-field>
+          </div>
           <div class="profile-page__detail">
             <mat-form-field appearance="outline" class="profile-page__network-field">
               <mat-label>Network</mat-label>

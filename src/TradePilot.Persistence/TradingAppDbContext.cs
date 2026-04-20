@@ -29,6 +29,7 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<AdminUserGrant> AdminUserGrants => Set<AdminUserGrant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserWalletAddress> UserWalletAddresses => Set<UserWalletAddress>();
+    public DbSet<UserExchangeCredential> UserExchangeCredentials => Set<UserExchangeCredential>();
     public DbSet<WebhookConfig> WebhookConfigs => Set<WebhookConfig>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<ExecutionLog> ExecutionLogs => Set<ExecutionLog>();
@@ -752,6 +753,11 @@ public sealed class TradePilotDbContext : DbContext
                 .IsRequired()
                 .HasDefaultValue("mainnet");
 
+            entity.Property(e => e.PreferredExchange)
+                .HasMaxLength(20)
+                .IsRequired()
+                .HasDefaultValue("Hyperliquid");
+
             entity.Property(e => e.TelegramChatId)
                 .IsRequired(false);
 
@@ -819,6 +825,50 @@ public sealed class TradePilotDbContext : DbContext
 
             entity.HasIndex(e => new { e.UserId, e.IsActive })
                 .HasDatabaseName("IX_UserWalletAddresses_UserId_IsActive");
+        });
+
+        modelBuilder.Entity<UserExchangeCredential>(entity =>
+        {
+            entity.ToTable("UserExchangeCredentials");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.UserId)
+                .IsRequired();
+
+            entity.Property(e => e.Exchange)
+                .HasConversion<string>()
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(e => e.ApiKey)
+                .HasMaxLength(256)
+                .IsRequired();
+
+            entity.Property(e => e.EncryptedApiSecret)
+                .HasMaxLength(4000)
+                .IsRequired();
+
+            entity.Property(e => e.Label)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAtUtc)
+                .IsRequired();
+
+            entity.Property(e => e.IsActive)
+                .IsRequired();
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => new { e.UserId, e.Exchange, e.IsActive })
+                .HasDatabaseName("IX_UserExchangeCredentials_UserId_Exchange_IsActive");
         });
 
         modelBuilder.Entity<WebhookConfig>(entity =>

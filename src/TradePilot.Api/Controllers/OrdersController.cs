@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Api.Infrastructure;
@@ -8,8 +9,10 @@ using TradePilot.Api.Models;
 using TradePilot.Api.Services;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Trading.Models;
 using TradePilot.Application.Subscriptions.Services;
 using System.Linq;
+using TradePilot.Domain.Enums;
 
 namespace TradePilot.Api.Controllers;
 
@@ -23,26 +26,38 @@ public sealed class OrdersController : ControllerBase
     private readonly IHyperliquidAccountService _accountService;
     private readonly IHyperliquidRestClient _restClient;
     private readonly IHyperliquidAssetMetadataCache _metadataCache;
+    private readonly IBinanceExchangeInfoCache _binanceExchangeInfoCache;
     private readonly IUserWalletAddressRepository _walletRepo;
     private readonly ISignerProvider _signerProvider;
     private readonly ISubscriptionFeatureService _subscriptionFeatureService;
+    private readonly IExchangeResolver _exchangeResolver;
+    private readonly IExecutionEngineResolver _executionEngineResolver;
+    private readonly IServiceProvider _serviceProvider;
 
     public OrdersController(
         IHyperliquidOrderService orderService,
         IHyperliquidAccountService accountService,
         IHyperliquidRestClient restClient,
         IHyperliquidAssetMetadataCache metadataCache,
+        IBinanceExchangeInfoCache binanceExchangeInfoCache,
         IUserWalletAddressRepository walletRepo,
         ISignerProvider signerProvider,
-        ISubscriptionFeatureService subscriptionFeatureService)
+        ISubscriptionFeatureService subscriptionFeatureService,
+        IExchangeResolver exchangeResolver,
+        IExecutionEngineResolver executionEngineResolver,
+        IServiceProvider serviceProvider)
     {
         _orderService = orderService;
         _accountService = accountService;
         _restClient = restClient;
         _metadataCache = metadataCache;
+        _binanceExchangeInfoCache = binanceExchangeInfoCache;
         _walletRepo = walletRepo;
         _signerProvider = signerProvider;
         _subscriptionFeatureService = subscriptionFeatureService;
+        _exchangeResolver = exchangeResolver;
+        _executionEngineResolver = executionEngineResolver;
+        _serviceProvider = serviceProvider;
     }
 
     private Guid? TryGetUserId()
@@ -169,7 +184,7 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<TradableAssetDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAvailableAssetsAsync(CancellationToken ct)
     {
-        var all = await _metadataCache.GetAllAsync(ct);
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
         var userId = TryGetUserId();
         var allowedAssets = userId.HasValue
             ? await _subscriptionFeatureService.GetAllowedAssetsAsync(userId.Value, ct)
@@ -179,18 +194,31 @@ public sealed class OrdersController : ControllerBase
             .Select((coin, idx) => (coin, idx))
             .ToDictionary(x => x.coin, x => x.idx, StringComparer.OrdinalIgnoreCase);
 
-        var sorted = all
-            .Where(kvp => allowedAssets.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
-            .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
-            .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(kvp => new TradableAssetDto
-            {
-                Symbol = $"{kvp.Key}-PERP",
-                Name = CoinNames.TryGetValue(kvp.Key, out var name) ? name : kvp.Key,
-                MaxLeverage = kvp.Value.MaxLeverage,
-                SzDecimals = kvp.Value.SzDecimals,
-            })
-            .ToList();
+        var sorted = exchange == Exchange.Binance
+            ? (await _binanceExchangeInfoCache.GetSupportedSymbolsAsync(ct))
+                .Where(kvp => allowedAssets.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
+                .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
+                .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(kvp => new TradableAssetDto
+                {
+                    Symbol = $"{kvp.Key}-PERP",
+                    Name = CoinNames.TryGetValue(kvp.Key, out var name) ? name : kvp.Key,
+                    MaxLeverage = kvp.Value.MaxLeverage,
+                    SzDecimals = kvp.Value.SizeDecimals,
+                })
+                .ToList()
+            : (await _metadataCache.GetAllAsync(ct))
+                .Where(kvp => allowedAssets.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
+                .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
+                .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(kvp => new TradableAssetDto
+                {
+                    Symbol = $"{kvp.Key}-PERP",
+                    Name = CoinNames.TryGetValue(kvp.Key, out var name) ? name : kvp.Key,
+                    MaxLeverage = kvp.Value.MaxLeverage,
+                    SzDecimals = kvp.Value.SzDecimals,
+                })
+                .ToList();
 
         return Ok(sorted);
     }
@@ -204,14 +232,50 @@ public sealed class OrdersController : ControllerBase
         try
         {
             await EnsureAssetAllowedAsync(request.Asset, ct);
-            var result = await _orderService.PlaceOrderAsync(request, ct);
+            var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
 
-            if (!result.Success)
+            if (exchange == Exchange.Hyperliquid)
             {
-                return BadRequest(new Envelope(result.Detail ?? "Order rejected"));
+                var result = await _orderService.PlaceOrderAsync(request, ct);
+
+                if (!result.Success)
+                {
+                    return BadRequest(new Envelope(result.Detail ?? "Order rejected"));
+                }
+
+                return Ok(result);
             }
 
-            return Ok(result);
+            var executionEngine = _executionEngineResolver.Resolve(exchange);
+            var orderId = await executionEngine.PlaceOrderAsync(new OrderRequest
+            {
+                Symbol = request.Asset,
+                Side = request.Side.Equals("buy", StringComparison.OrdinalIgnoreCase) ? OrderSide.Buy : OrderSide.Sell,
+                OrderType = request.OrderType.Equals("market", StringComparison.OrdinalIgnoreCase) ? OrderType.Market : OrderType.Limit,
+                Price = request.Price ?? 0m,
+                Size = request.Size,
+                ReduceOnly = request.ReduceOnly,
+                TradeType = TradeType.Manual,
+            }, ct);
+
+            if (string.IsNullOrWhiteSpace(orderId))
+            {
+                return BadRequest(new Envelope("Order rejected"));
+            }
+
+            var closingSide = request.Side.Equals("buy", StringComparison.OrdinalIgnoreCase) ? "sell" : "buy";
+
+            if (request.StopLossPrice.HasValue)
+            {
+                await executionEngine.PlaceTriggerOrderAsync(request.Asset, closingSide, request.Size, request.StopLossPrice.Value, "sl", ct);
+            }
+
+            if (request.TakeProfitPrice.HasValue)
+            {
+                await executionEngine.PlaceTriggerOrderAsync(request.Asset, closingSide, request.Size, request.TakeProfitPrice.Value, "tp", ct);
+            }
+
+            return Ok(new PlaceOrderResponse { Success = true, OrderId = orderId, Status = "submitted" });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
         {
@@ -228,14 +292,29 @@ public sealed class OrdersController : ControllerBase
         try
         {
             await EnsureAssetAllowedAsync(request.Asset, ct);
-            var result = await _orderService.PlaceTriggerOrderAsync(request, ct);
+            var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
 
-            if (!result.Success)
+            if (exchange == Exchange.Hyperliquid)
             {
-                return BadRequest(new Envelope(result.Detail ?? "Trigger order rejected"));
+                var result = await _orderService.PlaceTriggerOrderAsync(request, ct);
+
+                if (!result.Success)
+                {
+                    return BadRequest(new Envelope(result.Detail ?? "Trigger order rejected"));
+                }
+
+                return Ok(result);
             }
 
-            return Ok(result);
+            var orderId = await _executionEngineResolver.Resolve(exchange)
+                .PlaceTriggerOrderAsync(request.Asset, request.Side, request.Size, request.TriggerPrice, request.TpslType, ct);
+
+            return Ok(new PlaceOrderResponse
+            {
+                Success = !string.IsNullOrWhiteSpace(orderId),
+                OrderId = orderId,
+                Status = "submitted"
+            });
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
         {
@@ -248,6 +327,12 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> TestSignAsync(CancellationToken ct)
     {
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+        if (exchange != Exchange.Hyperliquid)
+        {
+            return BadRequest(new Envelope("Signature inspection is only supported for Hyperliquid.", "unsupported_exchange"));
+        }
+
         var result = await _orderService.TestSignAsync(ct);
         return Ok(result);
     }
@@ -261,12 +346,23 @@ public sealed class OrdersController : ControllerBase
     {
         try
         {
-            var walletAddress = await GetWalletAddressAsync(ct);
-            var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
+            var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+            var walletAddress = exchange == Exchange.Hyperliquid ? await GetWalletAddressAsync(ct) : null;
+            var openOrders = exchange == Exchange.Hyperliquid
+                ? await _accountService.GetOpenOrdersAsync(walletAddress, ct)
+                : await GetAccountClient(exchange).GetOpenOrdersAsync(walletAddress, ct);
             var existingOrder = openOrders.FirstOrDefault(o => o.OrderId == orderId)
                 ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
-            await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            if (exchange == Exchange.Hyperliquid)
+            {
+                await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            }
+            else
+            {
+                await _executionEngineResolver.Resolve(exchange).CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            }
+
             return NoContent();
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
@@ -286,7 +382,16 @@ public sealed class OrdersController : ControllerBase
             throw new DomainException("Query parameter 'asset' is required.");
         }
 
-        await _orderService.CancelAllOrdersAsync(asset, ct);
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+        if (exchange == Exchange.Hyperliquid)
+        {
+            await _orderService.CancelAllOrdersAsync(asset, ct);
+        }
+        else
+        {
+            await _executionEngineResolver.Resolve(exchange).CancelAllOrdersAsync(asset, ct);
+        }
+
         return NoContent();
     }
 
@@ -296,12 +401,34 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ModifyOrderAsync(string orderId, [FromBody] ModifyOrderDto dto, CancellationToken ct)
     {
-        var walletAddress = await GetWalletAddressAsync(ct);
-        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+        var walletAddress = exchange == Exchange.Hyperliquid ? await GetWalletAddressAsync(ct) : null;
+        var openOrders = exchange == Exchange.Hyperliquid
+            ? await _accountService.GetOpenOrdersAsync(walletAddress, ct)
+            : await GetAccountClient(exchange).GetOpenOrdersAsync(walletAddress, ct);
         var existingOrder = openOrders.FirstOrDefault(order => order.OrderId == orderId)
             ?? throw new NotFoundException($"Order {orderId} not found in open orders");
 
-        await _orderService.ModifyOrderAsync(orderId, existingOrder.Asset, existingOrder.Side, dto.Price, dto.Size, ct);
+        if (exchange == Exchange.Hyperliquid)
+        {
+            await _orderService.ModifyOrderAsync(orderId, existingOrder.Asset, existingOrder.Side, dto.Price, dto.Size, ct);
+        }
+        else
+        {
+            var executionEngine = _executionEngineResolver.Resolve(exchange);
+            await executionEngine.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            await executionEngine.PlaceOrderAsync(new OrderRequest
+            {
+                Symbol = existingOrder.Asset,
+                Side = existingOrder.Side.Equals("buy", StringComparison.OrdinalIgnoreCase) ? OrderSide.Buy : OrderSide.Sell,
+                OrderType = OrderType.Limit,
+                Price = dto.Price,
+                Size = dto.Size,
+                ReduceOnly = existingOrder.IsReduceOnly,
+                TradeType = TradeType.Manual,
+            }, ct);
+        }
+
         return NoContent();
     }
 
@@ -312,21 +439,40 @@ public sealed class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> ModifyTriggerOrderAsync(string orderId, [FromBody] ModifyTriggerOrderDto dto, CancellationToken ct)
     {
-        var walletAddress = await GetWalletAddressAsync(ct);
-        var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+        var walletAddress = exchange == Exchange.Hyperliquid ? await GetWalletAddressAsync(ct) : null;
+        var openOrders = exchange == Exchange.Hyperliquid
+            ? await _accountService.GetOpenOrdersAsync(walletAddress, ct)
+            : await GetAccountClient(exchange).GetOpenOrdersAsync(walletAddress, ct);
         var existingOrder = openOrders.FirstOrDefault(order =>
                 order.OrderId == orderId &&
                 string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
             ?? throw new NotFoundException($"Trigger order {orderId} not found in open orders");
 
-        await _orderService.ModifyTriggerOrderAsync(
-            orderId,
-            existingOrder.Asset,
-            existingOrder.Side,
-            dto.TriggerPrice,
-            dto.Size,
-            existingOrder.TpslType ?? dto.TpslType ?? throw new DomainException($"Trigger order {orderId} is missing TP/SL type."),
-            ct);
+        var tpslType = existingOrder.TpslType ?? dto.TpslType ?? throw new DomainException($"Trigger order {orderId} is missing TP/SL type.");
+
+        if (exchange == Exchange.Hyperliquid)
+        {
+            await _orderService.ModifyTriggerOrderAsync(
+                orderId,
+                existingOrder.Asset,
+                existingOrder.Side,
+                dto.TriggerPrice,
+                dto.Size,
+                tpslType,
+                ct);
+        }
+        else
+        {
+            await _executionEngineResolver.Resolve(exchange).ModifyTriggerOrderAsync(
+                orderId,
+                existingOrder.Asset,
+                existingOrder.Side,
+                dto.TriggerPrice,
+                dto.Size,
+                tpslType,
+                ct);
+        }
 
         return NoContent();
     }
@@ -340,14 +486,25 @@ public sealed class OrdersController : ControllerBase
     {
         try
         {
-            var walletAddress = await GetWalletAddressAsync(ct);
-            var openOrders = await _accountService.GetOpenOrdersAsync(walletAddress, ct);
+            var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+            var walletAddress = exchange == Exchange.Hyperliquid ? await GetWalletAddressAsync(ct) : null;
+            var openOrders = exchange == Exchange.Hyperliquid
+                ? await _accountService.GetOpenOrdersAsync(walletAddress, ct)
+                : await GetAccountClient(exchange).GetOpenOrdersAsync(walletAddress, ct);
             var existingOrder = openOrders.FirstOrDefault(order =>
                     order.OrderId == orderId &&
                     string.Equals(order.OrderType, "trigger", StringComparison.OrdinalIgnoreCase))
                 ?? throw new NotFoundException($"Trigger order {orderId} not found in open orders");
 
-            await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            if (exchange == Exchange.Hyperliquid)
+            {
+                await _orderService.CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            }
+            else
+            {
+                await _executionEngineResolver.Resolve(exchange).CancelOrderAsync(orderId, existingOrder.Asset, ct);
+            }
+
             return NoContent();
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
@@ -365,7 +522,16 @@ public sealed class OrdersController : ControllerBase
         try
         {
             await EnsureLeverageAllowedAsync(request.Asset, request.Leverage, ct);
-            await _orderService.UpdateLeverageAsync(request.Asset, request.Leverage, request.IsCross, ct);
+            var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+            if (exchange == Exchange.Hyperliquid)
+            {
+                await _orderService.UpdateLeverageAsync(request.Asset, request.Leverage, request.IsCross, ct);
+            }
+            else
+            {
+                await _executionEngineResolver.Resolve(exchange).SetLeverageAsync(request.Asset, request.Leverage, isIsolated: !request.IsCross, ct);
+            }
+
             return NoContent();
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("No private key configured"))
@@ -420,4 +586,7 @@ public sealed class OrdersController : ControllerBase
         return Ok(response);
     }
 #endif
+
+    private IExchangeAccountClient GetAccountClient(Exchange exchange)
+        => _serviceProvider.GetRequiredKeyedService<IExchangeAccountClient>(exchange.ToString());
 }

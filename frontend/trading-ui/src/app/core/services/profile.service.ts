@@ -2,12 +2,14 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
 import { BehaviorSubject, Observable, tap, catchError, of } from "rxjs";
 import { environment } from "../../../environments/environment";
+import { ExchangeContextService } from "./exchange-context.service";
 
 export interface UserProfile {
   id: string;
   email: string;
   displayName: string;
   preferredNetwork: string;
+  preferredExchange: string;
   llmModels: LlmModelsInfo;
   hasActiveSubscription: boolean;
   subscriptionTier: string | null;
@@ -23,6 +25,7 @@ export interface LlmModelsInfo {
 @Injectable({ providedIn: "root" })
 export class ProfileService {
   private readonly _http = inject(HttpClient);
+  private readonly _exchangeContext = inject(ExchangeContextService);
   private readonly _url = `${environment.apiBaseUrl}/profile`;
 
   private readonly _profile$ = new BehaviorSubject<UserProfile | null>(null);
@@ -32,12 +35,27 @@ export class ProfileService {
     this._http
       .get<UserProfile>(this._url)
       .pipe(catchError(() => of(null)))
-      .subscribe((profile) => this._profile$.next(profile));
+      .subscribe((profile) => {
+        if (profile) {
+          this._exchangeContext.setExchange(profile.preferredExchange);
+        }
+
+        this._profile$.next(profile);
+      });
   }
 
   public updateNetwork(network: string): Observable<UserProfile> {
     return this._http
       .put<UserProfile>(`${this._url}/network`, { network })
       .pipe(tap((profile) => this._profile$.next(profile)));
+  }
+
+  public updateExchange(exchange: string): Observable<UserProfile> {
+    return this._http
+      .put<UserProfile>(`${this._url}/exchange`, { exchange })
+      .pipe(tap((profile) => {
+        this._exchangeContext.setExchange(profile.preferredExchange);
+        this._profile$.next(profile);
+      }));
   }
 }

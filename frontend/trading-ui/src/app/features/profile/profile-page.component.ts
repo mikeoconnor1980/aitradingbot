@@ -20,6 +20,7 @@ import { WalletService } from "../../core/services/wallet.service";
 import { ActivatedRoute, Router } from "@angular/router";
 import { environment } from "../../../environments/environment";
 import { TelegramLinkComponent } from "./telegram-link.component";
+import { ExchangeCredential, ExchangeCredentialsService } from "../../core/services/exchange-credentials.service";
 
 interface ApiVersionViewModel {
   data: ApiVersionInfo | null;
@@ -41,6 +42,7 @@ export class ProfilePageComponent implements OnInit {
   private readonly _profileService = inject(ProfileService);
   private readonly _walletService = inject(WalletService);
   private readonly _subscriptionService = inject(SubscriptionService);
+  private readonly _exchangeCredentialsService = inject(ExchangeCredentialsService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
 
@@ -82,7 +84,19 @@ export class ProfilePageComponent implements OnInit {
   public readonly zipDownloadUrl = this._agentService.getInstallerDownloadUrl("zip");
 
   public readonly networkControl = new FormControl("mainnet");
+  public readonly exchangeControl = new FormControl("Hyperliquid", { nonNullable: true });
   public readonly networkSaving = signal(false);
+  public readonly exchangeSaving = signal(false);
+
+  public readonly credentialLabelControl = new FormControl("Primary Binance", { nonNullable: true });
+  public readonly credentialApiKeyControl = new FormControl("", { nonNullable: true, validators: [Validators.required] });
+  public readonly credentialApiSecretControl = new FormControl("", { nonNullable: true, validators: [Validators.required] });
+  public readonly credentialSaving = signal(false);
+  public readonly credentialTesting = signal(false);
+  public readonly credentialsLoading = signal(false);
+  public readonly credentialError = signal<string | null>(null);
+  public readonly credentialSuccess = signal<string | null>(null);
+  public credentials: ExchangeCredential[] = [];
 
   public readonly walletAddressControl = new FormControl("", [
     Validators.required,
@@ -98,10 +112,12 @@ export class ProfilePageComponent implements OnInit {
     this._profileService.load();
     this._subscriptionService.loadStatus();
     this._agentService.refreshAgents();
+    this.loadCredentials();
     this.upgradePrompt.set(this.getUpgradePromptLabel(this._route.snapshot.queryParamMap.get("upgrade")));
     this.profile$.subscribe((profile) => {
       if (profile) {
         this.networkControl.setValue(profile.preferredNetwork, { emitEvent: false });
+        this.exchangeControl.setValue(profile.preferredExchange ?? "Hyperliquid", { emitEvent: false });
       }
     });
   }
@@ -197,6 +213,93 @@ export class ProfilePageComponent implements OnInit {
       next: () => this.networkSaving.set(false),
       error: () => this.networkSaving.set(false)
     });
+  }
+
+  public onExchangeChange(exchange: string): void {
+    this.exchangeSaving.set(true);
+    this._profileService.updateExchange(exchange).subscribe({
+      next: () => this.exchangeSaving.set(false),
+      error: () => this.exchangeSaving.set(false)
+    });
+  }
+
+  public loadCredentials(): void {
+    this.credentialsLoading.set(true);
+    this._exchangeCredentialsService.list().subscribe({
+      next: (credentials) => {
+        this.credentials = credentials;
+        this.credentialsLoading.set(false);
+      },
+      error: () => {
+        this.credentials = [];
+        this.credentialsLoading.set(false);
+      }
+    });
+  }
+
+  public onSaveBinanceCredential(): void {
+    if (this.credentialApiKeyControl.invalid || this.credentialApiSecretControl.invalid) {
+      this.credentialApiKeyControl.markAsTouched();
+      this.credentialApiSecretControl.markAsTouched();
+      return;
+    }
+
+    this.credentialSaving.set(true);
+    this.credentialError.set(null);
+    this.credentialSuccess.set(null);
+
+    this._exchangeCredentialsService.save(
+      "Binance",
+      this.credentialApiKeyControl.value,
+      this.credentialApiSecretControl.value,
+      this.credentialLabelControl.value.trim() || "Primary Binance")
+      .subscribe({
+        next: () => {
+          this.credentialSaving.set(false);
+          this.credentialApiSecretControl.reset("");
+          this.credentialSuccess.set("Binance credentials saved.");
+          this.loadCredentials();
+        },
+        error: (err) => {
+          this.credentialSaving.set(false);
+          this.credentialError.set(err.error?.errorMessage ?? err.error?.message ?? "Failed to save Binance credentials.");
+        }
+      });
+  }
+
+  public onDeleteCredential(id: string): void {
+    this.credentialError.set(null);
+    this.credentialSuccess.set(null);
+    this._exchangeCredentialsService.remove(id).subscribe({
+      next: () => {
+        this.credentialSuccess.set("Credential removed.");
+        this.loadCredentials();
+      },
+      error: (err) => {
+        this.credentialError.set(err.error?.errorMessage ?? err.error?.message ?? "Failed to remove credential.");
+      }
+    });
+  }
+
+  public onTestBinanceCredential(): void {
+    this.credentialTesting.set(true);
+    this.credentialError.set(null);
+    this.credentialSuccess.set(null);
+
+    this._exchangeCredentialsService.test("Binance").subscribe({
+      next: () => {
+        this.credentialTesting.set(false);
+        this.credentialSuccess.set("Binance credentials validated successfully.");
+      },
+      error: (err) => {
+        this.credentialTesting.set(false);
+        this.credentialError.set(err.error?.errorMessage ?? err.error?.message ?? "Credential validation failed.");
+      }
+    });
+  }
+
+  public get activeBinanceCredential(): ExchangeCredential | null {
+    return this.credentials.find((credential) => credential.exchange === "Binance" && credential.isActive) ?? null;
   }
 
   public onLogout(): void {

@@ -34,6 +34,7 @@ import { PositionsTableComponent } from "./positions-table/positions-table.compo
 import { ActivityFeedComponent } from "./activity-feed/activity-feed.component";
 import { MarketContextCardComponent } from "./market-context-card/market-context-card.component";
 import { SubscriptionService } from "../../core/services/subscription.service";
+import { ExchangeContextService, SupportedExchange } from "../../core/services/exchange-context.service";
 
 @Component({
   selector: "app-dashboard",
@@ -65,6 +66,7 @@ export class DashboardComponent implements OnInit {
   private readonly _accountState = inject(AccountStateService);
   private readonly _agentService = inject(AgentService);
   private readonly _subscriptionService = inject(SubscriptionService);
+  private readonly _exchangeContext = inject(ExchangeContextService);
   private readonly _refresh$ = new Subject<void>();
   private readonly _pendingOrderIds = new Set<string>();
   private readonly _pendingPositionKeys = new Set<string>();
@@ -95,6 +97,7 @@ export class DashboardComponent implements OnInit {
   public secondsAgo = 0;
   public showSubscriptionBanner = false;
   public needsSubscriptionWarning = false;
+  public selectedExchange: SupportedExchange = "Hyperliquid";
 
   public ngOnInit(): void {
     this._startPolling();
@@ -107,6 +110,13 @@ export class DashboardComponent implements OnInit {
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((status) => {
         this.showSubscriptionBanner = !status?.isActive;
+      });
+
+    this._exchangeContext.exchange$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((exchange) => {
+        this.selectedExchange = exchange;
+        this._refresh$.next();
       });
 
     this._accountState.positions$
@@ -173,7 +183,7 @@ export class DashboardComponent implements OnInit {
       this._pendingOrderIds.add(order.orderId);
       this.orders = this.orders.filter((item) => item.orderId !== order.orderId);
 
-      const agentId = this._agentService.selectedAgentId;
+      const agentId = this.getAgentRoutingId();
       const cancel$ = agentId
         ? (order.orderType === 'trigger'
           ? this._agentService.cancelTriggerOrderViaAgent(agentId, order.orderId, order.asset)
@@ -227,7 +237,7 @@ export class DashboardComponent implements OnInit {
       this.ordersTable?.setGlobalLoading(true);
       this.orders = [];
 
-      const agentId = this._agentService.selectedAgentId;
+      const agentId = this.getAgentRoutingId();
       const cancelRequests = uniqueAssets.map(asset =>
         agentId
           ? this._agentService.cancelAllOrdersViaAgent(agentId, asset).pipe(map(() => {}))
@@ -275,7 +285,7 @@ export class DashboardComponent implements OnInit {
       this.ordersTable?.setLoading(order.orderId, true);
       this._pendingOrderIds.add(order.orderId);
 
-      const agentId = this._agentService.selectedAgentId;
+      const agentId = this.getAgentRoutingId();
       const modify$ = order.orderType === 'trigger'
         ? (agentId
           ? this._agentService.modifyTriggerOrderViaAgent(
@@ -348,7 +358,7 @@ export class DashboardComponent implements OnInit {
         size: Math.abs(position.size)
       };
 
-      const agentId = this._agentService.selectedAgentId;
+      const agentId = this.getAgentRoutingId();
       const close$ = agentId
         ? this._agentService.placeOrderViaAgent(agentId, closeRequest)
         : this._orderService.placeOrder(closeRequest);
@@ -388,7 +398,7 @@ export class DashboardComponent implements OnInit {
       currentPositions.forEach((position) => this._pendingPositionKeys.add(position.asset + position.side));
       this.positions = [];
 
-      const agentId = this._agentService.selectedAgentId;
+      const agentId = this.getAgentRoutingId();
 
       if (agentId) {
         // Route each close through the agent as individual PlaceOrder commands
@@ -500,7 +510,7 @@ export class DashboardComponent implements OnInit {
 
     this.positionsTable?.setLoading(positionKey, true);
 
-    const agentId = this._agentService.selectedAgentId;
+    const agentId = this.getAgentRoutingId();
     const closingSide = this._getClosingSide(position);
     const modify$: Observable<unknown> = agentId
       ? this._agentService.modifyTriggerOrderViaAgent(
@@ -531,7 +541,7 @@ export class DashboardComponent implements OnInit {
     const positionKey = this.positionsTable?.getPositionKey(position) ?? position.asset + position.side;
     this.positionsTable?.setLoading(positionKey, true);
 
-    const agentId = this._agentService.selectedAgentId;
+    const agentId = this.getAgentRoutingId();
     const cancel$: Observable<unknown> = agentId
       ? this._agentService.cancelTriggerOrderViaAgent(agentId, orderId, position.asset)
       : this._orderService.cancelTriggerOrder(orderId);
@@ -605,7 +615,7 @@ export class DashboardComponent implements OnInit {
           this._consecutiveErrors += 1;
           if (this._consecutiveErrors >= 3) {
             this.showErrorBanner = true;
-            this.errorMessage = "Unable to reach Hyperliquid API. Retrying...";
+            this.errorMessage = `Unable to reach ${this.selectedExchange} account data. Retrying...`;
           } else {
             this._notifications.warning('Failed to refresh dashboard data');
           }
@@ -645,7 +655,7 @@ export class DashboardComponent implements OnInit {
     const closingSide = this._getClosingSide(position);
     const size = Math.abs(position.size);
     const requests: Observable<unknown>[] = [];
-    const agentId = this._agentService.selectedAgentId;
+    const agentId = this.getAgentRoutingId();
 
     if (result.stopLossPrice != null) {
       const request: PlaceTriggerOrderRequest = {
@@ -682,6 +692,10 @@ export class DashboardComponent implements OnInit {
 
   private _isLongPosition(position: Position): boolean {
     return position.side === "Long" || position.size > 0;
+  }
+
+  private getAgentRoutingId(): string | null {
+    return this.selectedExchange === "Hyperliquid" ? this._agentService.selectedAgentId : null;
   }
 
 }

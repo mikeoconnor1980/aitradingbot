@@ -85,6 +85,35 @@ public sealed class ProfileController : ControllerBase
         }
     }
 
+    [HttpPut("exchange")]
+    [ProducesResponseType(typeof(ProfileResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(Envelope), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateExchange([FromBody] UpdateExchangeRequest request, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var user = await _userRepository.GetByIdAsync(userId.Value, cancellationToken);
+        if (user is null) return Unauthorized();
+
+        try
+        {
+            user.UpdatePreferredExchange(request.Exchange);
+            await _userRepository.SaveChangesAsync(cancellationToken);
+
+            var subscription = await _subscriptionRepository.GetActiveByUserIdAsync(userId.Value, cancellationToken);
+            var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var isActive = subscription is not null && !subscription.IsExpired(nowMs);
+
+            return Ok(BuildResponse(user, subscription, isActive));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new Envelope(ex.Message, "invalid_exchange"));
+        }
+    }
+
     private ProfileResponse BuildResponse(Domain.Entities.User user, Domain.Entities.Subscription? subscription, bool hasActiveSubscription)
     {
         return new ProfileResponse(
@@ -92,6 +121,7 @@ public sealed class ProfileController : ControllerBase
             user.Email,
             user.DisplayName,
             user.PreferredNetwork,
+            user.PreferredExchange,
             new LlmModelsInfo(_llmOptions.ModelName, _llmReviewOptions.ModelName),
             hasActiveSubscription,
             subscription?.Tier == SubscriptionTier.Free ? SubscriptionTier.Beginner : subscription?.Tier,
@@ -111,6 +141,7 @@ public sealed record ProfileResponse(
     string Email,
     string DisplayName,
     string PreferredNetwork,
+    string PreferredExchange,
     LlmModelsInfo LlmModels,
     bool HasActiveSubscription,
     SubscriptionTier? SubscriptionTier,
@@ -118,3 +149,4 @@ public sealed record ProfileResponse(
     long? SubscriptionExpiresAtUtc);
 public sealed record LlmModelsInfo(string Strategy, string Review);
 public sealed record UpdateNetworkRequest(string Network);
+public sealed record UpdateExchangeRequest(string Exchange);

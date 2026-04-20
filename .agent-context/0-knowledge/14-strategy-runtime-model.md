@@ -57,7 +57,7 @@ The implemented runtime loop is:
 
 ## Core Interfaces
 
-The runtime depends on these shared abstractions in `src/TradingApp.Application/Abstractions/Services/`.
+The runtime depends on these shared abstractions in `src/TradePilot.Application/Abstractions/Services/`.
 
 | Interface | Key Members | Purpose |
 |-----------|-------------|---------|

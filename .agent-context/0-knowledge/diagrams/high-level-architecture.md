@@ -1,4 +1,4 @@
-# TradingApp - High-Level Architecture
+# TradePilot - High-Level Architecture
 
 The deployed system is no longer a single bot host. It is a split architecture with an API control plane, a browser UI, and a client-side Windows execution agent that holds the private key and talks to Hyperliquid directly.
 
@@ -10,13 +10,13 @@ flowchart LR
     end
 
     subgraph ControlPlane["Cloud Control Plane"]
-        API["TradingApp.Api\nREST API + MarketDataHub"]
+        API["TradePilot.Api\nREST API + MarketDataHub"]
         APIJobs["BacktestProcessorService\nOptimizationProcessorService\nMacroCalendarSyncWorker"]
         SignalR["SignalR / Azure SignalR"]
     end
 
     subgraph Agent["Client Execution Agent"]
-        Worker["TradingApp.Worker\nTradingApp.ExecutionAgent"]
+        Worker["TradePilot.Worker\nTradePilot.ExecutionAgent"]
         CheckIn["AgentCheckInService\nheartbeat every 5s"]
         Session["TradingSession\nCandleClock\nStrategyScheduler\nGridController / SignalController\nLiveRiskEngine\nLivePositionManager\nLiveExecutionEngine"]
     end

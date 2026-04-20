@@ -2,7 +2,9 @@ import { CommonModule } from "@angular/common";
 import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { HelpPanelComponent } from "./core/components/help-panel.component";
@@ -24,7 +26,7 @@ import { SignalRService } from "./core/services/signalr.service";
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })
@@ -55,6 +57,8 @@ export class AppComponent implements OnInit {
   };
   public health: HealthResponse | null = null;
   public preferredNetwork: string | null = null;
+  public preferredExchange = "Hyperliquid";
+  public exchangeSaving = false;
   public subscriptionFeatures: string[] = [];
   public notificationPanelOpen = false;
   public readonly unreadCount = this._notificationStore.unreadCount;
@@ -95,6 +99,7 @@ export class AppComponent implements OnInit {
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((profile) => {
         this.preferredNetwork = profile?.preferredNetwork ?? null;
+        this.preferredExchange = profile?.preferredExchange ?? "Hyperliquid";
       });
 
     this._subscriptionService.status$
@@ -125,6 +130,22 @@ export class AppComponent implements OnInit {
     if (network === "testnet") return "Testnet";
     if (network === "mainnet") return "Mainnet";
     return null;
+  }
+
+  public onExchangeChange(exchange: string): void {
+    if (!exchange || exchange === this.preferredExchange || this.exchangeSaving) {
+      return;
+    }
+
+    this.exchangeSaving = true;
+    this._profileService.updateExchange(exchange).subscribe({
+      next: () => {
+        this.exchangeSaving = false;
+      },
+      error: () => {
+        this.exchangeSaving = false;
+      }
+    });
   }
 
   public get statusLabel(): string {

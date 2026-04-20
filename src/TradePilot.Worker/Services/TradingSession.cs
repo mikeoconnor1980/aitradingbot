@@ -9,7 +9,10 @@ using TradePilot.Application.StrategyAuthoring.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Application.Trading.Services;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
+using TradePilot.Domain.ValueObjects;
 using TradePilot.Infrastructure.Hyperliquid;
+using TradePilot.Infrastructure.Binance;
 
 namespace TradePilot.Worker.Services;
 
@@ -26,11 +29,16 @@ public sealed class TradingSession : IAsyncDisposable
     private const long AllowedTradeTimestampSkewMs = 30_000;
     private static readonly TimeSpan CandleFlushInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RestCandleSyncInterval = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan AccountPollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(30);
 
-    private readonly IHyperliquidWebSocketClient _wsClient;
-    private readonly IHyperliquidUserEventClient _userEventClient;
-    private readonly IHyperliquidRestClient _restClient;
+    private readonly Exchange _exchange;
+    private readonly IHyperliquidWebSocketClient? _wsClient;
+    private readonly IHyperliquidUserEventClient? _userEventClient;
+    private readonly IHyperliquidRestClient? _restClient;
+    private readonly IExchangeHistoricalDataClient _historicalDataClient;
+    private readonly IExchangeAccountClient _accountClient;
+    private readonly IExchangeSymbolMapper _symbolMapper;
     private readonly CandleBuilder _candleBuilder;
     private readonly CandleClock _candleClock;
     private readonly IMarketContextBuilder _contextBuilder;
@@ -67,9 +75,13 @@ public sealed class TradingSession : IAsyncDisposable
 
     public TradingSession(
         StrategyConfig strategyConfig,
-        IHyperliquidWebSocketClient wsClient,
-        IHyperliquidUserEventClient userEventClient,
-        IHyperliquidRestClient restClient,
+        Exchange exchange,
+        IHyperliquidWebSocketClient? wsClient,
+        IHyperliquidUserEventClient? userEventClient,
+        IHyperliquidRestClient? restClient,
+        IExchangeHistoricalDataClient historicalDataClient,
+        IExchangeAccountClient accountClient,
+        IExchangeSymbolMapper symbolMapper,
         CandleBuilder candleBuilder,
         CandleClock candleClock,
         IMarketContextBuilder contextBuilder,
@@ -93,9 +105,13 @@ public sealed class TradingSession : IAsyncDisposable
         IDcaController? dcaController = null)
     {
         StrategyConfig = strategyConfig;
+        _exchange = exchange;
         _wsClient = wsClient;
         _userEventClient = userEventClient;
         _restClient = restClient;
+        _historicalDataClient = historicalDataClient;
+        _accountClient = accountClient;
+        _symbolMapper = symbolMapper;
         _candleBuilder = candleBuilder;
         _candleClock = candleClock;
         _contextBuilder = contextBuilder;
@@ -117,6 +133,11 @@ public sealed class TradingSession : IAsyncDisposable
         _logger = logger;
         GridState = gridState ?? new GridState();
         _drawdownTiers = riskLimits?.Value.DrawdownTiers ?? [];
+
+        if (_exchange == Exchange.Hyperliquid && (_wsClient is null || _userEventClient is null || _restClient is null))
+        {
+            throw new InvalidOperationException("Hyperliquid trading sessions require Hyperliquid runtime dependencies.");
+        }
     }
 
     public void Start()
@@ -177,14 +198,17 @@ public sealed class TradingSession : IAsyncDisposable
         }
 
         // Disconnect WebSocket
-        try
+        if (_exchange == Exchange.Hyperliquid && _wsClient is not null)
         {
-            await _wsClient.DisconnectAsync(timeoutCts.Token);
-            _logger.LogInformation("WebSocket disconnected.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error disconnecting WebSocket during session stop.");
+            try
+            {
+                await _wsClient.DisconnectAsync(timeoutCts.Token);
+                _logger.LogInformation("WebSocket disconnected.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error disconnecting WebSocket during session stop.");
+            }
         }
 
         UnregisterUserEventHandlers();
@@ -195,9 +219,9 @@ public sealed class TradingSession : IAsyncDisposable
 
     private async Task RunAsync(CancellationToken stoppingToken)
     {
-        var coin = HyperliquidAssetMapper.ToCoin(StrategyConfig.Market);
         var triggerTimeframe = ResolveTriggerTimeframe(StrategyConfig);
         var sessionStartMs = StartedAtUtc.ToUnixTimeMilliseconds();
+        var marketPair = _symbolMapper.FromExchangeSymbol(StrategyConfig.Market);
         using var candleFlushCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         var restSyncIntervals = new[] { triggerTimeframe, "1h", "4h" }
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -209,14 +233,15 @@ public sealed class TradingSession : IAsyncDisposable
 
         var candleFlushTask = RunCandleFlushLoopAsync(candleFlushCts.Token);
         var restCandleSyncTask = RunRestCandleSyncLoopAsync(restSyncIntervals, sessionStartMs, candleFlushCts.Token);
+        Task? accountPollingTask = null;
 
         try
         {
             _logger.LogInformation(
-                "TradingSession starting: Strategy={Strategy}, Market={Market}, Coin={Coin}, Timeframe={Timeframe}",
-                StrategyConfig.StrategyName, StrategyConfig.Market, coin, triggerTimeframe);
+                "TradingSession starting: Strategy={Strategy}, Exchange={Exchange}, Market={Market}, Timeframe={Timeframe}",
+                StrategyConfig.StrategyName, _exchange, StrategyConfig.Market, triggerTimeframe);
 
-            // Attempt state recovery from DB + Hyperliquid
+            // Attempt state recovery from DB + exchange state.
             if (_stateRecoveryService is not null && _signerProvider.IsConfigured && _orderTracker is not null)
             {
                 try
@@ -224,7 +249,7 @@ public sealed class TradingSession : IAsyncDisposable
                     var recoveredState = await _stateRecoveryService.RecoverAsync(
                         StrategyConfig.StrategyName,
                         StrategyConfig.Market,
-                        _signerProvider.WalletAddress,
+                        ResolveExchangeWalletAddress() ?? string.Empty,
                         _orderTracker,
                         stoppingToken);
 
@@ -260,7 +285,7 @@ public sealed class TradingSession : IAsyncDisposable
             Candle? latestOneHourCandle = null;
             Candle? latestFourHourCandle = null;
 
-            // Query initial account equity from Hyperliquid REST
+            // Query initial account equity from the exchange.
             var initialCapital = await ResolveInitialEquityAsync(stoppingToken);
 
             var scheduler = new StrategyScheduler(
@@ -370,112 +395,126 @@ public sealed class TradingSession : IAsyncDisposable
 
         _candleClock.CandleClosed += _candleClosedHandler;
 
-        _wsClient.OnTradeReceived(async trade =>
-        {
-            try
+            if (_exchange == Exchange.Hyperliquid)
             {
-                if (!IsTradeTickCurrent(trade.TimestampMs, sessionStartMs))
+                var coin = HyperliquidAssetMapper.ToCoin(StrategyConfig.Market);
+
+                _wsClient!.OnTradeReceived(async trade =>
                 {
-                    _staleTradeDropCount++;
-                    if (_staleTradeDropCount <= 5 || _staleTradeDropCount % 100 == 0)
+                    try
                     {
-                        _logger.LogWarning(
-                            "Ignoring stale trade tick for {Asset}: TradeTimestamp={TradeTimestamp}, SessionStart={SessionStart}, DroppedCount={DroppedCount}",
-                            trade.Asset,
-                            trade.TimestampMs,
-                            sessionStartMs,
-                            _staleTradeDropCount);
+                        if (!IsTradeTickCurrent(trade.TimestampMs, sessionStartMs))
+                        {
+                            _staleTradeDropCount++;
+                            if (_staleTradeDropCount <= 5 || _staleTradeDropCount % 100 == 0)
+                            {
+                                _logger.LogWarning(
+                                    "Ignoring stale trade tick for {Asset}: TradeTimestamp={TradeTimestamp}, SessionStart={SessionStart}, DroppedCount={DroppedCount}",
+                                    trade.Asset,
+                                    trade.TimestampMs,
+                                    sessionStartMs,
+                                    _staleTradeDropCount);
+                            }
+
+                            return;
+                        }
+
+                        _healthProvider.RecordTradeReceived();
+                        await _candleBuilder.ProcessTickAsync(trade);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing trade tick: Asset={Asset}", trade.Asset);
+                    }
+                });
+
+                _wsClient.OnConnectionStateChanged(state =>
+                {
+                    _healthProvider.RecordConnectionState(state == WebSocketConnectionState.Connected);
+                    _logger.LogInformation("WebSocket connection state: {State}", state);
+                    return Task.CompletedTask;
+                });
+
+                _fillHandler = async fill =>
+                {
+                    try
+                    {
+                        await _fillProcessor.ProcessFillAsync(fill, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing fill: OrderId={OrderId}", fill.OrderId);
+                    }
+                };
+
+                _orderUpdateHandler = async update =>
+                {
+                    try
+                    {
+                        await _fillProcessor.ProcessOrderUpdateAsync(update, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing order update: OrderId={OrderId}", update.OrderId);
+                    }
+                };
+
+                _userEventClient!.OnFillReceived(_fillHandler);
+                _userEventClient.OnOrderUpdateReceived(_orderUpdateHandler);
+
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await _wsClient.ConnectAsync(stoppingToken);
+                        await _wsClient.SubscribeToTradesAsync(coin, stoppingToken);
+
+                        _logger.LogInformation("WebSocket connected. Subscribed to {Coin} trade stream.", coin);
+
+                        _retryCount = 0;
+
+                        var marketDataTask = _wsClient.ReceiveLoopAsync(stoppingToken);
+                        await marketDataTask;
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "WebSocket connection error for {Coin}", coin);
                     }
 
-                    return;
+                    if (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+
+                    _retryCount++;
+                    if (_retryCount > MaxRetryAttempts)
+                    {
+                        _logger.LogCritical(
+                            "Max reconnection attempts ({MaxRetries}) exhausted. TradingSession stopping.",
+                            MaxRetryAttempts);
+                        break;
+                    }
+
+                    var backoffMs = (int)Math.Min(
+                        MaxBackoffMs,
+                        InitialBackoffMs * Math.Pow(2, Math.Min(_retryCount - 1, 20)));
+
+                    _logger.LogWarning(
+                        "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
+                        backoffMs, _retryCount, MaxRetryAttempts);
+
+                    await Task.Delay(backoffMs, stoppingToken);
                 }
-
-                _healthProvider.RecordTradeReceived();
-                await _candleBuilder.ProcessTickAsync(trade);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error processing trade tick: Asset={Asset}", trade.Asset);
-            }
-        });
-
-        _wsClient.OnConnectionStateChanged(state =>
-        {
-            _healthProvider.RecordConnectionState(state == WebSocketConnectionState.Connected);
-            _logger.LogInformation("WebSocket connection state: {State}", state);
-            return Task.CompletedTask;
-        });
-
-        _fillHandler = async fill =>
-        {
-            try
-            {
-                await _fillProcessor.ProcessFillAsync(fill, stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing fill: OrderId={OrderId}", fill.OrderId);
-            }
-        };
-
-        _orderUpdateHandler = async update =>
-        {
-            try
-            {
-                await _fillProcessor.ProcessOrderUpdateAsync(update, stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing order update: OrderId={OrderId}", update.OrderId);
-            }
-        };
-
-        _userEventClient.OnFillReceived(_fillHandler);
-        _userEventClient.OnOrderUpdateReceived(_orderUpdateHandler);
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await _wsClient.ConnectAsync(stoppingToken);
-                    await _wsClient.SubscribeToTradesAsync(coin, stoppingToken);
-
-                    _logger.LogInformation("WebSocket connected. Subscribed to {Coin} trade stream.", coin);
-
-                    _retryCount = 0;
-
-                    var marketDataTask = _wsClient.ReceiveLoopAsync(stoppingToken);
-                    await marketDataTask;
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "WebSocket connection error for {Coin}", coin);
-                }
-
-                if (stoppingToken.IsCancellationRequested) break;
-
-                _retryCount++;
-                if (_retryCount > MaxRetryAttempts)
-                {
-                    _logger.LogCritical(
-                        "Max reconnection attempts ({MaxRetries}) exhausted. TradingSession stopping.",
-                        MaxRetryAttempts);
-                    break;
-                }
-
-                var backoffMs = (int)Math.Min(
-                    MaxBackoffMs,
-                    InitialBackoffMs * Math.Pow(2, Math.Min(_retryCount - 1, 20)));
-
-                _logger.LogWarning(
-                    "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
-                    backoffMs, _retryCount, MaxRetryAttempts);
-
-                await Task.Delay(backoffMs, stoppingToken);
+                _healthProvider.RecordConnectionState(true);
+                accountPollingTask = RunAccountPollingLoopAsync(marketPair, stoppingToken);
+                await Task.Delay(Timeout.Infinite, stoppingToken);
             }
         }
         finally
@@ -496,6 +535,17 @@ public sealed class TradingSession : IAsyncDisposable
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested || candleFlushCts.IsCancellationRequested)
             {
+            }
+
+            if (accountPollingTask is not null)
+            {
+                try
+                {
+                    await accountPollingTask;
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested || candleFlushCts.IsCancellationRequested)
+                {
+                }
             }
 
             _healthProvider.RecordTradingSessionStopped();
@@ -556,10 +606,11 @@ public sealed class TradingSession : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var pair = _symbolMapper.FromExchangeSymbol(StrategyConfig.Market);
 
         foreach (var interval in intervals)
         {
-            var intervalMs = HyperliquidAssetMapper.GetIntervalMs(interval);
+            var intervalMs = GetIntervalMs(interval);
             var latestClosedBucket = GetLatestEligibleClosedBucketOpenTime(nowMs, sessionStartMs, intervalMs);
             if (latestClosedBucket is null)
             {
@@ -573,8 +624,8 @@ public sealed class TradingSession : IAsyncDisposable
             }
 
             var closeTime = latestClosedBucket.Value + intervalMs;
-            var snapshots = await _restClient.GetCandleSnapshotsAsync(
-                StrategyConfig.Market,
+            var snapshots = await _historicalDataClient.GetCandleSnapshotsAsync(
+                pair,
                 interval,
                 latestClosedBucket.Value,
                 closeTime,
@@ -589,7 +640,7 @@ public sealed class TradingSession : IAsyncDisposable
             }
 
             var candle = Candle.Create(
-                "Hyperliquid",
+                _exchange.ToString(),
                 StrategyConfig.Market,
                 interval,
                 snapshot.Timestamp,
@@ -602,6 +653,91 @@ public sealed class TradingSession : IAsyncDisposable
 
             await _candleClock.ProcessCandleAsync(candle);
             lastSyncedBuckets[interval] = latestClosedBucket.Value;
+        }
+    }
+
+    private async Task RunAccountPollingLoopAsync(
+        TradingPair pair,
+        CancellationToken cancellationToken)
+    {
+        var processedFillKeys = new HashSet<string>(StringComparer.Ordinal);
+        var knownOpenOrderIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using var timer = new PeriodicTimer(AccountPollInterval);
+
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            try
+            {
+                await PollAccountStateAsync(pair, processedFillKeys, knownOpenOrderIds, cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error polling account state for {Exchange}/{Market}", _exchange, StrategyConfig.Market);
+            }
+        }
+    }
+
+    private async Task PollAccountStateAsync(
+        TradingPair pair,
+        ISet<string> processedFillKeys,
+        ISet<string> knownOpenOrderIds,
+        CancellationToken cancellationToken)
+    {
+        var walletAddress = ResolveExchangeWalletAddress();
+        var fillsTask = _accountClient.GetRecentFillsAsync(pair, walletAddress, cancellationToken);
+        var openOrdersTask = _accountClient.GetOpenOrdersAsync(walletAddress, cancellationToken);
+
+        await Task.WhenAll(fillsTask, openOrdersTask);
+
+        foreach (var fill in fillsTask.Result.OrderBy(fill => fill.Timestamp))
+        {
+            if (fill.Timestamp < StartedAtUtc.UtcDateTime)
+            {
+                continue;
+            }
+
+            var fillKey = BuildFillKey(fill);
+            if (!processedFillKeys.Add(fillKey))
+            {
+                continue;
+            }
+
+            await _fillProcessor.ProcessFillAsync(fill, cancellationToken);
+        }
+
+        var currentOpenOrderIds = openOrdersTask.Result
+            .Select(order => order.OrderId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var cancelledOrderId in knownOpenOrderIds.Except(currentOpenOrderIds, StringComparer.OrdinalIgnoreCase).ToArray())
+        {
+            var trackedOrder = _orderTracker.GetOrder(cancelledOrderId);
+            if (trackedOrder?.Status == TrackedOrderStatus.Filled)
+            {
+                knownOpenOrderIds.Remove(cancelledOrderId);
+                continue;
+            }
+
+            await _fillProcessor.ProcessOrderUpdateAsync(
+                new OrderUpdateDto
+                {
+                    Timestamp = DateTime.UtcNow,
+                    OrderId = cancelledOrderId,
+                    Asset = StrategyConfig.Market,
+                    Status = "cancelled",
+                },
+                cancellationToken);
+
+            knownOpenOrderIds.Remove(cancelledOrderId);
+        }
+
+        foreach (var orderId in currentOpenOrderIds)
+        {
+            knownOpenOrderIds.Add(orderId);
         }
     }
 
@@ -626,13 +762,13 @@ public sealed class TradingSession : IAsyncDisposable
 
     private void UnregisterUserEventHandlers()
     {
-        if (_fillHandler is not null)
+        if (_fillHandler is not null && _userEventClient is not null)
         {
             _userEventClient.RemoveFillReceivedHandler(_fillHandler);
             _fillHandler = null;
         }
 
-        if (_orderUpdateHandler is not null)
+        if (_orderUpdateHandler is not null && _userEventClient is not null)
         {
             _userEventClient.RemoveOrderUpdateReceivedHandler(_orderUpdateHandler);
             _orderUpdateHandler = null;
@@ -688,12 +824,36 @@ public sealed class TradingSession : IAsyncDisposable
     private async Task<PositionState> QueryPositionStateAsync(
         string symbol, CancellationToken cancellationToken)
     {
-        // Query Hyperliquid REST for current position — exchange is source of truth
+        // Query the exchange for current position — exchange is source of truth.
         if (_signerProvider.IsConfigured && _executionEngine is IPositionQueryable queryable)
         {
             return await queryable.QueryPositionAsync(symbol, cancellationToken);
         }
 
         return new PositionState { Symbol = symbol };
+    }
+
+    private string? ResolveExchangeWalletAddress()
+    {
+        return _exchange == Exchange.Hyperliquid && _signerProvider.IsConfigured
+            ? _signerProvider.WalletAddress
+            : null;
+    }
+
+    private long GetIntervalMs(string interval)
+    {
+        return _exchange == Exchange.Binance
+            ? BinanceAssetMapper.GetIntervalMs(interval)
+            : HyperliquidAssetMapper.GetIntervalMs(interval);
+    }
+
+    private static string BuildFillKey(FillEventDto fill)
+    {
+        return string.Join(
+            ':',
+            fill.OrderId,
+            fill.Timestamp.Ticks.ToString(),
+            fill.Price.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            fill.Size.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 }

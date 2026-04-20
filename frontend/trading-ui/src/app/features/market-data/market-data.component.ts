@@ -18,6 +18,7 @@ import { HyperliquidApiService } from "../../core/services/hyperliquid-api.servi
 import { MarketDataService } from "../../core/services/market-data.service";
 import { OrderService } from "../../core/services/order.service";
 import { SignalRService } from "../../core/services/signalr.service";
+import { ExchangeContextService } from "../../core/services/exchange-context.service";
 import { PriceChartComponent } from "./price-chart/price-chart.component";
 import { PriceTickerComponent } from "./price-ticker/price-ticker.component";
 
@@ -47,6 +48,7 @@ export class MarketDataComponent implements OnInit {
   private readonly _marketDataService = inject(MarketDataService);
   private readonly _orderService = inject(OrderService);
   private readonly _signalRService = inject(SignalRService);
+  private readonly _exchangeContext = inject(ExchangeContextService);
   private readonly _selectedAsset$ = new BehaviorSubject<string>("BTC-PERP");
   private readonly _manualRefresh$ = new Subject<void>();
   private readonly _candleTrigger$ = new Subject<void>();
@@ -75,11 +77,13 @@ export class MarketDataComponent implements OnInit {
     this._candleTrigger$.next();
     this._loadFillsForAsset(this.selectedAsset);
 
-    this._orderService.getAvailableAssets().subscribe({
-      next: (assets) => {
-        this.assets = assets;
-      }
-    });
+    this._exchangeContext.exchange$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe(() => {
+        this._loadAssets();
+      });
+
+    this._loadAssets();
   }
 
   public onAssetChanged(asset: string): void {
@@ -226,5 +230,16 @@ export class MarketDataComponent implements OnInit {
 
   private _toCoin(asset: string): string {
     return asset.replace(/-PERP$/i, "").toUpperCase();
+  }
+
+  private _loadAssets(): void {
+    this._orderService.getAvailableAssets().subscribe({
+      next: (assets) => {
+        this.assets = assets;
+        if (!assets.some((asset) => asset.symbol === this.selectedAsset) && assets.length > 0) {
+          this.onAssetChanged(assets[0].symbol);
+        }
+      }
+    });
   }
 }

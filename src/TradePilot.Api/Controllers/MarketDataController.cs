@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using TradePilot.Api.Infrastructure;
+using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Application.MarketData.Queries;
 
@@ -10,9 +11,15 @@ namespace TradePilot.Api.Controllers;
 [Route("api/market")]
 public sealed class MarketDataController : ApiController
 {
-    public MarketDataController(IMediator mediator, IdentityService identityService)
+    private readonly IExchangeResolver _exchangeResolver;
+
+    public MarketDataController(
+        IMediator mediator,
+        IdentityService identityService,
+        IExchangeResolver exchangeResolver)
         : base(mediator, identityService)
     {
+        _exchangeResolver = exchangeResolver;
     }
 
     [HttpGet("info")]
@@ -21,7 +28,8 @@ public sealed class MarketDataController : ApiController
     [ProducesResponseType(typeof(Envelope), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetMarketInfoAsync([FromQuery][Required] string asset, CancellationToken cancellationToken)
     {
-        var result = await Mediator.Send(new GetMarketInfoQuery(asset), cancellationToken);
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(cancellationToken);
+        var result = await Mediator.Send(new GetMarketInfoQuery(asset, exchange), cancellationToken);
         return Ok(result);
     }
 
@@ -36,7 +44,8 @@ public sealed class MarketDataController : ApiController
         [FromQuery] long? endTime,
         CancellationToken cancellationToken)
     {
-        var result = await Mediator.Send(new GetCandlesQuery(asset, timeframe, endTime), cancellationToken);
+        var exchange = await _exchangeResolver.GetCurrentExchangeAsync(cancellationToken);
+        var result = await Mediator.Send(new GetCandlesQuery(asset, timeframe, exchange, endTime), cancellationToken);
         return Ok(result);
     }
 

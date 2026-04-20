@@ -10,6 +10,16 @@
     <h1 class="app-shell__title">{{ title }}</h1>
 
     <div class="app-shell__header-end">
+      @if (!isMobile()) {
+        <mat-form-field appearance="outline" class="app-shell__exchange-field">
+          <mat-label>Exchange</mat-label>
+          <mat-select [value]="preferredExchange" [disabled]="exchangeSaving" (selectionChange)="onExchangeChange($event.value)">
+            <mat-option value="Hyperliquid">Hyperliquid</mat-option>
+            <mat-option value="Binance">Binance</mat-option>
+          </mat-select>
+        </mat-form-field>
+      }
+
       @if (!isMobile() && networkLabel) {
         <span class="app-shell__network-badge" [class.app-shell__network-badge--testnet]="preferredNetwork === 'testnet'">
           <span class="app-shell__network-dot"></span>

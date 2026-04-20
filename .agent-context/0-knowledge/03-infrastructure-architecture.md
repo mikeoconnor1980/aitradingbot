@@ -2,18 +2,18 @@
 
 ## Overview
 
-TradingApp now has two concrete runtime topologies:
+TradePilot now has two concrete runtime topologies:
 
 - local development using direct host processes (`dotnet run` for the API and `ng serve` for the UI)
 - Azure production deployment provisioned from Bicep
 
-The repo does not contain a top-level `docker-compose.yml`. The only Docker artifact currently committed is `src/TradingApp.Api/Dockerfile`, and the production path is Azure-first rather than Docker Compose-first.
+The repo does not contain a top-level `docker-compose.yml`. The only Docker artifact currently committed is `src/TradePilot.Api/Dockerfile`, and the production path is Azure-first rather than Docker Compose-first.
 
 ## Runtime Topologies
 
 | Environment | Runtime Shape | Primary Storage | Real-Time Push |
 |-------------|---------------|-----------------|----------------|
-| Local development | `TradingApp.Api` + `TradingApp.Worker` + Angular dev server | SQLite | In-process SignalR from the API |
+| Local development | `TradePilot.Api` + `TradePilot.Worker` + Angular dev server | SQLite | In-process SignalR from the API |
 | Azure deployment | Azure Container App for API, Azure Static Web App for UI, client-side execution agent for order signing | Azure SQL for API-side data, local agent config for private key | Azure SignalR Service |
 
 ## Control Plane and Execution Split
@@ -22,9 +22,9 @@ The deployed architecture matches Business Model Option C.
 
 Browser
 -> Angular UI
--> `TradingApp.Api` control plane
+-> `TradePilot.Api` control plane
 -> agent command and state APIs
--> `TradingApp.ExecutionAgent` on the subscriber machine
+-> `TradePilot.ExecutionAgent` on the subscriber machine
 -> Hyperliquid
 
 Important boundary rules:
@@ -38,16 +38,16 @@ Important boundary rules:
 
 Development runs directly from the repo:
 
-- API: `src/TradingApp.Api`
-- Worker: `src/TradingApp.Worker`
+- API: `src/TradePilot.Api`
+- Worker: `src/TradePilot.Worker`
 - UI: `frontend/trading-ui`
 
 SQLite remains the default local database option. The current file locations are host-specific rather than a shared `/data/sqlite` mount:
 
 | Host | Typical SQLite Path |
 |------|---------------------|
-| API | `src/TradingApp.Api/Data/tradingapp.db` |
-| Worker | `src/TradingApp.Worker/Data/tradingapp.db` |
+| API | Host-local SQLite file used by `src/TradePilot.Api` when SQLite is enabled |
+| Worker | Host-local SQLite file used by `src/TradePilot.Worker` when SQLite is enabled |
 
 ## Azure Deployment
 
@@ -71,8 +71,8 @@ SignalR behavior is conditional and differs by hosting mode.
 When `Azure:SignalR:ConnectionString` is not configured in the API host:
 
 - the API registers plain SignalR
-- `MarketDataStreamService` runs inside `TradingApp.Api`
-- `UserEventStreamService` runs inside `TradingApp.Api`
+- `MarketDataStreamService` runs inside `TradePilot.Api`
+- `UserEventStreamService` runs inside `TradePilot.Api`
 - `HubContextSignalRPublisher` pushes directly to browser clients
 
 This is the simplest local development path.

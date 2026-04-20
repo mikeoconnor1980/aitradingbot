@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Tests.Infrastructure;
-using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
@@ -56,7 +55,7 @@ public sealed class MarketDataControllerTests : BaseControllerTests
         };
 
         _restClientMock
-            .Setup(c => c.GetMarketInfoAsync("BTC-PERP", It.IsAny<CancellationToken>()))
+            .Setup(c => c.GetMarketInfoAsync("BTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         var client = GetTestClient();
@@ -72,7 +71,7 @@ public sealed class MarketDataControllerTests : BaseControllerTests
     public async Task GivenController_WhenGetMarketInfoReturnsNull_ThenReturnsNotFound()
     {
         _restClientMock
-            .Setup(c => c.GetMarketInfoAsync("FAKE-PERP", It.IsAny<CancellationToken>()))
+            .Setup(c => c.GetMarketInfoAsync("FAKE", It.IsAny<CancellationToken>()))
             .ReturnsAsync((MarketInfoDto?)null);
 
         var client = GetTestClient();
@@ -86,7 +85,7 @@ public sealed class MarketDataControllerTests : BaseControllerTests
     public async Task GivenController_WhenGetCandlesWithValidParams_ThenReturnsOk()
     {
         var expected = Enumerable.Range(0, 60)
-            .Select(index => new CandleDto
+            .Select(index => new CandleSnapshotDto
             {
                 Timestamp = 1_700_000_000_000 - (index * 900_000L),
                 Open = 50000m + index,
@@ -98,7 +97,12 @@ public sealed class MarketDataControllerTests : BaseControllerTests
             .ToList();
 
         _restClientMock
-            .Setup(c => c.GetCandlesAsync("BTC-PERP", "15m", null, It.IsAny<CancellationToken>()))
+            .Setup(c => c.GetCandleSnapshotsAsync(
+                "BTC",
+                "15m",
+                It.IsAny<long>(),
+                It.IsAny<long>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
         var client = GetTestClient();
@@ -116,10 +120,6 @@ public sealed class MarketDataControllerTests : BaseControllerTests
     [TestMethod]
     public async Task GivenController_WhenGetCandlesWithInvalidTimeframe_ThenReturnsBadRequest()
     {
-        _restClientMock
-            .Setup(c => c.GetCandlesAsync("BTC-PERP", "invalid", null, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new DomainException("Invalid timeframe 'invalid'. Supported: 15m, 1h, 4h"));
-
         var client = GetTestClient();
 
         var response = await client.GetAsync($"{BaseUrl}/candles?asset=BTC-PERP&timeframe=invalid");

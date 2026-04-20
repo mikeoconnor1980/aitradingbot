@@ -1217,6 +1217,13 @@ namespace TradePilot.Persistence.Migrations
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PreferredExchange")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Hyperliquid");
+
                     b.Property<string>("PreferredNetwork")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1239,6 +1246,48 @@ namespace TradePilot.Persistence.Migrations
                         .HasFilter("[AuthProvider] IS NOT NULL AND [ExternalProviderId] IS NOT NULL");
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.UserExchangeCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ApiKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<long>("CreatedAtUtc")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("EncryptedApiSecret")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("Exchange")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Exchange", "IsActive")
+                        .HasDatabaseName("IX_UserExchangeCredentials_UserId_Exchange_IsActive");
+
+                    b.ToTable("UserExchangeCredentials", (string)null);
                 });
 
             modelBuilder.Entity("TradePilot.Domain.Entities.UserWalletAddress", b =>
@@ -1360,6 +1409,15 @@ namespace TradePilot.Persistence.Migrations
                 });
 
             modelBuilder.Entity("TradePilot.Domain.Entities.TelegramLinkCode", b =>
+                {
+                    b.HasOne("TradePilot.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.UserExchangeCredential", b =>
                 {
                     b.HasOne("TradePilot.Domain.Entities.User", null)
                         .WithMany()
