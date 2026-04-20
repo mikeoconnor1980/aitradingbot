@@ -6,25 +6,27 @@ using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Application.MarketData.Queries;
 
-public sealed record GetMarketInfoQuery(string Asset) : Query<MarketInfoDto>;
+public sealed record GetMarketInfoQuery(string Asset, Exchange Exchange = Exchange.Hyperliquid) : Query<MarketInfoDto>;
 
 public sealed class GetMarketInfoQueryHandler : QueryHandler<GetMarketInfoQuery, MarketInfoDto>
 {
-    private readonly IExchangeMarketMetadataProvider _marketMetadataProvider;
-    private readonly IExchangeSymbolMapper _symbolMapper;
+    private readonly IReadOnlyList<IExchangeMarketMetadataProvider> _marketMetadataProviders;
+    private readonly IReadOnlyList<IExchangeSymbolMapper> _symbolMappers;
 
     public GetMarketInfoQueryHandler(
         IEnumerable<IExchangeMarketMetadataProvider> marketMetadataProviders,
         IEnumerable<IExchangeSymbolMapper> symbolMappers)
     {
-        _marketMetadataProvider = ResolveProvider(marketMetadataProviders, Exchange.Hyperliquid);
-        _symbolMapper = ResolveSymbolMapper(symbolMappers, Exchange.Hyperliquid);
+        _marketMetadataProviders = marketMetadataProviders.ToList();
+        _symbolMappers = symbolMappers.ToList();
     }
 
     public override async Task<MarketInfoDto> Handle(GetMarketInfoQuery request, CancellationToken cancellationToken)
     {
-        var pair = _symbolMapper.FromExchangeSymbol(request.Asset);
-        var result = await _marketMetadataProvider.GetMarketInfoAsync(pair, cancellationToken);
+        var marketMetadataProvider = ResolveProvider(_marketMetadataProviders, request.Exchange);
+        var symbolMapper = ResolveSymbolMapper(_symbolMappers, request.Exchange);
+        var pair = symbolMapper.FromExchangeSymbol(request.Asset);
+        var result = await marketMetadataProvider.GetMarketInfoAsync(pair, cancellationToken);
 
         if (result is null)
         {

@@ -18,7 +18,13 @@ public sealed class CandlesControllerTests : BaseControllerTests
     private const string TestPrivateKey = "0x4c0883a69102937d6231471b5dbb6204fe512961708279f2a4c5890a0c1f9b2e";
 
     private readonly Mock<ICandleIngestionService> _ingestionServiceMock = new();
-    private readonly Mock<IBinanceCandleIngestionService> _binanceIngestionServiceMock = new();
+    private readonly Mock<ICandleIngestionService> _binanceIngestionServiceMock = new();
+
+    public CandlesControllerTests()
+    {
+        _ingestionServiceMock.SetupGet(service => service.Exchange).Returns(Exchange.Hyperliquid);
+        _binanceIngestionServiceMock.SetupGet(service => service.Exchange).Returns(Exchange.Binance);
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,8 +37,6 @@ public sealed class CandlesControllerTests : BaseControllerTests
     {
         services.RemoveAll<ICandleIngestionService>();
         services.AddSingleton(_ingestionServiceMock.Object);
-
-        services.RemoveAll<IBinanceCandleIngestionService>();
         services.AddSingleton(_binanceIngestionServiceMock.Object);
     }
 

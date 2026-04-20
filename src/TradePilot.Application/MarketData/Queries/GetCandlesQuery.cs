@@ -6,19 +6,19 @@ using TradePilot.Application.Trading.Services;
 
 namespace TradePilot.Application.MarketData.Queries;
 
-public sealed record GetCandlesQuery(string Asset, string Timeframe, long? EndTime = null) : Query<List<CandleDto>>;
+public sealed record GetCandlesQuery(string Asset, string Timeframe, Exchange Exchange = Exchange.Hyperliquid, long? EndTime = null) : Query<List<CandleDto>>;
 
 public sealed class GetCandlesQueryHandler : QueryHandler<GetCandlesQuery, List<CandleDto>>
 {
-    private readonly IExchangeHistoricalDataClient _historicalDataClient;
-    private readonly IExchangeSymbolMapper _symbolMapper;
+    private readonly IReadOnlyList<IExchangeHistoricalDataClient> _historicalDataClients;
+    private readonly IReadOnlyList<IExchangeSymbolMapper> _symbolMappers;
 
     public GetCandlesQueryHandler(
         IEnumerable<IExchangeHistoricalDataClient> historicalDataClients,
         IEnumerable<IExchangeSymbolMapper> symbolMappers)
     {
-        _historicalDataClient = ResolveHistoricalDataClient(historicalDataClients, Exchange.Hyperliquid);
-        _symbolMapper = ResolveSymbolMapper(symbolMappers, Exchange.Hyperliquid);
+        _historicalDataClients = historicalDataClients.ToList();
+        _symbolMappers = symbolMappers.ToList();
     }
 
     public override async Task<List<CandleDto>> Handle(GetCandlesQuery request, CancellationToken cancellationToken)
@@ -26,12 +26,14 @@ public sealed class GetCandlesQueryHandler : QueryHandler<GetCandlesQuery, List<
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Asset);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.Timeframe);
 
-        var pair = _symbolMapper.FromExchangeSymbol(request.Asset);
+        var historicalDataClient = ResolveHistoricalDataClient(_historicalDataClients, request.Exchange);
+        var symbolMapper = ResolveSymbolMapper(_symbolMappers, request.Exchange);
+        var pair = symbolMapper.FromExchangeSymbol(request.Asset);
         var intervalMs = GetIntervalMs(request.Timeframe);
         var endTime = request.EndTime ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var startTime = endTime - (500L * intervalMs);
 
-        var snapshots = await _historicalDataClient.GetCandleSnapshotsAsync(
+        var snapshots = await historicalDataClient.GetCandleSnapshotsAsync(
             pair,
             request.Timeframe,
             startTime,

@@ -5,6 +5,7 @@ import { provideAnimationsAsync } from "@angular/platform-browser/animations/asy
 import { provideRouter } from "@angular/router";
 import { authInterceptor } from "./core/interceptors/auth.interceptor";
 import { errorInterceptor } from "./core/interceptors/error.interceptor";
+import { exchangeInterceptor } from "./core/interceptors/exchange.interceptor";
 import { routes } from "./app.routes";
 
 const APP_DATE_FORMATS = {
@@ -22,7 +23,7 @@ const APP_DATE_FORMATS = {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, exchangeInterceptor, errorInterceptor])),
     provideAnimationsAsync(),
     { provide: MAT_DATE_LOCALE, useValue: "en-GB" },
     { provide: DateAdapter, useClass: NativeDateAdapter },

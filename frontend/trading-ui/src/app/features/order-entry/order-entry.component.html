@@ -9,12 +9,15 @@
         <div class="order-entry__field order-entry__agent-field">
           <mat-form-field appearance="outline" class="order-entry__input">
             <mat-label>Execute via Agent</mat-label>
-            <mat-select [value]="selectedAgentId" (selectionChange)="onAgentChange($event.value)">
+            <mat-select [value]="selectedAgentId" [disabled]="selectedExchange !== 'Hyperliquid'" (selectionChange)="onAgentChange($event.value)">
               <mat-option [value]="null">Direct (API)</mat-option>
               @for (agent of connectedAgents; track agent.agentId) {
                 <mat-option [value]="agent.agentId">{{ agent.machineName }} ({{ agent.state }})</mat-option>
               }
             </mat-select>
+            @if (selectedExchange !== 'Hyperliquid') {
+              <mat-hint>Agent routing is currently Hyperliquid-only. Binance orders are sent directly through the API.</mat-hint>
+            }
           </mat-form-field>
         </div>
       }

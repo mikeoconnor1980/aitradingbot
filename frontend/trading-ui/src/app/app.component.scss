@@ -38,6 +38,16 @@ $sidebar-expanded: 220px;
     margin-left: auto;
   }
 
+  &__exchange-field {
+    width: 150px;
+
+    ::ng-deep .mdc-notched-outline__leading,
+    ::ng-deep .mdc-notched-outline__notch,
+    ::ng-deep .mdc-notched-outline__trailing {
+      border-color: var(--colour-border-light) !important;
+    }
+  }
+
   &__network-badge {
     display: flex;
     align-items: center;
@@ -235,6 +245,10 @@ $sidebar-expanded: 220px;
 
     &__status {
       padding: 0.25rem 0.5rem;
+    }
+
+    &__exchange-field {
+      width: 120px;
     }
 
     &__profile-btn {

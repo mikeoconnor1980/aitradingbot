@@ -24,6 +24,7 @@ import { OrderService } from "../../core/services/order.service";
 import { AgentInfo, AgentService } from "../../core/services/agent.service";
 import { SignalRService } from "../../core/services/signalr.service";
 import { SubscriptionService } from "../../core/services/subscription.service";
+import { ExchangeContextService, SupportedExchange } from "../../core/services/exchange-context.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { ConfirmDialogComponent, ConfirmDialogData } from "./confirm-dialog/confirm-dialog.component";
@@ -68,6 +69,7 @@ export class OrderEntryComponent implements OnInit {
   private readonly _dialog = inject(MatDialog);
   private readonly _notifications = inject(NotificationFacade);
   private readonly _subscriptionService = inject(SubscriptionService);
+  private readonly _exchangeContext = inject(ExchangeContextService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public orderForm!: FormGroup<OrderEntryForm>;
@@ -89,6 +91,7 @@ export class OrderEntryComponent implements OnInit {
   public selectedAsset = "BTC-PERP";
   public connectedAgents: AgentInfo[] = [];
   public selectedAgentId: string | null = null;
+  public selectedExchange: SupportedExchange = "Hyperliquid";
   private _allAssets: TradableAsset[] = [];
   private _subscriptionResolved = false;
 
@@ -153,15 +156,7 @@ export class OrderEntryComponent implements OnInit {
         this._applySubscriptionRestrictions();
       });
 
-    this._orderService.getAvailableAssets().subscribe({
-      next: (assets) => {
-        this._allAssets = assets;
-        this._applySubscriptionRestrictions();
-      },
-      error: () => {
-        this.isLoadingAssets = false;
-      }
-    });
+    this._loadAvailableAssets();
 
     // Subscribe to connected agents for order routing
     this._agentService.agents$
@@ -176,10 +171,23 @@ export class OrderEntryComponent implements OnInit {
         this.selectedAgentId = id;
       });
 
+    this._exchangeContext.exchange$
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((exchange) => {
+        this.selectedExchange = exchange;
+        this._loadAvailableAssets();
+        this._loadMidPrice();
+        this._loadPositionContext();
+      });
+
     this._agentService.refreshAgents();
   }
 
   public onAgentChange(agentId: string | null): void {
+    if (this.selectedExchange !== "Hyperliquid") {
+      return;
+    }
+
     this._agentService.selectAgent(agentId);
   }
 
@@ -254,7 +262,8 @@ export class OrderEntryComponent implements OnInit {
     this._apiService.getPositions(new HttpContext().set(SKIP_ERROR_NOTIFICATION, true))
       .subscribe({
         next: (positions: Position[]) => {
-          const currentPosition = positions.find((position) => position.asset === this.selectedAsset && position.size !== 0);
+          const selectedAsset = this.selectedAsset.replace(/-PERP$/i, "").toUpperCase();
+          const currentPosition = positions.find((position) => position.asset.replace(/-PERP$/i, "").toUpperCase() === selectedAsset && position.size !== 0);
           this.currentPositionLiquidationPrice = currentPosition?.liquidationPrice ?? null;
         },
         error: () => {
@@ -393,6 +402,19 @@ export class OrderEntryComponent implements OnInit {
     this._syncLeverageCap();
   }
 
+  private _loadAvailableAssets(): void {
+    this.isLoadingAssets = true;
+    this._orderService.getAvailableAssets().subscribe({
+      next: (assets) => {
+        this._allAssets = assets;
+        this._applySubscriptionRestrictions();
+      },
+      error: () => {
+        this.isLoadingAssets = false;
+      }
+    });
+  }
+
   private _syncLeverageCap(): void {
     const assetMaxLeverage = this.selectedAssetInfo?.maxLeverage ?? 1;
     const subscriptionMaxLeverage = this._subscriptionService.currentStatus?.maxLeverage;
@@ -445,7 +467,7 @@ export class OrderEntryComponent implements OnInit {
       takeProfitPrice: this.orderForm.controls.takeProfitPrice.value
     };
 
-    const agentId = this._agentService.selectedAgentId;
+    const agentId = this.selectedExchange === "Hyperliquid" ? this._agentService.selectedAgentId : null;
 
     // Route through agent if one is selected, otherwise fall back to direct API call
     const order$ = agentId

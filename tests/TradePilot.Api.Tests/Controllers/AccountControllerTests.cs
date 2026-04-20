@@ -10,10 +10,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using TradePilot.Api.Models;
 using TradePilot.Api.Tests.Infrastructure;
+using TradePilot.Api.Infrastructure;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
+using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Api.Tests.Controllers;
 
@@ -25,20 +28,32 @@ public sealed class AccountControllerTests
     private static readonly Guid TestUserId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
     private const string TestWalletAddress = "0xb63a3948477254cc17E0fb444050B9E161FCcFA3";
 
-    private Mock<IHyperliquidAccountService> _accountServiceMock = null!;
+    private Mock<IExchangeAccountClient> _hyperliquidAccountClientMock = null!;
+    private Mock<IExchangeAccountClient> _binanceAccountClientMock = null!;
+    private Mock<IExchangeResolver> _exchangeResolverMock = null!;
     private Mock<IUserWalletAddressRepository> _walletRepoMock = null!;
+    private Mock<IUserExchangeCredentialRepository> _credentialRepoMock = null!;
     private WebApplicationFactory<Program> _factory = null!;
     private HttpClient _client = null!;
 
     [TestInitialize]
     public void Setup()
     {
-        _accountServiceMock = new Mock<IHyperliquidAccountService>();
+        _hyperliquidAccountClientMock = new Mock<IExchangeAccountClient>();
+        _binanceAccountClientMock = new Mock<IExchangeAccountClient>();
+        _exchangeResolverMock = new Mock<IExchangeResolver>();
         _walletRepoMock = new Mock<IUserWalletAddressRepository>();
+        _credentialRepoMock = new Mock<IUserExchangeCredentialRepository>();
+
+        _hyperliquidAccountClientMock.SetupGet(client => client.Exchange).Returns(Exchange.Hyperliquid);
+        _binanceAccountClientMock.SetupGet(client => client.Exchange).Returns(Exchange.Binance);
+        _exchangeResolverMock
+            .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Exchange.Hyperliquid);
 
         // Return a wallet address for the test user
         _walletRepoMock
-            .Setup(r => r.GetActiveByUserIdAsync(TestUserId, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetActiveByUserIdAndExchangeAsync(TestUserId, Exchange.Hyperliquid, It.IsAny<CancellationToken>()))
             .ReturnsAsync(UserWalletAddress.Create(TestUserId, TestWalletAddress));
 
         _factory = new WebApplicationFactory<Program>()
@@ -59,10 +74,15 @@ public sealed class AccountControllerTests
 
                 builder.ConfigureServices(services =>
                 {
-                    services.RemoveAll<IHyperliquidAccountService>();
-                    services.AddSingleton(_accountServiceMock.Object);
+                    services.RemoveAll<IExchangeAccountClient>();
+                    services.AddSingleton(_hyperliquidAccountClientMock.Object);
+                    services.AddSingleton(_binanceAccountClientMock.Object);
+                    services.RemoveAll<IExchangeResolver>();
+                    services.AddSingleton(_exchangeResolverMock.Object);
                     services.RemoveAll<IUserWalletAddressRepository>();
                     services.AddSingleton(_walletRepoMock.Object);
+                    services.RemoveAll<IUserExchangeCredentialRepository>();
+                    services.AddSingleton(_credentialRepoMock.Object);
                 });
             });
 
@@ -94,7 +114,7 @@ public sealed class AccountControllerTests
             UnrealisedPnl = 150m,
         };
 
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetAccountSummaryAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
@@ -131,7 +151,7 @@ public sealed class AccountControllerTests
             },
         };
 
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetPositionsAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(positions);
 
@@ -149,7 +169,7 @@ public sealed class AccountControllerTests
     public async Task GivenNoOpenOrders_WhenGetOrders_ThenReturnsOkWithEmptyArray()
     {
         // Arrange
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OpenOrderDto>());
 
@@ -195,7 +215,7 @@ public sealed class AccountControllerTests
             }
         };
 
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(fills);
 
@@ -219,8 +239,11 @@ public sealed class AccountControllerTests
             CreateFill("BTC", "Sell", "Close Long", 0.1m, 66000m, 0.01m, 100m, "order-3"),
         };
 
-        _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync("BTC-PERP", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        _hyperliquidAccountClientMock
+            .Setup(s => s.GetRecentFillsAsync(
+                TradingPair.Create("BTC", "USD", AssetType.Perp),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(filteredFills);
 
         // Act
@@ -244,7 +267,7 @@ public sealed class AccountControllerTests
             CreateFill("ETH", "Sell", "Close Long", 1m, 3200m, 0.02m, 50m, "order-2"),
         };
 
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetRecentFillsAsync(null, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(fills);
 
@@ -263,8 +286,11 @@ public sealed class AccountControllerTests
     public async Task GivenNoFillsForAsset_WhenGetFillsWithAssetFilter_ThenReturnsEmptyList()
     {
         // Arrange
-        _accountServiceMock
-            .Setup(s => s.GetRecentFillsAsync("SOL-PERP", It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        _hyperliquidAccountClientMock
+            .Setup(s => s.GetRecentFillsAsync(
+                TradingPair.Create("SOL", "USD", AssetType.Perp),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<FillEventDto>());
 
         // Act
@@ -281,7 +307,7 @@ public sealed class AccountControllerTests
     public async Task GivenHyperliquidUnavailable_WhenGetAccountSummary_ThenReturns503()
     {
         // Arrange
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetAccountSummaryAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -299,7 +325,7 @@ public sealed class AccountControllerTests
     public async Task GivenHyperliquidUnavailable_WhenGetPositions_ThenReturns503()
     {
         // Arrange
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetPositionsAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -317,7 +343,7 @@ public sealed class AccountControllerTests
     public async Task GivenHyperliquidUnavailable_WhenGetOrders_ThenReturns503()
     {
         // Arrange
-        _accountServiceMock
+        _hyperliquidAccountClientMock
             .Setup(s => s.GetOpenOrdersAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -329,6 +355,37 @@ public sealed class AccountControllerTests
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("errorMessage").GetString().Should().Be("External service unavailable");
         body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
+    }
+
+    [TestMethod]
+    public async Task GivenBinanceSelectedAndCredentialExists_WhenGetAccountSummary_ThenReturnsBinanceSummary()
+    {
+        var expected = new AccountSummaryDto
+        {
+            Equity = 2500m,
+            AvailableMargin = 2000m,
+            MaintenanceMargin = 50m,
+            CrossMarginRatio = 0.02m,
+            UnrealisedPnl = 25m,
+        };
+
+        _exchangeResolverMock
+            .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Exchange.Binance);
+
+        _credentialRepoMock
+            .Setup(repository => repository.GetActiveByUserIdAndExchangeAsync(TestUserId, Exchange.Binance, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserExchangeCredential.Create(TestUserId, Exchange.Binance, "api-key", "encrypted-secret", "Primary Binance"));
+
+        _binanceAccountClientMock
+            .Setup(client => client.GetAccountSummaryAsync(null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+
+        var response = await _client.GetAsync("api/account");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<AccountSummaryDto>();
+        result.Should().BeEquivalentTo(expected);
     }
 
     private static FillEventDto CreateFill(

@@ -37,6 +37,7 @@ public static class PersistenceServiceExtensions
         services.AddScoped<IAdminUserGrantRepository, AdminUserGrantRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserWalletAddressRepository, UserWalletAddressRepository>();
+        services.AddScoped<IUserExchangeCredentialRepository, UserExchangeCredentialRepository>();
         services.AddScoped<IWebhookConfigRepository, WebhookConfigRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IFearGreedReadingRepository, FearGreedReadingRepository>();

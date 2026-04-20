@@ -9,6 +9,7 @@ public sealed class User
     public long CreatedAtUtc { get; private set; }
     public bool IsActive { get; private set; }
     public string PreferredNetwork { get; private set; } = "mainnet";
+    public string PreferredExchange { get; private set; } = "Hyperliquid";
     public string? AuthProvider { get; private set; }
     public string? ExternalProviderId { get; private set; }
     public long? TelegramChatId { get; private set; }
@@ -32,6 +33,7 @@ public sealed class User
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             IsActive = true,
             PreferredNetwork = "mainnet",
+            PreferredExchange = "Hyperliquid",
         };
     }
 
@@ -53,6 +55,7 @@ public sealed class User
             CreatedAtUtc = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             IsActive = true,
             PreferredNetwork = "mainnet",
+            PreferredExchange = "Hyperliquid",
         };
     }
 
@@ -80,6 +83,18 @@ public sealed class User
         }
 
         PreferredNetwork = network;
+    }
+
+    public void UpdatePreferredExchange(string exchange)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(exchange);
+
+        if (exchange is not ("Hyperliquid" or "Binance"))
+        {
+            throw new ArgumentException("Exchange must be 'Hyperliquid' or 'Binance'.", nameof(exchange));
+        }
+
+        PreferredExchange = exchange;
     }
 
     public void Deactivate()
