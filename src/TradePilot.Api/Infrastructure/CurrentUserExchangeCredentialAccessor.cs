@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Threading;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Domain.Enums;
@@ -6,18 +10,20 @@ namespace TradePilot.Api.Infrastructure;
 
 public sealed class CurrentUserExchangeCredentialAccessor : IExchangeCredentialAccessor
 {
+    private static readonly object CacheKey = new();
+
     private readonly IdentityService _identityService;
-    private readonly IUserExchangeCredentialRepository _credentialRepository;
-    private readonly ICredentialEncryptionService _credentialEncryptionService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public CurrentUserExchangeCredentialAccessor(
         IdentityService identityService,
-        IUserExchangeCredentialRepository credentialRepository,
-        ICredentialEncryptionService credentialEncryptionService)
+        IHttpContextAccessor httpContextAccessor,
+        IServiceScopeFactory scopeFactory)
     {
         _identityService = identityService;
-        _credentialRepository = credentialRepository;
-        _credentialEncryptionService = credentialEncryptionService;
+        _httpContextAccessor = httpContextAccessor;
+        _scopeFactory = scopeFactory;
     }
 
     public async Task<ExchangeCredentialSnapshot?> GetActiveCredentialAsync(
@@ -35,7 +41,33 @@ public sealed class CurrentUserExchangeCredentialAccessor : IExchangeCredentialA
             return null;
         }
 
-        var credential = await _credentialRepository.GetActiveByUserIdAndExchangeAsync(userId, exchange, cancellationToken);
+        var httpContext = _httpContextAccessor.HttpContext;
+        var cache = GetOrCreateCache(httpContext);
+        if (cache.TryGetValue(exchange, out var cachedSnapshot))
+        {
+            return await cachedSnapshot.Value;
+        }
+
+        var requestCancellationToken = httpContext?.RequestAborted ?? cancellationToken;
+        var lazySnapshot = cache.GetOrAdd(
+            exchange,
+            _ => new Lazy<Task<ExchangeCredentialSnapshot?>>(
+                () => ResolveCredentialSnapshotAsync(userId, exchange, requestCancellationToken),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+
+        return await lazySnapshot.Value;
+    }
+
+    private async Task<ExchangeCredentialSnapshot?> ResolveCredentialSnapshotAsync(
+        Guid userId,
+        Exchange exchange,
+        CancellationToken cancellationToken)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var credentialRepository = scope.ServiceProvider.GetRequiredService<IUserExchangeCredentialRepository>();
+        var credentialEncryptionService = scope.ServiceProvider.GetRequiredService<ICredentialEncryptionService>();
+
+        var credential = await credentialRepository.GetActiveByUserIdAndExchangeAsync(userId, exchange, cancellationToken);
         if (credential is null)
         {
             return null;
@@ -44,7 +76,23 @@ public sealed class CurrentUserExchangeCredentialAccessor : IExchangeCredentialA
         return new ExchangeCredentialSnapshot(
             credential.Exchange,
             credential.ApiKey,
-            _credentialEncryptionService.Decrypt(credential.EncryptedApiSecret),
+            credentialEncryptionService.Decrypt(credential.EncryptedApiSecret),
             credential.Label);
+    }
+
+    private static ConcurrentDictionary<Exchange, Lazy<Task<ExchangeCredentialSnapshot?>>> GetOrCreateCache(HttpContext? httpContext)
+    {
+        if (httpContext?.Items[CacheKey] is ConcurrentDictionary<Exchange, Lazy<Task<ExchangeCredentialSnapshot?>>> existingCache)
+        {
+            return existingCache;
+        }
+
+        var newCache = new ConcurrentDictionary<Exchange, Lazy<Task<ExchangeCredentialSnapshot?>>>();
+        if (httpContext is not null)
+        {
+            httpContext.Items[CacheKey] = newCache;
+        }
+
+        return newCache;
     }
 }

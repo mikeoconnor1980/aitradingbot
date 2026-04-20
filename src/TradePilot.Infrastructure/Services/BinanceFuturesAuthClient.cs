@@ -25,8 +25,7 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
 
     public Task<IReadOnlyList<BinanceBalanceSnapshot>> GetBalancesAsync(CancellationToken cancellationToken = default)
     {
-        return SendAsync<List<BinanceBalanceSnapshot>>(HttpMethod.Get, "/fapi/v3/balance", null, cancellationToken)
-            .ContinueWith(static task => (IReadOnlyList<BinanceBalanceSnapshot>)task.Result, cancellationToken);
+        return SendReadOnlyListAsync<BinanceBalanceSnapshot>(HttpMethod.Get, "/fapi/v3/balance", null, cancellationToken);
     }
 
     public Task<BinanceAccountSnapshot> GetAccountAsync(CancellationToken cancellationToken = default)
@@ -42,8 +41,7 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
             ? null
             : new[] { new KeyValuePair<string, string?>("symbol", symbol) };
 
-        return SendAsync<List<BinancePositionRiskSnapshot>>(HttpMethod.Get, "/fapi/v2/positionRisk", query, cancellationToken)
-            .ContinueWith(static task => (IReadOnlyList<BinancePositionRiskSnapshot>)task.Result, cancellationToken);
+        return SendReadOnlyListAsync<BinancePositionRiskSnapshot>(HttpMethod.Get, "/fapi/v2/positionRisk", query, cancellationToken);
     }
 
     public Task<IReadOnlyList<BinanceOpenOrderSnapshot>> GetOpenOrdersAsync(
@@ -54,8 +52,7 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
             ? null
             : new[] { new KeyValuePair<string, string?>("symbol", symbol) };
 
-        return SendAsync<List<BinanceOpenOrderSnapshot>>(HttpMethod.Get, "/fapi/v1/openOrders", query, cancellationToken)
-            .ContinueWith(static task => (IReadOnlyList<BinanceOpenOrderSnapshot>)task.Result, cancellationToken);
+        return SendReadOnlyListAsync<BinanceOpenOrderSnapshot>(HttpMethod.Get, "/fapi/v1/openOrders", query, cancellationToken);
     }
 
     public Task<IReadOnlyList<BinanceUserTradeSnapshot>> GetUserTradesAsync(
@@ -72,8 +69,7 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
             new KeyValuePair<string, string?>("limit", limit.ToString(CultureInfo.InvariantCulture)),
         };
 
-        return SendAsync<List<BinanceUserTradeSnapshot>>(HttpMethod.Get, "/fapi/v1/userTrades", query, cancellationToken)
-            .ContinueWith(static task => (IReadOnlyList<BinanceUserTradeSnapshot>)task.Result, cancellationToken);
+        return SendReadOnlyListAsync<BinanceUserTradeSnapshot>(HttpMethod.Get, "/fapi/v1/userTrades", query, cancellationToken);
     }
 
     public Task<BinancePlaceOrderResult> PlaceOrderAsync(
@@ -200,6 +196,16 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
         return result;
     }
 
+    private async Task<IReadOnlyList<T>> SendReadOnlyListAsync<T>(
+        HttpMethod method,
+        string path,
+        IEnumerable<KeyValuePair<string, string?>>? queryParameters,
+        CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<List<T>>(method, path, queryParameters, cancellationToken);
+        return result;
+    }
+
     private async Task SendWithoutResponseAsync(
         HttpMethod method,
         string path,
@@ -251,9 +257,13 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
 
     private static void MapErrorResponse(HttpStatusCode statusCode, string body, TimeSpan? retryAfter)
     {
+        var binanceCode = TryReadBinanceCode(body);
+
         throw statusCode switch
         {
-            HttpStatusCode.Unauthorized => new DomainException("Binance API key rejected. Check the stored Binance API credentials."),
+            HttpStatusCode.Unauthorized when binanceCode == -2015 => new DomainException(
+                "Binance Futures rejected the API key. Verify the key/secret pair, make sure the key is for USD-M Futures on the selected environment, enable Futures access on the key, and allow this machine's IP if the key is IP-restricted."),
+            HttpStatusCode.Unauthorized => new DomainException($"Binance API key rejected: {ExtractMessage(body)}"),
             HttpStatusCode.TooManyRequests => new RateLimitException(
                 $"Binance rate limit exceeded: {body}",
                 retryAfter is null ? null : (int)Math.Ceiling(retryAfter.Value.TotalSeconds)),
@@ -263,5 +273,45 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
                 $"Binance API error {(int)statusCode}: {body}"),
             _ => new DomainException($"Binance API server error {(int)statusCode}: {body}"),
         };
+    }
+
+    private static int? TryReadBinanceCode(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            return document.RootElement.TryGetProperty("code", out var codeElement) && codeElement.TryGetInt32(out var code)
+                ? code
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string ExtractMessage(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return "unknown authentication error";
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            return document.RootElement.TryGetProperty("msg", out var messageElement)
+                ? messageElement.GetString() ?? body
+                : body;
+        }
+        catch (JsonException)
+        {
+            return body;
+        }
     }
 }

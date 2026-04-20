@@ -268,7 +268,7 @@
               @if (credentialApiSecretControl.hasError('required')) {
                 <mat-error>API secret is required</mat-error>
               }
-              <mat-hint>The secret is encrypted before storage.</mat-hint>
+              <mat-hint>The secret is encrypted before storage and cannot be shown after save.</mat-hint>
             </mat-form-field>
 
             @if (credentialError(); as error) {

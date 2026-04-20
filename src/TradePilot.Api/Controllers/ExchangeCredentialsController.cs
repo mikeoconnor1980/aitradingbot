@@ -15,6 +15,8 @@ namespace TradePilot.Api.Controllers;
 [Authorize]
 public sealed class ExchangeCredentialsController : ControllerBase
 {
+    private const string StoredSecretPlaceholder = "********";
+
     private readonly IUserExchangeCredentialRepository _credentialRepository;
     private readonly ICredentialEncryptionService _credentialEncryptionService;
     private readonly IBinanceFuturesAuthClient _binanceAuthClient;
@@ -134,8 +136,7 @@ public sealed class ExchangeCredentialsController : ControllerBase
 
     private static string MaskSecret(string value)
     {
-        var suffix = value.Length <= 4 ? value : value[^4..];
-        return $"****{suffix}";
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : StoredSecretPlaceholder;
     }
 
     private Guid? GetUserId()
