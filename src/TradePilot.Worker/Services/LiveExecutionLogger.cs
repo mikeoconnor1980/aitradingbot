@@ -10,6 +10,8 @@ namespace TradePilot.Worker.Services;
 /// </summary>
 public sealed class LiveExecutionLogger : IExecutionLogger
 {
+    internal const int MaxQueueSize = 10_000;
+
     private readonly ConcurrentQueue<ExecutionLogEntry> _entries = new();
 
     public ExecutionLogLevel CurrentLevel { get; set; } = ExecutionLogLevel.Summary;
@@ -21,6 +23,10 @@ public sealed class LiveExecutionLogger : IExecutionLogger
         if (entry.Level == ExecutionLogLevel.Detail && CurrentLevel != ExecutionLogLevel.Detail)
         {
             return;
+        }
+
+        while (_entries.Count >= MaxQueueSize && _entries.TryDequeue(out _))
+        {
         }
 
         _entries.Enqueue(entry);

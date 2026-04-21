@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -40,6 +41,21 @@ public sealed class AgentCheckInService : BackgroundService
 
     internal const string HttpClientName = "ControlPlane";
 
+    internal static void ConfigureControlPlaneHttpClient(HttpClient client, AgentOptions agentOptions)
+    {
+        client.BaseAddress = new Uri(agentOptions.ControlPlaneUrl);
+        client.Timeout = TimeSpan.FromSeconds(10);
+
+        if (string.IsNullOrWhiteSpace(agentOptions.SecretKey))
+        {
+            client.DefaultRequestHeaders.Authorization = null;
+            return;
+        }
+
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", agentOptions.SecretKey);
+    }
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IServiceProvider _serviceProvider;
     private readonly IExecutionEngineResolver _executionEngineResolver;
@@ -53,9 +69,10 @@ public sealed class AgentCheckInService : BackgroundService
     private readonly HyperliquidOptions _hyperliquidOptions;
     private readonly AgentOptions _agentOptions;
     private readonly ILogger<AgentCheckInService> _logger;
+    private readonly object _networkConfigLock = new();
 
     private TradingSession? _activeSession;
-    private readonly object _sessionLock = new();
+    private readonly SemaphoreSlim _sessionLock = new(1, 1);
 
     /// <summary>
     /// Completed order results waiting to be sent back on the next heartbeat.
@@ -142,12 +159,23 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         // Graceful shutdown — stop any active session
-        if (_activeSession is not null)
+        TradingSession? activeSession;
+        await _sessionLock.WaitAsync(CancellationToken.None);
+        try
+        {
+            activeSession = _activeSession;
+            _activeSession = null;
+        }
+        finally
+        {
+            _sessionLock.Release();
+        }
+
+        if (activeSession is not null)
         {
             _logger.LogInformation("Host shutting down. Stopping active trading session...");
-            await _activeSession.StopAsync();
-            await _activeSession.DisposeAsync();
-            _activeSession = null;
+            await activeSession.StopAsync();
+            await activeSession.DisposeAsync();
         }
 
         _logger.LogInformation("AgentCheckInService stopped.");
@@ -156,7 +184,7 @@ public sealed class AgentCheckInService : BackgroundService
     private async Task CheckInAsync(CancellationToken cancellationToken)
     {
         using var httpClient = _httpClientFactory.CreateClient(HttpClientName);
-        var heartbeat = BuildHeartbeat();
+        var heartbeat = await BuildHeartbeatAsync(cancellationToken);
 
         var response = await httpClient.PostAsJsonAsync(
             "/api/agent/heartbeat", heartbeat, JsonOptions, cancellationToken);
@@ -171,7 +199,7 @@ public sealed class AgentCheckInService : BackgroundService
         // Apply network config from control plane
         if (result.NetworkConfig is { } netCfg)
         {
-            ApplyNetworkConfig(netCfg);
+            await ApplyNetworkConfigAsync(netCfg, cancellationToken);
         }
 
         // Apply notification config from control plane
@@ -208,16 +236,23 @@ public sealed class AgentCheckInService : BackgroundService
                 "Kill switch activated by control plane: {Reason}. Shutting down.",
                 result.ShutdownReason ?? "No reason given.");
 
-            if (_activeSession is not null)
+            TradingSession? activeSession;
+            await _sessionLock.WaitAsync(cancellationToken);
+            try
             {
-                _logger.LogInformation("Stopping active session due to kill switch...");
-                await _activeSession.StopAsync();
-                await _activeSession.DisposeAsync();
+                activeSession = _activeSession;
 
-                lock (_sessionLock)
+                if (activeSession is not null)
                 {
+                    _logger.LogInformation("Stopping active session due to kill switch...");
+                    await activeSession.StopAsync();
+                    await activeSession.DisposeAsync();
                     _activeSession = null;
                 }
+            }
+            finally
+            {
+                _sessionLock.Release();
             }
 
             // Keep heartbeating (so the control plane can reinstate us)
@@ -246,13 +281,14 @@ public sealed class AgentCheckInService : BackgroundService
         }
     }
 
-    private AgentHeartbeat BuildHeartbeat()
+    private async Task<AgentHeartbeat> BuildHeartbeatAsync(CancellationToken cancellationToken)
     {
         ActiveStrategyInfo? activeStrategy = null;
         AgentState state;
         string? lastError = null;
 
-        lock (_sessionLock)
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
         {
             if (_activeSession is not null)
             {
@@ -279,6 +315,10 @@ public sealed class AgentCheckInService : BackgroundService
             {
                 state = AgentState.Idle;
             }
+        }
+        finally
+        {
+            _sessionLock.Release();
         }
 
         // Drain completed order results to send back with this heartbeat
@@ -324,7 +364,7 @@ public sealed class AgentCheckInService : BackgroundService
                 break;
 
             case AgentCommandType.Stop:
-                await HandleStopAsync();
+                await HandleStopAsync(cancellationToken);
                 break;
 
             case AgentCommandType.PlaceOrder:
@@ -370,6 +410,12 @@ public sealed class AgentCheckInService : BackgroundService
         if (command.StrategyConfig is null)
         {
             _logger.LogError("Start command received without StrategyConfig. Ignoring.");
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Missing strategy configuration."
+            });
             return;
         }
 
@@ -409,22 +455,34 @@ public sealed class AgentCheckInService : BackgroundService
         if (!_signerProvider.IsConfigured)
         {
             _logger.LogError("Cannot start trading — wallet not configured.");
+            _pendingResults.Enqueue(new OrderCommandResult
+            {
+                CommandId = command.CommandId,
+                Success = false,
+                Detail = "Wallet not configured on agent."
+            });
             return;
         }
 
-        // Stop any existing session first
-        if (_activeSession is not null)
-        {
-            _logger.LogInformation("Stopping existing session before starting new one.");
-            await _activeSession.StopAsync();
-            await _activeSession.DisposeAsync();
-        }
+        TradingSession session;
 
-        var session = CreateSession(command.StrategyConfig);
-
-        lock (_sessionLock)
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
         {
+            if (_activeSession is not null)
+            {
+                _logger.LogInformation("Stopping existing session before starting new one.");
+                await _activeSession.StopAsync();
+                await _activeSession.DisposeAsync();
+                _activeSession = null;
+            }
+
+            session = CreateSession(command.StrategyConfig);
             _activeSession = session;
+        }
+        finally
+        {
+            _sessionLock.Release();
         }
 
         session.Start();
@@ -456,23 +514,25 @@ public sealed class AgentCheckInService : BackgroundService
         }
     }
 
-    private async Task HandleStopAsync()
+    private async Task HandleStopAsync(CancellationToken cancellationToken)
     {
-        TradingSession? session;
-        lock (_sessionLock)
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
         {
-            session = _activeSession;
+            if (_activeSession is null)
+            {
+                _logger.LogWarning("Stop command received but no active session.");
+                return;
+            }
+
+            await _activeSession.StopAsync();
+            await _activeSession.DisposeAsync();
             _activeSession = null;
         }
-
-        if (session is null)
+        finally
         {
-            _logger.LogWarning("Stop command received but no active session.");
-            return;
+            _sessionLock.Release();
         }
-
-        await session.StopAsync();
-        await session.DisposeAsync();
 
         _executionLogger.Log(new ExecutionLogEntry
         {
@@ -517,7 +577,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.OrderPayload;
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -598,7 +658,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
         if (executionEngine is not IPositionQueryable positionQueryable)
         {
             _pendingResults.Enqueue(new OrderCommandResult
@@ -711,7 +771,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -732,7 +792,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -772,7 +832,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.LeveragePayload;
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -833,7 +893,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.TriggerPayload;
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -892,7 +952,7 @@ public sealed class AgentCheckInService : BackgroundService
         }
 
         var payload = command.ModifyTriggerPayload;
-        var executionEngine = _executionEngineResolver.Resolve(ResolveCommandExchange());
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -930,7 +990,7 @@ public sealed class AgentCheckInService : BackgroundService
             return;
         }
 
-        var executionEngine = _serviceProvider.GetRequiredService<IExecutionEngine>();
+        var executionEngine = _executionEngineResolver.Resolve(await ResolveCommandExchangeAsync(cancellationToken));
 
         try
         {
@@ -944,27 +1004,64 @@ public sealed class AgentCheckInService : BackgroundService
         }
     }
 
-    /// <summary>
-    /// Mutates the singleton HyperliquidOptions in-place so all consumers
-    /// (REST client, WebSocket clients) pick up the control-plane endpoints.
-    /// Only logs on first receipt or when the value actually changes.
-    /// </summary>
-    private void ApplyNetworkConfig(NetworkConfig config)
+    internal async Task ApplyNetworkConfigAsync(NetworkConfig config, CancellationToken cancellationToken = default)
     {
-        if (_hyperliquidOptions.BaseUrl == config.BaseUrl &&
-            _hyperliquidOptions.WsBaseUrl == config.WsBaseUrl &&
-            _hyperliquidOptions.Network == config.Network)
+        ArgumentNullException.ThrowIfNull(config);
+
+        TradingSession? replacementSession = null;
+
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
         {
-            return; // no change
+            lock (_networkConfigLock)
+            {
+                if (_hyperliquidOptions.BaseUrl == config.BaseUrl &&
+                    _hyperliquidOptions.WsBaseUrl == config.WsBaseUrl &&
+                    _hyperliquidOptions.Network == config.Network)
+                {
+                    return;
+                }
+            }
+
+            var strategyToRestart = _activeSession is not null &&
+                ResolveStrategyExchange(_activeSession.StrategyConfig) == Exchange.Hyperliquid
+                ? _activeSession.StrategyConfig
+                : null;
+
+            if (strategyToRestart is not null)
+            {
+                _logger.LogWarning(
+                    "Network config changed to {Network}; restarting active Hyperliquid session to rebuild clients.",
+                    config.Network);
+
+                await _activeSession!.StopAsync();
+                await _activeSession.DisposeAsync();
+                _activeSession = null;
+            }
+
+            lock (_networkConfigLock)
+            {
+                _hyperliquidOptions.BaseUrl = config.BaseUrl;
+                _hyperliquidOptions.WsBaseUrl = config.WsBaseUrl;
+                _hyperliquidOptions.Network = config.Network;
+            }
+
+            _logger.LogInformation(
+                "Network config updated from control plane: {Network} (REST={BaseUrl}, WS={WsBaseUrl})",
+                config.Network, config.BaseUrl, config.WsBaseUrl);
+
+            if (strategyToRestart is not null)
+            {
+                replacementSession = CreateSession(strategyToRestart);
+                _activeSession = replacementSession;
+            }
+        }
+        finally
+        {
+            _sessionLock.Release();
         }
 
-        _logger.LogInformation(
-            "Network config updated from control plane: {Network} (REST={BaseUrl}, WS={WsBaseUrl})",
-            config.Network, config.BaseUrl, config.WsBaseUrl);
-
-        _hyperliquidOptions.BaseUrl = config.BaseUrl;
-        _hyperliquidOptions.WsBaseUrl = config.WsBaseUrl;
-        _hyperliquidOptions.Network = config.Network;
+        replacementSession?.Start();
     }
 
     private TradingSession CreateSession(StrategyConfig strategyConfig)
@@ -973,6 +1070,7 @@ public sealed class AgentCheckInService : BackgroundService
         var gridState = new GridState();
         var orderTracker = _serviceProvider.GetRequiredService<IOrderTracker>();
         var riskEngine = _serviceProvider.GetRequiredService<IRiskEngine>();
+        riskEngine.Reset();
         var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
         var executionEngine = _executionEngineResolver.Resolve(exchange);
         var marketMetadataProvider = _serviceProvider.GetRequiredKeyedService<IExchangeMarketMetadataProvider>(exchange.ToString());
@@ -1058,13 +1156,18 @@ public sealed class AgentCheckInService : BackgroundService
             _serviceProvider.GetRequiredService<IDcaController>());
     }
 
-    private Exchange ResolveCommandExchange()
+    private async Task<Exchange> ResolveCommandExchangeAsync(CancellationToken cancellationToken = default)
     {
-        lock (_sessionLock)
+        await _sessionLock.WaitAsync(cancellationToken);
+        try
         {
             return _activeSession is null
                 ? Exchange.Hyperliquid
                 : ResolveStrategyExchange(_activeSession.StrategyConfig);
+        }
+        finally
+        {
+            _sessionLock.Release();
         }
     }
 
@@ -1081,6 +1184,12 @@ public sealed class AgentCheckInService : BackgroundService
         var version = assembly?.GetName().Version;
         return version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
     }
+
+    public override void Dispose()
+    {
+        _sessionLock.Dispose();
+        base.Dispose();
+    }
 }
 
 /// <summary>
@@ -1095,4 +1204,7 @@ public sealed class AgentOptions
 
     /// <summary>Base URL of the API control plane.</summary>
     public string ControlPlaneUrl { get; set; } = "http://localhost:5062";
+
+    /// <summary>Shared secret used to authenticate control-plane requests.</summary>
+    public string? SecretKey { get; set; }
 }

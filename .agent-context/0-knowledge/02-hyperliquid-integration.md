@@ -99,7 +99,9 @@ This is registered in both API and Worker hosts. The retry pipeline is attached 
 
 ## Asset Mapping And Metadata
 
-`HyperliquidAssetMapper` in `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` is intentionally lenient.
+`HyperliquidAssetMapper` in `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` is a static utility class — intentionally lenient.
+
+`HyperliquidExchangeSymbolMapper` in `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidExchangeSymbolMapper.cs` is the DI-injectable `IExchangeSymbolMapper` adapter. It delegates to `HyperliquidAssetMapper` internally. This is the class registered with DI in both the API and Worker hosts.
 
 | Method | Implemented behavior |
 |--------|----------------------|

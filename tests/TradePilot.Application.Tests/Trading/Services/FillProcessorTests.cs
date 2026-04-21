@@ -105,7 +105,11 @@ public sealed class FillProcessorTests
             OrderSide.Buy, 50000m, 0.01m, TradeType.GridFill);
 
         FillEventDto? callbackFill = null;
-        _sut.OnFillProcessed = fill => callbackFill = fill;
+        _sut.OnFillProcessed = fill =>
+        {
+            callbackFill = fill;
+            return Task.CompletedTask;
+        };
 
         var fill = CreateFill("order-1");
 
@@ -115,6 +119,39 @@ public sealed class FillProcessorTests
         // Assert
         callbackFill.Should().NotBeNull();
         callbackFill!.OrderId.Should().Be("order-1");
+    }
+
+    [TestMethod]
+    public async Task GivenAsyncFillCallback_WhenProcessFillAsync_ThenAwaitedBeforeReturning()
+    {
+        // Arrange
+        _orderTracker.TrackOrder("order-1", "cycle-1", 1, "BTC-PERP",
+            OrderSide.Buy, 50000m, 0.01m, TradeType.GridFill);
+
+        var callbackStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var callbackCompleted = false;
+
+        _sut.OnFillProcessed = async _ =>
+        {
+            callbackStarted.TrySetResult();
+            await allowCompletion.Task;
+            callbackCompleted = true;
+        };
+
+        var fill = CreateFill("order-1");
+
+        // Act
+        var processTask = _sut.ProcessFillAsync(fill);
+        await callbackStarted.Task;
+
+        // Assert
+        processTask.IsCompleted.Should().BeFalse();
+
+        allowCompletion.TrySetResult();
+        await processTask;
+
+        callbackCompleted.Should().BeTrue();
     }
 
     [TestMethod]

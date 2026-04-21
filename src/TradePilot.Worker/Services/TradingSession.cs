@@ -125,7 +125,7 @@ public sealed class TradingSession : IAsyncDisposable
         _fillProcessor = fillProcessor;
         _signerProvider = signerProvider;
         _stateRecoveryService = stateRecoveryService;
-        _orderTracker = orderTracker!;
+        _orderTracker = orderTracker ?? new InMemoryOrderTracker();
         _serviceScope = serviceScope;
         _healthProvider = healthProvider;
         _triggerOrderManager = triggerOrderManager;
@@ -163,7 +163,7 @@ public sealed class TradingSession : IAsyncDisposable
         }
 
         // Clear stale tracked orders from the singleton tracker
-        _orderTracker?.Clear();
+        _orderTracker.Clear();
 
         await _cts.CancelAsync();
 
@@ -499,9 +499,10 @@ public sealed class TradingSession : IAsyncDisposable
                         break;
                     }
 
-                    var backoffMs = (int)Math.Min(
+                    var baseBackoffMs = (int)Math.Min(
                         MaxBackoffMs,
                         InitialBackoffMs * Math.Pow(2, Math.Min(_retryCount - 1, 20)));
+                    var backoffMs = baseBackoffMs + Random.Shared.Next(0, baseBackoffMs / 4);
 
                     _logger.LogWarning(
                         "WebSocket disconnected. Reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
@@ -660,7 +661,7 @@ public sealed class TradingSession : IAsyncDisposable
         TradingPair pair,
         CancellationToken cancellationToken)
     {
-        var processedFillKeys = new HashSet<string>(StringComparer.Ordinal);
+        var processedFillKeys = new ProcessedFillKeyTracker();
         var knownOpenOrderIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using var timer = new PeriodicTimer(AccountPollInterval);
 
@@ -683,7 +684,7 @@ public sealed class TradingSession : IAsyncDisposable
 
     private async Task PollAccountStateAsync(
         TradingPair pair,
-        ISet<string> processedFillKeys,
+        ProcessedFillKeyTracker processedFillKeys,
         ISet<string> knownOpenOrderIds,
         CancellationToken cancellationToken)
     {
@@ -701,7 +702,7 @@ public sealed class TradingSession : IAsyncDisposable
             }
 
             var fillKey = BuildFillKey(fill);
-            if (!processedFillKeys.Add(fillKey))
+            if (!processedFillKeys.TryRegister(fillKey, DateTimeOffset.UtcNow))
             {
                 continue;
             }

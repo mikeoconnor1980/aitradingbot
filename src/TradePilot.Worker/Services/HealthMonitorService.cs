@@ -14,6 +14,7 @@ public sealed class HealthMonitorService : BackgroundService
 
     private readonly ITradingHealthProvider _healthProvider;
     private readonly ILogger<HealthMonitorService> _logger;
+    private int _healthyCheckCount;
 
     public HealthMonitorService(
         ITradingHealthProvider healthProvider,
@@ -48,6 +49,7 @@ public sealed class HealthMonitorService : BackgroundService
     {
         if (!snapshot.IsTradingSessionActive)
         {
+            _healthyCheckCount = 0;
             _logger.LogInformation(
                 "HEALTH: Idle — no active trading session. Uptime={Uptime:hh\\:mm\\:ss}",
                 snapshot.Uptime);
@@ -55,10 +57,12 @@ public sealed class HealthMonitorService : BackgroundService
         }
 
         var sessionUptime = snapshot.TradingSessionUptime ?? TimeSpan.Zero;
+        var hasHealthIssue = false;
 
         // WebSocket disconnected
         if (!snapshot.IsWebSocketConnected)
         {
+            hasHealthIssue = true;
             _logger.LogWarning(
                 "HEALTH: Market WebSocket is DISCONNECTED. SessionUptime={SessionUptime:hh\\:mm\\:ss}",
                 sessionUptime);
@@ -67,6 +71,7 @@ public sealed class HealthMonitorService : BackgroundService
         // No trades received ever (after startup grace period)
         if (snapshot.LastTradeReceived is null && sessionUptime > TradeStaleThreshold)
         {
+            hasHealthIssue = true;
             _logger.LogWarning(
                 "HEALTH: No trades received since session start ({SessionUptime:hh\\:mm\\:ss} ago).",
                 sessionUptime);
@@ -74,6 +79,7 @@ public sealed class HealthMonitorService : BackgroundService
         // Trades were received but have gone stale
         else if (snapshot.TimeSinceLastTrade > TradeStaleThreshold)
         {
+            hasHealthIssue = true;
             _logger.LogWarning(
                 "HEALTH: Trade stream appears stale. Last trade {TimeSince:hh\\:mm\\:ss} ago.",
                 snapshot.TimeSinceLastTrade.Value);
@@ -82,14 +88,20 @@ public sealed class HealthMonitorService : BackgroundService
         // Candles have gone stale (only warn if we've received at least one candle)
         if (snapshot.LastCandleClosed is not null && snapshot.TimeSinceLastCandle > CandleStaleThreshold)
         {
+            hasHealthIssue = true;
             _logger.LogWarning(
                 "HEALTH: No candle closed in {TimeSince:hh\\:mm\\:ss}. Expected within {Threshold}.",
                 snapshot.TimeSinceLastCandle.Value, CandleStaleThreshold);
         }
 
-        // Periodic healthy status (every 10 checks ~= every 10 minutes)
-        if (snapshot.IsWebSocketConnected
-            && (snapshot.TimeSinceLastTrade is null || snapshot.TimeSinceLastTrade <= TradeStaleThreshold))
+        if (hasHealthIssue)
+        {
+            _healthyCheckCount = 0;
+            return;
+        }
+
+        _healthyCheckCount++;
+        if (_healthyCheckCount % 10 == 0)
         {
             _logger.LogInformation(
                 "HEALTH: OK — Connected={Connected}, LastTrade={LastTrade}, LastCandle={LastCandle}, Uptime={Uptime:hh\\:mm\\:ss}",

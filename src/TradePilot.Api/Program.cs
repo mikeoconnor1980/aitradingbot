@@ -221,7 +221,7 @@ builder.Services.AddKeyedScoped<IExchangeHistoricalDataClient, TradePilot.Infras
 builder.Services.AddKeyedScoped<IExchangeHistoricalDataClient, TradePilot.Infrastructure.Binance.BinanceHistoricalDataClient>("Binance");
 builder.Services.AddKeyedSingleton<IExchangeCapabilities, TradePilot.Infrastructure.Hyperliquid.HyperliquidCapabilities>("Hyperliquid");
 builder.Services.AddKeyedSingleton<IExchangeCapabilities, TradePilot.Infrastructure.Binance.BinanceCapabilities>("Binance");
-builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Hyperliquid.HyperliquidAssetMapper>();
+builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Hyperliquid.HyperliquidExchangeSymbolMapper>();
 builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Binance.BinanceAssetMapper>();
 builder.Services.AddSingleton<IBinanceExchangeInfoCache, TradePilot.Infrastructure.Binance.BinanceExchangeInfoCache>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();

@@ -204,6 +204,27 @@ public sealed class LiveRiskEngine : IRiskEngine
         }
     }
 
+    public void Reset()
+    {
+        while (_recentLosses.TryDequeue(out _))
+        {
+        }
+
+        _positionRisks.Clear();
+        _circuitBreakerTripped = false;
+        _drawdownCircuitBreakerTripped = false;
+        _circuitBreakerTrippedAt = default;
+
+        lock (_lock)
+        {
+            _activeOrderCount = 0;
+            _accountEquity = 0m;
+            _drawdownScalingFactor = 1.0m;
+        }
+
+        _logger.LogInformation("RISK: Session state reset.");
+    }
+
     /// <summary>Manually reset the circuit breaker (e.g., after operator review).</summary>
     public void ResetCircuitBreaker()
     {

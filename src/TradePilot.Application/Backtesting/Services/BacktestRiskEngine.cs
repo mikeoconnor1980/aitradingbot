@@ -101,6 +101,17 @@ public sealed class BacktestRiskEngine : IRiskEngine
         _drawdownCircuitBreakerTripped = isHalted;
     }
 
+    public void Reset()
+    {
+        _positionRisks.Clear();
+        _accountEquity = 0m;
+        _highWaterMark = 0m;
+        _drawdownScalingFactor = 1.0m;
+        _drawdownCircuitBreakerTripped = false;
+        _heatBlockedSignalCount = 0;
+        _drawdownBlockedSignalCount = 0;
+    }
+
     public void RecordPositionOpened(string symbol, decimal riskUsd)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);

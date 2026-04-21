@@ -99,7 +99,7 @@ Kill-switch behaviour is controlled through `AgentCommandStore`, `AgentControlle
 | Area | Current State |
 |---|---|
 | Private keys | Never stored in the API; only the worker signs |
-| Agent authentication | Still lightweight; the current protocol is not yet a hardened mutual-auth channel |
+| Agent authentication | Bearer token shared-secret supported: when `Agent:SecretKey` is set, all heartbeat requests include `Authorization: Bearer {SecretKey}`. Full mutual-auth (signed commands, mTLS) is not yet implemented |
 | Command durability | In-memory only; API restart loses queued commands |
 | Delivery latency | Bounded by heartbeat polling, typically up to 5 seconds |
 | Update integrity | Installer downloads are SHA256-verified before apply |

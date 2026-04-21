@@ -100,6 +100,8 @@ builder.Services.AddHttpClient<IHyperliquidRestClient, HyperliquidRestClient>((s
             || (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
     });
 
+        // Per-attempt timeout: each HTTP request attempt is capped at 5 seconds.
+        // Retries can extend total operation time, which is intentional for transient failures.
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
 });
 
@@ -118,7 +120,7 @@ builder.Services.AddKeyedSingleton<IExchangeAccountClient>("Hyperliquid", (sp, _
 builder.Services.AddKeyedSingleton<IExchangeMarketMetadataProvider>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidMarketMetadataProvider>());
 builder.Services.AddKeyedSingleton<IExchangeHistoricalDataClient>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidHistoricalDataClient>());
 
-builder.Services.AddSingleton<IExchangeSymbolMapper, HyperliquidAssetMapper>();
+builder.Services.AddSingleton<IExchangeSymbolMapper, HyperliquidExchangeSymbolMapper>();
 builder.Services.AddSingleton<IExchangeSymbolMapper, BinanceAssetMapper>();
 builder.Services.AddSingleton<IExchangeCredentialAccessor, AgentExchangeCredentialAccessor>();
 builder.Services.AddTransient<WorkerBinanceSigningHandler>();
@@ -151,6 +153,8 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
             (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
     });
 
+    // Per-attempt timeout: each HTTP request attempt is capped at 5 seconds.
+    // Retries can extend total operation time, which is intentional for transient failures.
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
 });
 
@@ -176,6 +180,8 @@ builder.Services.AddHttpClient<IBinanceFuturesAuthClient, BinanceFuturesAuthClie
             (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
     });
 
+    // Per-attempt timeout: each HTTP request attempt is capped at 5 seconds.
+    // Retries can extend total operation time, which is intentional for transient failures.
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
 });
 
@@ -284,14 +290,17 @@ builder.Services.AddSingleton<ITradingHealthProvider>(sp => sp.GetRequiredServic
 builder.Services.AddHostedService<HealthMonitorService>();
 
 // ---------- Agent check-in (polls API for commands, manages trading sessions) ----------
-var agentConfig = builder.Configuration.GetSection(AgentOptions.SectionName).Get<AgentOptions>() ?? new AgentOptions();
-builder.Services.AddHttpClient(AgentCheckInService.HttpClientName, client =>
+builder.Services.AddHttpClient(AgentCheckInService.HttpClientName, (sp, client) =>
 {
-    client.BaseAddress = new Uri(agentConfig.ControlPlaneUrl);
-    client.Timeout = TimeSpan.FromSeconds(10);
+    var agentOptions = sp.GetRequiredService<IOptions<AgentOptions>>().Value;
+    AgentCheckInService.ConfigureControlPlaneHttpClient(client, agentOptions);
 });
 
 // ---------- Auto-update service ----------
+builder.Services.AddHttpClient(UpdateCheckerService.UpdateDownloadHttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(10);
+});
 builder.Services.AddSingleton<UpdateCheckerService>();
 builder.Services.AddSingleton<IUpdateNotifier>(sp => sp.GetRequiredService<UpdateCheckerService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<UpdateCheckerService>());

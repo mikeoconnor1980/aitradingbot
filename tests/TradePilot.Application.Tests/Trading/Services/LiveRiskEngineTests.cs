@@ -258,6 +258,26 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
+    public void GivenRiskEngineWithState_WhenReset_ThenAllStateCleared()
+    {
+        _sut.RecordLoss(600m);
+        _sut.RecordOrdersPlaced(4);
+        _sut.UpdatePortfolioState(12_500m);
+        _sut.UpdateDrawdownState(0.25m, isHalted: true);
+        _sut.RecordPositionOpened("BTC-PERP", 150m);
+
+        _sut.Reset();
+
+        _sut.GetRollingDailyLoss().Should().Be(0m);
+        _sut.ActiveOrderCount.Should().Be(0);
+        _sut.TrackedEquity.Should().Be(0m);
+        _sut.DrawdownScalingFactor.Should().Be(1.0m);
+        _sut.IsCircuitBreakerTripped.Should().BeFalse();
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
+        _sut.TrackedPositionCount.Should().Be(0);
+    }
+
+    [TestMethod]
     public void GivenPositionLifecycleUpdates_WhenCalled_ThenTracksPositions()
     {
         _sut.RecordPositionOpened("BTC-PERP", 100m);

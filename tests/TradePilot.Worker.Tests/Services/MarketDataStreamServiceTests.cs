@@ -260,6 +260,45 @@ public sealed class MarketDataStreamServiceTests
             Times.AtLeastOnce);
     }
 
+    [TestMethod]
+    public async Task GivenRunningService_WhenVolumeReseedIntervalElapsed_ThenReseedsFromRestAgain()
+    {
+        _restClientMock
+            .Setup(r => r.GetMarketInfoAsync("BTC-PERP", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MarketInfoDto
+            {
+                Asset = "BTC-PERP",
+                MidPrice = 95000m,
+                Volume24h = 1000000m,
+            });
+
+        SetupLongRunningWebSocket();
+
+        var service = CreateService();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+
+        try
+        {
+            await service.StartAsync(cts.Token);
+            await Task.Delay(700, cts.Token);
+
+            typeof(MarketDataStreamService)
+                .GetField("_lastVolumeReseed", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .SetValue(service, DateTimeOffset.UtcNow - TimeSpan.FromMinutes(6));
+
+            await Task.Delay(1200, cts.Token);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            await service.StopAsync(CancellationToken.None);
+        }
+
+        _restClientMock.Verify(
+            r => r.GetMarketInfoAsync("BTC-PERP", It.IsAny<CancellationToken>()),
+            Times.AtLeast(2));
+    }
+
     private MarketDataStreamService CreateService()
     {
         return new MarketDataStreamService(

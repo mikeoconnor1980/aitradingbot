@@ -12,7 +12,7 @@ public sealed class ExchangeAbstractionAdaptersTests
     [TestMethod]
     public void GivenHyperliquidSymbolMapper_WhenRoundTripped_ThenCanonicalPerpIsPreserved()
     {
-        IExchangeSymbolMapper mapper = new HyperliquidAssetMapper();
+        IExchangeSymbolMapper mapper = new HyperliquidExchangeSymbolMapper();
         var pair = TradingPair.Create("BTC", "USD", AssetType.Perp);
 
         var exchangeSymbol = mapper.ToExchangeSymbol(pair);

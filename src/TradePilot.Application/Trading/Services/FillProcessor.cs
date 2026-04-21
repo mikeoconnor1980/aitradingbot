@@ -24,7 +24,7 @@ public sealed class FillProcessor : IFillProcessor
     /// Optional callback invoked after a fill is processed.
     /// Used by TradingSession to update PositionState on the StrategyScheduler.
     /// </summary>
-    public Action<FillEventDto>? OnFillProcessed { get; set; }
+    public Func<FillEventDto, Task>? OnFillProcessed { get; set; }
 
     public FillProcessor(
         IOrderTracker orderTracker,
@@ -64,7 +64,11 @@ public sealed class FillProcessor : IFillProcessor
                 _riskEngine?.RecordLoss(Math.Abs(fill.ClosedPnl));
             }
 
-            OnFillProcessed?.Invoke(fill);
+            var onFillProcessed = OnFillProcessed;
+            if (onFillProcessed is not null)
+            {
+                await onFillProcessed(fill);
+            }
             return;
         }
 
@@ -109,7 +113,11 @@ public sealed class FillProcessor : IFillProcessor
         }
 
         // Notify TradingSession to update PositionState
-        OnFillProcessed?.Invoke(fill);
+        var processedCallback = OnFillProcessed;
+        if (processedCallback is not null)
+        {
+            await processedCallback(fill);
+        }
 
         return;
     }

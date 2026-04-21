@@ -66,7 +66,7 @@ flowchart LR
 | `IExchangeHistoricalDataClient` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidHistoricalDataClient.cs` | Wraps Hyperliquid candle snapshot reads |
 | `IExchangeAccountClient` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAccountAdapter.cs` | Wraps `IHyperliquidAccountService` |
 | `IExchangeCapabilities` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidCapabilities.cs` | Declares current Hyperliquid support surface |
-| `IExchangeSymbolMapper` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` | Now both helper mapper and injectable seam implementation |
+| `IExchangeSymbolMapper` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidExchangeSymbolMapper.cs` | DI-injectable adapter that delegates to the static `HyperliquidAssetMapper` utility class |
 
 ### Binance
 
