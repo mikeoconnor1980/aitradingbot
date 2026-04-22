@@ -16,7 +16,7 @@ public sealed class HyperliquidHistoricalDataClient : IExchangeHistoricalDataCli
 
     public Exchange Exchange => Exchange.Hyperliquid;
 
-    public Task<IReadOnlyList<CandleSnapshotDto>> GetCandleSnapshotsAsync(
+    public async Task<IReadOnlyList<CandleSnapshotDto>> GetCandleSnapshotsAsync(
         TradingPair pair,
         string timeframe,
         long startTime,
@@ -25,8 +25,8 @@ public sealed class HyperliquidHistoricalDataClient : IExchangeHistoricalDataCli
     {
         ArgumentNullException.ThrowIfNull(pair);
 
-        return _restClient.GetCandleSnapshotsAsync(pair.Base, timeframe, startTime, endTime, cancellationToken)
-            .ContinueWith(static task => (IReadOnlyList<CandleSnapshotDto>)task.Result, cancellationToken);
+        var result = await _restClient.GetCandleSnapshotsAsync(pair.Base, timeframe, startTime, endTime, cancellationToken);
+        return result;
     }
 
     public Task<IReadOnlyList<FundingRateDto>> GetFundingRatesAsync(
@@ -37,6 +37,6 @@ public sealed class HyperliquidHistoricalDataClient : IExchangeHistoricalDataCli
     {
         ArgumentNullException.ThrowIfNull(pair);
 
-        throw new NotSupportedException("Hyperliquid funding-rate history is not implemented behind IExchangeHistoricalDataClient.");
+        return Task.FromResult<IReadOnlyList<FundingRateDto>>(Array.Empty<FundingRateDto>());
     }
 }

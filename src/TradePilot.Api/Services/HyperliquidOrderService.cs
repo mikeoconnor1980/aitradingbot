@@ -1,7 +1,9 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 using TradePilot.Api.Models;
+using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Infrastructure.Hyperliquid;
@@ -17,6 +19,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
     private readonly IHyperliquidAccountService _accountService;
     private readonly IHyperliquidAssetMetadataCache _metadataCache;
     private readonly INetworkProvider _networkProvider;
+    private readonly HyperliquidOptions _options;
     private readonly ILogger<HyperliquidOrderService> _logger;
 
     public HyperliquidOrderService(
@@ -26,6 +29,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         IHyperliquidAccountService accountService,
         IHyperliquidAssetMetadataCache metadataCache,
         INetworkProvider networkProvider,
+        IOptions<HyperliquidOptions> options,
         ILogger<HyperliquidOrderService> logger)
     {
         _restClient = restClient;
@@ -34,6 +38,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         _accountService = accountService;
         _metadataCache = metadataCache;
         _networkProvider = networkProvider;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -54,13 +59,15 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         if (isMarket)
         {
             var midPrice = await GetMidPriceAsync(coin, cancellationToken);
-            // 5% slippage for market orders: buy higher, sell lower
-            var slippagePrice = isBuy ? midPrice * 1.05m : midPrice * 0.95m;
+            var slippageFactor = _options.MarketOrderSlippageBps / 10_000m;
+            var slippagePrice = isBuy
+                ? midPrice * (1m + slippageFactor)
+                : midPrice * (1m - slippageFactor);
             price = RoundToSignificantFigures(slippagePrice, 5);
             tif = "Ioc";
             _logger.LogInformation(
-                "Market order: Coin={Coin}, MidPrice={MidPrice}, SlippagePrice={SlippagePrice}, IsBuy={IsBuy}",
-                coin, midPrice, price, isBuy);
+                "Market order: Coin={Coin}, MidPrice={MidPrice}, SlippagePrice={SlippagePrice}, SlippageBps={SlippageBps}, IsBuy={IsBuy}",
+                coin, midPrice, price, _options.MarketOrderSlippageBps, isBuy);
         }
         else
         {
@@ -280,8 +287,8 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                     {
                         AssetIndex = assetIndex,
                         IsBuy = isBuy,
-                        Price = ToWireDecimal(price),
-                        Size = ToWireDecimal(size),
+                        Price = HyperliquidFormatting.ToWireDecimal(price),
+                        Size = HyperliquidFormatting.ToWireDecimal(size),
                         ReduceOnly = false,
                         OrderType = new HyperliquidOrderType
                         {
@@ -329,14 +336,14 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
                     {
                         AssetIndex = assetIndex,
                         IsBuy = isBuy,
-                        Price = ToWireDecimal(triggerPrice),
-                        Size = ToWireDecimal(size),
+                        Price = HyperliquidFormatting.ToWireDecimal(triggerPrice),
+                        Size = HyperliquidFormatting.ToWireDecimal(size),
                         ReduceOnly = true,
                         OrderType = new HyperliquidOrderType
                         {
                             Trigger = new HyperliquidTriggerParams
                             {
-                                TriggerPx = ToWireDecimal(triggerPrice),
+                                TriggerPx = HyperliquidFormatting.ToWireDecimal(triggerPrice),
                                 IsMarket = true,
                                 Tpsl = tpslType,
                             },
@@ -505,7 +512,7 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
 
         if (warnings.Count > 0)
         {
-            response.Detail = string.Join("; ", warnings);
+            response.Warnings.AddRange(warnings);
         }
     }
 
@@ -556,14 +563,6 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
         }
 
         return asset;
-    }
-
-    private static string ToWireDecimal(decimal value)
-    {
-        var formatted = value.ToString("0.############################", CultureInfo.InvariantCulture);
-        return formatted.Contains('.')
-            ? formatted.TrimEnd('0').TrimEnd('.')
-            : formatted;
     }
 
     private static PlaceOrderResponse MapExchangeResponse(HyperliquidExchangeResponse exchangeResponse)
@@ -681,17 +680,56 @@ public sealed class HyperliquidOrderService : IHyperliquidOrderService
     }
 
     /// <summary>
-    /// Rounds a decimal to the specified number of significant figures.
+    /// Rounds a decimal to the specified number of significant figures using pure decimal math.
     /// Hyperliquid requires prices with max 5 significant figures.
     /// </summary>
     private static decimal RoundToSignificantFigures(decimal value, int significantFigures)
     {
-        if (value == 0)
+        if (value == 0m)
         {
-            return 0;
+            return 0m;
         }
 
-        var scale = (decimal)Math.Pow(10, Math.Floor(Math.Log10((double)Math.Abs(value))) + 1 - significantFigures);
-        return scale * Math.Round(value / scale);
+        var abs = Math.Abs(value);
+        var digits = 0;
+        var test = abs;
+
+        if (test >= 1m)
+        {
+            while (test >= 1m)
+            {
+                test /= 10m;
+                digits++;
+            }
+        }
+        else
+        {
+            while (test < 0.1m)
+            {
+                test *= 10m;
+                digits--;
+            }
+        }
+
+        var decimalPlaces = significantFigures - digits;
+        if (decimalPlaces >= 0)
+        {
+            return Math.Round(value, decimalPlaces, MidpointRounding.AwayFromZero);
+        }
+
+        var scale = DecimalPowerOf10(-decimalPlaces);
+        return Math.Round(value / scale, 0, MidpointRounding.AwayFromZero) * scale;
+    }
+
+    private static decimal DecimalPowerOf10(int exponent)
+    {
+        var result = 1m;
+
+        for (var i = 0; i < exponent; i++)
+        {
+            result *= 10m;
+        }
+
+        return result;
     }
 }

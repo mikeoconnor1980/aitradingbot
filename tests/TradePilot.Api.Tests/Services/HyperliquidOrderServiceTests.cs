@@ -1,7 +1,10 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Globalization;
 using System.Text.Json;
 using TradePilot.Api.Models;
 using TradePilot.Api.Services;
+using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
@@ -19,6 +22,7 @@ public sealed class HyperliquidOrderServiceTests
     private Mock<IHyperliquidAssetMetadataCache> _metadataCacheMock = default!;
     private Mock<ILogger<HyperliquidOrderService>> _loggerMock = default!;
     private Mock<INetworkProvider> _networkProviderMock = default!;
+    private IOptions<HyperliquidOptions> _options = default!;
     private HyperliquidOrderService _sut = default!;
 
     [TestInitialize]
@@ -31,6 +35,7 @@ public sealed class HyperliquidOrderServiceTests
         _metadataCacheMock = new Mock<IHyperliquidAssetMetadataCache>();
         _loggerMock = new Mock<ILogger<HyperliquidOrderService>>();
         _networkProviderMock = new Mock<INetworkProvider>();
+        _options = Options.Create(new HyperliquidOptions());
 
         _networkProviderMock
             .Setup(n => n.GetNetworkAsync(It.IsAny<CancellationToken>()))
@@ -55,10 +60,70 @@ public sealed class HyperliquidOrderServiceTests
             _restClientMock.Object,
             _signerMock.Object,
             _nonceProviderMock.Object,
-                _accountServiceMock.Object,
+            _accountServiceMock.Object,
             _metadataCacheMock.Object,
             _networkProviderMock.Object,
+            _options,
             _loggerMock.Object);
+    }
+
+    [TestMethod]
+    public async Task GivenConfiguredMarketOrderSlippage_WhenPlaceOrderAsync_ThenUsesConfiguredBasisPoints()
+    {
+        _options = Options.Create(new HyperliquidOptions
+        {
+            MarketOrderSlippageBps = 100,
+        });
+
+        _sut = new HyperliquidOrderService(
+            _restClientMock.Object,
+            _signerMock.Object,
+            _nonceProviderMock.Object,
+            _accountServiceMock.Object,
+            _metadataCacheMock.Object,
+            _networkProviderMock.Object,
+            _options,
+            _loggerMock.Object);
+
+        var request = new PlaceOrderRequest
+        {
+            Asset = "BTC-PERP",
+            Side = "buy",
+            OrderType = "market",
+            Size = 0.001m,
+        };
+
+        _restClientMock
+            .Setup(r => r.PostInfoAsync<JsonElement>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(JsonDocument.Parse("""{ "BTC": "1000" }""").RootElement.Clone());
+
+        _restClientMock
+            .Setup(r => r.PostExchangeAsync<HyperliquidExchangeResponse>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HyperliquidExchangeResponse
+            {
+                Status = "ok",
+                Response = new HyperliquidExchangeResponseData
+                {
+                    Type = "order",
+                    Data = new HyperliquidOrderResponseData
+                    {
+                        Statuses =
+                        [
+                            new HyperliquidOrderStatus { Resting = new HyperliquidRestingOrder { Oid = 12345 } },
+                        ],
+                    },
+                },
+            });
+
+        await _sut.PlaceOrderAsync(request);
+
+        _restClientMock.Verify(
+            r => r.PostExchangeAsync<HyperliquidExchangeResponse>(
+                It.Is<object>(payload =>
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("\"p\":\"1010\"", StringComparison.OrdinalIgnoreCase) &&
+                    JsonSerializer.Serialize(payload, (JsonSerializerOptions?)null).Contains("\"tif\":\"Ioc\"", StringComparison.OrdinalIgnoreCase)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [TestMethod]
@@ -141,7 +206,7 @@ public sealed class HyperliquidOrderServiceTests
     }
 
     [TestMethod]
-    public async Task GivenSuccessfulOrderAndRejectedStopLoss_WhenPlaceOrderAsync_ThenReturnsSuccessWithWarningDetail()
+    public async Task GivenSuccessfulOrderAndRejectedStopLoss_WhenPlaceOrderAsync_ThenReturnsSuccessWithWarning()
     {
         var request = new PlaceOrderRequest
         {
@@ -188,7 +253,28 @@ public sealed class HyperliquidOrderServiceTests
         result.Success.Should().BeTrue();
         result.OrderId.Should().Be("12345");
         result.Status.Should().Be("open");
-        result.Detail.Should().Be("Stop loss trigger order failed: Insufficient margin");
+        result.Detail.Should().BeNull();
+        result.Warnings.Should().ContainSingle("Stop loss trigger order failed: Insufficient margin");
+    }
+
+    [TestMethod]
+    [DataRow("100000.123", 5, "100000")]
+    [DataRow("0.00001234", 5, "0.00001234")]
+    [DataRow("3456.789", 5, "3456.8")]
+    [DataRow("0", 5, "0")]
+    public void GivenValue_WhenRoundToSignificantFigures_ThenExpectedResult(string input, int significantFigures, string expected)
+    {
+        var method = typeof(HyperliquidOrderService).GetMethod(
+            "RoundToSignificantFigures",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        method.Should().NotBeNull();
+
+        var result = (decimal?)method!.Invoke(
+            null,
+            [decimal.Parse(input, CultureInfo.InvariantCulture), significantFigures]);
+
+        result.Should().Be(decimal.Parse(expected, CultureInfo.InvariantCulture));
     }
 
     [TestMethod]

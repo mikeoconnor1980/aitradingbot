@@ -15,7 +15,8 @@ public sealed class HyperliquidCapabilities : IExchangeCapabilities
         SupportsUserEventStream: true,
         SupportsPerUserNetworkRouting: true,
         SupportedOrderTypes: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Market", "Limit", "Trigger" },
-        SupportedTimeframes: new HashSet<string>(HyperliquidAssetMapper.GetSupportedTimeframes(), StringComparer.OrdinalIgnoreCase));
+        SupportedTimeframes: new HashSet<string>(HyperliquidAssetMapper.GetSupportedTimeframes(), StringComparer.Ordinal),
+        SupportsFundingRateHistory: false);
 
     public Exchange Exchange => Exchange.Hyperliquid;
 

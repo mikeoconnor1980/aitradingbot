@@ -21,7 +21,8 @@ public sealed class BinanceCapabilities : IExchangeCapabilities
         SupportsUserEventStream: false,
         SupportsPerUserNetworkRouting: false,
         SupportedOrderTypes: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Market", "Limit", "Trigger" },
-        SupportedTimeframes: new HashSet<string>(BinanceAssetMapper.ValidIntervals, StringComparer.OrdinalIgnoreCase));
+        SupportedTimeframes: new HashSet<string>(BinanceAssetMapper.ValidIntervals, StringComparer.OrdinalIgnoreCase),
+        SupportsFundingRateHistory: true);
 
     public Exchange Exchange => Exchange.Binance;
 

@@ -46,6 +46,24 @@ public sealed class ExchangeAbstractionAdaptersTests
     }
 
     [TestMethod]
+    public void GivenHyperliquidCapabilities_WhenCapabilitySetRead_ThenExpandedTimeframesExposed()
+    {
+        IExchangeCapabilities capabilities = new HyperliquidCapabilities();
+
+        capabilities.CapabilitySet.SupportedTimeframes.Should()
+            .BeEquivalentTo(HyperliquidAssetMapper.GetSupportedTimeframes());
+    }
+
+    [TestMethod]
+    public void GivenHyperliquidSymbolMapper_WhenPerpPairHasWellFormedBase_ThenCanMap()
+    {
+        IExchangeSymbolMapper mapper = new HyperliquidExchangeSymbolMapper();
+        var pair = TradingPair.Create("XYZ:TSLA", "USD", AssetType.Perp);
+
+        mapper.CanMap(pair).Should().BeTrue();
+    }
+
+    [TestMethod]
     public async Task GivenHyperliquidMetadataProvider_WhenMetaContainsLeverage_ThenReturnsValue()
     {
         var restClient = new Mock<IHyperliquidRestClient>();

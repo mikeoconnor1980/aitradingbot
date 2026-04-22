@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Services;
@@ -10,7 +9,7 @@ namespace TradePilot.Infrastructure.Services;
 public sealed class HyperliquidAccountService : IHyperliquidAccountService
 {
     private readonly IHyperliquidRestClient _restClient;
-    private readonly IHyperliquidSigner? _signer;
+    private readonly IHyperliquidSigner _signer;
     private readonly ILogger<HyperliquidAccountService> _logger;
 
     public HyperliquidAccountService(
@@ -28,7 +27,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         if (!string.IsNullOrWhiteSpace(walletAddress))
             return walletAddress;
 
-        return _signer?.WalletAddress
+        return _signer.WalletAddress
             ?? throw new InvalidOperationException("No wallet address provided and no signer configured.");
     }
 
@@ -130,8 +129,8 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
 
                 if (!string.IsNullOrEmpty(coin))
                 {
-                    result.MarkPrices[coin] = ParseDecimal(GetPropertyOrDefault(ctxsArray[i], "markPx"));
-                    result.FundingRates[coin] = ParseDecimal(GetPropertyOrDefault(ctxsArray[i], "funding"));
+                    result.MarkPrices[coin] = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(ctxsArray[i], "markPx"));
+                    result.FundingRates[coin] = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(ctxsArray[i], "funding"));
                 }
             }
         }
@@ -155,12 +154,12 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
 
     private static AccountSummaryDto MapToAccountSummary(JsonElement response)
     {
-        var equity = ParseDecimal(GetPropertyOrDefault(
+        var equity = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(
             GetPropertyOrDefault(response, "marginSummary"),
             "accountValue"));
 
-        var availableMargin = ParseDecimal(GetPropertyOrDefault(response, "withdrawable"));
-        var maintenanceMargin = ParseDecimal(GetPropertyOrDefault(response, "crossMaintenanceMarginUsed"));
+        var availableMargin = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(response, "withdrawable"));
+        var maintenanceMargin = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(response, "crossMaintenanceMarginUsed"));
 
         var unrealisedPnl = 0m;
         if (TryGetProperty(response, "assetPositions", out var assetPositions) &&
@@ -169,7 +168,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             foreach (var assetPosition in assetPositions.EnumerateArray())
             {
                 var position = UnwrapPosition(assetPosition);
-                unrealisedPnl += ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl"));
+                unrealisedPnl += HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl"));
             }
         }
 
@@ -204,11 +203,11 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             var position = UnwrapPosition(assetPosition);
 
             var coin = GetString(GetPropertyOrDefault(position, "coin"));
-            var size = ParseDecimal(GetPropertyOrDefault(position, "szi"));
-            var entryPrice = ParseDecimal(GetPropertyOrDefault(position, "entryPx"));
-            var markPrice = ParseDecimal(GetPropertyOrDefault(position, "markPx"));
-            var pnlPercent = ParseDecimal(GetPropertyOrDefault(position, "returnOnEquity"));
-            var marginUsed = ParseDecimal(GetPropertyOrDefault(position, "marginUsed"));
+            var size = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "szi"));
+            var entryPrice = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "entryPx"));
+            var markPrice = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "markPx"));
+            var pnlPercent = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "returnOnEquity"));
+            var marginUsed = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "marginUsed"));
 
             pnlPercent *= 100m;
 
@@ -233,9 +232,9 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
                 Side = size >= 0m ? "Long" : "Short",
                 EntryPrice = entryPrice,
                 MarkPrice = markPrice,
-                UnrealisedPnl = ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl")),
+                UnrealisedPnl = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "unrealizedPnl")),
                 UnrealisedPnlPercent = pnlPercent,
-                LiquidationPrice = ParseDecimal(GetPropertyOrDefault(position, "liquidationPx")),
+                LiquidationPrice = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(position, "liquidationPx")),
                 Leverage = leverage,
                 MarginMode = marginMode,
                 MarginUsed = marginUsed,
@@ -262,8 +261,8 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
                 continue;
             }
 
-            var size = ParseDecimal(GetPropertyOrDefault(order, "sz"));
-            var price = ParseDecimal(GetPropertyOrDefault(order, "limitPx"));
+            var size = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(order, "sz"));
+            var price = HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(order, "limitPx"));
             var orderType = GetOrderType(order);
             decimal? triggerPrice = null;
             string? tpslType = null;
@@ -276,7 +275,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             {
                 if (TryGetProperty(triggerElement, "triggerPx", out var triggerPriceElement))
                 {
-                    triggerPrice = ParseDecimal(triggerPriceElement);
+                    triggerPrice = HyperliquidFormatting.ParseDecimal(triggerPriceElement);
                 }
 
                 if (TryGetProperty(triggerElement, "tpsl", out var tpslElement))
@@ -305,7 +304,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
             {
                 OrderId = GetString(GetPropertyOrDefault(order, "oid")),
                 Asset = GetString(GetPropertyOrDefault(order, "coin")),
-                Side = MapOrderSide(GetString(GetPropertyOrDefault(order, "side"))),
+                Side = HyperliquidFormatting.MapOrderSide(GetString(GetPropertyOrDefault(order, "side"))),
                 Price = price,
                 Size = size,
                 OrderType = orderType,
@@ -420,7 +419,7 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         if (TryGetProperty(assetPosition, "leverage", out var leverageObj) &&
             leverageObj.ValueKind == JsonValueKind.Object)
         {
-            var value = (int)ParseDecimal(GetPropertyOrDefault(leverageObj, "value"));
+            var value = (int)HyperliquidFormatting.ParseDecimal(GetPropertyOrDefault(leverageObj, "value"));
             var type = GetString(GetPropertyOrDefault(leverageObj, "type"));
             return (value, type);
         }
@@ -461,16 +460,6 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
         return string.Empty;
     }
 
-    private static string MapOrderSide(string side)
-    {
-        return side.ToUpperInvariant() switch
-        {
-            "B" => "Buy",
-            "A" => "Sell",
-            _ => side,
-        };
-    }
-
     private static JsonElement GetPropertyOrDefault(JsonElement element, string propertyName)
     {
         return TryGetProperty(element, propertyName, out var value)
@@ -487,25 +476,6 @@ public sealed class HyperliquidAccountService : IHyperliquidAccountService
 
         value = default;
         return false;
-    }
-
-    private static decimal ParseDecimal(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.Number)
-        {
-            return element.GetDecimal();
-        }
-
-        if (element.ValueKind == JsonValueKind.String)
-        {
-            var text = element.GetString();
-            if (decimal.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-            {
-                return value;
-            }
-        }
-
-        return 0m;
     }
 
     private static string GetString(JsonElement element)

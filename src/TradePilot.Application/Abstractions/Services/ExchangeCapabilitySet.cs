@@ -10,4 +10,5 @@ public sealed record ExchangeCapabilitySet(
     bool SupportsUserEventStream,
     bool SupportsPerUserNetworkRouting,
     IReadOnlySet<string> SupportedOrderTypes,
-    IReadOnlySet<string> SupportedTimeframes);
+    IReadOnlySet<string> SupportedTimeframes,
+    bool SupportsFundingRateHistory = false);

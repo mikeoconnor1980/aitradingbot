@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -204,8 +203,8 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             throw new HttpRequestException($"Unable to deserialize asset context for '{asset}'.");
         }
 
-        var midPrice = ParseDecimal(ctx.MidPx);
-        var prevDayPrice = ParseDecimal(ctx.PrevDayPx);
+        var midPrice = HyperliquidFormatting.ParseDecimal(ctx.MidPx);
+        var prevDayPrice = HyperliquidFormatting.ParseDecimal(ctx.PrevDayPx);
         var priceChangePercent = prevDayPrice == 0m
             ? 0m
             : ((midPrice - prevDayPrice) / prevDayPrice) * 100m;
@@ -214,11 +213,11 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
         {
             Asset = asset,
             MidPrice = midPrice,
-            MarkPrice = ParseDecimal(ctx.MarkPx),
-            IndexPrice = ParseDecimal(ctx.OraclePx),
-            FundingRate = ParseDecimal(ctx.Funding),
-            Volume24h = ParseDecimal(ctx.DayNtlVlm),
-            OpenInterest = ParseDecimal(ctx.OpenInterest),
+            MarkPrice = HyperliquidFormatting.ParseDecimal(ctx.MarkPx),
+            IndexPrice = HyperliquidFormatting.ParseDecimal(ctx.OraclePx),
+            FundingRate = HyperliquidFormatting.ParseDecimal(ctx.Funding),
+            Volume24h = HyperliquidFormatting.ParseDecimal(ctx.DayNtlVlm),
+            OpenInterest = HyperliquidFormatting.ParseDecimal(ctx.OpenInterest),
             PriceChange24hPercent = Math.Round(priceChangePercent, 2),
         };
     }
@@ -253,11 +252,11 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             .Select(c => new CandleDto
             {
                 Timestamp = c.OpenTime,
-                Open = ParseDecimal(c.Open),
-                High = ParseDecimal(c.High),
-                Low = ParseDecimal(c.Low),
-                Close = ParseDecimal(c.Close),
-                Volume = ParseDecimal(c.Volume),
+                Open = HyperliquidFormatting.ParseDecimal(c.Open),
+                High = HyperliquidFormatting.ParseDecimal(c.High),
+                Low = HyperliquidFormatting.ParseDecimal(c.Low),
+                Close = HyperliquidFormatting.ParseDecimal(c.Close),
+                Volume = HyperliquidFormatting.ParseDecimal(c.Volume),
             })
             .OrderByDescending(c => c.Timestamp)
             .Take(500)
@@ -292,11 +291,11 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             .Select(c => new CandleSnapshotDto
             {
                 Timestamp = c.OpenTime,
-                Open = ParseDecimal(c.Open),
-                High = ParseDecimal(c.High),
-                Low = ParseDecimal(c.Low),
-                Close = ParseDecimal(c.Close),
-                Volume = ParseDecimal(c.Volume),
+                Open = HyperliquidFormatting.ParseDecimal(c.Open),
+                High = HyperliquidFormatting.ParseDecimal(c.High),
+                Low = HyperliquidFormatting.ParseDecimal(c.Low),
+                Close = HyperliquidFormatting.ParseDecimal(c.Close),
+                Volume = HyperliquidFormatting.ParseDecimal(c.Volume),
                 NumTrades = c.NumTrades,
             })
             .ToList();
@@ -318,35 +317,15 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
             {
                 Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(f.TimestampMs).UtcDateTime,
                 Asset = f.Coin,
-                Side = MapOrderSide(f.Side),
+                Side = HyperliquidFormatting.MapOrderSide(f.Side),
                 Direction = f.Direction,
-                Size = ParseDecimal(f.Size),
-                Price = ParseDecimal(f.Price),
-                Fee = ParseDecimal(f.Fee),
-                ClosedPnl = ParseDecimal(f.ClosedPnl),
+                Size = HyperliquidFormatting.ParseDecimal(f.Size),
+                Price = HyperliquidFormatting.ParseDecimal(f.Price),
+                Fee = HyperliquidFormatting.ParseDecimal(f.Fee),
+                ClosedPnl = HyperliquidFormatting.ParseDecimal(f.ClosedPnl),
                 OrderId = f.OrderId.ToString()
             })
             .OrderByDescending(f => f.Timestamp)
             .ToList();
-    }
-
-    private static string MapOrderSide(string side)
-    {
-        return side.ToUpperInvariant() switch
-        {
-            "B" => "Buy",
-            "A" => "Sell",
-            _ => side,
-        };
-    }
-
-    private static decimal ParseDecimal(string value)
-    {
-        if (decimal.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-        {
-            return parsed;
-        }
-
-        throw new FormatException($"Unable to parse Hyperliquid decimal value: '{value}'");
     }
 }
