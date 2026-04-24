@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
@@ -32,7 +31,6 @@ public sealed class InterpretStrategyTests : BaseControllerTests
 
     protected override void ConfigureTestServices(IServiceCollection services)
     {
-        services.RemoveAll<IHostedService>();
         services.RemoveAll<ILlmClient>();
 
         _llmClientMock = new Mock<ILlmClient>();

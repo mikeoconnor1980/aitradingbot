@@ -1,7 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Models;
 using TradePilot.Api.Tests.Infrastructure;
 
@@ -17,11 +14,6 @@ public sealed class ReferenceDataControllerTests : BaseControllerTests
         builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
         builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
         builder.UseSetting("Hyperliquid:Network", "testnet");
-    }
-
-    protected override void ConfigureTestServices(IServiceCollection services)
-    {
-        services.RemoveAll<IHostedService>();
     }
 
     [TestMethod]

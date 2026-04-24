@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using TradePilot.Persistence;
 
@@ -75,6 +76,9 @@ public abstract class BaseControllerTests
                             .UseInMemoryDatabase(_testDatabaseName, DatabaseRoot)
                             .UseInternalServiceProvider(efServiceProvider)
                             .Options);
+
+                    // Suppress all background services so tests don't make real HTTP calls
+                    services.RemoveAll<IHostedService>();
 
                     ConfigureTestServices(services);
                 });

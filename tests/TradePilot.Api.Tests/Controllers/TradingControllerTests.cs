@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Controllers;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Agent.Models;
@@ -34,8 +33,6 @@ public sealed class TradingControllerTests : BaseControllerTests
 
     protected override void ConfigureTestServices(IServiceCollection services)
     {
-        services.RemoveAll<IHostedService>();
-
         var store = new AgentCommandStore();
         store.ProcessHeartbeat(new AgentHeartbeat
         {
