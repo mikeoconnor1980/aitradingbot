@@ -46,6 +46,12 @@ public sealed class CandlesController : ApiController
                 $"Invalid Hyperliquid symbol '{request.Symbol}'. Use an alphanumeric asset name or a HIP-3 asset identifier such as 'XYZ:TSLA'.");
         }
 
+        if (!HyperliquidAssetMapper.GetSupportedCoins().Contains(coin, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new DomainException(
+                $"Unknown symbol '{request.Symbol}'. Supported: {string.Join(", ", HyperliquidAssetMapper.GetSupportedCoins())}");
+        }
+
         foreach (var interval in request.Intervals)
         {
             if (!HyperliquidAssetMapper.IsValidTimeframe(interval))
