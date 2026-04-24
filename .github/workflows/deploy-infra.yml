@@ -54,7 +54,7 @@ jobs:
             jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
             llmApiKey=${{ secrets.LLM_API_KEY }}
             corsAllowedOrigin=${{ secrets.SWA_URL }}
-            registryUsername=${{ secrets.GHCR_USERNAME }}
+            registryUsername=${{ github.actor }}
             registryPassword=${{ secrets.GHCR_PAT }}
           failOnStdErr: false
 

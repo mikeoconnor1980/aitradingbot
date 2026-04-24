@@ -84,9 +84,6 @@ module containerAppEnv 'modules/container-app-environment.bicep' = {
 }
 
 // Reference the deployed storage account to build connection string without exposing keys in module outputs
-resource storageAccountRef 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  name: storage.outputs.storageAccountName
-}
 
 module containerApp 'modules/container-app.bicep' = {
   name: 'container-app'
@@ -102,7 +99,7 @@ module containerApp 'modules/container-app.bicep' = {
     corsAllowedOrigin: corsAllowedOrigin
     registryUsername: registryUsername
     registryPassword: registryPassword
-    installerBlobConnectionString: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountRef.name};AccountKey=${storageAccountRef.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+    installerBlobConnectionString: storage.outputs.connectionString
     installerBlobContainerName: storage.outputs.containerName
   }
 }
