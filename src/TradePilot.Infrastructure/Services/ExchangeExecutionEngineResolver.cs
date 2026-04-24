@@ -14,4 +14,11 @@ public sealed class ExchangeExecutionEngineResolver : IExecutionEngineResolver
 
     public IExecutionEngine Resolve(Exchange exchange)
         => _serviceProvider.GetRequiredKeyedService<IExecutionEngine>(exchange.ToString());
+
+    public IExecutionEngine Resolve(Exchange exchange, AssetType assetType)
+    {
+        var compositeKey = $"{exchange}:{assetType}";
+        var engine = _serviceProvider.GetKeyedService<IExecutionEngine>(compositeKey);
+        return engine ?? _serviceProvider.GetRequiredKeyedService<IExecutionEngine>(exchange.ToString());
+    }
 }

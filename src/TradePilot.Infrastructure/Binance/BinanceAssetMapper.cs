@@ -21,6 +21,18 @@ public sealed class BinanceAssetMapper : IExchangeSymbolMapper
         ["OP"] = "OPUSDT",
     };
 
+    private static readonly Dictionary<string, string> SymbolToSpotSymbol = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["BTC"] = "BTCUSDT",
+        ["ETH"] = "ETHUSDT",
+        ["SOL"] = "SOLUSDT",
+        ["DOGE"] = "DOGEUSDT",
+        ["AVAX"] = "AVAXUSDT",
+        ["ARB"] = "ARBUSDT",
+        ["LINK"] = "LINKUSDT",
+        ["OP"] = "OPUSDT",
+    };
+
     private static readonly Dictionary<string, long> IntervalToMs = new(StringComparer.Ordinal)
     {
         ["5m"] = 300_000L,
@@ -80,6 +92,35 @@ public sealed class BinanceAssetMapper : IExchangeSymbolMapper
 
         throw new DomainException(
             $"Unsupported Binance symbol: '{displaySymbol}'. Valid symbols: {string.Join(", ", SymbolToFuturesSymbol.Keys)}");
+    }
+
+    public static string ToSpotSymbol(string displaySymbol)
+    {
+        var normalizedSymbol = NormalizeSymbol(displaySymbol);
+
+        if (SymbolToSpotSymbol.TryGetValue(normalizedSymbol, out var spotSymbol))
+        {
+            return spotSymbol;
+        }
+
+        throw new DomainException(
+            $"Unsupported Binance Spot symbol: '{displaySymbol}'. Valid symbols: {string.Join(", ", SymbolToSpotSymbol.Keys)}");
+    }
+
+    public static TradingPair FromSpotExchangeSymbol(string exchangeSymbol)
+    {
+        var normalized = NormalizeSymbol(exchangeSymbol);
+        if (normalized.EndsWith("USDT", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^4];
+        }
+
+        if (normalized.EndsWith("USD", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^3];
+        }
+
+        return TradingPair.Create(normalized, "USD", AssetType.Spot);
     }
 
     public static bool IsValidSymbol(string displaySymbol)

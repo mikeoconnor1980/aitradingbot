@@ -62,6 +62,11 @@ builder.Services.AddOptions<BinanceTradingOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<BinanceSpotTradingOptions>()
+    .Bind(builder.Configuration.GetSection(BinanceSpotTradingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // ---------- Agent configuration ----------
 builder.Services.AddOptions<AgentOptions>()
     .Bind(builder.Configuration.GetSection(AgentOptions.SectionName));
@@ -128,6 +133,7 @@ builder.Services.AddSingleton<IExchangeSymbolMapper, BinanceAssetMapper>();
 builder.Services.AddSingleton<IExchangeCredentialAccessor, AgentExchangeCredentialAccessor>();
 builder.Services.AddTransient<WorkerBinanceSigningHandler>();
 builder.Services.AddSingleton<IBinanceExchangeInfoCache, BinanceExchangeInfoCache>();
+builder.Services.AddSingleton<IBinanceSpotExchangeInfoCache, BinanceSpotExchangeInfoCache>();
 
 builder.Services.AddHttpClient("binance-public", (sp, client) =>
 {
@@ -205,6 +211,54 @@ builder.Services.AddHttpClient<IBinanceFuturesAuthClient, BinanceFuturesAuthClie
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
 });
 
+builder.Services.AddHttpClient<IBinanceSpotAuthClient, BinanceSpotAuthClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<BinanceSpotTradingOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<WorkerBinanceSigningHandler>()
+.AddResilienceHandler("binance-spot-auth-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 5,
+        BackoffType = DelayBackoffType.Exponential,
+        Delay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        UseJitter = true,
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (System.Net.HttpStatusCode)418 ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
+});
+
+builder.Services.AddHttpClient("binance-spot-public", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<BinanceSpotTradingOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddResilienceHandler("binance-spot-public-cache-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true,
+        Delay = TimeSpan.FromSeconds(1),
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (HttpStatusCode)418 ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(10));
+});
+
 builder.Services.AddSingleton<BinanceAccountAdapter>();
 builder.Services.AddSingleton<BinanceMarketMetadataProvider>();
 builder.Services.AddSingleton<BinanceHistoricalDataClient>();
@@ -217,9 +271,12 @@ builder.Services.AddKeyedSingleton<IExchangeHistoricalDataClient>("Binance", (sp
 // ---------- Execution engine (signs + submits orders locally) ----------
 builder.Services.AddSingleton<LiveExecutionEngine>();
 builder.Services.AddSingleton<BinanceExecutionEngine>();
+builder.Services.AddSingleton<BinanceSpotExecutionEngine>();
 builder.Services.AddSingleton<IExecutionEngine>(sp => sp.GetRequiredService<LiveExecutionEngine>());
 builder.Services.AddKeyedSingleton<IExecutionEngine>("Hyperliquid", (sp, _) => sp.GetRequiredService<LiveExecutionEngine>());
 builder.Services.AddKeyedSingleton<IExecutionEngine>("Binance", (sp, _) => sp.GetRequiredService<BinanceExecutionEngine>());
+builder.Services.AddKeyedSingleton<IExecutionEngine>("Binance:Spot", (sp, _) => sp.GetRequiredService<BinanceSpotExecutionEngine>());
+builder.Services.AddKeyedSingleton<IExecutionEngine>("Binance:Perp", (sp, _) => sp.GetRequiredService<BinanceExecutionEngine>());
 builder.Services.AddSingleton<IExecutionEngineResolver, ExchangeExecutionEngineResolver>();
 
 // ---------- LLM context provider (optional — runs with synthetic fallback if unconfigured) ----------

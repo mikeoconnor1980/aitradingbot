@@ -130,6 +130,11 @@ builder.Services.AddOptions<BinanceTradingOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services.AddOptions<BinanceSpotTradingOptions>()
+    .Bind(builder.Configuration.GetSection(BinanceSpotTradingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
 // Bind MacroCalendar configuration
 builder.Services.AddOptions<MacroCalendarOptions>()
     .Bind(builder.Configuration.GetSection(MacroCalendarOptions.SectionName))
@@ -208,6 +213,7 @@ builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceHistoricalDa
 builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceSymbolMetadataProvider>();
 builder.Services.AddSingleton<TradePilot.Infrastructure.Hyperliquid.HyperliquidCapabilities>();
 builder.Services.AddSingleton<TradePilot.Infrastructure.Binance.BinanceCapabilities>();
+builder.Services.AddSingleton<TradePilot.Infrastructure.Binance.BinanceSpotCapabilities>();
 builder.Services.AddScoped<IExchangeAccountClient>(sp => sp.GetRequiredService<TradePilot.Infrastructure.Hyperliquid.HyperliquidAccountAdapter>());
 builder.Services.AddScoped<IExchangeAccountClient>(sp => sp.GetRequiredService<TradePilot.Infrastructure.Binance.BinanceAccountAdapter>());
 builder.Services.AddScoped<IExchangeMarketMetadataProvider>(sp => sp.GetRequiredService<TradePilot.Infrastructure.Hyperliquid.HyperliquidMarketMetadataProvider>());
@@ -229,6 +235,7 @@ builder.Services.AddKeyedSingleton<IExchangeCapabilities, TradePilot.Infrastruct
 builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Hyperliquid.HyperliquidExchangeSymbolMapper>();
 builder.Services.AddSingleton<IExchangeSymbolMapper, TradePilot.Infrastructure.Binance.BinanceAssetMapper>();
 builder.Services.AddSingleton<IBinanceExchangeInfoCache, TradePilot.Infrastructure.Binance.BinanceExchangeInfoCache>();
+builder.Services.AddSingleton<IBinanceSpotExchangeInfoCache, TradePilot.Infrastructure.Binance.BinanceSpotExchangeInfoCache>();
 builder.Services.AddSingleton<INonceProvider, NonceProvider>();
 builder.Services.AddSingleton<IHyperliquidAssetMetadataCache, HyperliquidAssetMetadataCache>();
 builder.Services.AddScoped<ICandleIngestionService, CandleIngestionService>();
@@ -362,6 +369,52 @@ builder.Services.AddHttpClient<IBinanceFuturesAuthClient, BinanceFuturesAuthClie
 
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
 });
+builder.Services.AddHttpClient<IBinanceSpotAuthClient, BinanceSpotAuthClient>((sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<BinanceSpotTradingOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddHttpMessageHandler<BinanceSigningHandler>()
+.AddResilienceHandler("binance-spot-trading-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 5,
+        BackoffType = DelayBackoffType.Exponential,
+        Delay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        UseJitter = true,
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (System.Net.HttpStatusCode)418 ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
+});
+builder.Services.AddHttpClient("binance-spot-public", (sp, client) =>
+{
+    var options = sp.GetRequiredService<IOptions<BinanceSpotTradingOptions>>().Value;
+    client.BaseAddress = new Uri(options.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddResilienceHandler("binance-spot-public-cache-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true,
+        Delay = TimeSpan.FromSeconds(1),
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (HttpStatusCode)418 ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(10));
+});
 builder.Services.AddScoped<ICandleIngestionService, BinanceCandleIngestionService>();
 builder.Services.AddScoped<IFundingRateIngestionService, FundingRateIngestionService>();
 builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
@@ -369,8 +422,11 @@ builder.Services.AddScoped<IHyperliquidOrderService, HyperliquidOrderService>();
 // Live execution engine — wraps order service, implements IExecutionEngine for live trading
 builder.Services.AddScoped<HyperliquidExecutionEngine>();
 builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceExecutionEngine>();
+builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceSpotExecutionEngine>();
 builder.Services.AddKeyedScoped<IExecutionEngine>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidExecutionEngine>());
 builder.Services.AddKeyedScoped<IExecutionEngine>("Binance", (sp, _) => sp.GetRequiredService<TradePilot.Infrastructure.Binance.BinanceExecutionEngine>());
+builder.Services.AddKeyedScoped<IExecutionEngine>("Binance:Spot", (sp, _) => sp.GetRequiredService<TradePilot.Infrastructure.Binance.BinanceSpotExecutionEngine>());
+builder.Services.AddKeyedScoped<IExecutionEngine>("Binance:Perp", (sp, _) => sp.GetRequiredService<TradePilot.Infrastructure.Binance.BinanceExecutionEngine>());
 builder.Services.AddScoped<IExecutionEngine>(sp => sp.GetRequiredService<HyperliquidExecutionEngine>());
 builder.Services.AddScoped<IExecutionEngineResolver, TradePilot.Infrastructure.Services.ExchangeExecutionEngineResolver>();
 

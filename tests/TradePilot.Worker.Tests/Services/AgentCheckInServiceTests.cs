@@ -173,7 +173,7 @@ public sealed class AgentCheckInServiceTests
         var executionEngine = new Mock<IExecutionEngine>();
         var executionEngineResolver = new Mock<IExecutionEngineResolver>();
         executionEngineResolver
-            .Setup(resolver => resolver.Resolve(Exchange.Binance))
+            .Setup(resolver => resolver.Resolve(Exchange.Binance, AssetType.Perp))
             .Returns(executionEngine.Object);
 
         var serviceProvider = BuildSessionServiceProvider(riskEngine.Object);
