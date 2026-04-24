@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using TradePilot.Application.Abstractions.Services;
@@ -42,11 +41,18 @@ public sealed class BinanceMarketMetadataProvider : IExchangeMarketMetadataProvi
         {
             var premiumTask = client.GetAsync($"/fapi/v1/premiumIndex?symbol={Uri.EscapeDataString(symbol)}", cancellationToken);
             var tickerTask = client.GetAsync($"/fapi/v1/ticker/24hr?symbol={Uri.EscapeDataString(symbol)}", cancellationToken);
+            var openInterestTask = FetchOpenInterestAsync(client, symbol, cancellationToken);
 
-            await Task.WhenAll(premiumTask, tickerTask);
+            await Task.WhenAll(premiumTask, tickerTask, openInterestTask);
 
-            await using var premiumStream = await (await premiumTask).Content.ReadAsStreamAsync(cancellationToken);
-            await using var tickerStream = await (await tickerTask).Content.ReadAsStreamAsync(cancellationToken);
+            using var premiumResponse = await premiumTask;
+            using var tickerResponse = await tickerTask;
+
+            premiumResponse.EnsureSuccessStatusCode();
+            tickerResponse.EnsureSuccessStatusCode();
+
+            await using var premiumStream = await premiumResponse.Content.ReadAsStreamAsync(cancellationToken);
+            await using var tickerStream = await tickerResponse.Content.ReadAsStreamAsync(cancellationToken);
 
             using var premiumDocument = await JsonDocument.ParseAsync(premiumStream, cancellationToken: cancellationToken);
             using var tickerDocument = await JsonDocument.ParseAsync(tickerStream, cancellationToken: cancellationToken);
@@ -54,8 +60,8 @@ public sealed class BinanceMarketMetadataProvider : IExchangeMarketMetadataProvi
             var premium = premiumDocument.RootElement;
             var ticker = tickerDocument.RootElement;
 
-            var markPrice = ParseDecimal(GetString(premium, "markPrice"));
-            var indexPrice = ParseDecimal(GetString(premium, "indexPrice"));
+            var markPrice = BinanceParsing.ParseDecimal(GetString(premium, "markPrice"));
+            var indexPrice = BinanceParsing.ParseDecimal(GetString(premium, "indexPrice"));
 
             return new MarketInfoDto
             {
@@ -63,13 +69,13 @@ public sealed class BinanceMarketMetadataProvider : IExchangeMarketMetadataProvi
                 MidPrice = markPrice,
                 MarkPrice = markPrice,
                 IndexPrice = indexPrice,
-                FundingRate = ParseDecimal(GetString(premium, "lastFundingRate")),
-                Volume24h = ParseDecimal(GetString(ticker, "quoteVolume")),
-                OpenInterest = 0m,
-                PriceChange24hPercent = ParseDecimal(GetString(ticker, "priceChangePercent")),
+                FundingRate = BinanceParsing.ParseDecimal(GetString(premium, "lastFundingRate")),
+                Volume24h = BinanceParsing.ParseDecimal(GetString(ticker, "quoteVolume")),
+                OpenInterest = await openInterestTask,
+                PriceChange24hPercent = BinanceParsing.ParseDecimal(GetString(ticker, "priceChangePercent")),
             };
         }
-        catch (Exception ex) when (ex is HttpRequestException or JsonException)
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or FormatException)
         {
             _logger.LogWarning(ex, "Failed to fetch Binance market info for {Asset}", pair.Base);
             return null;
@@ -88,13 +94,31 @@ public sealed class BinanceMarketMetadataProvider : IExchangeMarketMetadataProvi
         return symbolMetadata?.MaxLeverage;
     }
 
+    private async Task<decimal> FetchOpenInterestAsync(HttpClient client, string futuresSymbol, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await client.GetAsync(
+                $"/fapi/v1/openInterest?symbol={Uri.EscapeDataString(futuresSymbol)}",
+                cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+
+            return BinanceParsing.ParseDecimal(GetString(document.RootElement, "openInterest"));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JsonException or FormatException)
+        {
+            _logger.LogWarning(ex, "Failed to fetch Binance open interest for {Symbol}. Defaulting to 0.", futuresSymbol);
+            return 0m;
+        }
+    }
+
     private static string GetString(JsonElement element, string propertyName)
     {
         return element.TryGetProperty(propertyName, out var property)
             ? property.GetString() ?? string.Empty
             : string.Empty;
     }
-
-    private static decimal ParseDecimal(string value)
-        => decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0m;
 }

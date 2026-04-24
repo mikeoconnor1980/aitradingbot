@@ -66,6 +66,14 @@ module sql 'modules/sql-server.bicep' = {
   }
 }
 
+module storage 'modules/storage-account.bicep' = {
+  name: 'storage'
+  params: {
+    name: replace('${appName}${environmentName}sa', '-', '')
+    location: location
+  }
+}
+
 module containerAppEnv 'modules/container-app-environment.bicep' = {
   name: 'container-app-env'
   params: {
@@ -89,6 +97,8 @@ module containerApp 'modules/container-app.bicep' = {
     corsAllowedOrigin: corsAllowedOrigin
     registryUsername: registryUsername
     registryPassword: registryPassword
+    installerBlobConnectionString: storage.outputs.connectionString
+    installerBlobContainerName: storage.outputs.containerName
   }
 }
 
@@ -106,3 +116,4 @@ output apiUrl string = containerApp.outputs.fqdn
 output staticWebAppUrl string = staticWebApp.outputs.defaultHostname
 output signalRHostName string = signalr.outputs.hostName
 output sqlServerFqdn string = sql.outputs.serverFqdn
+output storageAccountName string = storage.outputs.storageAccountName

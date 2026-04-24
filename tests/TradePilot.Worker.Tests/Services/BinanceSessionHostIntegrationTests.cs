@@ -46,10 +46,36 @@ public sealed class BinanceSessionHostIntegrationTests
             };
         });
 
-        var publicHandler = new CapturingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
-            Content = new StringContent("{}", Encoding.UTF8, "application/json")
-        });
+                var publicHandler = new CapturingHttpMessageHandler(request => new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                        Content = new StringContent(
+                                request.RequestUri?.AbsolutePath == "/fapi/v1/exchangeInfo"
+                                        ? """
+                                            {
+                                                "symbols": [
+                                                    {
+                                                        "symbol": "BTCUSDT",
+                                                        "baseAsset": "BTC",
+                                                        "quoteAsset": "USDT",
+                                                        "status": "TRADING",
+                                                        "filters": [
+                                                            {
+                                                                "filterType": "LOT_SIZE",
+                                                                "stepSize": "0.001"
+                                                            },
+                                                            {
+                                                                "filterType": "PRICE_FILTER",
+                                                                "tickSize": "0.10"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                            """
+                                        : "{}",
+                                Encoding.UTF8,
+                                "application/json")
+                });
 
         var walletRepository = new Mock<IUserWalletAddressRepository>();
         var credentialRepository = new Mock<IUserExchangeCredentialRepository>();

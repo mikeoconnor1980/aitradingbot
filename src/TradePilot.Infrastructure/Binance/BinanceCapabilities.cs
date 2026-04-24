@@ -5,12 +5,6 @@ namespace TradePilot.Infrastructure.Binance;
 
 public sealed class BinanceCapabilities : IExchangeCapabilities
 {
-    private static readonly HashSet<string> SupportedAssets = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "BTC",
-        "ETH",
-    };
-
     private static readonly ExchangeCapabilitySet CapabilityDescriptor = new(
         Exchange.Binance,
         new HashSet<AssetType> { AssetType.Perp },
@@ -27,6 +21,8 @@ public sealed class BinanceCapabilities : IExchangeCapabilities
     public Exchange Exchange => Exchange.Binance;
 
     public ExchangeCapabilitySet CapabilitySet => CapabilityDescriptor;
+
+    public IReadOnlySet<string> SupportedAssets => BinanceAssetMapper.SupportedAssets;
 
     public bool Supports(TradingPair pair)
     {

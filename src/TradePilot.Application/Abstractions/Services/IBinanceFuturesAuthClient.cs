@@ -29,6 +29,8 @@ public interface IBinanceFuturesAuthClient
 
     Task CancelAllOrdersAsync(string symbol, CancellationToken cancellationToken = default);
 
+    Task SetMarginTypeAsync(string symbol, bool isIsolated, CancellationToken cancellationToken = default);
+
     Task SetLeverageAsync(string symbol, int leverage, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<BinanceExchangeInfoSymbol>> GetExchangeInfoSymbolsAsync(CancellationToken cancellationToken = default);

@@ -186,6 +186,50 @@ jobs:
           echo "$response"
           echo "$response" | grep '"matchesExpectedVersion":true'
 
+  upload-installers:
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Upload installer artifacts to Blob Storage
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            STORAGE_ACCOUNT="${{ secrets.INSTALLER_STORAGE_ACCOUNT }}"
+            CONTAINER_NAME="installers"
+            INSTALLER_DIR="artifacts/installer"
+
+            if [ ! -d "$INSTALLER_DIR" ]; then
+              echo "No installer directory found — skipping upload"
+              exit 0
+            fi
+
+            for file in "$INSTALLER_DIR"/TradePilot-ExecutionAgent-*; do
+              [ -f "$file" ] || continue
+              filename=$(basename "$file")
+              echo "Uploading $filename..."
+              az storage blob upload \
+                --account-name "$STORAGE_ACCOUNT" \
+                --container-name "$CONTAINER_NAME" \
+                --file "$file" \
+                --name "$filename" \
+                --overwrite true \
+                --auth-mode login
+            done
+
   deploy-frontend:
     needs: build-frontend
     runs-on: ubuntu-latest

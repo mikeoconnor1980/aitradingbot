@@ -19,6 +19,7 @@ using TradePilot.Application.Abstractions.Auth;
 using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Agent.Services;
+using TradePilot.Application.Agent;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Backtesting;
 using TradePilot.Application.Backtesting.Services;
@@ -200,9 +201,11 @@ builder.Services.AddScoped<IHyperliquidAccountService, TradePilot.Infrastructure
 builder.Services.AddScoped<TradePilot.Infrastructure.Hyperliquid.HyperliquidAccountAdapter>();
 builder.Services.AddScoped<TradePilot.Infrastructure.Hyperliquid.HyperliquidMarketMetadataProvider>();
 builder.Services.AddScoped<TradePilot.Infrastructure.Hyperliquid.HyperliquidHistoricalDataClient>();
+builder.Services.AddScoped<TradePilot.Infrastructure.Hyperliquid.HyperliquidSymbolMetadataProvider>();
 builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceAccountAdapter>();
 builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceMarketMetadataProvider>();
 builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceHistoricalDataClient>();
+builder.Services.AddScoped<TradePilot.Infrastructure.Binance.BinanceSymbolMetadataProvider>();
 builder.Services.AddSingleton<TradePilot.Infrastructure.Hyperliquid.HyperliquidCapabilities>();
 builder.Services.AddSingleton<TradePilot.Infrastructure.Binance.BinanceCapabilities>();
 builder.Services.AddScoped<IExchangeAccountClient>(sp => sp.GetRequiredService<TradePilot.Infrastructure.Hyperliquid.HyperliquidAccountAdapter>());
@@ -215,6 +218,8 @@ builder.Services.AddSingleton<IExchangeCapabilities>(sp => sp.GetRequiredService
 builder.Services.AddSingleton<IExchangeCapabilities>(sp => sp.GetRequiredService<TradePilot.Infrastructure.Binance.BinanceCapabilities>());
 builder.Services.AddKeyedScoped<IExchangeAccountClient, TradePilot.Infrastructure.Hyperliquid.HyperliquidAccountAdapter>("Hyperliquid");
 builder.Services.AddKeyedScoped<IExchangeAccountClient, TradePilot.Infrastructure.Binance.BinanceAccountAdapter>("Binance");
+builder.Services.AddKeyedScoped<IExchangeSymbolMetadataProvider>("Hyperliquid", (sp, _) => sp.GetRequiredService<TradePilot.Infrastructure.Hyperliquid.HyperliquidSymbolMetadataProvider>());
+builder.Services.AddKeyedScoped<IExchangeSymbolMetadataProvider>("Binance", (sp, _) => sp.GetRequiredService<TradePilot.Infrastructure.Binance.BinanceSymbolMetadataProvider>());
 builder.Services.AddKeyedScoped<IExchangeMarketMetadataProvider, TradePilot.Infrastructure.Hyperliquid.HyperliquidMarketMetadataProvider>("Hyperliquid");
 builder.Services.AddKeyedScoped<IExchangeMarketMetadataProvider, TradePilot.Infrastructure.Binance.BinanceMarketMetadataProvider>("Binance");
 builder.Services.AddKeyedScoped<IExchangeHistoricalDataClient, TradePilot.Infrastructure.Hyperliquid.HyperliquidHistoricalDataClient>("Hyperliquid");
@@ -232,6 +237,14 @@ builder.Services.AddOptions<AgentUpdateOptions>()
     .Bind(builder.Configuration.GetSection(AgentUpdateOptions.SectionName));
 builder.Services.AddOptions<InstallerOptions>()
     .Bind(builder.Configuration.GetSection(InstallerOptions.SectionName));
+
+// Register installer store: use Azure Blob Storage when configured, otherwise local filesystem
+var installerBlobConn = builder.Configuration.GetSection("Installer")["BlobConnectionString"];
+if (!string.IsNullOrEmpty(installerBlobConn))
+    builder.Services.AddSingleton<IInstallerStore, TradePilot.Infrastructure.Storage.BlobInstallerStore>();
+else
+    builder.Services.AddSingleton<IInstallerStore, TradePilot.Infrastructure.Storage.LocalInstallerStore>();
+
 builder.Services.AddSingleton<BacktestExecutionContextAccessor>();
 builder.Services.AddSingleton<BacktestJobQueue>();
 builder.Services.AddSingleton<BacktestCancellationManager>();
@@ -297,11 +310,8 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
         UseJitter = true,
         ShouldHandle = args => ValueTask.FromResult(
             args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (System.Net.HttpStatusCode)418 ||
             (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
-        OnRetry = args =>
-        {
-            return ValueTask.CompletedTask;
-        },
     });
 
     pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(5));
@@ -311,6 +321,22 @@ builder.Services.AddHttpClient("binance-public", (sp, client) =>
     var options = sp.GetRequiredService<IOptions<BinanceTradingOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddResilienceHandler("binance-public-cache-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true,
+        Delay = TimeSpan.FromSeconds(1),
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (HttpStatusCode)418 ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(10));
 });
 builder.Services.AddHttpClient<IBinanceFuturesAuthClient, BinanceFuturesAuthClient>((sp, client) =>
 {

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.Azure.SignalR.Management;
 using Microsoft.Extensions.Hosting.WindowsServices;
@@ -113,10 +114,12 @@ builder.Services.AddSingleton<IHyperliquidAccountService, HyperliquidAccountServ
 builder.Services.AddSingleton<HyperliquidAccountAdapter>();
 builder.Services.AddSingleton<HyperliquidMarketMetadataProvider>();
 builder.Services.AddSingleton<HyperliquidHistoricalDataClient>();
+builder.Services.AddSingleton<HyperliquidSymbolMetadataProvider>();
 builder.Services.AddSingleton<IExchangeAccountClient>(sp => sp.GetRequiredService<HyperliquidAccountAdapter>());
 builder.Services.AddSingleton<IExchangeMarketMetadataProvider>(sp => sp.GetRequiredService<HyperliquidMarketMetadataProvider>());
 builder.Services.AddSingleton<IExchangeHistoricalDataClient>(sp => sp.GetRequiredService<HyperliquidHistoricalDataClient>());
 builder.Services.AddKeyedSingleton<IExchangeAccountClient>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidAccountAdapter>());
+builder.Services.AddKeyedSingleton<IExchangeSymbolMetadataProvider>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidSymbolMetadataProvider>());
 builder.Services.AddKeyedSingleton<IExchangeMarketMetadataProvider>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidMarketMetadataProvider>());
 builder.Services.AddKeyedSingleton<IExchangeHistoricalDataClient>("Hyperliquid", (sp, _) => sp.GetRequiredService<HyperliquidHistoricalDataClient>());
 
@@ -131,6 +134,22 @@ builder.Services.AddHttpClient("binance-public", (sp, client) =>
     var options = sp.GetRequiredService<IOptions<BinanceTradingOptions>>().Value;
     client.BaseAddress = new Uri(options.BaseUrl);
     client.Timeout = TimeSpan.FromSeconds(30);
+})
+.AddResilienceHandler("binance-public-cache-retry", pipelineBuilder =>
+{
+    pipelineBuilder.AddRetry(new HttpRetryStrategyOptions
+    {
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true,
+        Delay = TimeSpan.FromSeconds(1),
+        ShouldHandle = args => ValueTask.FromResult(
+            args.Outcome.Result?.StatusCode == HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (HttpStatusCode)418 ||
+            (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
+    });
+
+    pipelineBuilder.AddTimeout(TimeSpan.FromSeconds(10));
 });
 
 builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClient>((sp, client) =>
@@ -150,6 +169,7 @@ builder.Services.AddHttpClient<IBinanceFuturesRestClient, BinanceFuturesRestClie
         UseJitter = true,
         ShouldHandle = args => ValueTask.FromResult(
             args.Outcome.Result?.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+            args.Outcome.Result?.StatusCode == (System.Net.HttpStatusCode)418 ||
             (args.Outcome.Result is not null && (int)args.Outcome.Result.StatusCode >= 500)),
     });
 
@@ -188,7 +208,9 @@ builder.Services.AddHttpClient<IBinanceFuturesAuthClient, BinanceFuturesAuthClie
 builder.Services.AddSingleton<BinanceAccountAdapter>();
 builder.Services.AddSingleton<BinanceMarketMetadataProvider>();
 builder.Services.AddSingleton<BinanceHistoricalDataClient>();
+builder.Services.AddSingleton<BinanceSymbolMetadataProvider>();
 builder.Services.AddKeyedSingleton<IExchangeAccountClient>("Binance", (sp, _) => sp.GetRequiredService<BinanceAccountAdapter>());
+builder.Services.AddKeyedSingleton<IExchangeSymbolMetadataProvider>("Binance", (sp, _) => sp.GetRequiredService<BinanceSymbolMetadataProvider>());
 builder.Services.AddKeyedSingleton<IExchangeMarketMetadataProvider>("Binance", (sp, _) => sp.GetRequiredService<BinanceMarketMetadataProvider>());
 builder.Services.AddKeyedSingleton<IExchangeHistoricalDataClient>("Binance", (sp, _) => sp.GetRequiredService<BinanceHistoricalDataClient>());
 

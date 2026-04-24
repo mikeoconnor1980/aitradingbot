@@ -63,11 +63,15 @@ public sealed class HttpGlobalExceptionFilter : IExceptionFilter
                 StatusCodes.Status503ServiceUnavailable,
                 new Envelope(ex.Message, "backtest_unavailable", correlationId)),
 
-            HyperliquidApiException ex when ex.ExchangeStatusCode >= 400 && ex.ExchangeStatusCode < 500 => (
+            ExchangeApiException ex when ex.ExchangeStatusCode == 429 => (
+                StatusCodes.Status429TooManyRequests,
+                new Envelope(ex.Message, ex.ErrorCategory, correlationId)),
+
+            ExchangeApiException ex when ex.ExchangeStatusCode >= 400 && ex.ExchangeStatusCode < 500 => (
                 StatusCodes.Status400BadRequest,
                 new Envelope(ex.Message, ex.ErrorCategory, correlationId)),
 
-            HyperliquidApiException ex => (
+            ExchangeApiException ex => (
                 StatusCodes.Status502BadGateway,
                 new Envelope(ex.Message, ex.ErrorCategory, correlationId)),
 

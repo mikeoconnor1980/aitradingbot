@@ -29,7 +29,7 @@ public sealed class BinanceFundingRate
 
     private static decimal ParseRequiredDecimal(string value, string fieldName)
     {
-        if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        if (!decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
         {
             throw new System.Text.Json.JsonException($"Unable to parse Binance funding rate field '{fieldName}' value '{value}'.");
         }
@@ -44,7 +44,7 @@ public sealed class BinanceFundingRate
             return fallback;
         }
 
-        if (!decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
+        if (!decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
         {
             throw new System.Text.Json.JsonException($"Unable to parse Binance funding rate field '{fieldName}' value '{value}'.");
         }

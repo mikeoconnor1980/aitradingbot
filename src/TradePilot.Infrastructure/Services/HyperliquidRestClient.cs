@@ -72,6 +72,7 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
 
                 throw new RateLimitException(
                     $"Hyperliquid rate limit exceeded: {errorBody}",
+                    statusCode,
                     retryAfter);
             }
 
@@ -122,6 +123,7 @@ public sealed class HyperliquidRestClient : IHyperliquidRestClient
 
                 throw new RateLimitException(
                     $"Hyperliquid rate limit exceeded: {responseBody}",
+                    statusCode,
                     retryAfter);
             }
 
