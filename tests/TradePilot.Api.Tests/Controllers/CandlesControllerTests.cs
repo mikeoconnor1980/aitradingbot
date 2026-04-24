@@ -147,7 +147,7 @@ public sealed class CandlesControllerTests : BaseControllerTests
         response.AssertStatusCode(HttpStatusCode.BadRequest);
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.GetProperty("errorMessage").GetString().Should().Contain("Supported: 5m, 15m, 1h, 4h");
+        body.GetProperty("errorMessage").GetString().Should().Contain("Invalid interval 'invalid'. Supported:");
         body.GetProperty("correlationId").GetString().Should().NotBeNullOrEmpty();
     }
 
