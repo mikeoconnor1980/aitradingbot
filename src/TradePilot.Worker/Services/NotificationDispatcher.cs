@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
 
@@ -10,10 +11,14 @@ namespace TradePilot.Worker.Services;
 /// </summary>
 public sealed class NotificationDispatcher : INotificationDispatcher
 {
+    private static readonly TimeSpan FillSignalRDeduplicationWindow = TimeSpan.FromMinutes(1);
+    private const int MaxDeduplicationEntries = 10_000;
+
     private readonly ISignalRPublisher _signalR;
     private readonly ITelegramNotifier _telegram;
     private readonly NotificationConfigHolder _notificationConfig;
     private readonly ILogger<NotificationDispatcher> _logger;
+    private readonly ConcurrentDictionary<string, DateTimeOffset> _recentFillSignalRKeys = new();
 
     public NotificationDispatcher(
         ISignalRPublisher signalR,
@@ -29,16 +34,16 @@ public sealed class NotificationDispatcher : INotificationDispatcher
 
     public async Task NotifyFillAsync(FillEventDto fill, CancellationToken cancellationToken = default)
     {
-        await _signalR.BroadcastFillEventAsync(fill, cancellationToken);
-
-        if (TryGetChatId(out var chatId))
-        {
-            await _telegram.NotifyFillAsync(chatId, fill, cancellationToken);
-        }
+        await BroadcastFillEventAsync(fill, cancellationToken);
     }
 
     public async Task NotifyFillBatchAsync(IReadOnlyList<FillEventDto> fills, CancellationToken cancellationToken = default)
     {
+        foreach (var fill in fills)
+        {
+            await BroadcastFillEventAsync(fill, cancellationToken);
+        }
+
         if (TryGetChatId(out var chatId))
         {
             await _telegram.NotifyFillBatchAsync(chatId, fills, cancellationToken);
@@ -58,8 +63,8 @@ public sealed class NotificationDispatcher : INotificationDispatcher
                 "triggered" => "\u26a1",
                 _ => "\U0001f4cb",
             };
-            var text = $"{emoji} *Order {orderUpdate.Status.ToUpperInvariant()}* \u2014 {orderUpdate.Asset}\n" +
-                       $"OrderId: `{orderUpdate.OrderId}`";
+            var text = $"{emoji} Order {orderUpdate.Status.ToUpperInvariant()} - {orderUpdate.Asset}\n" +
+                       $"OrderId: {orderUpdate.OrderId}";
             await _telegram.NotifyRiskEventAsync(chatId, $"Order {orderUpdate.Status}", text, cancellationToken);
         }
     }
@@ -101,5 +106,55 @@ public sealed class NotificationDispatcher : INotificationDispatcher
 
         chatId = default;
         return false;
+    }
+
+    private async Task BroadcastFillEventAsync(FillEventDto fill, CancellationToken cancellationToken)
+    {
+        if (!TryRegisterFillSignalR(fill))
+        {
+            return;
+        }
+
+        await _signalR.BroadcastFillEventAsync(fill, cancellationToken);
+    }
+
+    private bool TryRegisterFillSignalR(FillEventDto fill)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var cutoff = now - FillSignalRDeduplicationWindow;
+
+        if (_recentFillSignalRKeys.Count > MaxDeduplicationEntries / 2)
+        {
+            foreach (var entry in _recentFillSignalRKeys)
+            {
+                if (entry.Value < cutoff)
+                {
+                    _recentFillSignalRKeys.TryRemove(entry.Key, out _);
+                }
+            }
+        }
+
+        if (_recentFillSignalRKeys.Count >= MaxDeduplicationEntries)
+        {
+            return false;
+        }
+
+        return _recentFillSignalRKeys.TryAdd(CreateFillSignalRKey(fill), now);
+    }
+
+    private static string CreateFillSignalRKey(FillEventDto fill)
+    {
+        return string.Concat(
+            fill.OrderId,
+            "|",
+            fill.Asset,
+            "|",
+            fill.Side,
+            "|",
+            fill.Price,
+            "|",
+            fill.Size,
+            "|",
+            fill.Timestamp.ToUniversalTime().ToString("O"));
     }
 }

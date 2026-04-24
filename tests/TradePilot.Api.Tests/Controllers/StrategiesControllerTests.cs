@@ -4,9 +4,6 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Models;
 using TradePilot.Application.Abstractions.Models;
 using TradePilot.Application.StrategyAuthoring.Models;
@@ -58,11 +55,6 @@ public sealed class StrategiesControllerTests : BaseControllerTests
         builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
         builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
         builder.UseSetting("Hyperliquid:Network", "testnet");
-    }
-
-    protected override void ConfigureTestServices(IServiceCollection services)
-    {
-        services.RemoveAll<IHostedService>();
     }
 
     [TestMethod]

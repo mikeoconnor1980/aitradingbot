@@ -1,13 +1,16 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using TradePilot.Api.Models;
 using TradePilot.Api.Services;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Subscriptions.Services;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Domain.Subscriptions;
 
 namespace TradePilot.Api.Tests.Controllers;
 
@@ -15,9 +18,14 @@ namespace TradePilot.Api.Tests.Controllers;
 public sealed class OrdersControllerTests : BaseControllerTests
 {
     private const string TestPrivateKey = "0x4c0883a69102937d6231471b5dbb6204fe512961708279f2a4c5890a0c1f9b2e";
+    private static readonly Guid TestUserId = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
     private Mock<IHyperliquidOrderService> _orderServiceMock = default!;
     private Mock<IHyperliquidAccountService> _accountServiceMock = default!;
+    private Mock<IExchangeResolver> _exchangeResolverMock = default!;
+    private Mock<ISubscriptionFeatureService> _subscriptionFeatureServiceMock = default!;
+    private Mock<IBinanceExchangeInfoCache> _binanceExchangeInfoCacheMock = default!;
+    private Mock<IHyperliquidRestClient> _hyperliquidRestClientMock = default!;
     private HttpClient _client = default!;
 
     [TestInitialize]
@@ -25,7 +33,29 @@ public sealed class OrdersControllerTests : BaseControllerTests
     {
         _orderServiceMock = new Mock<IHyperliquidOrderService>();
         _accountServiceMock = new Mock<IHyperliquidAccountService>();
+        _exchangeResolverMock = new Mock<IExchangeResolver>();
+        _subscriptionFeatureServiceMock = new Mock<ISubscriptionFeatureService>();
+        _binanceExchangeInfoCacheMock = new Mock<IBinanceExchangeInfoCache>();
+        _hyperliquidRestClientMock = new Mock<IHyperliquidRestClient>();
         _client = GetTestClient();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", GenerateTestToken(TestUserId.ToString()));
+
+        _subscriptionFeatureServiceMock
+            .Setup(service => service.GetAllowedAssetsAsync(TestUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["BTC", "ETH", "DOGE"]);
+        _subscriptionFeatureServiceMock
+            .Setup(service => service.GetPolicyAsync(TestUserId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TierFeaturePolicy.ForTier(SubscriptionTier.Pro));
+        _subscriptionFeatureServiceMock
+            .Setup(service => service.IsAssetAllowed(It.IsAny<IReadOnlyList<string>>(), It.IsAny<string>()))
+            .Returns<IReadOnlyList<string>, string>((assets, market) =>
+                assets.Any(asset => string.Equals(asset, market, StringComparison.OrdinalIgnoreCase)) ||
+                assets.Any(asset => string.Equals(asset, market.Replace("-PERP", string.Empty, StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase)));
+
+        _exchangeResolverMock
+            .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Exchange.Hyperliquid);
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -40,8 +70,70 @@ public sealed class OrdersControllerTests : BaseControllerTests
     {
         services.RemoveAll<IHyperliquidOrderService>();
         services.RemoveAll<IHyperliquidAccountService>();
+        services.RemoveAll<IExchangeResolver>();
+        services.RemoveAll<ISubscriptionFeatureService>();
+        services.RemoveAll<IBinanceExchangeInfoCache>();
+        services.RemoveAll<IHyperliquidRestClient>();
         services.AddSingleton(_orderServiceMock.Object);
         services.AddSingleton(_accountServiceMock.Object);
+        services.AddSingleton(_exchangeResolverMock.Object);
+        services.AddSingleton(_subscriptionFeatureServiceMock.Object);
+        services.AddSingleton(_binanceExchangeInfoCacheMock.Object);
+        services.AddSingleton(_hyperliquidRestClientMock.Object);
+    }
+
+    [TestMethod]
+    public async Task GivenBinanceExchange_WhenGetAvailableAssetsAsync_ThenReturnsCanonicalAssetsFromUnifiedProvider()
+    {
+        _exchangeResolverMock
+            .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Exchange.Binance);
+        _binanceExchangeInfoCacheMock
+            .Setup(cache => cache.GetSupportedSymbolsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, BinanceExchangeSymbolMetadata>
+            {
+                ["BTC"] = new("BTC", "BTCUSDT", 3, 1, 125),
+                ["DOGE"] = new("DOGE", "DOGEUSDT", 0, 5, 50),
+            });
+
+        var response = await _client.GetAsync("api/orders/assets");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<TradableAssetDto>>();
+        result.Should().NotBeNull();
+        var assets = result!;
+        assets.Select(asset => asset.Symbol).Should().Equal("BTC-PERP", "DOGE-PERP");
+        assets[0].MaxLeverage.Should().Be(125);
+        assets[0].SzDecimals.Should().Be(3);
+    }
+
+    [TestMethod]
+    public async Task GivenHyperliquidExchange_WhenGetAvailableAssetsAsync_ThenReturnsCanonicalAssetsFromUnifiedProvider()
+    {
+        _exchangeResolverMock
+            .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Exchange.Hyperliquid);
+        _hyperliquidRestClientMock
+            .Setup(client => client.PostInfoAsync<JsonElement>(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(JsonDocument.Parse(
+                """
+                {
+                  "universe": [
+                    { "name": "ETH", "szDecimals": 4, "maxLeverage": 40 },
+                    { "name": "BTC", "szDecimals": 5, "maxLeverage": 50 }
+                  ]
+                }
+                """).RootElement.Clone());
+
+        var response = await _client.GetAsync("api/orders/assets");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<TradableAssetDto>>();
+        result.Should().NotBeNull();
+        var assets = result!;
+        assets.Select(asset => asset.Symbol).Should().Equal("BTC-PERP", "ETH-PERP");
+        assets[0].Name.Should().Be("Bitcoin");
+        assets[0].SzDecimals.Should().Be(5);
     }
 
     [TestMethod]

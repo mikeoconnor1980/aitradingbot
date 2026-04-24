@@ -66,6 +66,18 @@ public sealed class HyperliquidWebSocketClientTests
     }
 
     [TestMethod]
+    public void GivenWebSocketClientType_WhenCheckingReceiveBufferSize_ThenIs8192()
+    {
+        HyperliquidWebSocketClient.ReceiveBufferSize.Should().Be(8192);
+    }
+
+    [TestMethod]
+    public void GivenWebSocketClientType_WhenCheckingConnectTimeout_ThenIs15Seconds()
+    {
+        HyperliquidWebSocketClient.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(15));
+    }
+
+    [TestMethod]
     public async Task GivenNotConnected_WhenSubscribeToTrades_ThenThrowsInvalidOperationException()
     {
         var client = CreateClient();

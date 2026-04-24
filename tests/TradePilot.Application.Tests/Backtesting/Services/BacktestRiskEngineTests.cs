@@ -151,6 +151,22 @@ public sealed class BacktestRiskEngineTests
         _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
     }
 
+    [TestMethod]
+    public async Task GivenBacktestRiskEngineWithState_WhenReset_ThenSessionStateCleared()
+    {
+        _sut.UpdatePortfolioState(10_000m);
+        _sut.UpdatePortfolioState(8_400m);
+        await _sut.ValidateAsync([CreateEntrySignal("BTC", 100m)]);
+
+        _sut.Reset();
+
+        _sut.DrawdownScalingFactor.Should().Be(1.0m);
+        _sut.IsDrawdownCircuitBreakerTripped.Should().BeFalse();
+        _sut.HeatBlockedSignalCount.Should().Be(0);
+        _sut.DrawdownBlockedSignalCount.Should().Be(0);
+        (await _sut.ValidateAsync([CreateEntrySignal("BTC", 100m)])).Should().HaveCount(1);
+    }
+
     private static TradingSignal CreateEntrySignal(string symbol, decimal estimatedRiskUsd)
     {
         return new TradingSignal

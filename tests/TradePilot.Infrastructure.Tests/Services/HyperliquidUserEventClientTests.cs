@@ -72,6 +72,18 @@ public sealed class HyperliquidUserEventClientTests
     }
 
     [TestMethod]
+    public void GivenUserEventClientType_WhenCheckingReceiveBufferSize_ThenIs8192()
+    {
+        HyperliquidUserEventClient.ReceiveBufferSize.Should().Be(8192);
+    }
+
+    [TestMethod]
+    public void GivenUserEventClientType_WhenCheckingConnectTimeout_ThenIs15Seconds()
+    {
+        HyperliquidUserEventClient.ConnectTimeout.Should().Be(TimeSpan.FromSeconds(15));
+    }
+
+    [TestMethod]
     public async Task GivenMultipleStateHandlers_WhenOneRemoved_ThenOnlyRemainingHandlerIsInvoked()
     {
         var client = CreateClient();

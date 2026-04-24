@@ -3,7 +3,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
@@ -35,8 +34,6 @@ public sealed class MarketDataControllerTests : BaseControllerTests
 
         services.RemoveAll<ICandleRepository>();
         services.AddSingleton(_candleRepositoryMock.Object);
-
-        services.RemoveAll<IHostedService>();
     }
 
     [TestMethod]

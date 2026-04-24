@@ -30,6 +30,10 @@ public sealed class BinanceAssetMapper : IExchangeSymbolMapper
         ["1d"] = 86_400_000L,
     };
 
+    public static IReadOnlySet<string> SupportedAssets { get; } = new HashSet<string>(
+        SymbolToFuturesSymbol.Keys,
+        StringComparer.OrdinalIgnoreCase);
+
     public static IReadOnlyCollection<string> ValidSymbols => SymbolToFuturesSymbol.Keys;
 
     public static IReadOnlyCollection<string> ValidIntervals => IntervalToMs.Keys;
@@ -38,10 +42,7 @@ public sealed class BinanceAssetMapper : IExchangeSymbolMapper
 
     public static string NormalizeSymbol(string displaySymbol)
     {
-        if (string.IsNullOrWhiteSpace(displaySymbol))
-        {
-            return displaySymbol;
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(displaySymbol);
 
         var normalizedSymbol = displaySymbol.Trim();
 

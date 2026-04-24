@@ -36,6 +36,13 @@ param registryUsername string
 @description('GitHub Container Registry password (PAT or GITHUB_TOKEN)')
 param registryPassword string
 
+@secure()
+@description('Azure Blob Storage connection string for installer artifacts')
+param installerBlobConnectionString string = ''
+
+@description('Blob container name for installer artifacts')
+param installerBlobContainerName string = 'installers'
+
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -67,6 +74,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         { name: 'jwt-secret-key', value: jwtSecretKey }
         { name: 'llm-api-key', value: empty(llmApiKey) ? 'placeholder' : llmApiKey }
         { name: 'ghcr-password', value: registryPassword }
+        { name: 'installer-blob-connection', value: empty(installerBlobConnectionString) ? 'placeholder' : installerBlobConnectionString }
       ]
     }
     template: {
@@ -86,6 +94,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'LlmContext__ApiKey', secretRef: 'llm-api-key' }
             { name: 'LlmReview__ApiKey', secretRef: 'llm-api-key' }
             { name: 'Cors__AllowedOrigins__0', value: corsAllowedOrigin }
+            { name: 'Installer__BlobConnectionString', secretRef: 'installer-blob-connection' }
+            { name: 'Installer__BlobContainerName', value: installerBlobContainerName }
           ]
           probes: [
             {

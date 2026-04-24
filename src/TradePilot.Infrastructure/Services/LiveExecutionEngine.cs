@@ -363,14 +363,14 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
                     {
                         AssetIndex = assetIndex,
                         IsBuy = isBuy,
-                        Price = ToWireDecimal(triggerPrice),
-                        Size = ToWireDecimal(size),
+                        Price = HyperliquidFormatting.ToWireDecimal(triggerPrice),
+                        Size = HyperliquidFormatting.ToWireDecimal(size),
                         ReduceOnly = true,
                         OrderType = new HyperliquidOrderType
                         {
                             Trigger = new HyperliquidTriggerParams
                             {
-                                TriggerPx = ToWireDecimal(triggerPrice),
+                                TriggerPx = HyperliquidFormatting.ToWireDecimal(triggerPrice),
                                 IsMarket = true,
                                 Tpsl = tpslType,
                             },
@@ -704,14 +704,6 @@ public sealed class LiveExecutionEngine : IExecutionEngine, IPositionQueryable
         var factor = (decimal)Math.Pow(10, maxDecimals);
 
         return decimal.Truncate(roundedToSigFigs * factor) / factor;
-    }
-
-    private static string ToWireDecimal(decimal value)
-    {
-        var formatted = value.ToString("0.############################", System.Globalization.CultureInfo.InvariantCulture);
-        return formatted.Contains('.')
-            ? formatted.TrimEnd('0').TrimEnd('.')
-            : formatted;
     }
 
     public async Task<PositionState> QueryPositionAsync(string symbol, CancellationToken cancellationToken = default)

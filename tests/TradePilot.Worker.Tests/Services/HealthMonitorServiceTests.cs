@@ -1,6 +1,4 @@
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Moq;
 using TradePilot.Worker.Services;
 
 namespace TradePilot.Worker.Tests.Services;
@@ -21,7 +19,7 @@ public sealed class HealthMonitorServiceTests
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenDisconnected_LogsWarning()
+    public void GivenDisconnectedWebSocket_WhenEvaluateHealth_ThenLogsWarning()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: false,
@@ -41,7 +39,7 @@ public sealed class HealthMonitorServiceTests
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenNoTradesAfterStartup_LogsWarning()
+    public void GivenNoTradesAfterStartup_WhenEvaluateHealth_ThenLogsWarning()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
@@ -61,7 +59,7 @@ public sealed class HealthMonitorServiceTests
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenTradesStale_LogsWarning()
+    public void GivenStaleTrades_WhenEvaluateHealth_ThenLogsWarning()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
@@ -81,7 +79,7 @@ public sealed class HealthMonitorServiceTests
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenCandlesStale_LogsWarning()
+    public void GivenStaleCandles_WhenEvaluateHealth_ThenLogsWarning()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
@@ -101,7 +99,7 @@ public sealed class HealthMonitorServiceTests
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenHealthy_LogsInformation()
+    public void GivenHealthySnapshot_WhenEvaluateHealth_ThenLogsInformationEvery10Checks()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
@@ -115,13 +113,20 @@ public sealed class HealthMonitorServiceTests
             TimeSinceLastTrade: TimeSpan.FromSeconds(5),
             TimeSinceLastCandle: TimeSpan.FromMinutes(2));
 
+        for (var index = 0; index < 9; index++)
+        {
+            _sut.EvaluateHealth(snapshot);
+        }
+
+        VerifyNoLogLevel(LogLevel.Information);
+
         _sut.EvaluateHealth(snapshot);
 
         VerifyLogLevel(LogLevel.Information);
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenNoTradesButWithinGracePeriod_NoWarning()
+    public void GivenNoTradesWithinGracePeriod_WhenEvaluateHealth_ThenNoWarningLogged()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: true,
@@ -137,13 +142,11 @@ public sealed class HealthMonitorServiceTests
 
         _sut.EvaluateHealth(snapshot);
 
-        // Should log healthy info (connected, within grace period)
-        VerifyLogLevel(LogLevel.Information);
         VerifyNoLogLevel(LogLevel.Warning);
     }
 
     [TestMethod]
-    public void EvaluateHealth_WhenIdle_LogsIdleInfoOnly()
+    public void GivenIdleSnapshot_WhenEvaluateHealth_ThenLogsIdleInfoOnly()
     {
         var snapshot = new TradingHealthSnapshot(
             IsWebSocketConnected: false,

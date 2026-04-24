@@ -5,16 +5,10 @@ namespace TradePilot.Application.Abstractions.Exceptions;
 /// Carries the HTTP status code and a machine-readable error category
 /// so the global exception filter can map it to a meaningful response.
 /// </summary>
-public class HyperliquidApiException : Exception
+public sealed class HyperliquidApiException : ExchangeApiException
 {
-    public int ExchangeStatusCode { get; }
-    public string ErrorCategory { get; }
-
     public HyperliquidApiException(string message, int exchangeStatusCode, string errorCategory, Exception? innerException = null)
-        : base(message, innerException)
+        : base(message, exchangeStatusCode, errorCategory, innerException)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(errorCategory);
-        ExchangeStatusCode = exchangeStatusCode;
-        ErrorCategory = errorCategory;
     }
 }

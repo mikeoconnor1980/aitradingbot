@@ -1,10 +1,8 @@
-using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Abstractions.Exceptions;
-using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Infrastructure.Hyperliquid;
 
-public sealed class HyperliquidAssetMapper : IExchangeSymbolMapper
+public static class HyperliquidAssetMapper
 {
     private static readonly string[] QuoteSuffixes = ["USDT", "USDC", "USD"];
 
@@ -23,15 +21,22 @@ public sealed class HyperliquidAssetMapper : IExchangeSymbolMapper
     private static readonly Dictionary<string, string> CoinToDisplay =
         DisplayToCoin.ToDictionary(kvp => kvp.Value, kvp => kvp.Key, StringComparer.OrdinalIgnoreCase);
 
-    private static readonly Dictionary<string, long> TimeframeToIntervalMs = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, long> TimeframeToIntervalMs = new(StringComparer.Ordinal)
     {
+        ["1m"] = 1L * 60L * 1000L,
+        ["3m"] = 3L * 60L * 1000L,
         ["5m"] = 5L * 60L * 1000L,
         ["15m"] = 15L * 60L * 1000L,
+        ["30m"] = 30L * 60L * 1000L,
         ["1h"] = 60L * 60L * 1000L,
+        ["2h"] = 2L * 60L * 60L * 1000L,
         ["4h"] = 4L * 60L * 60L * 1000L,
+        ["8h"] = 8L * 60L * 60L * 1000L,
+        ["12h"] = 12L * 60L * 60L * 1000L,
+        ["1d"] = 24L * 60L * 60L * 1000L,
+        ["1w"] = 7L * 24L * 60L * 60L * 1000L,
+        ["1M"] = 30L * 24L * 60L * 60L * 1000L,
     };
-
-    public Exchange Exchange => Exchange.Hyperliquid;
 
     public static string ToCoin(string displayName)
     {
@@ -79,14 +84,34 @@ public sealed class HyperliquidAssetMapper : IExchangeSymbolMapper
 
     public static bool IsValidTimeframe(string timeframe)
     {
-        return TimeframeToIntervalMs.ContainsKey(timeframe);
+        return TimeframeToIntervalMs.ContainsKey(NormalizeTimeframe(timeframe));
     }
 
     public static bool IsValidCoin(string coin)
     {
-        return CoinToDisplay.ContainsKey(coin);
+        if (string.IsNullOrWhiteSpace(coin))
+        {
+            return false;
+        }
+
+        var normalizedCoin = coin.Trim().ToUpperInvariant();
+        if (normalizedCoin.Count(character => character == ':') > 1)
+        {
+            return false;
+        }
+
+        if (normalizedCoin.StartsWith(':') || normalizedCoin.EndsWith(':'))
+        {
+            return false;
+        }
+
+        return normalizedCoin.All(character => char.IsLetterOrDigit(character) || character == ':');
     }
 
+    /// <summary>
+    /// Returns a convenience subset of commonly traded coins for quick-pick UI flows.
+    /// This is not the full Hyperliquid asset universe.
+    /// </summary>
     public static IReadOnlyCollection<string> GetSupportedCoins()
     {
         return CoinToDisplay.Keys.OrderBy(coin => coin).ToArray();
@@ -106,32 +131,23 @@ public sealed class HyperliquidAssetMapper : IExchangeSymbolMapper
 
     public static long GetIntervalMs(string timeframe)
     {
-        return TimeframeToIntervalMs.TryGetValue(timeframe, out var ms)
+        var normalizedTimeframe = NormalizeTimeframe(timeframe);
+
+        return TimeframeToIntervalMs.TryGetValue(normalizedTimeframe, out var ms)
             ? ms
             : throw new DomainException($"Invalid timeframe '{timeframe}'. Supported: {string.Join(", ", TimeframeToIntervalMs.Keys)}");
     }
 
-    string IExchangeSymbolMapper.ToExchangeSymbol(TradingPair pair)
+    private static string NormalizeTimeframe(string timeframe)
     {
-        ArgumentNullException.ThrowIfNull(pair);
-
-        if (!((IExchangeSymbolMapper)this).CanMap(pair))
+        if (string.IsNullOrWhiteSpace(timeframe))
         {
-            throw new InvalidOperationException($"Hyperliquid cannot map trading pair '{pair.Canonical}'.");
+            return string.Empty;
         }
 
-        return pair.Base;
-    }
-
-    TradingPair IExchangeSymbolMapper.FromExchangeSymbol(string exchangeSymbol)
-    {
-        var coin = ToCoin(exchangeSymbol);
-        return TradingPair.Create(coin, "USD", AssetType.Perp);
-    }
-
-    bool IExchangeSymbolMapper.CanMap(TradingPair pair)
-    {
-        ArgumentNullException.ThrowIfNull(pair);
-        return pair.ProductType == AssetType.Perp && !string.IsNullOrWhiteSpace(pair.Base);
+        var trimmedTimeframe = timeframe.Trim();
+        return string.Equals(trimmedTimeframe, "1M", StringComparison.Ordinal)
+            ? "1M"
+            : trimmedTimeframe.ToLowerInvariant();
     }
 }

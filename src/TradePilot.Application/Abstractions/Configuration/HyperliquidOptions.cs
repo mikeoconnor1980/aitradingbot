@@ -19,6 +19,13 @@ public sealed class HyperliquidOptions
     [Required]
     public string Network { get; set; } = "testnet";
 
+    /// <summary>
+    /// Maximum slippage tolerance for market orders in basis points (bps).
+    /// 100 bps = 1%. Default is 500 bps (5%).
+    /// </summary>
+    [Range(1, 2000)]
+    public int MarketOrderSlippageBps { get; set; } = 500;
+
     public static string GetBaseUrlForNetwork(string network) =>
         network.Equals("mainnet", StringComparison.OrdinalIgnoreCase) ? MainnetBaseUrl : TestnetBaseUrl;
 }

@@ -133,6 +133,41 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
         return SendWithoutResponseAsync(HttpMethod.Delete, "/fapi/v1/allOpenOrders", query, cancellationToken);
     }
 
+    public async Task SetMarginTypeAsync(string symbol, bool isIsolated, CancellationToken cancellationToken = default)
+    {
+        var query = new[]
+        {
+            new KeyValuePair<string, string?>("symbol", symbol),
+            new KeyValuePair<string, string?>("marginType", isIsolated ? "ISOLATED" : "CROSSED"),
+        };
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, BuildPath("/fapi/v1/marginType", query));
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (TryReadBinanceCode(body) == -4046)
+        {
+            _logger.LogDebug(
+                "Binance margin type already set for {Symbol}. RequestedIsolated={IsIsolated}",
+                symbol,
+                isIsolated);
+            return;
+        }
+
+        _logger.LogWarning(
+            "Binance authenticated API error. StatusCode={StatusCode}, Path={Path}, Body={Body}",
+            (int)response.StatusCode,
+            "/fapi/v1/marginType",
+            body);
+
+        MapErrorResponse(response.StatusCode, body, response.Headers.RetryAfter?.Delta);
+    }
+
     public Task SetLeverageAsync(string symbol, int leverage, CancellationToken cancellationToken = default)
     {
         var query = new[]
@@ -258,20 +293,58 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
     private static void MapErrorResponse(HttpStatusCode statusCode, string body, TimeSpan? retryAfter)
     {
         var binanceCode = TryReadBinanceCode(body);
+        var message = ExtractMessage(body);
 
         throw statusCode switch
         {
-            HttpStatusCode.Unauthorized when binanceCode == -2015 => new DomainException(
-                "Binance Futures rejected the API key. Verify the key/secret pair, make sure the key is for USD-M Futures on the selected environment, enable Futures access on the key, and allow this machine's IP if the key is IP-restricted."),
-            HttpStatusCode.Unauthorized => new DomainException($"Binance API key rejected: {ExtractMessage(body)}"),
+            HttpStatusCode.Unauthorized when binanceCode == -2015 => new BinanceApiException(
+                BuildBinanceMessage(
+                    "Binance Futures rejected the API key. Verify the key/secret pair, make sure the key is for USD-M Futures on the selected environment, enable Futures access on the key, and allow this machine's IP if the key is IP-restricted.",
+                    binanceCode,
+                    message),
+                (int)statusCode,
+                binanceCode,
+                isTransient: false),
+            HttpStatusCode.Unauthorized => new BinanceApiException(
+                BuildBinanceMessage("Binance authentication failed", binanceCode, message),
+                (int)statusCode,
+                binanceCode,
+                isTransient: false),
+            HttpStatusCode.Forbidden => new BinanceApiException(
+                BuildBinanceMessage(
+                    "Binance API access forbidden. The API key may be disabled, restricted, or this IP may not be whitelisted.",
+                    binanceCode,
+                    message),
+                (int)statusCode,
+                binanceCode,
+                isTransient: false),
             HttpStatusCode.TooManyRequests => new RateLimitException(
-                $"Binance rate limit exceeded: {body}",
+                BuildBinanceMessage("Binance rate limit exceeded", binanceCode, message),
+                (int)statusCode,
                 retryAfter is null ? null : (int)Math.Ceiling(retryAfter.Value.TotalSeconds)),
-            (HttpStatusCode)418 => new DomainException($"Binance IP banned (418). Response: {body}"),
-            (HttpStatusCode)451 => new DomainException($"Binance IP banned (451). Response: {body}"),
+            (HttpStatusCode)418 => new RateLimitException(
+                BuildBinanceMessage("Binance IP ban triggered", binanceCode, message),
+                (int)statusCode,
+                retryAfter is null ? null : (int)Math.Ceiling(retryAfter.Value.TotalSeconds)),
+            (HttpStatusCode)451 => new BinanceApiException(
+                BuildBinanceMessage("Binance access blocked by geofencing", binanceCode, message),
+                (int)statusCode,
+                binanceCode,
+                isTransient: false),
+            _ when binanceCode == -1111 => new DomainException(
+                BuildBinanceMessage("Invalid order quantity", binanceCode, message)),
+            _ when binanceCode == -2019 => new DomainException(
+                BuildBinanceMessage("Insufficient margin", binanceCode, message)),
+            _ when binanceCode == -4003 => new DomainException(
+                BuildBinanceMessage("Quantity below minimum", binanceCode, message)),
             _ when (int)statusCode >= 400 && (int)statusCode < 500 => new DomainException(
-                $"Binance API error {(int)statusCode}: {body}"),
-            _ => new DomainException($"Binance API server error {(int)statusCode}: {body}"),
+                BuildBinanceMessage($"Binance API error {(int)statusCode}", binanceCode, message)),
+            _ when (int)statusCode >= 500 => new BinanceApiException(
+                BuildBinanceMessage($"Binance server error {(int)statusCode}", binanceCode, message),
+                (int)statusCode,
+                binanceCode,
+                isTransient: true),
+            _ => new DomainException(BuildBinanceMessage($"Unexpected Binance response {(int)statusCode}", binanceCode, message)),
         };
     }
 
@@ -313,5 +386,16 @@ public sealed class BinanceFuturesAuthClient : IBinanceFuturesAuthClient
         {
             return body;
         }
+    }
+
+    private static string BuildBinanceMessage(string summary, int? binanceCode, string message)
+    {
+        var normalizedMessage = string.IsNullOrWhiteSpace(message)
+            ? "no additional Binance error details were provided"
+            : message;
+
+        return binanceCode is int code
+            ? $"{summary} (Binance {code}): {normalizedMessage}"
+            : $"{summary}: {normalizedMessage}";
     }
 }

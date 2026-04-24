@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using TradePilot.Application.Abstractions.Services;
 
 namespace TradePilot.Infrastructure.Binance;
 
-public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache
+public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache, IDisposable
 {
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(30);
     private static readonly IReadOnlyDictionary<string, int> MaxLeverageByAsset = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -18,11 +19,16 @@ public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     private ConcurrentDictionary<string, BinanceExchangeSymbolMetadata>? _cache;
-    private DateTimeOffset _cacheExpiresAt = DateTimeOffset.MinValue;
+    private long _lastRefreshTimestamp;
 
     public BinanceExchangeInfoCache(IHttpClientFactory httpClientFactory)
     {
         _httpClientFactory = httpClientFactory;
+    }
+
+    public void Dispose()
+    {
+        _lock.Dispose();
     }
 
     public async Task<IReadOnlyDictionary<string, BinanceExchangeSymbolMetadata>> GetSupportedSymbolsAsync(CancellationToken cancellationToken = default)
@@ -37,17 +43,17 @@ public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache
 
     private async Task<ConcurrentDictionary<string, BinanceExchangeSymbolMetadata>> EnsureCacheAsync(CancellationToken cancellationToken)
     {
-        if (_cache is not null && DateTimeOffset.UtcNow < _cacheExpiresAt)
+        if (IsCacheFresh())
         {
-            return _cache;
+            return _cache!;
         }
 
         await _lock.WaitAsync(cancellationToken);
         try
         {
-            if (_cache is not null && DateTimeOffset.UtcNow < _cacheExpiresAt)
+            if (IsCacheFresh())
             {
-                return _cache;
+                return _cache!;
             }
 
             var client = _httpClientFactory.CreateClient("binance-public");
@@ -84,7 +90,7 @@ public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache
             }
 
             _cache = refreshed;
-            _cacheExpiresAt = DateTimeOffset.UtcNow.Add(CacheDuration);
+            _lastRefreshTimestamp = Stopwatch.GetTimestamp();
             return refreshed;
         }
         finally
@@ -92,6 +98,9 @@ public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache
             _lock.Release();
         }
     }
+
+    private bool IsCacheFresh()
+        => _cache is not null && Stopwatch.GetElapsedTime(_lastRefreshTimestamp) < CacheDuration;
 
     private static int GetDecimals(string? value, int fallback)
     {
@@ -102,7 +111,7 @@ public sealed class BinanceExchangeInfoCache : IBinanceExchangeInfoCache
             return fallback;
         }
 
-        var text = parsed.ToString(CultureInfo.InvariantCulture);
+        var text = parsed.ToString("G29", CultureInfo.InvariantCulture);
         var separatorIndex = text.IndexOf('.');
         return separatorIndex >= 0 ? text.Length - separatorIndex - 1 : 0;
     }

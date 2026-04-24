@@ -15,7 +15,8 @@ namespace TradePilot.Infrastructure.Services;
 
 public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
 {
-    private const int ReceiveBufferSize = 4096;
+    internal const int ReceiveBufferSize = 8192;
+    internal static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan PingInterval = TimeSpan.FromSeconds(30);
     private static readonly byte[] PingPayload = Encoding.UTF8.GetBytes("{\"method\":\"ping\"}");
 
@@ -67,7 +68,9 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
         _logger.LogInformation("Connecting to Hyperliquid WebSocket at {Uri}", uri);
 
         await NotifyStateChangeAsync(WebSocketConnectionState.Connecting);
-        await _webSocket.ConnectAsync(uri, cancellationToken);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(ConnectTimeout);
+        await _webSocket.ConnectAsync(uri, timeoutCts.Token);
         await NotifyStateChangeAsync(WebSocketConnectionState.Connected);
 
         _logger.LogInformation("Connected to Hyperliquid WebSocket");
@@ -129,61 +132,74 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
         var buffer = new byte[ReceiveBufferSize];
         using var messageBuffer = new MemoryStream();
 
-        _ = RunPingLoopAsync(cancellationToken);
+        using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var pingLoopTask = RunPingLoopAsync(pingCts.Token);
 
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            var ws = _webSocket;
-            if (ws?.State != WebSocketState.Open)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                break;
-            }
-
-            try
-            {
-                messageBuffer.SetLength(0);
-                WebSocketReceiveResult result;
-
-                do
+                var ws = _webSocket;
+                if (ws?.State != WebSocketState.Open)
                 {
-                    result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                    break;
+                }
 
-                    if (result.MessageType == WebSocketMessageType.Close)
+                try
+                {
+                    messageBuffer.SetLength(0);
+                    WebSocketReceiveResult result;
+
+                    do
                     {
-                        _logger.LogWarning(
-                            "WebSocket close received: {Status} {Description}",
-                            result.CloseStatus,
-                            result.CloseStatusDescription);
-                        await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
-                        return;
+                        result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            _logger.LogWarning(
+                                "WebSocket close received: {Status} {Description}",
+                                result.CloseStatus,
+                                result.CloseStatusDescription);
+                            await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
+                            return;
+                        }
+
+                        await messageBuffer.WriteAsync(buffer.AsMemory(0, result.Count), cancellationToken);
                     }
+                    while (!result.EndOfMessage);
 
-                    await messageBuffer.WriteAsync(buffer.AsMemory(0, result.Count), cancellationToken);
+                    if (result.MessageType == WebSocketMessageType.Text)
+                    {
+                        var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
+                        await ProcessMessageAsync(json);
+                    }
                 }
-                while (!result.EndOfMessage);
-
-                if (result.MessageType == WebSocketMessageType.Text)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
-                    await ProcessMessageAsync(json);
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    _logger.LogWarning("WebSocket was disposed during receive");
+                    await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
+                    return;
+                }
+                catch (WebSocketException ex)
+                {
+                    _logger.LogError(ex, "WebSocket error during receive");
+                    await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
+                    return;
                 }
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        }
+        finally
+        {
+            if (!pingCts.IsCancellationRequested)
             {
-                break;
+                pingCts.Cancel();
             }
-            catch (ObjectDisposedException)
-            {
-                _logger.LogWarning("WebSocket was disposed during receive");
-                await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
-                return;
-            }
-            catch (WebSocketException ex)
-            {
-                _logger.LogError(ex, "WebSocket error during receive");
-                await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
-                return;
-            }
+
+            await pingLoopTask;
         }
     }
 
@@ -471,6 +487,10 @@ public sealed class HyperliquidWebSocketClient : IHyperliquidWebSocketClient
                 catch (WebSocketException ex)
                 {
                     _logger.LogWarning(ex, "WebSocket ping failed — connection may be dead");
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
                     break;
                 }
             }

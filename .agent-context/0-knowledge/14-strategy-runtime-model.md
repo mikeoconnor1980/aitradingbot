@@ -95,6 +95,7 @@ The drawdown-aware risk engine contract now includes more than simple validation
 | `RecordPositionClosed(string symbol)` | Removes tracked heat on close |
 | `RecordLoss(decimal lossUsd)` | Rolling loss/circuit-breaker input |
 | `RecordOrdersPlaced(int count)` and `RecordOrdersClosed(int count)` | Open-order tracking |
+| `Reset()` | Clears all session-scoped risk state (portfolio heat, circuit-breaker counters, drawdown); called by `AgentCheckInService` before each new session to prevent prior-session state from leaking across restarts |
 
 ## Runtime Models
 

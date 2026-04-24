@@ -34,6 +34,12 @@ public sealed class UserEventStreamService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (_signer is ISignerProvider signerProvider && !signerProvider.IsConfigured)
+        {
+            _logger.LogWarning("UserEventStreamService: no wallet configured - skipping user event stream");
+            return;
+        }
+
         var walletAddress = _signer.WalletAddress;
         _logger.LogInformation(
             "UserEventStreamService starting for wallet {WalletAddress}",
@@ -45,7 +51,7 @@ public sealed class UserEventStreamService : BackgroundService
                 "Fill received: {Asset} {Side} {Size}@{Price}",
                 fill.Asset, fill.Side, fill.Size, fill.Price);
 
-            await _dispatcher.NotifyFillAsync(fill);
+            await _dispatcher.NotifyFillAsync(fill, stoppingToken);
         });
 
         _wsClient.OnFillBatchReceived(async fills =>
@@ -71,7 +77,7 @@ public sealed class UserEventStreamService : BackgroundService
                     g.Asset, g.Side, g.TotalSize, g.Vwap, g.Count, g.TotalPnl);
             }
 
-            await _dispatcher.NotifyFillBatchAsync(fills);
+            await _dispatcher.NotifyFillBatchAsync(fills, stoppingToken);
         });
 
         _wsClient.OnOrderUpdateReceived(async orderUpdate =>
@@ -80,7 +86,7 @@ public sealed class UserEventStreamService : BackgroundService
                 "Order update received: {OrderId} {Asset} {Status}",
                 orderUpdate.OrderId, orderUpdate.Asset, orderUpdate.Status);
 
-            await _dispatcher.NotifyOrderUpdateAsync(orderUpdate);
+            await _dispatcher.NotifyOrderUpdateAsync(orderUpdate, stoppingToken);
         });
 
         _wsClient.OnConnectionStateChanged(async state =>
@@ -98,7 +104,7 @@ public sealed class UserEventStreamService : BackgroundService
                 RetryCount = _retryCount
             };
 
-            await _dispatcher.NotifyUserConnectionStatusAsync(status);
+            await _dispatcher.NotifyUserConnectionStatusAsync(status, stoppingToken);
         });
 
         while (!stoppingToken.IsCancellationRequested)
@@ -142,14 +148,15 @@ public sealed class UserEventStreamService : BackgroundService
                     RetryCount = _retryCount
                 };
 
-                await _dispatcher.NotifyUserConnectionStatusAsync(disconnectedStatus);
+                await _dispatcher.NotifyUserConnectionStatusAsync(disconnectedStatus, stoppingToken);
 
                 break;
             }
 
-            var backoffMs = Math.Min(
+            var baseBackoffMs = Math.Min(
                 InitialBackoffMs * (int)Math.Pow(2, _retryCount - 1),
                 MaxBackoffMs);
+            var backoffMs = baseBackoffMs + Random.Shared.Next(0, baseBackoffMs / 4);
 
             _logger.LogInformation(
                 "User event WebSocket reconnecting in {BackoffMs}ms (attempt {RetryCount}/{MaxRetries})",
@@ -163,7 +170,7 @@ public sealed class UserEventStreamService : BackgroundService
                 RetryCount = _retryCount
             };
 
-            await _dispatcher.NotifyUserConnectionStatusAsync(reconnectingStatus);
+            await _dispatcher.NotifyUserConnectionStatusAsync(reconnectingStatus, stoppingToken);
 
             await Task.Delay(backoffMs, stoppingToken);
         }

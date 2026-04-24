@@ -10,7 +10,7 @@ public sealed class UserEventStreamServiceTests
 {
     private readonly Mock<IHyperliquidUserEventClient> _wsClientMock = new();
     private readonly Mock<INotificationDispatcher> _dispatcherMock = new();
-    private readonly Mock<IHyperliquidSigner> _signerMock = new();
+    private readonly Mock<ISignerProvider> _signerMock = new();
     private readonly Mock<ILogger<UserEventStreamService>> _loggerMock = new();
 
     private const string TestWalletAddress = "0x1234567890abcdef1234567890abcdef12345678";
@@ -22,12 +22,16 @@ public sealed class UserEventStreamServiceTests
             .Setup(d => d.NotifyFillAsync(It.IsAny<FillEventDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _dispatcherMock
+            .Setup(d => d.NotifyFillBatchAsync(It.IsAny<IReadOnlyList<FillEventDto>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _dispatcherMock
             .Setup(d => d.NotifyOrderUpdateAsync(It.IsAny<OrderUpdateDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         _dispatcherMock
             .Setup(d => d.NotifyUserConnectionStatusAsync(It.IsAny<ConnectionStatusDto>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        _signerMock.SetupGet(s => s.IsConfigured).Returns(true);
         _signerMock.Setup(s => s.WalletAddress).Returns(TestWalletAddress);
     }
 
@@ -106,7 +110,48 @@ public sealed class UserEventStreamServiceTests
         finally { await service.StopAsync(CancellationToken.None); }
 
         _dispatcherMock.Verify(
-            d => d.NotifyFillAsync(It.IsAny<FillEventDto>(), It.IsAny<CancellationToken>()),
+            d => d.NotifyFillAsync(It.IsAny<FillEventDto>(), It.Is<CancellationToken>(ct => ct.CanBeCanceled)),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenStreamService_WhenFillBatchReceived_ThenDispatchesBatchWithCancellationToken()
+    {
+        SetupLongRunningWebSocket();
+        Func<IReadOnlyList<FillEventDto>, Task>? batchHandler = null;
+        _wsClientMock
+            .Setup(w => w.OnFillBatchReceived(It.IsAny<Func<IReadOnlyList<FillEventDto>, Task>>()))
+            .Callback<Func<IReadOnlyList<FillEventDto>, Task>>(handler => batchHandler = handler);
+
+        var service = CreateService();
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+
+        try
+        {
+            await service.StartAsync(cts.Token);
+            await Task.Delay(200, cts.Token);
+
+            batchHandler.Should().NotBeNull();
+            await batchHandler!([
+                new FillEventDto
+                {
+                    Timestamp = DateTime.UtcNow,
+                    Asset = "BTC",
+                    Side = "Buy",
+                    Direction = "Open Long",
+                    Size = 0.1m,
+                    Price = 50000m,
+                    Fee = 0.5m,
+                    ClosedPnl = 0m,
+                    OrderId = "12345"
+                }
+            ]);
+        }
+        catch (OperationCanceledException) { }
+        finally { await service.StopAsync(CancellationToken.None); }
+
+        _dispatcherMock.Verify(
+            d => d.NotifyFillBatchAsync(It.IsAny<IReadOnlyList<FillEventDto>>(), It.Is<CancellationToken>(ct => ct.CanBeCanceled)),
             Times.Once);
     }
 
@@ -142,7 +187,24 @@ public sealed class UserEventStreamServiceTests
         finally { await service.StopAsync(CancellationToken.None); }
 
         _dispatcherMock.Verify(
-            d => d.NotifyOrderUpdateAsync(It.IsAny<OrderUpdateDto>(), It.IsAny<CancellationToken>()),
+            d => d.NotifyOrderUpdateAsync(It.IsAny<OrderUpdateDto>(), It.Is<CancellationToken>(ct => ct.CanBeCanceled)),
             Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenWalletNotConfigured_WhenExecuteAsync_ThenReturnsGracefully()
+    {
+        // Arrange
+        _signerMock.SetupGet(s => s.IsConfigured).Returns(false);
+        var service = CreateService();
+
+        // Act
+        await service.StartAsync(CancellationToken.None);
+        await Task.Delay(100);
+        await service.StopAsync(CancellationToken.None);
+
+        // Assert
+        _wsClientMock.Verify(w => w.ConnectAsync(It.IsAny<CancellationToken>()), Times.Never);
+        _wsClientMock.Verify(w => w.SubscribeToUserEventsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

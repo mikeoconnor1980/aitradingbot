@@ -60,7 +60,8 @@ public sealed class MutableSignerProvider : ISignerProvider
             _inner = signer;
         }
 
-        _logger.LogInformation(
+        _logger.LogInformation("Wallet configured.");
+        _logger.LogDebug(
             "Wallet configured: Address={WalletAddress}", signer.WalletAddress);
     }
 

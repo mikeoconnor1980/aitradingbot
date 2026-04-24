@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Agent;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
 using TradePilot.Application.StrategyAuthoring.Models;
@@ -35,6 +36,7 @@ public sealed class AgentController : ControllerBase
     private readonly AgentCommandStore _store;
     private readonly AgentUpdateOptions _updateOptions;
     private readonly InstallerOptions _installerOptions;
+    private readonly IInstallerStore _installerStore;
     private readonly HyperliquidOptions _hyperliquidOptions;
     private readonly TelegramOptions _telegramOptions;
     private readonly TradePilotDbContext _db;
@@ -46,6 +48,7 @@ public sealed class AgentController : ControllerBase
         AgentCommandStore store,
         IOptions<AgentUpdateOptions> updateOptions,
         IOptions<InstallerOptions> installerOptions,
+        IInstallerStore installerStore,
         IOptions<HyperliquidOptions> hyperliquidOptions,
         IOptions<TelegramOptions> telegramOptions,
         TradePilotDbContext db,
@@ -56,6 +59,7 @@ public sealed class AgentController : ControllerBase
         _store = store;
         _updateOptions = updateOptions.Value;
         _installerOptions = installerOptions.Value;
+        _installerStore = installerStore;
         _hyperliquidOptions = hyperliquidOptions.Value;
         _telegramOptions = telegramOptions.Value;
         _db = db;
@@ -332,13 +336,13 @@ public sealed class AgentController : ControllerBase
     }
 
     /// <summary>
-    /// Download the installer binary. Streams the file from the configured installer directory.
+    /// Download the installer binary. Streams the file from blob storage or local disk.
     /// </summary>
     [HttpGet("installer/download")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult DownloadInstaller([FromQuery] string format = "exe")
+    public async Task<IActionResult> DownloadInstaller([FromQuery] string format = "exe", CancellationToken cancellationToken = default)
     {
         var normalizedFormat = format.ToLowerInvariant();
         if (normalizedFormat is not "exe" and not "zip")
@@ -351,13 +355,12 @@ public sealed class AgentController : ControllerBase
         }
 
         var version = _updateOptions.LatestVersion;
-        var directory = ResolveInstallerDirectory();
-        if (string.IsNullOrEmpty(version) || directory is null)
+        if (string.IsNullOrEmpty(version))
         {
             return NotFound(new ProblemDetails
             {
                 Title = "Installer not available",
-                Detail = "Installer directory or version not configured."
+                Detail = "Installer version not configured."
             });
         }
 
@@ -367,15 +370,8 @@ public sealed class AgentController : ControllerBase
             _ => ($"TradePilot-ExecutionAgent-v{version}-Setup.exe", "application/octet-stream"),
         };
 
-        var filePath = Path.Combine(directory, fileName);
-
-        // Prevent path traversal
-        if (!Path.GetFullPath(filePath).StartsWith(directory, StringComparison.OrdinalIgnoreCase))
-        {
-            return NotFound();
-        }
-
-        if (!System.IO.File.Exists(filePath))
+        var stream = await _installerStore.OpenReadAsync(fileName, cancellationToken);
+        if (stream is null)
         {
             return NotFound(new ProblemDetails
             {
@@ -387,7 +383,7 @@ public sealed class AgentController : ControllerBase
         _logger.LogInformation("Installer download: format={Format}, version={Version}, file={FileName}",
             normalizedFormat, version, fileName);
 
-        return PhysicalFile(filePath, contentType, fileName);
+        return File(stream, contentType, fileName);
     }
 
     /// <summary>
@@ -396,27 +392,27 @@ public sealed class AgentController : ControllerBase
     /// </summary>
     [HttpGet("installer/info")]
     [ProducesResponseType(typeof(InstallerInfoResponse), StatusCodes.Status200OK)]
-    public IActionResult GetInstallerInfo()
+    public async Task<IActionResult> GetInstallerInfo(CancellationToken cancellationToken)
     {
         var version = _updateOptions.LatestVersion;
-        var directory = ResolveInstallerDirectory();
 
         var exeFileName = $"TradePilot-ExecutionAgent-v{version}-Setup.exe";
         var zipFileName = $"TradePilot-ExecutionAgent-v{version}-win-x64.zip";
 
-        var exePath = directory is not null ? Path.Combine(directory, exeFileName) : null;
-        var zipPath = directory is not null ? Path.Combine(directory, zipFileName) : null;
+        var exeTask = _installerStore.GetFileInfoAsync(exeFileName, cancellationToken);
+        var zipTask = _installerStore.GetFileInfoAsync(zipFileName, cancellationToken);
+        await Task.WhenAll(exeTask, zipTask);
 
-        var exeInfo = exePath is not null && System.IO.File.Exists(exePath) ? new FileInfo(exePath) : null;
-        var zipInfo = zipPath is not null && System.IO.File.Exists(zipPath) ? new FileInfo(zipPath) : null;
+        var exeInfo = exeTask.Result;
+        var zipInfo = zipTask.Result;
 
         return Ok(new InstallerInfoResponse
         {
             Version = version,
-            ExeAvailable = exeInfo is not null,
-            ZipAvailable = zipInfo is not null,
-            ExeFileSizeBytes = exeInfo?.Length,
-            ZipFileSizeBytes = zipInfo?.Length,
+            ExeAvailable = exeInfo.Exists,
+            ZipAvailable = zipInfo.Exists,
+            ExeFileSizeBytes = exeInfo.SizeBytes,
+            ZipFileSizeBytes = zipInfo.SizeBytes,
             Sha256Hash = _updateOptions.Sha256Hash,
             ReleaseNotes = _updateOptions.ReleaseNotes,
         });
@@ -496,20 +492,6 @@ public sealed class AgentController : ControllerBase
             "Queued auto-resume for strategy {StrategyId} on agent {AgentId} after idle heartbeat.",
             strategy.Id,
             heartbeat.AgentId);
-    }
-
-    /// <summary>
-    /// Resolves the configured installer directory to a full path.
-    /// Returns null if the directory is not configured.
-    /// </summary>
-    private string? ResolveInstallerDirectory()
-    {
-        if (string.IsNullOrEmpty(_installerOptions.InstallerDirectory))
-            return null;
-
-        return Path.IsPathRooted(_installerOptions.InstallerDirectory)
-            ? _installerOptions.InstallerDirectory
-            : Path.GetFullPath(_installerOptions.InstallerDirectory);
     }
 
     private NetworkConfig BuildNetworkConfig() => new()

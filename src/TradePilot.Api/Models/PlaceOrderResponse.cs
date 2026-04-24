@@ -6,4 +6,5 @@ public sealed class PlaceOrderResponse
     public string? OrderId { get; set; }
     public string? Status { get; set; }
     public string? Detail { get; set; }
+    public List<string> Warnings { get; set; } = [];
 }

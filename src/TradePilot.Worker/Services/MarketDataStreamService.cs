@@ -15,6 +15,7 @@ public sealed class MarketDataStreamService : BackgroundService
     private const int MaxRetryAttempts = 20;
     private const int InitialBackoffMs = 1000;
     private const int MaxBackoffMs = 60000;
+    private static readonly TimeSpan VolumeReseedInterval = TimeSpan.FromMinutes(5);
 
     private readonly IHyperliquidWebSocketClient _wsClient;
     private readonly ISignalRPublisher _publisher;
@@ -31,6 +32,7 @@ public sealed class MarketDataStreamService : BackgroundService
     private decimal _low24h;
     private decimal _volume24h;
     private int _retryCount;
+    private DateTimeOffset _lastVolumeReseed = DateTimeOffset.UtcNow;
 
     public MarketDataStreamService(
         IHyperliquidWebSocketClient wsClient,
@@ -127,9 +129,10 @@ public sealed class MarketDataStreamService : BackgroundService
                 break;
             }
 
-            var backoffMs = Math.Min(
+            var baseBackoffMs = Math.Min(
                 InitialBackoffMs * (int)Math.Pow(2, _retryCount - 1),
                 MaxBackoffMs);
+            var backoffMs = baseBackoffMs + Random.Shared.Next(0, baseBackoffMs / 4);
 
             await _publisher.BroadcastConnectionStatusAsync(
                 new ConnectionStatusDto
@@ -210,6 +213,13 @@ public sealed class MarketDataStreamService : BackgroundService
         {
             _logger.LogError(ex, "Failed to seed 24h stats from REST. Starting with zeros.");
         }
+        finally
+        {
+            lock (_statsLock)
+            {
+                _lastVolumeReseed = DateTimeOffset.UtcNow;
+            }
+        }
     }
 
     private async Task RunAggregationLoopAsync(CancellationToken cancellationToken)
@@ -220,6 +230,13 @@ public sealed class MarketDataStreamService : BackgroundService
         {
             var tradesProcessed = 0;
             PriceUpdateDto? update = null;
+            var reseeded = false;
+
+            if (IsVolumeReseedDue())
+            {
+                await SeedStatsFromRestAsync(cancellationToken);
+                reseeded = true;
+            }
 
             lock (_statsLock)
             {
@@ -241,7 +258,7 @@ public sealed class MarketDataStreamService : BackgroundService
                     tradesProcessed++;
                 }
 
-                if (tradesProcessed > 0)
+                if (tradesProcessed > 0 || reseeded)
                 {
                     update = new PriceUpdateDto
                     {
@@ -261,6 +278,14 @@ public sealed class MarketDataStreamService : BackgroundService
             }
 
             await _publisher.BroadcastPriceUpdateAsync(update, cancellationToken);
+        }
+    }
+
+    private bool IsVolumeReseedDue()
+    {
+        lock (_statsLock)
+        {
+            return DateTimeOffset.UtcNow - _lastVolumeReseed >= VolumeReseedInterval;
         }
     }
 }

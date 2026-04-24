@@ -1,6 +1,11 @@
 # Binance USDⓈ-M Futures Integration
 
-Binance is used as a **read-only historical data source** — it is never used for order placement or live execution. The integration fetches kline (OHLCV) candles, mark price candles, and funding rate history from the Binance USDⓈ-M Futures REST API (`fapi.binance.com`). This data is used for backtesting and strategy context. All live trading actions go through Hyperliquid (see [Hyperliquid Integration](02-hyperliquid-integration.md)).
+Binance now serves two roles in the platform:
+
+1. Historical and contextual market data ingestion via the Binance USDⓈ-M Futures REST API (`fapi.binance.com`)
+2. Exchange-backed account, metadata, and execution support behind the shared exchange abstractions used by the API and Worker
+
+The ingestion path still fetches kline (OHLCV) candles, mark price candles, and funding rate history for backtesting and strategy context. In addition, the infrastructure layer now includes Binance execution, account, market metadata, exchange-info cache, and symbol-metadata adapter components that can be resolved through `IExecutionEngine`, `IExchangeAccountClient`, `IExchangeMarketMetadataProvider`, and `IExchangeSymbolMetadataProvider`.
 
 ---
 
@@ -9,8 +14,17 @@ Binance is used as a **read-only historical data source** — it is never used f
 | Component | Location | Purpose |
 |-----------|----------|---------|
 | `BinanceAssetMapper` | `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` | Maps display symbols to futures symbols; resolves intervals to ms; handles mark-price prefix |
+| `BinanceExecutionEngine` | `src/TradePilot.Infrastructure/Binance/BinanceExecutionEngine.cs` | Places, cancels, and modifies Binance orders behind `IExecutionEngine`; normalizes size and price using exchange metadata |
+| `BinanceAccountAdapter` | `src/TradePilot.Infrastructure/Binance/BinanceAccountAdapter.cs` | Exposes balances, positions, open orders, and fills behind `IExchangeAccountClient` |
+| `BinanceMarketMetadataProvider` | `src/TradePilot.Infrastructure/Binance/BinanceMarketMetadataProvider.cs` | Provides mark price, funding rate, volume, and open interest behind `IExchangeMarketMetadataProvider` |
+| `BinanceExchangeInfoCache` | `src/TradePilot.Infrastructure/Binance/BinanceExchangeInfoCache.cs` | Caches Binance symbol precision and leverage metadata for normalization and UI asset discovery |
+| `BinanceSymbolMetadataProvider` | `src/TradePilot.Infrastructure/Binance/BinanceSymbolMetadataProvider.cs` | Adapts Binance exchange-info data to the shared `IExchangeSymbolMetadataProvider` contract |
+| `BinanceParsing` | `src/TradePilot.Infrastructure/Binance/BinanceParsing.cs` | Shared parsing helpers for decimals/integers with `NumberStyles.Any` for scientific notation |
+| `BinanceApiException` | `src/TradePilot.Application/Abstractions/Exceptions/BinanceApiException.cs` | Binance-specific exception carrying error codes and transience classification |
 | `IBinanceFuturesRestClient` | `src/TradePilot.Application/Abstractions/Services/IBinanceFuturesRestClient.cs` | Interface for Binance Futures REST calls |
+| `IBinanceFuturesAuthClient` | `src/TradePilot.Application/Abstractions/Services/IBinanceFuturesAuthClient.cs` | Authenticated Binance Futures account and trading client used by execution and account services |
 | `BinanceFuturesRestClient` | `src/TradePilot.Infrastructure/Services/BinanceFuturesRestClient.cs` | Typed `HttpClient` implementation; calls `/fapi/v1/klines`, `/fapi/v1/markPriceKlines`, `/fapi/v1/fundingRate` |
+| `BinanceFuturesAuthClient` | `src/TradePilot.Infrastructure/Services/BinanceFuturesAuthClient.cs` | Signed Binance Futures REST client for balances, orders, leverage, margin mode, fills, and exchange execution |
 | `IBinanceCandleIngestionService` | `src/TradePilot.Application/Abstractions/Services/IBinanceCandleIngestionService.cs` | Interface for Binance candle ingestion |
 | `BinanceCandleIngestionService` | `src/TradePilot.Infrastructure/Services/BinanceCandleIngestionService.cs` | Paginates klines and mark-price klines; writes to `ICandleRepository` with `Source = "Binance"` |
 | `IFundingRateIngestionService` | `src/TradePilot.Application/Abstractions/Services/IFundingRateIngestionService.cs` | Interface for funding rate ingestion |
@@ -53,12 +67,51 @@ To request mark price candles instead of trade price candles, prefix the interva
 
 ---
 
+## Execution Engine & Order Safety
+
+`BinanceExecutionEngine` includes metadata-driven normalization and fail-fast safeguards:
+
+| Feature | Behavior |
+|---------|----------|
+| Order size normalization | Rounds to symbol-specific decimals via `BinanceExchangeInfoCache`; throws if normalizes to zero |
+| Price normalization | Rounds limit/trigger prices to symbol-specific decimals; throws if normalizes to zero |
+| Fail-fast cancel | Requires in-memory `ConcurrentDictionary<orderId, asset>` mapping; throws if mapping lost (e.g., after process restart) |
+| Modify compensation | Cancels existing order, places replacement, retries once on failure; throws `DomainException` if both attempts fail |
+| Margin-type switching | Calls `SetMarginTypeAsync` before `SetLeverageAsync`; Binance `-4046` (already set) treated as success |
+
+## Exception Hierarchy
+
+| Exception Type | Base | When Thrown |
+|---|---|---|
+| `ExchangeApiException` | `Exception` | Abstract base carrying `ExchangeStatusCode` and `ErrorCategory` |
+| `RateLimitException` | `ExchangeApiException` | HTTP 429 after retries exhausted (any exchange) |
+| `SigningException` | `ExchangeApiException` | EIP-712 signing fails (Hyperliquid) |
+| `BinanceApiException` | `ExchangeApiException` | Binance REST errors with `IsTransient` classification |
+| `HyperliquidApiException` | `ExchangeApiException` | Hyperliquid REST errors (sealed) |
+
+Binance error mapping: HTTP 403/451 → permanent, 418 → rate limit, 5xx → transient, business codes `-1111`/`-2019`/`-4003` → permanent `DomainException`.
+
+## Resilience & HTTP Clients
+
+The `binance-public` named HTTP client has resilience in both API and Worker hosts:
+
+| Policy | Configuration |
+|---|---|
+| Retry strategy | Exponential backoff, 5 attempts, 1s–60s delay, jitter |
+| Retry conditions | HTTP 429, 418, or 5xx |
+| Per-attempt timeout | 5 seconds |
+| Client timeout | 30 seconds (outer cap) |
+
+---
+
 ## API Endpoints
 
 | Method | Route | Command | Description |
 |--------|-------|---------|-------------|
 | `POST` | `/api/candles/ingest/binance` | `IngestBinanceCandlesCommand` | Ingest klines (and optionally mark-price klines) for a symbol + interval list |
 | `POST` | `/api/funding/ingest` | `IngestFundingRatesCommand` | Ingest funding rate history for a symbol |
+
+Separate order, account, and asset-discovery endpoints resolve the active exchange through the shared exchange abstractions. When Binance is the current exchange, those endpoints now use Binance-backed implementations for execution, account reads, market metadata, and symbol metadata.
 
 Both endpoints accept `StartTime`/`EndTime` as Unix milliseconds (nullable). Omitting `StartTime` resumes from the latest stored record.
 
@@ -116,6 +169,9 @@ Both `BinanceCandleIngestionService` and `FundingRateIngestionService` share the
 
 To add a new Binance symbol:
 1. Add entry to `BinanceAssetMapper.SymbolToFuturesSymbol`
+2. The entry is automatically included in `BinanceAssetMapper.SupportedAssets` (single source of truth)
+3. All execution, account, and metadata consumers respect the new asset immediately
+4. Verify the asset's max leverage default in `BinanceExchangeInfoCache.MaxLeverageByAsset` (BTC/ETH = 125x, others = 25x)
 
 To add a new interval:
 1. Add entry to `BinanceAssetMapper.IntervalToMs`

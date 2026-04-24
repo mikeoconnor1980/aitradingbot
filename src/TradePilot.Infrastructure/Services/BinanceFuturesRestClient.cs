@@ -179,6 +179,7 @@ public sealed class BinanceFuturesRestClient : IBinanceFuturesRestClient
         {
             HttpStatusCode.TooManyRequests => new RateLimitException(
                 $"Binance rate limit exceeded: {body}",
+                (int)statusCode,
                 retryAfter is null ? null : (int)Math.Ceiling(retryAfter.Value.TotalSeconds)),
             (HttpStatusCode)451 => new DomainException($"Binance IP banned (451). Response: {body}"),
             _ when (int)statusCode >= 400 && (int)statusCode < 500 => new DomainException(

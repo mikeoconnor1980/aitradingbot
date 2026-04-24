@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Collections;
-using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using MessagePack;
@@ -105,8 +104,8 @@ public static class HyperliquidEip712
                 {
                     ["a"] = assetIndex,
                     ["b"] = isBuy,
-                    ["p"] = ToWireDecimal(price),
-                    ["s"] = ToWireDecimal(size),
+                    ["p"] = HyperliquidFormatting.ToWireDecimal(price),
+                    ["s"] = HyperliquidFormatting.ToWireDecimal(size),
                     ["r"] = reduceOnly,
                     ["t"] = new Dictionary<string, object>
                     {
@@ -137,15 +136,15 @@ public static class HyperliquidEip712
                 {
                     ["a"] = assetIndex,
                     ["b"] = isBuy,
-                    ["p"] = ToWireDecimal(triggerPrice),
-                    ["s"] = ToWireDecimal(size),
+                    ["p"] = HyperliquidFormatting.ToWireDecimal(triggerPrice),
+                    ["s"] = HyperliquidFormatting.ToWireDecimal(size),
                     ["r"] = true,
                     ["t"] = new Dictionary<string, object>
                     {
                         ["trigger"] = new Dictionary<string, object>
                         {
                             ["isMarket"] = true,
-                            ["triggerPx"] = ToWireDecimal(triggerPrice),
+                            ["triggerPx"] = HyperliquidFormatting.ToWireDecimal(triggerPrice),
                             ["tpsl"] = tpsl,
                         },
                     },
@@ -167,14 +166,6 @@ public static class HyperliquidEip712
         }
 
         return Convert.FromHexString(normalised);
-    }
-
-    private static string ToWireDecimal(decimal value)
-    {
-        var formatted = value.ToString("0.############################", CultureInfo.InvariantCulture);
-        return formatted.Contains('.')
-            ? formatted.TrimEnd('0').TrimEnd('.')
-            : formatted;
     }
 
     /// <summary>

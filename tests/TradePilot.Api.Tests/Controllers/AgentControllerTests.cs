@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Agent.Services;
@@ -22,7 +21,6 @@ public sealed class AgentControllerTests : BaseControllerTests
 
     protected override void ConfigureTestServices(IServiceCollection services)
     {
-        services.RemoveAll<IHostedService>();
         services.RemoveAll<AgentCommandStore>();
         services.AddSingleton(new AgentCommandStore());
     }

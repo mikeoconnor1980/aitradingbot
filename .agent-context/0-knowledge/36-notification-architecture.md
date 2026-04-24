@@ -98,6 +98,12 @@ The `NotificationDispatcher` centralises the Telegram availability check. The pa
 3. Telegram calls are skipped silently — no errors, no logs
 4. `ITelegramNotifier` implementations swallow all exceptions to never disrupt trading
 
+## Fill SignalR Deduplication
+
+`NotificationDispatcher` maintains a `ConcurrentDictionary<string, DateTimeOffset>` of recently seen fill keys. Before broadcasting a fill via SignalR, it checks whether that fill key was already sent within the last minute (`FillSignalRDeduplicationWindow = 1 minute`). Duplicate fill events are suppressed at the dispatcher level; Telegram is not subject to this window. The dictionary is bounded to 10,000 entries to prevent unbounded memory growth.
+
+This is a worker-side safeguard against WebSocket reconnect replaying fills to the UI multiple times. It does not affect the persistence path — fills are still written to the database on first receipt regardless.
+
 ## DI Registration
 
 - **Worker**: `INotificationDispatcher` → `NotificationDispatcher` registered as singleton in `Program.cs`

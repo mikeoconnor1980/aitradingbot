@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Api.Models;
@@ -25,8 +25,6 @@ public sealed class OrdersController : ControllerBase
     private readonly IHyperliquidOrderService _orderService;
     private readonly IHyperliquidAccountService _accountService;
     private readonly IHyperliquidRestClient _restClient;
-    private readonly IHyperliquidAssetMetadataCache _metadataCache;
-    private readonly IBinanceExchangeInfoCache _binanceExchangeInfoCache;
     private readonly IUserWalletAddressRepository _walletRepo;
     private readonly ISignerProvider _signerProvider;
     private readonly ISubscriptionFeatureService _subscriptionFeatureService;
@@ -38,8 +36,6 @@ public sealed class OrdersController : ControllerBase
         IHyperliquidOrderService orderService,
         IHyperliquidAccountService accountService,
         IHyperliquidRestClient restClient,
-        IHyperliquidAssetMetadataCache metadataCache,
-        IBinanceExchangeInfoCache binanceExchangeInfoCache,
         IUserWalletAddressRepository walletRepo,
         ISignerProvider signerProvider,
         ISubscriptionFeatureService subscriptionFeatureService,
@@ -50,8 +46,6 @@ public sealed class OrdersController : ControllerBase
         _orderService = orderService;
         _accountService = accountService;
         _restClient = restClient;
-        _metadataCache = metadataCache;
-        _binanceExchangeInfoCache = binanceExchangeInfoCache;
         _walletRepo = walletRepo;
         _signerProvider = signerProvider;
         _subscriptionFeatureService = subscriptionFeatureService;
@@ -185,6 +179,7 @@ public sealed class OrdersController : ControllerBase
     public async Task<IActionResult> GetAvailableAssetsAsync(CancellationToken ct)
     {
         var exchange = await _exchangeResolver.GetCurrentExchangeAsync(ct);
+        var symbolMetadataProvider = GetSymbolMetadataProvider(exchange);
         var userId = TryGetUserId();
         var allowedAssets = userId.HasValue
             ? await _subscriptionFeatureService.GetAllowedAssetsAsync(userId.Value, ct)
@@ -194,31 +189,18 @@ public sealed class OrdersController : ControllerBase
             .Select((coin, idx) => (coin, idx))
             .ToDictionary(x => x.coin, x => x.idx, StringComparer.OrdinalIgnoreCase);
 
-        var sorted = exchange == Exchange.Binance
-            ? (await _binanceExchangeInfoCache.GetSupportedSymbolsAsync(ct))
-                .Where(kvp => allowedAssets.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
-                .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
-                .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(kvp => new TradableAssetDto
-                {
-                    Symbol = $"{kvp.Key}-PERP",
-                    Name = CoinNames.TryGetValue(kvp.Key, out var name) ? name : kvp.Key,
-                    MaxLeverage = kvp.Value.MaxLeverage,
-                    SzDecimals = kvp.Value.SizeDecimals,
-                })
-                .ToList()
-            : (await _metadataCache.GetAllAsync(ct))
-                .Where(kvp => allowedAssets.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
-                .OrderBy(kvp => priorityIndex.TryGetValue(kvp.Key, out var idx) ? idx : int.MaxValue)
-                .ThenBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
-                .Select(kvp => new TradableAssetDto
-                {
-                    Symbol = $"{kvp.Key}-PERP",
-                    Name = CoinNames.TryGetValue(kvp.Key, out var name) ? name : kvp.Key,
-                    MaxLeverage = kvp.Value.MaxLeverage,
-                    SzDecimals = kvp.Value.SzDecimals,
-                })
-                .ToList();
+        var sorted = (await symbolMetadataProvider.GetSupportedSymbolsAsync(ct))
+            .Where(symbol => allowedAssets.Contains(symbol.Asset, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(symbol => priorityIndex.TryGetValue(symbol.Asset, out var idx) ? idx : int.MaxValue)
+            .ThenBy(symbol => symbol.Asset, StringComparer.OrdinalIgnoreCase)
+            .Select(symbol => new TradableAssetDto
+            {
+                Symbol = $"{symbol.Asset}-PERP",
+                Name = CoinNames.TryGetValue(symbol.Asset, out var name) ? name : symbol.Asset,
+                MaxLeverage = symbol.MaxLeverage,
+                SzDecimals = symbol.SizeDecimals,
+            })
+            .ToList();
 
         return Ok(sorted);
     }
@@ -589,4 +571,7 @@ public sealed class OrdersController : ControllerBase
 
     private IExchangeAccountClient GetAccountClient(Exchange exchange)
         => _serviceProvider.GetRequiredKeyedService<IExchangeAccountClient>(exchange.ToString());
+
+    private IExchangeSymbolMetadataProvider GetSymbolMetadataProvider(Exchange exchange)
+        => _serviceProvider.GetRequiredKeyedService<IExchangeSymbolMetadataProvider>(exchange.ToString());
 }

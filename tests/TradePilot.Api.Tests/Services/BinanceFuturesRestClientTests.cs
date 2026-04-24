@@ -53,8 +53,10 @@ public sealed class BinanceFuturesRestClientTests
 
         var act = () => client.GetKlinesAsync("BTCUSDT", "15m", StartTime, EndTime);
 
-        await act.Should().ThrowAsync<RateLimitException>()
-            .WithMessage("*Binance rate limit exceeded*");
+        var exception = await act.Should().ThrowAsync<RateLimitException>();
+
+        exception.WithMessage("*Binance rate limit exceeded*");
+        exception.Which.ExchangeStatusCode.Should().Be((int)HttpStatusCode.TooManyRequests);
     }
 
     [TestMethod]

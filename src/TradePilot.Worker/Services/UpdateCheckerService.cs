@@ -15,7 +15,9 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
 {
     private static readonly TimeSpan SafeToUpdateRecheck = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan MaxDeferralDuration = TimeSpan.FromHours(4);
+    internal const string UpdateDownloadHttpClientName = "UpdateDownload";
 
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ITradingHealthProvider _healthProvider;
     private readonly ILogger<UpdateCheckerService> _logger;
     private readonly SemaphoreSlim _updateSignal = new(0, 1);
@@ -23,9 +25,11 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
     private volatile UpdateInfo? _pendingUpdate;
 
     public UpdateCheckerService(
+        IHttpClientFactory httpClientFactory,
         ITradingHealthProvider healthProvider,
         ILogger<UpdateCheckerService> logger)
     {
+        _httpClientFactory = httpClientFactory;
         _healthProvider = healthProvider;
         _logger = logger;
     }
@@ -46,8 +50,14 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
         _logger.LogInformation("Update available: v{Version} from {Url}", version, downloadUrl);
 
         // Signal the background loop to wake up
-        if (_updateSignal.CurrentCount == 0)
+        try
+        {
             _updateSignal.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+            // Already signaled — no action needed
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -133,7 +143,7 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
 
         try
         {
-            using var httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            using var httpClient = _httpClientFactory.CreateClient(UpdateDownloadHttpClientName);
             using var response = await httpClient.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, stoppingToken);
             response.EnsureSuccessStatusCode();
 
@@ -202,14 +212,15 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
         }
     }
 
-    private bool IsSafeToUpdate()
+    internal bool IsSafeToUpdate()
     {
-        // Safe if the agent is idle (no WebSocket connection implies no active trading)
-        // The health provider tracks whether there's an active WebSocket connection
-        // and recent trade activity. If no trades are flowing, it's safe.
         var snapshot = _healthProvider.GetSnapshot();
 
-        // Not safe if WebSocket is connected and we've received trades recently (active session)
+        if (snapshot.IsTradingSessionActive)
+        {
+            return false;
+        }
+
         if (snapshot.IsWebSocketConnected && snapshot.TimeSinceLastTrade is { TotalMinutes: < 5 })
         {
             return false;
@@ -226,4 +237,10 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
     }
 
     private sealed record UpdateInfo(string Version, string DownloadUrl, string Sha256Hash);
+
+    public override void Dispose()
+    {
+        _updateSignal.Dispose();
+        base.Dispose();
+    }
 }

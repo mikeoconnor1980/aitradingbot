@@ -49,10 +49,10 @@ public sealed class DynamicTelegramNotifier : ITelegramNotifier
                 var partialNote = g.Count() > 1 ? $" ({g.Count()} fills)" : "";
 
                 return isClose
-                    ? $"{emoji} *{direction}* — {Escape(g.Key.Asset)}{partialNote}\n" +
+                                        ? $"{emoji} <b>{direction}</b> - {Escape(g.Key.Asset)}{partialNote}\n" +
                       $"Size: {totalSize} @ ${vwap:N2}\n" +
                       $"PnL: {(totalPnl >= 0 ? "+" : "")}{totalPnl:N2} USD | Fee: {totalFee:N4}"
-                    : $"{emoji} *{direction}* — {Escape(g.Key.Asset)}{partialNote}\n" +
+                                        : $"{emoji} <b>{direction}</b> - {Escape(g.Key.Asset)}{partialNote}\n" +
                       $"Size: {totalSize} @ ${vwap:N2}";
             });
 
@@ -62,7 +62,7 @@ public sealed class DynamicTelegramNotifier : ITelegramNotifier
 
     public async Task NotifyRiskEventAsync(long chatId, string eventType, string message, CancellationToken cancellationToken = default)
     {
-        var text = $"⚠️ *Risk Alert* — {Escape(eventType)}\n{Escape(message)}";
+        var text = $"⚠️ <b>Risk Alert</b> - {Escape(eventType)}\n{Escape(message)}";
         await SendMessageAsync(chatId, text, cancellationToken);
     }
 
@@ -76,7 +76,7 @@ public sealed class DynamicTelegramNotifier : ITelegramNotifier
             _ => "ℹ️",
         };
 
-        var text = $"{emoji} *Strategy {Escape(eventType)}* — {Escape(strategyName)}";
+        var text = $"{emoji} <b>Strategy {Escape(eventType)}</b> - {Escape(strategyName)}";
         if (!string.IsNullOrWhiteSpace(detail))
         {
             text += $"\n{Escape(detail)}";
@@ -103,7 +103,7 @@ public sealed class DynamicTelegramNotifier : ITelegramNotifier
             {
                 chat_id = chatId,
                 text,
-                parse_mode = "Markdown",
+                parse_mode = "HTML",
                 disable_web_page_preview = true,
             };
 
@@ -122,8 +122,7 @@ public sealed class DynamicTelegramNotifier : ITelegramNotifier
     }
 
     private static string Escape(string text) =>
-        text.Replace("_", "\\_")
-            .Replace("*", "\\*")
-            .Replace("[", "\\[")
-            .Replace("`", "\\`");
+        text.Replace("&", "&amp;")
+            .Replace("<", "&lt;")
+            .Replace(">", "&gt;");
 }

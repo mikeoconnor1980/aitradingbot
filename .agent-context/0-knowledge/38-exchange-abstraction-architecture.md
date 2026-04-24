@@ -36,6 +36,7 @@ flowchart LR
 | `IExchangeAccountClient` | `src/TradePilot.Application/Abstractions/Services/IExchangeAccountClient.cs` | Account, fills, positions, and open-order seam |
 | `IExchangeCapabilities` | `src/TradePilot.Application/Abstractions/Services/IExchangeCapabilities.cs` | Explicit feature support model per exchange |
 | `IExchangeSymbolMapper` | `src/TradePilot.Application/Abstractions/Services/IExchangeSymbolMapper.cs` | Canonical `TradingPair` to native symbol mapping |
+| `IExchangeSymbolMetadataProvider` | `src/TradePilot.Application/Abstractions/Services/IExchangeSymbolMetadataProvider.cs` | Static symbol metadata (decimals, max leverage) resolved by exchange key |
 | `ExchangeCapabilitySet` | `src/TradePilot.Application/Abstractions/Services/ExchangeCapabilitySet.cs` | Immutable capability description record |
 
 ## Canonical Market Model
@@ -66,16 +67,36 @@ flowchart LR
 | `IExchangeHistoricalDataClient` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidHistoricalDataClient.cs` | Wraps Hyperliquid candle snapshot reads |
 | `IExchangeAccountClient` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAccountAdapter.cs` | Wraps `IHyperliquidAccountService` |
 | `IExchangeCapabilities` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidCapabilities.cs` | Declares current Hyperliquid support surface |
-| `IExchangeSymbolMapper` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidAssetMapper.cs` | Now both helper mapper and injectable seam implementation |
+| `IExchangeSymbolMapper` | `src/TradePilot.Infrastructure/Hyperliquid/HyperliquidExchangeSymbolMapper.cs` | DI-injectable adapter that delegates to the static `HyperliquidAssetMapper` utility class |
 
 ### Binance
 
 | Contract | Implementation | Notes |
 |---|---|---|
 | `IExchangeSymbolMapper` | `src/TradePilot.Infrastructure/Binance/BinanceAssetMapper.cs` | Maps canonical perp pairs to Binance USD-M symbols |
-| `IExchangeHistoricalDataClient` | Not yet implemented | Binance historical ingestion still exists separately |
-| `IExchangeAccountClient` | Not yet implemented | No generic Binance account adapter yet |
-| `IExchangeCapabilities` | Not yet implemented | Runtime capability model still Hyperliquid-first |
+| `IExchangeSymbolMetadataProvider` | `src/TradePilot.Infrastructure/Binance/BinanceSymbolMetadataProvider.cs` | Static symbol metadata (decimals, leverage) via `IBinanceExchangeInfoCache` |
+| `IExchangeHistoricalDataClient` | Not yet implemented | Binance historical ingestion still via dedicated `IBinanceCandleIngestionService` |
+| `IExchangeAccountClient` | `src/TradePilot.Infrastructure/Binance/BinanceAccountAdapter.cs` | Balances, positions, open orders, and fills for 8 supported assets |
+| `IExchangeCapabilities` | `src/TradePilot.Infrastructure/Binance/BinanceCapabilities.cs` | Declares 8 supported assets, leverage, cross/isolated margin |
+| `IExchangeMarketMetadataProvider` | `src/TradePilot.Infrastructure/Binance/BinanceMarketMetadataProvider.cs` | Runtime market data (OI, funding rates, volume) |
+
+## Symbol Metadata Abstraction
+
+`IExchangeSymbolMetadataProvider` is distinct from `IExchangeMarketMetadataProvider`:
+
+| Concern | IExchangeSymbolMetadataProvider | IExchangeMarketMetadataProvider |
+|---|---|---|
+| Data type | Static exchange configuration | Runtime market state |
+| Content | Size/price decimals, max leverage | Mark price, OI, funding rates, volume |
+| Cache | 30-minute TTL (both adapters) | Per-request or streaming |
+| DI pattern | Keyed service by `Exchange` enum string | Single resolved by exchange context |
+
+Both implementations delegate to existing caches. Consumers resolve via keyed DI:
+
+```csharp
+var provider = _serviceProvider.GetRequiredKeyedService<IExchangeSymbolMetadataProvider>(exchange.ToString());
+var metadata = await provider.GetSymbolAsync(asset, ct);
+```
 
 ## Current Consumer Coverage
 
@@ -128,9 +149,7 @@ This abstraction does not finish multi-exchange support by itself.
 
 | Deferred area | Why it is separate |
 |---|---|
-| Runtime exchange selection | Requires keyed DI / exchange resolution strategy |
-| Binance account adapter | Not needed for the initial Hyperliquid-first seam |
-| Binance metadata adapter | Can be added later without changing Application consumers |
+| Multi-tenant symbol persistence | Current persistence layer still uses Hyperliquid symbols; full migration deferred to avoid data rewrite |
 | Generic execution abstraction beyond current `IExecutionEngine` use | Higher-risk and tied to live trading differences |
 | Persistence-wide canonical symbol migration | Requires entity/storage migration and regression coverage |
 
@@ -139,7 +158,8 @@ This abstraction does not finish multi-exchange support by itself.
 Use this checklist when adding Binance or another venue.
 
 1. Add or update the exchange’s `IExchangeSymbolMapper` implementation.
-2. Implement `IExchangeMarketMetadataProvider` if Application consumers need market info or leverage metadata.
+2. Implement `IExchangeSymbolMetadataProvider` if the exchange has static symbol metadata (decimals, leverage limits). Register as keyed service by `Exchange` enum string.
+3. Implement `IExchangeMarketMetadataProvider` if Application consumers need market info or leverage metadata.
 3. Implement `IExchangeHistoricalDataClient` if the venue will serve candles or funding-rate history through the abstraction.
 4. Implement `IExchangeAccountClient` if recovery, account views, or position reads must work through the seam.
 5. Implement `IExchangeCapabilities` to make venue constraints explicit.

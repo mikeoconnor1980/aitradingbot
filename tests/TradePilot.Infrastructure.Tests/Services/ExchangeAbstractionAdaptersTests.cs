@@ -12,7 +12,7 @@ public sealed class ExchangeAbstractionAdaptersTests
     [TestMethod]
     public void GivenHyperliquidSymbolMapper_WhenRoundTripped_ThenCanonicalPerpIsPreserved()
     {
-        IExchangeSymbolMapper mapper = new HyperliquidAssetMapper();
+        IExchangeSymbolMapper mapper = new HyperliquidExchangeSymbolMapper();
         var pair = TradingPair.Create("BTC", "USD", AssetType.Perp);
 
         var exchangeSymbol = mapper.ToExchangeSymbol(pair);
@@ -43,6 +43,24 @@ public sealed class ExchangeAbstractionAdaptersTests
 
         capabilities.Supports(spotPair).Should().BeFalse();
         capabilities.CapabilitySet.SupportedProductTypes.Should().Contain(AssetType.Perp);
+    }
+
+    [TestMethod]
+    public void GivenHyperliquidCapabilities_WhenCapabilitySetRead_ThenExpandedTimeframesExposed()
+    {
+        IExchangeCapabilities capabilities = new HyperliquidCapabilities();
+
+        capabilities.CapabilitySet.SupportedTimeframes.Should()
+            .BeEquivalentTo(HyperliquidAssetMapper.GetSupportedTimeframes());
+    }
+
+    [TestMethod]
+    public void GivenHyperliquidSymbolMapper_WhenPerpPairHasWellFormedBase_ThenCanMap()
+    {
+        IExchangeSymbolMapper mapper = new HyperliquidExchangeSymbolMapper();
+        var pair = TradingPair.Create("XYZ:TSLA", "USD", AssetType.Perp);
+
+        mapper.CanMap(pair).Should().BeTrue();
     }
 
     [TestMethod]

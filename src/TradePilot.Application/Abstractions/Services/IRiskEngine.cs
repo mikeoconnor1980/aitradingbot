@@ -20,6 +20,9 @@ public interface IRiskEngine
     /// <summary>Notify the engine that orders were filled or cancelled.</summary>
     void RecordOrdersClosed(int count) { }
 
+    /// <summary>Reset all session-scoped risk state.</summary>
+    void Reset() { }
+
     /// <summary>Update the engine's knowledge of current account equity.</summary>
     void UpdatePortfolioState(decimal accountEquity) { }
 

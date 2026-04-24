@@ -43,7 +43,13 @@ public sealed class CandlesController : ApiController
         if (!HyperliquidAssetMapper.IsValidCoin(coin))
         {
             throw new DomainException(
-                $"Unknown symbol '{request.Symbol}'. Supported: BTC, ETH, SOL, DOGE, AVAX, ARB, LINK, OP");
+                $"Invalid Hyperliquid symbol '{request.Symbol}'. Use an alphanumeric asset name or a HIP-3 asset identifier such as 'XYZ:TSLA'.");
+        }
+
+        if (!HyperliquidAssetMapper.GetSupportedCoins().Contains(coin, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new DomainException(
+                $"Unknown symbol '{request.Symbol}'. Supported: {string.Join(", ", HyperliquidAssetMapper.GetSupportedCoins())}");
         }
 
         foreach (var interval in request.Intervals)
@@ -51,7 +57,7 @@ public sealed class CandlesController : ApiController
             if (!HyperliquidAssetMapper.IsValidTimeframe(interval))
             {
                 throw new DomainException(
-                    $"Invalid interval '{interval}'. Supported: 5m, 15m, 1h, 4h");
+                    $"Invalid interval '{interval}'. Supported: {string.Join(", ", HyperliquidAssetMapper.GetSupportedTimeframes())}");
             }
         }
 

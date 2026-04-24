@@ -4,7 +4,6 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using TradePilot.Api.Models;
 using TradePilot.Api.Services;
 using TradePilot.Application.Abstractions.Models;
@@ -62,9 +61,6 @@ public sealed class BacktestsControllerTests : BaseControllerTests
 
         services.RemoveAll<IStrategyRevisionRepository>();
         services.AddSingleton(_strategyRevisionRepositoryMock.Object);
-
-        // Suppress the background processor so it doesn't interfere with tests
-        services.RemoveAll<IHostedService>();
     }
 
     [TestMethod]

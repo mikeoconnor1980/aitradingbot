@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
+using TradePilot.Infrastructure.Hyperliquid;
 using TradePilot.Infrastructure.Hyperliquid.Models;
 
 namespace TradePilot.Infrastructure.Services;
@@ -16,7 +17,8 @@ namespace TradePilot.Infrastructure.Services;
 /// </summary>
 public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 {
-    private const int ReceiveBufferSize = 4096;
+    internal const int ReceiveBufferSize = 8192;
+    internal static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(15);
 
     private readonly ILogger<HyperliquidUserEventClient> _logger;
     private readonly HyperliquidOptions _options;
@@ -64,7 +66,9 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         _logger.LogInformation("Connecting to Hyperliquid user event WebSocket at {Uri}", uri);
 
         await NotifyStateChangeAsync(WebSocketConnectionState.Connecting);
-        await _webSocket.ConnectAsync(uri, cancellationToken);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(ConnectTimeout);
+        await _webSocket.ConnectAsync(uri, timeoutCts.Token);
         await NotifyStateChangeAsync(WebSocketConnectionState.Connected);
 
         _logger.LogInformation("Connected to Hyperliquid user event WebSocket");
@@ -202,61 +206,73 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
 
         // Hyperliquid closes idle connections — send a ping every 30s to keep alive
         using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        _ = PingLoopAsync(pingCts.Token);
+        var pingLoopTask = PingLoopAsync(pingCts.Token);
 
-        while (!cancellationToken.IsCancellationRequested)
+        try
         {
-            var ws = _webSocket;
-            if (ws?.State != WebSocketState.Open)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                break;
-            }
-
-            try
-            {
-                messageBuffer.SetLength(0);
-                WebSocketReceiveResult result;
-
-                do
+                var ws = _webSocket;
+                if (ws?.State != WebSocketState.Open)
                 {
-                    result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                    break;
+                }
 
-                    if (result.MessageType == WebSocketMessageType.Close)
+                try
+                {
+                    messageBuffer.SetLength(0);
+                    WebSocketReceiveResult result;
+
+                    do
                     {
-                        _logger.LogWarning(
-                            "User event WebSocket close received: {Status} {Description}",
-                            result.CloseStatus,
-                            result.CloseStatusDescription);
-                        await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
-                        return;
+                        result = await ws.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            _logger.LogWarning(
+                                "User event WebSocket close received: {Status} {Description}",
+                                result.CloseStatus,
+                                result.CloseStatusDescription);
+                            await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
+                            return;
+                        }
+
+                        await messageBuffer.WriteAsync(buffer.AsMemory(0, result.Count), cancellationToken);
                     }
+                    while (!result.EndOfMessage);
 
-                    await messageBuffer.WriteAsync(buffer.AsMemory(0, result.Count), cancellationToken);
+                    if (result.MessageType == WebSocketMessageType.Text)
+                    {
+                        var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
+                        await ProcessMessageAsync(json);
+                    }
                 }
-                while (!result.EndOfMessage);
-
-                if (result.MessageType == WebSocketMessageType.Text)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    var json = Encoding.UTF8.GetString(messageBuffer.ToArray());
-                    await ProcessMessageAsync(json);
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    _logger.LogWarning("User event WebSocket was disposed during receive");
+                    await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
+                    return;
+                }
+                catch (WebSocketException ex)
+                {
+                    _logger.LogError(ex, "User event WebSocket error during receive");
+                    await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
+                    return;
                 }
             }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        }
+        finally
+        {
+            if (!pingCts.IsCancellationRequested)
             {
-                break;
+                pingCts.Cancel();
             }
-            catch (ObjectDisposedException)
-            {
-                _logger.LogWarning("User event WebSocket was disposed during receive");
-                await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
-                return;
-            }
-            catch (WebSocketException ex)
-            {
-                _logger.LogError(ex, "User event WebSocket error during receive");
-                await NotifyStateChangeAsync(WebSocketConnectionState.Disconnected);
-                return;
-            }
+
+            await pingLoopTask;
         }
     }
 
@@ -390,7 +406,7 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
         {
             Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(fill.TimestampMs).UtcDateTime,
             Asset = fill.Coin,
-            Side = MapOrderSide(fill.Side),
+            Side = HyperliquidFormatting.MapOrderSide(fill.Side),
             Direction = fill.Direction,
             Size = decimal.TryParse(fill.Size, System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var sz) ? sz : 0m,
@@ -402,16 +418,6 @@ public sealed class HyperliquidUserEventClient : IHyperliquidUserEventClient
                 System.Globalization.CultureInfo.InvariantCulture, out var closedPnl) ? closedPnl : 0m,
             OrderId = fill.OrderId.ToString()
         };
-
-    private static string MapOrderSide(string side)
-    {
-        return side.ToUpperInvariant() switch
-        {
-            "B" => "Buy",
-            "A" => "Sell",
-            _ => side,
-        };
-    }
 
     private static OrderUpdateDto MapOrderUpdateToDto(HyperliquidOrderUpdate update)
     {
