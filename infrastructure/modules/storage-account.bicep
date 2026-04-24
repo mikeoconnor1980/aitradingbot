@@ -35,5 +35,4 @@ resource installerContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
 }
 
 output storageAccountName string = storageAccount.name
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
 output containerName string = installerContainerName
