@@ -297,69 +297,114 @@
       <mat-card-content>
         @if (installerInfo$ | async; as result) {
           @if (result.error) {
-            <p class="profile-page__placeholder">Unable to load installer info. Check that the API is running.</p>
+            <p class="profile-page__placeholder">{{ result.errorMessage }}</p>
           } @else {
-            <dl class="profile-page__details">
-              <div class="profile-page__detail">
-                <dt>Version</dt>
-                <dd class="profile-page__detail-row">
-                  <span class="profile-page__badge">v{{ result.data!.version }}</span>
-                  @if (hasConnectedAgent$ | async) {
-                    <span class="profile-page__badge profile-page__badge--active">Connected</span>
+            @if (result.data; as installer) {
+              <dl class="profile-page__details">
+                <div class="profile-page__detail">
+                  <dt>Release</dt>
+                  <dd class="profile-page__detail-row">
+                    <span class="profile-page__badge">v{{ installer.version }}</span>
+                    <span
+                      class="profile-page__badge"
+                      [class.profile-page__badge--active]="installer.status === 'Available'"
+                      [class.profile-page__badge--warning]="installer.status !== 'Available'">
+                      {{ getInstallerStatusLabel(installer.status) }}
+                    </span>
+                    @if (hasConnectedAgent$ | async) {
+                      <span class="profile-page__badge profile-page__badge--active">Connected</span>
+                    }
+                  </dd>
+                </div>
+                <div class="profile-page__detail">
+                  <dt>Published</dt>
+                  <dd>{{ installer.publishedAtUtc ? (installer.publishedAtUtc | date:'medium') : 'Not published yet' }}</dd>
+                </div>
+                <div class="profile-page__detail">
+                  <dt>Integrity</dt>
+                  <dd>{{ getInstallerIntegritySummary(installer) }}</dd>
+                </div>
+              </dl>
+
+              <p class="profile-page__installer-hint">
+                Download and run the installer to set up the execution agent on your Windows PC.
+              </p>
+              <p class="profile-page__installer-req">Requires Windows 10 or later</p>
+
+              @if (getInstallerAttentionMessage(installer); as installerAttentionMessage) {
+                <p class="profile-page__installer-warning">{{ installerAttentionMessage }}</p>
+              }
+
+              <div class="profile-page__installer-package-list">
+                <div class="profile-page__installer-package">
+                  <div>
+                    <p class="profile-page__installer-package-title">Windows installer (.exe)</p>
+                    <p class="profile-page__installer-package-meta">
+                      {{ installer.exeAvailable ? (installer.exeFileSizeBytes ? formatFileSize(installer.exeFileSizeBytes) : 'Size pending') : 'Not available' }}
+                      ·
+                      {{ hasInstallerChecksum(installer, 'exe') ? 'SHA256 ready' : 'SHA256 missing' }}
+                    </p>
+                  </div>
+                  @if (installer.exeAvailable) {
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      [disabled]="installerDownloadInFlight() !== null"
+                      (click)="onDownloadInstaller('exe', installer.exeFileName ?? undefined)">
+                      <mat-icon>download</mat-icon>
+                      {{ installerDownloadInFlight() === 'exe' ? 'Downloading...' : 'Download Installer' }}{{ installer.exeFileSizeBytes ? ' (~' + formatFileSize(installer.exeFileSizeBytes) + ')' : '' }}
+                    </button>
+                  } @else {
+                    <span class="profile-page__badge profile-page__badge--warning">Unavailable</span>
                   }
-                </dd>
+                </div>
+
+                <div class="profile-page__installer-package">
+                  <div>
+                    <p class="profile-page__installer-package-title">Portable ZIP</p>
+                    <p class="profile-page__installer-package-meta">
+                      {{ installer.zipAvailable ? (installer.zipFileSizeBytes ? formatFileSize(installer.zipFileSizeBytes) : 'Size pending') : 'Not available' }}
+                      ·
+                      {{ hasInstallerChecksum(installer, 'zip') ? 'SHA256 ready' : 'SHA256 missing' }}
+                    </p>
+                  </div>
+                  @if (installer.zipAvailable) {
+                    <button
+                      mat-stroked-button
+                      [disabled]="installerDownloadInFlight() !== null"
+                      (click)="onDownloadInstaller('zip', installer.zipFileName ?? undefined)">
+                      <mat-icon>folder_zip</mat-icon>
+                      {{ installerDownloadInFlight() === 'zip' ? 'Downloading...' : 'Download ZIP' }}{{ installer.zipFileSizeBytes ? ' (~' + formatFileSize(installer.zipFileSizeBytes) + ')' : '' }}
+                    </button>
+                  } @else {
+                    <span class="profile-page__badge profile-page__badge--warning">Unavailable</span>
+                  }
+                </div>
               </div>
-            </dl>
 
-            <p class="profile-page__installer-hint">
-              Download and run the installer to set up the execution agent on your Windows PC.
-            </p>
-            <p class="profile-page__installer-req">Requires Windows 10 or later</p>
-
-            <div class="profile-page__installer-actions">
-              @if (result.data!.exeAvailable) {
-                <a
-                  mat-flat-button
-                  color="primary"
-                  [href]="exeDownloadUrl"
-                  download>
-                  <mat-icon>download</mat-icon>
-                  Download Installer{{ result.data!.exeFileSizeBytes ? ' (~' + formatFileSize(result.data!.exeFileSizeBytes) + ')' : '' }}
-                </a>
+              @if (installerDownloadError(); as downloadError) {
+                <p class="profile-page__error">{{ downloadError }}</p>
               }
-              @if (result.data!.zipAvailable) {
-                <a
-                  mat-stroked-button
-                  [href]="zipDownloadUrl"
-                  download>
-                  <mat-icon>folder_zip</mat-icon>
-                  Download ZIP{{ result.data!.zipFileSizeBytes ? ' (~' + formatFileSize(result.data!.zipFileSizeBytes) + ')' : '' }}
-                </a>
+
+              @if (getPrimaryInstallerHash(installer); as primaryHash) {
+                <div class="profile-page__sha256">
+                  <dt>{{ getPrimaryInstallerHashLabel(installer) }}</dt>
+                  <dd
+                    class="profile-page__mono profile-page__sha256-value"
+                    [matTooltip]="sha256Copied() ? 'Copied!' : 'Click to copy full hash'"
+                    (click)="onCopySha256(primaryHash)">
+                    {{ primaryHash | slice:0:16 }}…
+                    <mat-icon class="profile-page__copy-icon">content_copy</mat-icon>
+                  </dd>
+                </div>
               }
-            </div>
 
-            @if (!result.data!.exeAvailable && !result.data!.zipAvailable) {
-              <p class="profile-page__placeholder">No installer files available on the server yet.</p>
-            }
-
-            @if (result.data!.sha256Hash) {
-              <div class="profile-page__sha256">
-                <dt>SHA256</dt>
-                <dd
-                  class="profile-page__mono profile-page__sha256-value"
-                  [matTooltip]="sha256Copied() ? 'Copied!' : 'Click to copy full hash'"
-                  (click)="onCopySha256(result.data!.sha256Hash)">
-                  {{ result.data!.sha256Hash | slice:0:16 }}…
-                  <mat-icon class="profile-page__copy-icon">content_copy</mat-icon>
-                </dd>
-              </div>
-            }
-
-            @if (result.data!.releaseNotes) {
-              <div class="profile-page__release-notes">
-                <dt>Release Notes</dt>
-                <dd>{{ result.data!.releaseNotes }}</dd>
-              </div>
+              @if (installer.releaseNotes) {
+                <div class="profile-page__release-notes">
+                  <dt>Release Notes</dt>
+                  <dd>{{ installer.releaseNotes }}</dd>
+                </div>
+              }
             }
           }
         } @else {

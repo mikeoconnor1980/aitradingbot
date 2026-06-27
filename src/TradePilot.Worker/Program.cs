@@ -376,9 +376,15 @@ builder.Services.AddHttpClient(AgentCheckInService.HttpClientName, (sp, client) 
 });
 
 // ---------- Auto-update service ----------
-builder.Services.AddHttpClient(UpdateCheckerService.UpdateDownloadHttpClientName, client =>
+builder.Services.AddHttpClient(UpdateCheckerService.UpdateDownloadHttpClientName, (sp, client) =>
 {
     client.Timeout = TimeSpan.FromMinutes(10);
+
+    var agentOptions = sp.GetRequiredService<IOptions<AgentOptions>>().Value;
+    if (Uri.TryCreate(agentOptions.ControlPlaneUrl, UriKind.Absolute, out var controlPlaneUri))
+    {
+        client.BaseAddress = controlPlaneUri;
+    }
 });
 builder.Services.AddSingleton<UpdateCheckerService>();
 builder.Services.AddSingleton<IUpdateNotifier>(sp => sp.GetRequiredService<UpdateCheckerService>());

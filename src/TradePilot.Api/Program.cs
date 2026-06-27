@@ -48,6 +48,8 @@ using TradePilot.Persistence.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddEnvironmentVariables();
+
 // MediatR - scan Application assembly for handlers
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssemblyContaining<TradePilot.Application.Abstractions.Commands.Command>());
@@ -73,10 +75,17 @@ builder.Services.AddOptions<JwtOptions>()
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
     ?? new JwtOptions();
 
-// Generate a dev key if none is configured
 if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey))
 {
-    jwtOptions.SecretKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+    if (builder.Environment.IsDevelopment())
+    {
+        jwtOptions.SecretKey = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "Missing required configuration 'Jwt:SecretKey'. Production hosts must supply it through Container Apps secret references or another secure environment-backed configuration source.");
+    }
 }
 
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
@@ -246,8 +255,8 @@ builder.Services.AddOptions<InstallerOptions>()
     .Bind(builder.Configuration.GetSection(InstallerOptions.SectionName));
 
 // Register installer store: use Azure Blob Storage when configured, otherwise local filesystem
-var installerBlobConn = builder.Configuration.GetSection("Installer")["BlobConnectionString"];
-if (!string.IsNullOrEmpty(installerBlobConn))
+var installerBlobServiceUri = builder.Configuration.GetSection("Installer")["BlobServiceUri"];
+if (!string.IsNullOrEmpty(installerBlobServiceUri))
     builder.Services.AddSingleton<IInstallerStore, TradePilot.Infrastructure.Storage.BlobInstallerStore>();
 else
     builder.Services.AddSingleton<IInstallerStore, TradePilot.Infrastructure.Storage.LocalInstallerStore>();

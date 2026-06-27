@@ -174,9 +174,33 @@ Rationale:
 - improves reuse between live trading, backtesting, and optimization
 - keeps the indicator layer lightweight and dependency-minimal
 
+## ADR 24 - Azure Runtime Secrets Live in Key Vault, Not in Source or ARM Parameters
+
+Azure-hosted runtime secrets are managed through Azure Key Vault and exposed to the API through Azure Container Apps secret references backed by managed identity.
+
+Current design:
+
+- runtime server-side secrets such as `Jwt:SecretKey`, LLM API keys, Telegram bot tokens, SignalR connection strings, and temporary SQL connection strings are seeded into Azure Key Vault
+- the API Container App resolves those secrets through environment-backed Container Apps secret references rather than reading raw secret values from tracked config or ARM parameters
+- local development still uses local appsettings, user secrets, or environment variables and does not require Azure Key Vault access
+- browser-visible Angular configuration stays public and is not treated as Key Vault material
+- customer private keys and wallet signing material remain local to `TradePilot.ExecutionAgent` and are not copied into Azure Key Vault
+
+Rationale:
+
+- removes long-lived runtime secret values from the repository, GitHub workflow parameter flow, and inline Container App secret definitions
+- preserves the Option C control-plane boundary by keeping cloud secret storage limited to platform/runtime secrets and excluding subscriber signing keys
+- keeps the application configuration surface stable because the API already consumes environment-backed configuration
+
+App-level Key Vault provider loading is intentionally deferred.
+
+Current decision:
+
+- prefer Container Apps Key Vault secret references first because they satisfy the present runtime needs with less application complexity
+- only add direct `AddAzureKeyVault` configuration loading if a later requirement needs secret enumeration, direct configuration binding from Key Vault, or runtime refresh behavior that Container Apps references cannot provide
+
 ## Future Recommendations
 
 - Add ADRs for agent update distribution, installer packaging, and operational kill-switch behavior once those flows stabilize.
 - Revisit ADR 9 after subscription billing is implemented so the knowledge base reflects an actual billing state instead of a planned one.
-- Add an ADR for secret management once Azure Key Vault or another managed-secret pattern is adopted.
 - Add an ADR for observability once tracing, metrics, and production diagnostics are standardized.

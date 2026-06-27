@@ -201,6 +201,50 @@ If the max deferral is exceeded, the agent logs a warning and waits for operator
 Run the Setup EXE again (or `install.ps1`) — it stops the existing service, copies new files, and restarts.
 Your private key and trade data are preserved.
 
+## Release Runbook
+
+Use this runbook when publishing or rolling back a `TradePilot.ExecutionAgent` release.
+
+### 1. Build the release payload
+
+1. From the repo root, run `./deploy/worker/build-installer.ps1` locally when you need to validate packaging before CI.
+2. Confirm `artifacts/installer/` contains the versioned Setup EXE, ZIP, and `.sha256` files.
+3. Treat the GitHub Actions `build-installer` job in `.github/workflows/deploy.yml` as the authoritative release build for promoted artifacts.
+
+### 2. Publish and promote the release
+
+1. Merge the release commit to `main` and run the deploy workflow.
+2. Let the Windows `build-installer` job produce the installer artifact, then let `upload-installers` publish the versioned files into the private `installers` blob container.
+3. Verify the workflow uploads `latest.json` plus the versioned EXE, ZIP, and `.sha256` files under `v{version}/`.
+4. Treat `latest.json` as the promotion switch. A release is live only after that manifest points at the intended versioned artifacts.
+
+### 3. Verify the promoted release
+
+1. Call `GET /api/agent/installer/info` and confirm `status` is `Available`, the `version` matches the promoted release, `publishedAtUtc` is populated, and the EXE and ZIP sizes are correct.
+2. Open the Profile page and confirm the Execution Agent card shows the same version, published date, checksum availability, and download buttons.
+3. Download the EXE through the UI or API and compare its SHA256 value with the API response:
+
+```powershell
+$release = Invoke-RestMethod "http://localhost:5062/api/agent/installer/info"
+$actual = (Get-FileHash ".\TradePilot-ExecutionAgent-v0.1.0-Setup.exe" -Algorithm SHA256).Hash
+$release.sha256Hash.ToLowerInvariant() -eq $actual.ToLowerInvariant()
+```
+
+4. Confirm a connected worker heartbeat reports the same update version before announcing the release.
+
+### 4. Roll back a release
+
+1. Identify the last known good versioned artifacts already stored in Blob Storage.
+2. Re-promote that release by restoring its manifest content to `latest.json` and leaving the versioned binaries immutable.
+3. Re-run the verification steps above, especially `GET /api/agent/installer/info` and a fresh SHA256 comparison.
+4. If the rollback was caused by missing artifacts, verify both EXE and ZIP entries exist before closing the incident.
+
+### 5. Promote safely
+
+1. Never overwrite versioned release files under `v{version}/`; publish a new version for every build.
+2. Do not announce availability until the API info endpoint, the Profile page, and at least one test agent all observe the same release metadata.
+3. If the UI shows `Fallback`, `Not Published`, or `Repair Needed`, stop and fix the manifest or storage contents before promoting customers to that build.
+
 ## Security
 
 - Private key is stored as a **machine-level environment variable** (only accessible by admin/SYSTEM)

@@ -9,10 +9,10 @@
   #define AppVersion "0.1.0"
 #endif
 
-#define AppName "TradingApp Execution Agent"
-#define AppPublisher "TradingApp"
-#define AppExeName "TradingApp.ExecutionAgent.exe"
-#define ServiceName "TradingApp.ExecutionAgent"
+#define AppName "TradePilot Execution Agent"
+#define AppPublisher "TradePilot"
+#define AppExeName "TradePilot.ExecutionAgent.exe"
+#define ServiceName "TradePilot.ExecutionAgent"
 
 [Setup]
 AppId={{B7E3F8A1-4D2C-4F5E-A9B1-3C6D8E0F2A4B}
@@ -20,11 +20,11 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} v{#AppVersion}
 AppPublisher={#AppPublisher}
-DefaultDirName={autopf}\TradingApp\ExecutionAgent
+DefaultDirName={autopf}\TradePilot\ExecutionAgent
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\artifacts\installer
-OutputBaseFilename=TradingApp-ExecutionAgent-v{#AppVersion}-Setup
+OutputBaseFilename=TradePilot-ExecutionAgent-v{#AppVersion}-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

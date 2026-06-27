@@ -1,1 +1,4 @@
 Wallet address: 0xb63a3948477254cc17E0fb444050B9E161FCcFA3 
+Telegram:BotToken = 8627217580:AAGCVFA4ne31aloAS72I-JS_U5__PAZAifk
+LLM ApiKey: AIzaSyD-l5lFRSZ7R2-SuOdAugO_X3UNRNhdT_0
+Telegram:BotUsername = TradePilotAlerts_bot

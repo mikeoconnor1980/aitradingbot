@@ -1,6 +1,6 @@
-import { HttpClient, HttpParams } from "@angular/common/http";
+import { HttpClient, HttpParams, HttpResponse } from "@angular/common/http";
 import { Injectable, inject } from "@angular/core";
-import { BehaviorSubject, Observable, catchError, map, of, shareReplay, tap } from "rxjs";
+import { BehaviorSubject, Observable, catchError, map, of, tap } from "rxjs";
 import { environment } from "../../../environments/environment";
 import { ExecutionLogEntry } from "../models/execution-log.model";
 import { InstallerInfo } from "../models/installer-info.model";
@@ -209,18 +209,55 @@ export class AgentService {
       .pipe(catchError(() => of<ExecutionLogEntry[]>([])));
   }
 
-  private _installerInfo$: Observable<InstallerInfo> | null = null;
-
   public getInstallerInfo(): Observable<InstallerInfo> {
-    if (!this._installerInfo$) {
-      this._installerInfo$ = this._http
-        .get<InstallerInfo>(`${this._baseUrl}/agent/installer/info`)
-        .pipe(shareReplay({ bufferSize: 1, refCount: true }));
-    }
-    return this._installerInfo$;
+    return this._http.get<InstallerInfo>(`${this._baseUrl}/agent/installer/info`);
   }
 
   public getInstallerDownloadUrl(format: "exe" | "zip"): string {
     return `${this._baseUrl}/agent/installer/download?format=${format}`;
+  }
+
+  public downloadInstaller(format: "exe" | "zip", fileName?: string): Observable<void> {
+    return this._http
+      .get(this.getInstallerDownloadUrl(format), {
+        observe: "response",
+        responseType: "blob"
+      })
+      .pipe(
+        map((response: HttpResponse<Blob>) => {
+          if (!response.body) {
+            throw new Error("Installer download returned no content.");
+          }
+
+          const resolvedFileName = fileName ?? this.getFileNameFromDisposition(response) ?? this.getDefaultInstallerFileName(format);
+          const objectUrl = URL.createObjectURL(response.body);
+          const anchor = document.createElement("a");
+          anchor.href = objectUrl;
+          anchor.download = resolvedFileName;
+          anchor.click();
+          anchor.remove();
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        })
+      );
+  }
+
+  private getFileNameFromDisposition(response: HttpResponse<Blob>): string | null {
+    const contentDisposition = response.headers.get("content-disposition");
+    if (!contentDisposition) {
+      return null;
+    }
+
+    const match = /filename\*?=(?:UTF-8''|\")?([^\";]+)/i.exec(contentDisposition);
+    if (!match?.[1]) {
+      return null;
+    }
+
+    return decodeURIComponent(match[1].replace(/\"/g, "").trim());
+  }
+
+  private getDefaultInstallerFileName(format: "exe" | "zip"): string {
+    return format === "zip"
+      ? "TradePilot-ExecutionAgent.zip"
+      : "TradePilot-ExecutionAgent-Setup.exe";
   }
 }

@@ -1072,7 +1072,7 @@ public sealed class AgentCheckInService : BackgroundService
         var riskEngine = _serviceProvider.GetRequiredService<IRiskEngine>();
         riskEngine.Reset();
         var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
-        var executionEngine = _executionEngineResolver.Resolve(exchange, strategyConfig.AssetType);
+        var executionEngine = _executionEngineResolver.Resolve(exchange);
         var marketMetadataProvider = _serviceProvider.GetRequiredKeyedService<IExchangeMarketMetadataProvider>(exchange.ToString());
         var historicalDataClient = _serviceProvider.GetRequiredKeyedService<IExchangeHistoricalDataClient>(exchange.ToString());
         var accountClient = _serviceProvider.GetRequiredKeyedService<IExchangeAccountClient>(exchange.ToString());

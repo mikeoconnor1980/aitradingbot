@@ -1,0 +1,1078 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.42.1.51946",
+      "templateHash": "9778250156962679208"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "prod",
+      "allowedValues": [
+        "dev",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (e.g. prod, dev)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for all resources"
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "tradepilot",
+      "metadata": {
+        "description": "Base name for all resources"
+      }
+    },
+    "containerImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image (e.g. ghcr.io/owner/tradepilot-api:latest)"
+      }
+    },
+    "sqlAdminLogin": {
+      "type": "string",
+      "defaultValue": "tradepilotadmin",
+      "metadata": {
+        "description": "Azure SQL administrator login"
+      }
+    },
+    "sqlAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Azure SQL administrator password"
+      }
+    },
+    "corsAllowedOrigin": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Allowed CORS origin (Azure Static Web App URL)"
+      }
+    },
+    "registryUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub Container Registry username"
+      }
+    },
+    "registryPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "GitHub Container Registry password (PAT)"
+      }
+    },
+    "deploymentPrincipalObjectId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional object ID of the deployment principal that seeds Key Vault secrets"
+      }
+    }
+  },
+  "variables": {
+    "resourceTags": {
+      "Environment": "[parameters('environmentName')]",
+      "Application": "[parameters('appName')]",
+      "ManagedBy": "bicep"
+    },
+    "keyVaultName": "[format('{0}-{1}-kv', parameters('appName'), parameters('environmentName'))]",
+    "apiContainerAppName": "[format('{0}-{1}-api', parameters('appName'), parameters('environmentName'))]",
+    "keyVaultSecretsUserRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+    "keyVaultSecretsOfficerRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')]"
+  },
+  "resources": {
+    "keyVaultResource": {
+      "existing": true,
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('keyVaultName')]"
+    },
+    "apiKeyVaultSecretsUserRoleAssignment": {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+      "name": "[guid(variables('keyVaultName'), variables('apiContainerAppName'), variables('keyVaultSecretsUserRoleDefinitionId'))]",
+      "properties": {
+        "principalId": "[reference('containerApp').outputs.principalId.value]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[variables('keyVaultSecretsUserRoleDefinitionId')]"
+      },
+      "dependsOn": [
+        "containerApp"
+      ]
+    },
+    "deploymentPrincipalSecretsOfficerRoleAssignment": {
+      "condition": "[not(empty(parameters('deploymentPrincipalObjectId')))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]",
+      "name": "[guid(variables('keyVaultName'), parameters('deploymentPrincipalObjectId'), variables('keyVaultSecretsOfficerRoleDefinitionId'))]",
+      "properties": {
+        "principalId": "[parameters('deploymentPrincipalObjectId')]",
+        "principalType": "ServicePrincipal",
+        "roleDefinitionId": "[variables('keyVaultSecretsOfficerRoleDefinitionId')]"
+      }
+    },
+    "logAnalytics": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "log-analytics",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-{1}-logs', parameters('appName'), parameters('environmentName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "5912988114555346354"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              }
+            }
+          ],
+          "outputs": {
+            "workspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('name'))]"
+            }
+          }
+        }
+      }
+    },
+    "signalr": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "signalr",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-{1}-signalr', parameters('appName'), parameters('environmentName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "14773992417193452490"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "SignalR Service name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.SignalRService/signalR",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Free_F1",
+                "tier": "Free",
+                "capacity": 1
+              },
+              "kind": "SignalR",
+              "properties": {
+                "features": [
+                  {
+                    "flag": "ServiceMode",
+                    "value": "Serverless"
+                  },
+                  {
+                    "flag": "EnableConnectivityLogs",
+                    "value": "True"
+                  }
+                ],
+                "cors": {
+                  "allowedOrigins": [
+                    "*"
+                  ]
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "hostName": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.SignalRService/signalR', parameters('name')), '2024-03-01').hostName]"
+            },
+            "connectionString": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.SignalRService/signalR', parameters('name')), '2024-03-01').primaryConnectionString]"
+            }
+          }
+        }
+      }
+    },
+    "sql": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sql",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "serverName": {
+            "value": "[format('{0}-{1}-sql', parameters('appName'), parameters('environmentName'))]"
+          },
+          "databaseName": {
+            "value": "[format('{0}-db', parameters('appName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "adminLogin": {
+            "value": "[parameters('sqlAdminLogin')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('sqlAdminPassword')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "16833767551958741042"
+            }
+          },
+          "parameters": {
+            "serverName": {
+              "type": "string",
+              "metadata": {
+                "description": "SQL Server name"
+              }
+            },
+            "databaseName": {
+              "type": "string",
+              "metadata": {
+                "description": "Database name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "adminLogin": {
+              "type": "string",
+              "metadata": {
+                "description": "SQL admin login"
+              }
+            },
+            "adminPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "SQL admin password"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Sql/servers",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[parameters('serverName')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "administratorLogin": "[parameters('adminLogin')]",
+                "administratorLoginPassword": "[parameters('adminPassword')]",
+                "minimalTlsVersion": "1.2"
+              }
+            },
+            {
+              "type": "Microsoft.Sql/servers/firewallRules",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), 'AllowAzureServices')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Sql/servers/databases",
+              "apiVersion": "2023-08-01-preview",
+              "name": "[format('{0}/{1}', parameters('serverName'), parameters('databaseName'))]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Basic",
+                "tier": "Basic",
+                "capacity": 5
+              },
+              "properties": {
+                "collation": "SQL_Latin1_General_CP1_CI_AS",
+                "maxSizeBytes": 2147483648
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "serverFqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Sql/servers', parameters('serverName')), '2023-08-01-preview').fullyQualifiedDomainName]"
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[replace(format('{0}{1}sa', parameters('appName'), parameters('environmentName')), '-', '')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "16065887314788738583"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "installerContainerName": {
+              "type": "string",
+              "defaultValue": "installers",
+              "metadata": {
+                "description": "Blob container name for installer artifacts"
+              }
+            }
+          },
+          "resources": {
+            "storageAccount": {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "kind": "StorageV2",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "properties": {
+                "allowBlobPublicAccess": false,
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true
+              }
+            },
+            "blobService": {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'default')]",
+              "dependsOn": [
+                "storageAccount"
+              ]
+            },
+            "installerContainer": {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-05-01",
+              "name": "[format('{0}/{1}/{2}', parameters('name'), 'default', parameters('installerContainerName'))]",
+              "properties": {
+                "publicAccess": "None"
+              },
+              "dependsOn": [
+                "blobService"
+              ]
+            }
+          },
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "connectionString": {
+              "type": "securestring",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('name'), listKeys('storageAccount', '2023-05-01').keys[0].value, environment().suffixes.storage)]"
+            },
+            "containerName": {
+              "type": "string",
+              "value": "[parameters('installerContainerName')]"
+            }
+          }
+        }
+      }
+    },
+    "containerAppEnv": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "container-app-env",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-{1}-env', parameters('appName'), parameters('environmentName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference('logAnalytics').outputs.workspaceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "5065099993392588908"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(parameters('logAnalyticsWorkspaceId'), '2023-09-01').customerId]",
+                    "sharedKey": "[listKeys(parameters('logAnalyticsWorkspaceId'), '2023-09-01').primarySharedKey]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "environmentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('name'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "logAnalytics"
+      ]
+    },
+    "keyVault": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "key-vault",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('keyVaultName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('resourceTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "7406485127800923860"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags applied to the Key Vault resource"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "tenantId": "[subscription().tenantId]",
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "enableRbacAuthorization": true,
+                "enablePurgeProtection": true,
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": false,
+                "publicNetworkAccess": "Enabled",
+                "softDeleteRetentionInDays": 90,
+                "networkAcls": {
+                  "bypass": "AzureServices",
+                  "defaultAction": "Allow"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "vaultUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2023-07-01').vaultUri]"
+            }
+          }
+        }
+      }
+    },
+    "containerApp": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "container-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[variables('apiContainerAppName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentId": {
+            "value": "[reference('containerAppEnv').outputs.environmentId.value]"
+          },
+          "containerImage": {
+            "value": "[parameters('containerImage')]"
+          },
+          "keyVaultUri": {
+            "value": "[reference('keyVault').outputs.vaultUri.value]"
+          },
+          "corsAllowedOrigin": {
+            "value": "[parameters('corsAllowedOrigin')]"
+          },
+          "registryUsername": {
+            "value": "[parameters('registryUsername')]"
+          },
+          "registryPassword": {
+            "value": "[parameters('registryPassword')]"
+          },
+          "installerBlobContainerName": {
+            "value": "[reference('storage').outputs.containerName.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "6815971156868015879"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "environmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment resource ID"
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference"
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI containing runtime secrets for the application"
+              }
+            },
+            "corsAllowedOrigin": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Allowed CORS origin"
+              }
+            },
+            "registryUsername": {
+              "type": "string",
+              "metadata": {
+                "description": "GitHub Container Registry username (GitHub actor)"
+              }
+            },
+            "registryPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "GitHub Container Registry password (PAT or GITHUB_TOKEN)"
+              }
+            },
+            "installerBlobContainerName": {
+              "type": "string",
+              "defaultValue": "installers",
+              "metadata": {
+                "description": "Blob container name for installer artifacts"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('environmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "registries": [
+                    {
+                      "server": "ghcr.io",
+                      "username": "[parameters('registryUsername')]",
+                      "passwordSecretRef": "ghcr-password"
+                    }
+                  ],
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "http",
+                    "corsPolicy": {
+                      "allowedOrigins": "[if(empty(parameters('corsAllowedOrigin')), createArray('http://localhost:4200'), createArray(parameters('corsAllowedOrigin'), 'http://localhost:4200'))]",
+                      "allowedMethods": [
+                        "*"
+                      ],
+                      "allowedHeaders": [
+                        "*"
+                      ],
+                      "allowCredentials": true
+                    }
+                  },
+                  "secrets": [
+                    {
+                      "name": "sql-connection-string",
+                      "keyVaultUrl": "[format('{0}secrets/connectionstrings--defaultconnection', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "signalr-connection-string",
+                      "keyVaultUrl": "[format('{0}secrets/azure--signalr--connectionstring', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "jwt-secret-key",
+                      "keyVaultUrl": "[format('{0}secrets/jwt--secret-key', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "llm-api-key",
+                      "keyVaultUrl": "[format('{0}secrets/llm--api-key', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "llm-review-api-key",
+                      "keyVaultUrl": "[format('{0}secrets/llm-review--api-key', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "llm-context-api-key",
+                      "keyVaultUrl": "[format('{0}secrets/llm-context--api-key', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "ghcr-password",
+                      "value": "[parameters('registryPassword')]"
+                    },
+                    {
+                      "name": "telegram-bot-token",
+                      "keyVaultUrl": "[format('{0}secrets/telegram--bot-token', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "installer-blob-connection",
+                      "keyVaultUrl": "[format('{0}secrets/installer--blob-connectionstring', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "api",
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "Production"
+                        },
+                        {
+                          "name": "ConnectionStrings__DefaultConnection",
+                          "secretRef": "sql-connection-string"
+                        },
+                        {
+                          "name": "Azure__SignalR__ConnectionString",
+                          "secretRef": "signalr-connection-string"
+                        },
+                        {
+                          "name": "Jwt__SecretKey",
+                          "secretRef": "jwt-secret-key"
+                        },
+                        {
+                          "name": "Llm__ApiKey",
+                          "secretRef": "llm-api-key"
+                        },
+                        {
+                          "name": "LlmContext__ApiKey",
+                          "secretRef": "llm-context-api-key"
+                        },
+                        {
+                          "name": "LlmReview__ApiKey",
+                          "secretRef": "llm-review-api-key"
+                        },
+                        {
+                          "name": "Cors__AllowedOrigins__0",
+                          "value": "[parameters('corsAllowedOrigin')]"
+                        },
+                        {
+                          "name": "Telegram__BotToken",
+                          "secretRef": "telegram-bot-token"
+                        },
+                        {
+                          "name": "Installer__BlobConnectionString",
+                          "secretRef": "installer-blob-connection"
+                        },
+                        {
+                          "name": "Installer__BlobContainerName",
+                          "value": "[parameters('installerBlobContainerName')]"
+                        }
+                      ],
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 8080
+                          },
+                          "initialDelaySeconds": 30,
+                          "periodSeconds": 60
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 8080
+                          },
+                          "initialDelaySeconds": 10,
+                          "periodSeconds": 15
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 2,
+                    "rules": [
+                      {
+                        "name": "http-scale",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "10"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "containerAppEnv",
+        "keyVault",
+        "storage"
+      ]
+    },
+    "staticWebApp": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "static-web-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-{1}-ui', parameters('appName'), parameters('environmentName'))]"
+          },
+          "location": {
+            "value": "westeurope"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.42.1.51946",
+              "templateHash": "16406492496761059685"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Static Web App name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Web/staticSites",
+              "apiVersion": "2023-12-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "Free",
+                "tier": "Free"
+              },
+              "properties": {
+                "stagingEnvironmentPolicy": "Enabled",
+                "allowConfigFileUpdates": true,
+                "buildProperties": {
+                  "skipGithubActionWorkflowGeneration": true
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "defaultHostname": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Web/staticSites', parameters('name')), '2023-12-01').defaultHostname]"
+            },
+            "resourceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Web/staticSites', parameters('name'))]"
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "apiUrl": {
+      "type": "string",
+      "value": "[reference('containerApp').outputs.fqdn.value]"
+    },
+    "staticWebAppUrl": {
+      "type": "string",
+      "value": "[reference('staticWebApp').outputs.defaultHostname.value]"
+    },
+    "signalRHostName": {
+      "type": "string",
+      "value": "[reference('signalr').outputs.hostName.value]"
+    },
+    "sqlServerFqdn": {
+      "type": "string",
+      "value": "[reference('sql').outputs.serverFqdn.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference('storage').outputs.storageAccountName.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference('keyVault').outputs.name.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference('keyVault').outputs.vaultUri.value]"
+    }
+  }
+}

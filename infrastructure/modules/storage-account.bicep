@@ -16,6 +16,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   }
   properties: {
     allowBlobPublicAccess: false
+    allowSharedKeyAccess: true
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
   }
@@ -35,7 +36,6 @@ resource installerContainer 'Microsoft.Storage/storageAccounts/blobServices/cont
 }
 
 output storageAccountName string = storageAccount.name
-
-@secure()
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+output blobServiceUri string = storageAccount.properties.primaryEndpoints.blob
 output containerName string = installerContainerName
+output installerArtifactsPrivate bool = !storageAccount.properties.allowBlobPublicAccess

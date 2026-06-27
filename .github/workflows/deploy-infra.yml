@@ -29,9 +29,18 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build Bicep template
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+
+            compiled_template=$(mktemp)
+            az bicep build --file infrastructure/main.bicep --outfile "$compiled_template"
 
       - name: Create Resource Group
         uses: azure/cli@v2
@@ -39,7 +48,50 @@ jobs:
           inlineScript: |
             az group create --name ${{ env.AZURE_RESOURCE_GROUP }} --location uksouth
 
-      - name: Deploy Bicep
+      - name: Run deployment what-if
+        uses: azure/cli@v2
+        env:
+          SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_LOGIN }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CORS_ALLOWED_ORIGIN: ${{ vars.SWA_URL }}
+          REGISTRY_USERNAME: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GHCR_PAT }}
+          DEPLOYMENT_PRINCIPAL_OBJECT_ID: ${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_OBJECT_ID }}
+          SQL_ENTRA_ADMIN_OBJECT_ID: ${{ vars.SQL_ENTRA_ADMIN_OBJECT_ID }}
+          SQL_ENTRA_ADMIN_LOGIN: ${{ vars.SQL_ENTRA_ADMIN_LOGIN }}
+        with:
+          inlineScript: |
+            set -euo pipefail
+
+            az deployment group what-if \
+              --name main-whatif \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --template-file infrastructure/main.bicep \
+              --parameters \
+                environmentName=${{ github.event.inputs.environment }} \
+                location=uksouth \
+                appName=tradepilot \
+                containerImage=mcr.microsoft.com/azuredocs/containerapps-helloworld:latest \
+                sqlAdminLogin="$SQL_ADMIN_LOGIN" \
+                sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
+                useKeyVaultSecretReferences=false \
+                jwtSecretKey="$JWT_SECRET_KEY" \
+                llmApiKey="$LLM_API_KEY" \
+                telegramBotToken="$TELEGRAM_BOT_TOKEN" \
+                runtimeConfigurationVersion="bootstrap-${{ github.run_id }}-${{ github.run_attempt }}" \
+                corsAllowedOrigin="$CORS_ALLOWED_ORIGIN" \
+                registryUsername="$REGISTRY_USERNAME" \
+                registryPassword="$REGISTRY_PASSWORD" \
+                deploymentPrincipalObjectId="$DEPLOYMENT_PRINCIPAL_OBJECT_ID" \
+                sqlEntraAdminObjectId="$SQL_ENTRA_ADMIN_OBJECT_ID" \
+                sqlEntraAdminLogin="$SQL_ENTRA_ADMIN_LOGIN" \
+              --result-format ResourceIdOnly \
+              --no-pretty-print
+
+      - name: Bootstrap infrastructure for Key Vault seeding
         uses: azure/arm-deploy@v2
         with:
           resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
@@ -49,14 +101,102 @@ jobs:
             location=uksouth
             appName=tradepilot
             containerImage=mcr.microsoft.com/azuredocs/containerapps-helloworld:latest
-            sqlAdminLogin=${{ secrets.SQL_ADMIN_LOGIN }}
+            sqlAdminLogin=${{ vars.SQL_ADMIN_LOGIN }}
             sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+            useKeyVaultSecretReferences=false
             jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
             llmApiKey=${{ secrets.LLM_API_KEY }}
-            corsAllowedOrigin=${{ secrets.SWA_URL }}
+            telegramBotToken=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            runtimeConfigurationVersion=bootstrap-${{ github.run_id }}-${{ github.run_attempt }}
+            corsAllowedOrigin=${{ vars.SWA_URL }}
             registryUsername=${{ github.actor }}
             registryPassword=${{ secrets.GHCR_PAT }}
+            deploymentPrincipalObjectId=${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_OBJECT_ID }}
+            sqlEntraAdminObjectId=${{ vars.SQL_ENTRA_ADMIN_OBJECT_ID }}
+            sqlEntraAdminLogin=${{ vars.SQL_ENTRA_ADMIN_LOGIN }}
           failOnStdErr: false
+
+      - name: Seed Key Vault runtime secrets
+        uses: azure/cli@v2
+        env:
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SQL_ADMIN_LOGIN: ${{ vars.SQL_ADMIN_LOGIN }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+        with:
+          inlineScript: |
+            set -euo pipefail
+
+            KEY_VAULT_NAME=$(az deployment group show \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --name main \
+              --query properties.outputs.keyVaultName.value \
+              --output tsv)
+
+            SQL_SERVER_FQDN=$(az deployment group show \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --name main \
+              --query properties.outputs.sqlServerFqdn.value \
+              --output tsv)
+
+            SIGNALR_NAME=$(az deployment group show \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --name main \
+              --query properties.outputs.signalRName.value \
+              --output tsv)
+
+            SIGNALR_CONNECTION_STRING=$(az signalr key list \
+              --name "$SIGNALR_NAME" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query primaryConnectionString \
+              --output tsv)
+
+            ESCAPED_SQL_ADMIN_PASSWORD=$(printf '%s' "$SQL_ADMIN_PASSWORD" | sed "s/'/''/g")
+            SQL_CONNECTION_STRING="Server=tcp:${SQL_SERVER_FQDN},1433;Database=tradepilot-db;User ID=${SQL_ADMIN_LOGIN};Password='${ESCAPED_SQL_ADMIN_PASSWORD}';Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name jwt--secret-key --value "$JWT_SECRET_KEY" --only-show-errors --output none
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name llm--api-key --value "$LLM_API_KEY" --only-show-errors --output none
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name llm-review--api-key --value "$LLM_API_KEY" --only-show-errors --output none
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name llm-context--api-key --value "$LLM_API_KEY" --only-show-errors --output none
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name telegram--bot-token --value "$TELEGRAM_BOT_TOKEN" --only-show-errors --output none
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name connectionstrings--defaultconnection --value "$SQL_CONNECTION_STRING" --only-show-errors --output none
+            az keyvault secret set --vault-name "$KEY_VAULT_NAME" --name azure--signalr--connectionstring --value "$SIGNALR_CONNECTION_STRING" --only-show-errors --output none
+
+      - name: Report passwordless follow-up requirements
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "Operator follow-up: configure Azure SQL Entra admin inputs (SQL_ENTRA_ADMIN_OBJECT_ID, SQL_ENTRA_ADMIN_LOGIN) before switching the API to managed identity SQL authentication."
+            echo "Operator follow-up: disable shared key access on the installer storage account only after runtime and deployment validation confirms RBAC-only blob access."
+
+      - name: Redeploy Container App with Key Vault secret references
+        uses: azure/arm-deploy@v2
+        with:
+          resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
+          template: infrastructure/main.bicep
+          parameters: >
+            environmentName=${{ github.event.inputs.environment }}
+            location=uksouth
+            appName=tradepilot
+            containerImage=mcr.microsoft.com/azuredocs/containerapps-helloworld:latest
+            sqlAdminLogin=${{ vars.SQL_ADMIN_LOGIN }}
+            sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+            useKeyVaultSecretReferences=true
+            runtimeConfigurationVersion=keyvault-${{ github.run_id }}-${{ github.run_attempt }}
+            corsAllowedOrigin=${{ vars.SWA_URL }}
+            registryUsername=${{ github.actor }}
+            registryPassword=${{ secrets.GHCR_PAT }}
+            deploymentPrincipalObjectId=${{ vars.AZURE_DEPLOYMENT_PRINCIPAL_OBJECT_ID }}
+            sqlEntraAdminObjectId=${{ vars.SQL_ENTRA_ADMIN_OBJECT_ID }}
+            sqlEntraAdminLogin=${{ vars.SQL_ENTRA_ADMIN_LOGIN }}
+          failOnStdErr: false
+
+      - name: Report runtime secret validation follow-up
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            echo "Operator follow-up: run the post-deployment runtime validation and rotation checklist in .agent-context/0-knowledge/39-azure-secret-operations.md after this workflow completes."
 
       - name: Show Outputs
         uses: azure/cli@v2

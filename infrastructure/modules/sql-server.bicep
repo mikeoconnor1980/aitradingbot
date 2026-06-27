@@ -14,6 +14,12 @@ param adminLogin string
 @description('SQL admin password')
 param adminPassword string
 
+@description('Optional Microsoft Entra administrator object ID for SQL passwordless access planning')
+param entraAdminObjectId string = ''
+
+@description('Optional Microsoft Entra administrator login name or group display name')
+param entraAdminLogin string = ''
+
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: serverName
   location: location
@@ -21,6 +27,17 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
     administratorLogin: adminLogin
     administratorLoginPassword: adminPassword
     minimalTlsVersion: '1.2'
+  }
+}
+
+resource sqlServerEntraAdmin 'Microsoft.Sql/servers/administrators@2023-08-01-preview' = if (!empty(entraAdminObjectId) && !empty(entraAdminLogin)) {
+  parent: sqlServer
+  name: 'ActiveDirectory'
+  properties: {
+    administratorType: 'ActiveDirectory'
+    login: entraAdminLogin
+    sid: entraAdminObjectId
+    tenantId: subscription().tenantId
   }
 }
 
@@ -50,3 +67,4 @@ resource database 'Microsoft.Sql/servers/databases@2023-08-01-preview' = {
 }
 
 output serverFqdn string = sqlServer.properties.fullyQualifiedDomainName
+output entraAdminConfigured bool = !empty(entraAdminObjectId) && !empty(entraAdminLogin)

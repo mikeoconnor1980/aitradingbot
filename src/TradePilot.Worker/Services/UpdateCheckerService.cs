@@ -97,6 +97,17 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
 
     private async Task ProcessUpdateAsync(UpdateInfo update, CancellationToken stoppingToken)
     {
+        if (string.IsNullOrWhiteSpace(update.Sha256Hash))
+        {
+            _logger.LogError(
+                "Update v{Version} rejected because no SHA256 hash was provided for download URL {Url}.",
+                update.Version,
+                update.DownloadUrl);
+            CurrentState = UpdateState.Failed;
+            DeferredReason = null;
+            return;
+        }
+
         // --- SafeToUpdate check ---
         var deferralStart = DateTimeOffset.UtcNow;
 
@@ -141,10 +152,30 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
 
         _logger.LogInformation("Downloading update v{Version} to {Path}...", update.Version, filePath);
 
+        Uri? resolvedDownloadUri = null;
+
         try
         {
             using var httpClient = _httpClientFactory.CreateClient(UpdateDownloadHttpClientName);
-            using var response = await httpClient.GetAsync(update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, stoppingToken);
+            resolvedDownloadUri = ResolveDownloadUri(httpClient, update.DownloadUrl);
+            if (resolvedDownloadUri is null)
+            {
+                _logger.LogError(
+                    "Failed to resolve update download URL '{Url}' for version {Version}. Configure Agent:ControlPlaneUrl or return an absolute URL from the API.",
+                    update.DownloadUrl,
+                    update.Version);
+                CurrentState = UpdateState.Failed;
+                return;
+            }
+
+            _logger.LogInformation(
+                "Downloading update v{Version} from {Url} to {Path}. ExpectedSha256={ExpectedSha256}",
+                update.Version,
+                resolvedDownloadUri,
+                filePath,
+                update.Sha256Hash);
+
+            using var response = await httpClient.GetAsync(resolvedDownloadUri, HttpCompletionOption.ResponseHeadersRead, stoppingToken);
             response.EnsureSuccessStatusCode();
 
             await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -152,7 +183,11 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to download update v{Version} from {Url}.", update.Version, update.DownloadUrl);
+            _logger.LogError(
+                ex,
+                "Failed to download update v{Version} from {Url}.",
+                update.Version,
+                resolvedDownloadUri?.ToString() ?? update.DownloadUrl);
             CurrentState = UpdateState.Failed;
             return;
         }
@@ -165,8 +200,11 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
         {
             _logger.LogError(
                 "SHA256 hash mismatch for update v{Version}. Expected={Expected}, Actual={Actual}. " +
-                "Update REJECTED — the downloaded file may be corrupt or tampered with.",
-                update.Version, update.Sha256Hash, actualHash);
+                "Update REJECTED — the downloaded file may be corrupt or tampered with. Source={Url}",
+                update.Version,
+                update.Sha256Hash,
+                actualHash,
+                resolvedDownloadUri?.ToString() ?? update.DownloadUrl);
 
             CurrentState = UpdateState.Failed;
             DeferredReason = null;
@@ -176,7 +214,10 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
             return;
         }
 
-        _logger.LogInformation("SHA256 verified. Applying update v{Version}...", update.Version);
+        _logger.LogInformation(
+            "SHA256 verified for update v{Version}. Applying installer from {Path}.",
+            update.Version,
+            filePath);
 
         // --- Apply update (launch silent installer) ---
         CurrentState = UpdateState.Applying;
@@ -234,6 +275,28 @@ public sealed class UpdateCheckerService : BackgroundService, IUpdateNotifier
         await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var hashBytes = await SHA256.HashDataAsync(stream, cancellationToken);
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
+    }
+
+    private static Uri? ResolveDownloadUri(HttpClient httpClient, string downloadUrl)
+    {
+        if (string.IsNullOrWhiteSpace(downloadUrl))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(downloadUrl, UriKind.Absolute, out var absoluteUri))
+        {
+            return absoluteUri;
+        }
+
+        if (httpClient.BaseAddress is null)
+        {
+            return null;
+        }
+
+        return Uri.TryCreate(httpClient.BaseAddress, downloadUrl, out var resolvedUri)
+            ? resolvedUri
+            : null;
     }
 
     private sealed record UpdateInfo(string Version, string DownloadUrl, string Sha256Hash);

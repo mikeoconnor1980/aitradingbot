@@ -47,7 +47,7 @@ public abstract class BaseControllerTests
         _factory = null;
     }
 
-    protected HttpClient GetTestClient(bool authenticate = true)
+    protected HttpClient GetTestClient(bool authenticate = true, string userId = "dev-user", string email = "test@tradepilot.dev", string displayName = "Test User")
     {
         _factory?.Dispose();
         _factory = new WebApplicationFactory<Program>()
@@ -61,6 +61,11 @@ public abstract class BaseControllerTests
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
                 builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
                 builder.UseSetting("LlmReview:TimeoutSeconds", "30");
+                builder.UseSetting("LlmContext:Provider", "Gemini");
+                builder.UseSetting("LlmContext:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmContext:ModelName", "test-context-model");
+                builder.UseSetting("LlmContext:ApiKey", "test-context-api-key");
+                builder.UseSetting("LlmContext:TimeoutSeconds", "30");
                 builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=fake;Database=fake;");
                 ConfigureWebHost(builder);
                 builder.ConfigureServices(services =>
@@ -89,7 +94,7 @@ public abstract class BaseControllerTests
         if (authenticate)
         {
             client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", GenerateTestToken());
+                new AuthenticationHeaderValue("Bearer", GenerateTestToken(userId, email, displayName));
         }
 
         return client;

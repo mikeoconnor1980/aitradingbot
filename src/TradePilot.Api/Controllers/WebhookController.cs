@@ -132,6 +132,9 @@ public sealed class WebhookController : ControllerBase
         }
 
         var ip = normalized.ToString();
+        var forwarded = HttpContext.Request.Headers["X-Forwarded-For"].ToString();
+        _logger.LogInformation("Webhook IP check: RemoteIp={RemoteIp}, X-Forwarded-For={ForwardedFor}", ip, forwarded);
+
         if (TradingViewSourceIps.Contains(ip))
         {
             return true;

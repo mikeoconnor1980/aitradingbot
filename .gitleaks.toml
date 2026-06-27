@@ -1,0 +1,18 @@
+title = "TradePilot gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-sensitive example keys used in tests and generated outputs"
+paths = [
+  '''^TestResults/''',
+  '''^artifacts/''',
+  '''^tmp-publish/''',
+  '''^tmp-tools/'''
+]
+regexes = [
+  '''0x4c0883a69102937d6231471b5dbb6204fe512961708279f2a4c5890a0c1f9b2e''',
+  '''0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80''',
+  '''0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'''
+]

@@ -68,6 +68,7 @@ Project knowledge files for TradingApp. These documents are the source of truth 
 | 34 | [Google SSO Authentication](34-google-sso-authentication.md) | Google OAuth integration via Google Identity Services |
 | 36 | [Notification Architecture](36-notification-architecture.md) | Unified notification dispatch (backend) and facade (frontend), channel routing, and extension guide |
 | 37 | [TradingView Webhooks](37-tradingview-webhooks.md) | Pro-tier webhook ingress, TradingView setup steps, payload contract, and agent-routing behavior |
+| 39 | [Azure Secret Operations](39-azure-secret-operations.md) | Post-deployment secret-resolution validation, runtime smoke checks, and secret rotation runbooks for the Azure control plane |
 
 ## Market Data
 

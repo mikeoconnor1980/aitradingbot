@@ -22,6 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks.toml
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -66,6 +71,29 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high --file=frontend/trading-ui/package-lock.json
+
+  build-installer:
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build execution agent installer
+        shell: pwsh
+        run: ./deploy/worker/build-installer.ps1
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-dist
+          path: artifacts/installer
+          if-no-files-found: error
 
   build-api-image:
     needs: build-and-test
@@ -123,7 +151,7 @@ jobs:
         working-directory: frontend/trading-ui
         run: |
           cp src/environments/environment.azure.ts src/environments/environment.ts
-          sed -i "s|CONTAINER_APP_FQDN|${{ secrets.API_FQDN }}|g" src/environments/environment.ts
+          sed -i "s|CONTAINER_APP_FQDN|${{ vars.API_FQDN }}|g" src/environments/environment.ts
 
       - name: Build Angular app
         working-directory: frontend/trading-ui
@@ -146,24 +174,26 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to Container Apps
         uses: azure/cli@v2
         with:
           inlineScript: |
-            az containerapp registry set \
-              --name tradepilot-dev-api \
+            set -euo pipefail
+
+            KEY_VAULT_NAME=$(az keyvault list \
               --resource-group rg-tradepilot-dev \
-              --server ghcr.io \
-              --username ${{ github.actor }} \
-              --password ${{ secrets.GHCR_PAT }}
+              --query "[?name=='tradepilot-dev-kv'].name | [0]" \
+              --output tsv)
+
+            echo "Operator follow-up: GHCR pull credentials still require secrets.GHCR_PAT. Consider moving images to ACR and assigning Container Apps managed identity image-pull permissions to remove this deployment secret."
             az containerapp secret set \
               --name tradepilot-dev-api \
               --resource-group rg-tradepilot-dev \
-              --secrets "telegram-bot-token=${{ secrets.TELEGRAM_BOT_TOKEN }}"
+              --secrets "telegram-bot-token=keyvaultref:https://${KEY_VAULT_NAME}.vault.azure.net/secrets/telegram--bot-token,identityref:system"
             az containerapp update \
               --name tradepilot-dev-api \
               --resource-group rg-tradepilot-dev \
@@ -174,11 +204,11 @@ jobs:
                 "Deployment__BuildTimeUtc=${{ github.event.head_commit.timestamp }}" \
                 "Deployment__RunId=${{ github.run_id }}" \
                 "Telegram__BotToken=secretref:telegram-bot-token" \
-                "Telegram__BotUsername=${{ secrets.TELEGRAM_BOT_USERNAME }}"
+                "Telegram__BotUsername=${{ vars.TELEGRAM_BOT_USERNAME }}"
 
       - name: Verify deployed API is healthy
         run: |
-          version_url="https://${{ secrets.API_FQDN }}/api/version?expectedVersion=${{ needs.build-api-image.outputs.image-tag }}"
+          version_url="https://${{ vars.API_FQDN }}/api/version?expectedVersion=${{ needs.build-api-image.outputs.image-tag }}"
           for attempt in 1 2 3 4 5 6 7 8 9 10; do
             response=$(curl --silent --show-error --fail "$version_url") && break
             sleep 10
@@ -187,7 +217,7 @@ jobs:
           echo "$response" | grep '"matchesExpectedVersion":true'
 
   upload-installers:
-    needs: build-and-test
+    needs: build-installer
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: dev
@@ -197,38 +227,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: installer-dist
+          path: artifacts/installer
+
+      - name: Generate release manifest
+        shell: pwsh
+        run: ./deploy/worker/New-ReleaseManifest.ps1 -InstallerDirectory artifacts/installer -OutputPath artifacts/installer/latest.json
+
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Upload installer artifacts to Blob Storage
         uses: azure/cli@v2
         with:
           inlineScript: |
-            STORAGE_ACCOUNT="${{ secrets.INSTALLER_STORAGE_ACCOUNT }}"
+            STORAGE_ACCOUNT="${{ vars.INSTALLER_STORAGE_ACCOUNT }}"
             CONTAINER_NAME="installers"
             INSTALLER_DIR="artifacts/installer"
+            MANIFEST_PATH="$INSTALLER_DIR/latest.json"
 
             if [ ! -d "$INSTALLER_DIR" ]; then
-              echo "No installer directory found — skipping upload"
-              exit 0
+              echo "Installer artifact directory not found: $INSTALLER_DIR"
+              exit 1
             fi
 
-            for file in "$INSTALLER_DIR"/TradePilot-ExecutionAgent-*; do
-              [ -f "$file" ] || continue
-              filename=$(basename "$file")
-              echo "Uploading $filename..."
-              az storage blob upload \
-                --account-name "$STORAGE_ACCOUNT" \
-                --container-name "$CONTAINER_NAME" \
-                --file "$file" \
-                --name "$filename" \
-                --overwrite true \
-                --auth-mode login
-            done
+            if [ ! -f "$MANIFEST_PATH" ]; then
+              echo "Release manifest not found: $MANIFEST_PATH"
+              exit 1
+            fi
+
+            export STORAGE_ACCOUNT CONTAINER_NAME INSTALLER_DIR MANIFEST_PATH
+            python3 deploy/worker/upload_release_manifest.py
 
   deploy-frontend:
     needs: build-frontend
@@ -247,9 +283,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to Static Web Apps
         uses: azure/static-web-apps-deploy@v1
@@ -259,3 +295,7 @@ jobs:
           app_location: dist
           skip_app_build: true
           skip_api_build: true
+
+      - name: Report deployment secret follow-up requirements
+        run: |
+          echo "Operator follow-up: Static Web Apps deployment still requires secrets.SWA_DEPLOYMENT_TOKEN with the current workflow. Review whether the deployment path can move to a less persistent credential model before production hardening is considered complete."

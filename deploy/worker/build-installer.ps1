@@ -31,6 +31,7 @@ $workerProject = Join-Path $repoRoot "src\TradePilot.Worker\TradePilot.Worker.cs
 $publishDir = Join-Path $repoRoot "artifacts\publish\worker"
 $packageDir = Join-Path $repoRoot "artifacts\installer\TradePilot-ExecutionAgent"
 $scriptDir = $PSScriptRoot
+$installerDir = Join-Path $repoRoot "artifacts\installer"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -44,6 +45,9 @@ if (Test-Path $publishDir) {
 }
 if (Test-Path $packageDir) {
     Remove-Item -Path $packageDir -Recurse -Force
+}
+if (Test-Path $installerDir) {
+    Get-ChildItem -Path $installerDir -File | Remove-Item -Force
 }
 
 # --- 2. Publish ---
@@ -170,7 +174,6 @@ if (-not $NoInnoSetup) {
             Write-Warning "Inno Setup compilation failed (exit code $LASTEXITCODE). Skipping installer EXE."
         } else {
             $installerName = "TradePilot-ExecutionAgent-v$version-Setup.exe"
-            $installerDir = Join-Path $repoRoot "artifacts\installer"
             $installerPath = Join-Path $installerDir $installerName
 
             if (Test-Path $installerPath) {
@@ -198,7 +201,7 @@ if (-not $NoInnoSetup) {
 # --- 7. Create ZIP ---
 if (-not $NoZip) {
     $zipName = "TradePilot-ExecutionAgent-v$version-win-x64.zip"
-    $zipPath = Join-Path (Split-Path $packageDir -Parent) $zipName
+    $zipPath = Join-Path $installerDir $zipName
 
     if (Test-Path $zipPath) {
         Remove-Item $zipPath -Force

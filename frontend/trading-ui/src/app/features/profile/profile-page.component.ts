@@ -1,4 +1,5 @@
 import { AsyncPipe, DatePipe, SlicePipe } from "@angular/common";
+import { HttpErrorResponse } from "@angular/common/http";
 import { Component, inject, OnInit, signal } from "@angular/core";
 import { ReactiveFormsModule, FormControl, Validators } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -25,6 +26,12 @@ import { ExchangeCredential, ExchangeCredentialsService } from "../../core/servi
 interface ApiVersionViewModel {
   data: ApiVersionInfo | null;
   error: boolean;
+}
+
+interface InstallerInfoViewModel {
+  data: InstallerInfo | null;
+  error: boolean;
+  errorMessage: string | null;
 }
 
 @Component({
@@ -69,9 +76,13 @@ export class ProfilePageComponent implements OnInit {
   public readonly appVersion = environment.appVersion;
 
   public readonly installerInfo$ = this._agentService.getInstallerInfo().pipe(
-    map((info) => ({ data: info, error: false })),
-    catchError(() => of({ data: null as InstallerInfo | null, error: true }))
-  );
+    map((info) => ({ data: info, error: false, errorMessage: null })),
+    catchError((error: unknown) => of({
+      data: null as InstallerInfo | null,
+      error: true,
+      errorMessage: this.getInstallerInfoErrorMessage(error)
+    }))
+  ) as import("rxjs").Observable<InstallerInfoViewModel>;
   public readonly apiVersionInfo$ = this._apiVersionService.getVersion().pipe(
     map((info) => ({ data: info, error: false })),
     catchError(() => of({ data: null as ApiVersionInfo | null, error: true }))
@@ -80,8 +91,8 @@ export class ProfilePageComponent implements OnInit {
     map((agents) => agents.some((a) => a.state !== "disconnected" && a.state !== "killed"))
   );
   public readonly sha256Copied = signal(false);
-  public readonly exeDownloadUrl = this._agentService.getInstallerDownloadUrl("exe");
-  public readonly zipDownloadUrl = this._agentService.getInstallerDownloadUrl("zip");
+  public readonly installerDownloadInFlight = signal<"exe" | "zip" | null>(null);
+  public readonly installerDownloadError = signal<string | null>(null);
 
   public readonly networkControl = new FormControl("mainnet");
   public readonly exchangeControl = new FormControl("Hyperliquid", { nonNullable: true });
@@ -223,6 +234,19 @@ export class ProfilePageComponent implements OnInit {
     });
   }
 
+  public onDownloadInstaller(format: "exe" | "zip", fileName?: string): void {
+    this.installerDownloadInFlight.set(format);
+    this.installerDownloadError.set(null);
+
+    this._agentService.downloadInstaller(format, fileName).subscribe({
+      next: () => this.installerDownloadInFlight.set(null),
+      error: (error: unknown) => {
+        this.installerDownloadInFlight.set(null);
+        this.installerDownloadError.set(this.getInstallerDownloadErrorMessage(error));
+      }
+    });
+  }
+
   public loadCredentials(): void {
     this.credentialsLoading.set(true);
     this._exchangeCredentialsService.list().subscribe({
@@ -313,10 +337,127 @@ export class ProfilePageComponent implements OnInit {
     setTimeout(() => this.sha256Copied.set(false), 2000);
   }
 
+  private getInstallerDownloadErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) {
+        return "Sign in again to download the execution agent installer.";
+      }
+
+      if (error.status === 403) {
+        return "An active subscription is required to download the execution agent installer.";
+      }
+
+      if (error.status === 404) {
+        return "The selected installer package is not available on the server.";
+      }
+    }
+
+    return "Unable to download the execution agent installer right now.";
+  }
+
+  private getInstallerInfoErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 0) {
+        return "Unable to reach the API. Check that the control plane is running.";
+      }
+
+      if (error.status === 401) {
+        return "Sign in again to load execution-agent release details.";
+      }
+
+      if (error.status >= 500) {
+        return "The API could not read installer metadata. Check storage access and release logs.";
+      }
+    }
+
+    return "Unable to load execution-agent release details right now.";
+  }
+
   public formatFileSize(bytes: number | null): string {
     if (bytes === null || bytes === 0) return "";
     const mb = bytes / (1024 * 1024);
     return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
+  }
+
+  public getInstallerStatusLabel(status: string): string {
+    if (status === "Available") return "Published";
+    if (status === "ManifestFoundBlobMissing") return "Repair Needed";
+    if (status === "FallbackConfigured") return "Fallback";
+    if (status === "NoManifest") return "Not Published";
+    return status || "Unknown";
+  }
+
+  public hasInstallerChecksum(info: InstallerInfo, format: "exe" | "zip"): boolean {
+    if (format === "exe") {
+      return Boolean(info.exeSha256Hash ?? info.sha256Hash);
+    }
+
+    return Boolean(info.zipSha256Hash);
+  }
+
+  public getInstallerIntegritySummary(info: InstallerInfo): string {
+    const exeHashAvailable = this.hasInstallerChecksum(info, "exe");
+    const zipHashAvailable = this.hasInstallerChecksum(info, "zip");
+
+    if (exeHashAvailable && zipHashAvailable) {
+      return "SHA256 published for EXE and ZIP";
+    }
+
+    if (exeHashAvailable) {
+      return info.zipAvailable ? "SHA256 published for EXE only" : "SHA256 published";
+    }
+
+    if (zipHashAvailable) {
+      return info.exeAvailable ? "SHA256 published for ZIP only" : "SHA256 published";
+    }
+
+    return "No SHA256 checksum published";
+  }
+
+  public getInstallerAttentionMessage(info: InstallerInfo): string | null {
+    if (info.status === "NoManifest") {
+      return "No release manifest has been published yet. Run the Windows packaging workflow and promote a latest.json manifest.";
+    }
+
+    if (info.status === "ManifestFoundBlobMissing") {
+      if (!info.exeAvailable && !info.zipAvailable) {
+        return "Release metadata exists, but both installer packages are missing from storage.";
+      }
+
+      if (!info.exeAvailable) {
+        return "Release metadata exists, but the recommended Windows installer EXE is missing from storage.";
+      }
+
+      if (!info.zipAvailable) {
+        return "Release metadata exists, but the ZIP fallback package is missing from storage.";
+      }
+
+      return "Release metadata exists, but one or more installer files are unavailable.";
+    }
+
+    if (info.status === "FallbackConfigured") {
+      return "The API is serving fallback installer metadata from configuration. Publish latest.json so the UI and agents use CI-generated release data.";
+    }
+
+    if (info.exeAvailable && !this.hasInstallerChecksum(info, "exe")) {
+      return "The Windows installer EXE is available, but its SHA256 checksum is missing.";
+    }
+
+    if (info.zipAvailable && !this.hasInstallerChecksum(info, "zip")) {
+      return "The ZIP fallback package is available, but its SHA256 checksum is missing.";
+    }
+
+    return null;
+  }
+
+  public getPrimaryInstallerHash(info: InstallerInfo): string | null {
+    return info.exeSha256Hash ?? info.sha256Hash ?? info.zipSha256Hash ?? null;
+  }
+
+  public getPrimaryInstallerHashLabel(info: InstallerInfo): string {
+    return info.exeSha256Hash ?? info.sha256Hash
+      ? "Installer SHA256"
+      : "ZIP SHA256";
   }
 
   public getTierName(tier: string | null): string {

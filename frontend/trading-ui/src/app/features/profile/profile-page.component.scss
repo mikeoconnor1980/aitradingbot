@@ -195,6 +195,12 @@
       border-color: rgba(239, 68, 68, 0.3);
       color: #ef4444;
     }
+
+    &--warning {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.28);
+      color: #fbbf24;
+    }
   }
 
   &__key-form {
@@ -256,6 +262,46 @@
     a[mat-stroked-button] {
       text-decoration: none;
     }
+  }
+
+  &__installer-warning {
+    margin: 0 0 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid rgba(245, 158, 11, 0.24);
+    background: rgba(245, 158, 11, 0.08);
+    color: #fde68a;
+    font-size: 0.86rem;
+  }
+
+  &__installer-package-list {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  &__installer-package {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--colour-border-light);
+    background: rgba(121, 207, 195, 0.04);
+    flex-wrap: wrap;
+  }
+
+  &__installer-package-title {
+    margin: 0;
+    color: #f8fafc;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  &__installer-package-meta {
+    margin: 0.25rem 0 0;
+    color: var(--colour-muted);
+    font-size: 0.82rem;
   }
 
   &__detail-row {

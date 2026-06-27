@@ -59,6 +59,11 @@ public sealed class MarketDataHubTests
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
                 builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
                 builder.UseSetting("LlmReview:TimeoutSeconds", "30");
+                builder.UseSetting("LlmContext:Provider", "Gemini");
+                builder.UseSetting("LlmContext:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmContext:ModelName", "test-context-model");
+                builder.UseSetting("LlmContext:ApiKey", "test-context-api-key");
+                builder.UseSetting("LlmContext:TimeoutSeconds", "30");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<IHyperliquidWebSocketClient>();
@@ -140,6 +145,11 @@ public sealed class MarketDataHubTests
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
                 builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
                 builder.UseSetting("LlmReview:TimeoutSeconds", "30");
+                builder.UseSetting("LlmContext:Provider", "Gemini");
+                builder.UseSetting("LlmContext:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmContext:ModelName", "test-context-model");
+                builder.UseSetting("LlmContext:ApiKey", "test-context-api-key");
+                builder.UseSetting("LlmContext:TimeoutSeconds", "30");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<IHyperliquidWebSocketClient>();
