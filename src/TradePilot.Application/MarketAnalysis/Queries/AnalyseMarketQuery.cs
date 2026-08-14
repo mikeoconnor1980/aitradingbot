@@ -30,6 +30,7 @@ public sealed class AnalyseMarketQueryHandler : QueryHandler<AnalyseMarketQuery,
 {
     internal const int RequestedCandleCount = 250;
     internal const int MinimumCandleCount = 200;
+    internal const int MaximumStalenessIntervals = 2;
     private const int RsiPeriod = 14;
     private const int AtrPeriod = 14;
 
@@ -83,6 +84,15 @@ public sealed class AnalyseMarketQueryHandler : QueryHandler<AnalyseMarketQuery,
         }
 
         var latestCandle = completedCandles[^1];
+        var latestCloseTimeMilliseconds = checked(latestCandle.Timestamp + timeframeMilliseconds);
+        if (request.AsOf is null && latestCloseTimeMilliseconds < checked(
+                asOfMilliseconds - (MaximumStalenessIntervals * timeframeMilliseconds)))
+        {
+            throw new DomainException(
+                $"The latest completed {request.Timeframe.Trim()} candle for {request.Symbol.Trim()} closed at " +
+                $"{DateTimeOffset.FromUnixTimeMilliseconds(latestCloseTimeMilliseconds):O}, which is stale for analysis as of {asOf:O}.");
+        }
+
         if (latestCandle.Close <= 0m)
         {
             throw new DomainException("The latest completed candle close must be greater than zero.");

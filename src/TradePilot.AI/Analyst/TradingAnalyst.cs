@@ -328,8 +328,8 @@ public sealed class TradingAnalyst : ITradingAnalyst
         return toolName switch
         {
             "get_market_snapshot" => new HashSet<string>(["symbol", "exchange"], StringComparer.OrdinalIgnoreCase),
-            "analyse_market" => new HashSet<string>(["symbol", "timeframe", "exchange", "cutoff"], StringComparer.OrdinalIgnoreCase),
-            "analyse_market_multi_timeframe" => new HashSet<string>(["symbol", "timeframes", "exchange", "cutoff"], StringComparer.OrdinalIgnoreCase),
+            "analyse_market" => new HashSet<string>(["symbol", "timeframe", "exchange"], StringComparer.OrdinalIgnoreCase),
+            "analyse_market_multi_timeframe" => new HashSet<string>(["symbol", "timeframes", "exchange"], StringComparer.OrdinalIgnoreCase),
             "get_account_summary" or "get_positions" or "get_open_orders" =>
                 new HashSet<string>(["exchange"], StringComparer.OrdinalIgnoreCase),
             "get_recent_fills" => new HashSet<string>(["symbol", "exchange"], StringComparer.OrdinalIgnoreCase),

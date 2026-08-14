@@ -131,6 +131,59 @@ public sealed class OpenAiCompatibleAnalystLlmClientTests
             .WithMessage("*malformed tool call*");
     }
 
+    [TestMethod]
+    public async Task GivenAzureResponsesFunctionCall_WhenCompleted_ThenMapsToolCallAndUsesResponsesEndpoint()
+    {
+        var responseJson = JsonSerializer.Serialize(new
+        {
+            output = new[]
+            {
+                new
+                {
+                    type = "function_call",
+                    call_id = "call-azure-1",
+                    name = "get_positions",
+                    arguments = "{}",
+                },
+            },
+            usage = new { input_tokens = 10, output_tokens = 4, total_tokens = 14 },
+        });
+        var handler = new CapturingHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(responseJson, Encoding.UTF8, "application/json"),
+        });
+        var options = Options.Create(new LlmOptions
+        {
+            Provider = "AzureOpenAI",
+            BaseUrl = "https://example.com/openai/responses?api-version=2025-04-01-preview",
+            ModelName = "test-deployment",
+            ApiKey = "test-key",
+        });
+        var client = new HttpClient(handler);
+        var sut = new OpenAiCompatibleAnalystLlmClient(
+            client,
+            options,
+            NullLogger<OpenAiCompatibleAnalystLlmClient>.Instance);
+
+        var result = await sut.CompleteAsync(
+            new AnalystLlmRequest(
+                [new AnalystLlmMessage("user", "What are my positions?")],
+                [new AnalystToolDefinition(
+                    "get_positions",
+                    "Get positions.",
+                    JsonSerializer.SerializeToElement(new { type = "object" }))]),
+            CancellationToken.None);
+
+        result.ToolCalls.Should().ContainSingle().Which.Should().Be(
+            new AnalystLlmToolCall("call-azure-1", "get_positions", "{}"));
+        result.Usage.Should().Be(new AnalystTokenUsage(10, 4, 14));
+        handler.RequestUri.Should().Be("/openai/responses?api-version=2025-04-01-preview");
+        using var request = JsonDocument.Parse(handler.RequestBody!);
+        request.RootElement.GetProperty("model").GetString().Should().Be("test-deployment");
+        request.RootElement.GetProperty("input")[0].GetProperty("role").GetString().Should().Be("user");
+        request.RootElement.GetProperty("tools")[0].GetProperty("name").GetString().Should().Be("get_positions");
+    }
+
     private static OpenAiCompatibleAnalystLlmClient CreateSut(HttpMessageHandler handler)
     {
         var options = Options.Create(new LlmOptions
@@ -150,11 +203,14 @@ public sealed class OpenAiCompatibleAnalystLlmClientTests
     {
         public string? RequestBody { get; private set; }
 
+        public string? RequestUri { get; private set; }
+
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
             RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
+            RequestUri = request.RequestUri?.PathAndQuery;
             return response;
         }
     }

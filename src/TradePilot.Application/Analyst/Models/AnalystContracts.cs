@@ -9,7 +9,24 @@ namespace TradePilot.Application.Analyst.Models;
 public sealed record TradingAnalystRequest(
     string Question,
     Guid? UserId = null,
-    string? CorrelationId = null);
+    string? CorrelationId = null,
+    TradingAnalystContext? Context = null);
+
+/// <summary>Represents an explicit, trusted product context for an Analyst request.</summary>
+public sealed record TradingAnalystContext(
+    TradingAnalystIntent Intent,
+    Guid? StrategyId = null,
+    int? StrategyVersion = null,
+    Guid? BacktestRunId = null);
+
+/// <summary>Defines the fixed contextual questions the product can ask the Analyst.</summary>
+public enum TradingAnalystIntent
+{
+    ExplainStrategyEntry,
+    SummariseStrategyBlockingRules,
+    AnalyseBacktestRun,
+    CompareBacktestRuns
+}
 
 /// <summary>Represents the outcome of one request-scoped Analyst run.</summary>
 /// <param name="Response">The final safe natural-language response.</param>

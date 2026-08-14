@@ -313,6 +313,30 @@ public sealed class TradingAnalystTests
     }
 
     [TestMethod]
+    public async Task GivenCurrentMarketAnalysisWithCutoff_WhenAnalysed_ThenCutoffIsNotPassedToTheTool()
+    {
+        var llm = new FakeAnalystLlmClient(
+            ToolResponse(Call("call-1", "analyse_market", "{\"symbol\":\"BTC\",\"timeframe\":\"1h\",\"cutoff\":\"2025-02-14T00:00:00Z\"}")),
+            FinalResponse("Current market analysis is unavailable."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "analyse_market",
+                "{\"symbol\":\"BTC\",\"timeframe\":\"1h\"}",
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AnalystToolResult.Failure("data_unavailable", "Current market data is stale."));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("What is BTC doing now?"),
+            CancellationToken.None);
+
+        result.ToolInvocations.Should().ContainSingle(invocation =>
+            invocation.Arguments == "{\"symbol\":\"BTC\",\"timeframe\":\"1h\"}" &&
+            invocation.ErrorCode == "data_unavailable");
+    }
+
+    [TestMethod]
     public async Task GivenApplicationFailure_WhenModelContinues_ThenSafeFailureIsAvailableForHonestFinalResponse()
     {
         var llm = new FakeAnalystLlmClient(

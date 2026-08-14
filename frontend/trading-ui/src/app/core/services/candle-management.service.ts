@@ -11,8 +11,12 @@ import { ApiRestClient } from "./api-rest-client.service";
 export class CandleManagementService {
   private readonly _apiClient = inject(ApiRestClient);
 
-  public getCoverage(): Observable<AllCandleCoverageResponse> {
-    return this._apiClient.get<AllCandleCoverageResponse>("candles/coverage");
+  public getCoverage(symbols: string[], intervals: string[]): Observable<AllCandleCoverageResponse> {
+    const params = new URLSearchParams();
+    symbols.forEach((symbol) => params.append("symbols", symbol));
+    intervals.forEach((interval) => params.append("intervals", interval));
+
+    return this._apiClient.get<AllCandleCoverageResponse>(`candles/coverage?${params.toString()}`);
   }
 
   public ingestBinanceCandles(request: IngestCandlesRequest): Observable<IngestionResult> {

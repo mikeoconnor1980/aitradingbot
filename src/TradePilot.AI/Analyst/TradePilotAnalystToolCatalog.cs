@@ -161,7 +161,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         RequireValue(arguments.Timeframe, nameof(arguments.Timeframe));
         var exchange = await ResolveExchangeAsync(arguments.Exchange, cancellationToken);
         var result = await _sender.Send(
-            new AnalyseMarketQuery(arguments.Symbol, arguments.Timeframe, exchange, arguments.Cutoff),
+            new AnalyseMarketQuery(arguments.Symbol, arguments.Timeframe, exchange),
             cancellationToken);
         return AnalystToolResult.Success(SerializeResult(result));
     }
@@ -175,7 +175,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         var timeframes = arguments.Timeframes ?? DefaultTimeframes;
         var exchange = await ResolveExchangeAsync(arguments.Exchange, cancellationToken);
         var result = await _sender.Send(
-            new AnalyseMarketMultiTimeframeQuery(arguments.Symbol, timeframes, exchange, arguments.Cutoff),
+            new AnalyseMarketMultiTimeframeQuery(arguments.Symbol, timeframes, exchange),
             cancellationToken);
         return AnalystToolResult.Success(SerializeResult(result));
     }
@@ -550,7 +550,6 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
                     symbol = StringProperty("Exchange-facing symbol such as BTC."),
                     timeframe = StringProperty("TradePilot-supported timeframe such as 15m, 1h, 4h, or 1d."),
                     exchange = ExchangeProperty(),
-                    cutoff = StringProperty("Optional ISO-8601 UTC cutoff."),
                 },
                 ["symbol", "timeframe"]),
             Define(
@@ -561,7 +560,6 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
                     symbol = StringProperty("Exchange-facing symbol such as BTC."),
                     timeframes = new { type = "array", items = new { type = "string" }, description = "Optional timeframes; defaults to 15m, 1h, 4h, and 1d." },
                     exchange = ExchangeProperty(),
-                    cutoff = StringProperty("Optional ISO-8601 UTC cutoff."),
                 },
                 ["symbol"]),
             Define(
@@ -753,14 +751,12 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
     private sealed record AnalyseMarketArguments(
         string Symbol = "",
         string Timeframe = "",
-        Exchange? Exchange = null,
-        DateTimeOffset? Cutoff = null);
+        Exchange? Exchange = null);
 
     private sealed record AnalyseMarketMultiTimeframeArguments(
         string Symbol = "",
         string[]? Timeframes = null,
-        Exchange? Exchange = null,
-        DateTimeOffset? Cutoff = null);
+        Exchange? Exchange = null);
 
     private sealed record AccountArguments(Exchange? Exchange = null);
 

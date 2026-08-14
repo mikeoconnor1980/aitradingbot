@@ -128,7 +128,7 @@ public sealed class TradePilotAnalystToolCatalogTests
             cancellation.Token);
         var analysisResult = await _sut.ExecuteAsync(
             "analyse_market",
-            "{\"symbol\":\"BTC\",\"timeframe\":\"4h\",\"exchange\":\"Binance\",\"cutoff\":\"2026-08-14T10:00:00Z\"}",
+            "{\"symbol\":\"BTC\",\"timeframe\":\"4h\",\"exchange\":\"Binance\"}",
             new AnalystToolContext(null),
             cancellation.Token);
         var multiResult = await _sut.ExecuteAsync(
@@ -141,8 +141,7 @@ public sealed class TradePilotAnalystToolCatalogTests
         analysisQuery.Should().Be(new AnalyseMarketQuery(
             "BTC",
             "4h",
-            Exchange.Binance,
-            new DateTimeOffset(2026, 8, 14, 10, 0, 0, TimeSpan.Zero)));
+            Exchange.Binance));
         multiTimeframeQuery.Should().NotBeNull();
         multiTimeframeQuery!.Timeframes.Should().Equal("15m", "1d");
         snapshotResult.Result!.Value.GetProperty("markPrice").GetDecimal().Should().Be(60_000.25m);

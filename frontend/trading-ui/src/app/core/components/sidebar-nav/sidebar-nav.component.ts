@@ -54,6 +54,7 @@ export class SidebarNavComponent {
         items: [
           { route: "/dashboard", icon: "space_dashboard", label: "Overview", exact: true },
           { route: "/market-data", icon: "candlestick_chart", label: "Markets" },
+          { route: "/analyst", icon: "psychology", label: "Analyst" },
           { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar", feature: "macrocalendar", upgradePrompt: "macro-calendar" }
         ]
       },

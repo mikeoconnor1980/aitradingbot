@@ -59,6 +59,43 @@ public sealed class OpenAiCompatibleAnalystLlmClient : IAnalystLlmClient
             Model,
             request.Tools.Count);
 
+        if (AzureOpenAiResponsesProtocol.IsAzureOpenAi(_options.Provider))
+        {
+            var azureResponse = await AzureOpenAiResponsesProtocol.CompleteAsync(
+                _httpClient,
+                _options.BaseUrl,
+                new AzureResponsesRequest
+                {
+                    Model = _options.ModelName,
+                    Input = request.Messages.SelectMany(MapAzureInput).ToArray(),
+                    Tools = request.Tools.Count == 0 ? null : request.Tools.Select(MapAzureTool).ToArray(),
+                    ToolChoice = request.Tools.Count == 0 ? null : "auto",
+                },
+                cancellationToken);
+
+            var azureToolCalls = azureResponse.Output
+                .Where(item => string.Equals(item.Type, "function_call", StringComparison.OrdinalIgnoreCase))
+                .Select(item => MapAzureToolCall(item))
+                .ToArray();
+            var content = string.Concat(azureResponse.Output
+                .Where(item => string.Equals(item.Type, "message", StringComparison.OrdinalIgnoreCase))
+                .SelectMany(item => item.Content ?? [])
+                .Where(item => string.Equals(item.Type, "output_text", StringComparison.OrdinalIgnoreCase))
+                .Select(item => item.Text));
+            if (string.IsNullOrWhiteSpace(content) && azureToolCalls.Length == 0)
+            {
+                throw new InvalidOperationException("Azure OpenAI returned neither text nor tool calls.");
+            }
+
+            var azureUsage = azureResponse.Usage is null
+                ? null
+                : new AnalystTokenUsage(
+                    azureResponse.Usage.InputTokens,
+                    azureResponse.Usage.OutputTokens,
+                    azureResponse.Usage.TotalTokens);
+            return new AnalystLlmResponse(content, azureToolCalls, azureUsage);
+        }
+
         using var response = await _httpClient.PostAsJsonAsync(
             "chat/completions",
             transportRequest,
@@ -128,6 +165,36 @@ public sealed class OpenAiCompatibleAnalystLlmClient : IAnalystLlmClient
         };
     }
 
+    private static IEnumerable<AzureResponsesInputItem> MapAzureInput(AnalystLlmMessage message)
+    {
+        if (message.Role == "tool")
+        {
+            yield return new AzureResponsesInputItem
+            {
+                Type = "function_call_output",
+                CallId = message.ToolCallId,
+                Output = message.Content,
+            };
+            yield break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(message.Content))
+        {
+            yield return new AzureResponsesInputItem { Role = message.Role, Content = message.Content };
+        }
+
+        foreach (var toolCall in message.ToolCalls ?? [])
+        {
+            yield return new AzureResponsesInputItem
+            {
+                Type = "function_call",
+                CallId = toolCall.Id,
+                Name = toolCall.Name,
+                Arguments = toolCall.ArgumentsJson,
+            };
+        }
+    }
+
     private static AnalystChatTool MapTool(AnalystToolDefinition tool)
     {
         return new AnalystChatTool
@@ -140,6 +207,13 @@ public sealed class OpenAiCompatibleAnalystLlmClient : IAnalystLlmClient
             },
         };
     }
+
+    private static AzureResponsesTool MapAzureTool(AnalystToolDefinition tool) => new()
+    {
+        Name = tool.Name,
+        Description = tool.Description,
+        Parameters = tool.Parameters,
+    };
 
     private static AnalystLlmToolCall MapToolCall(AnalystChatToolCall toolCall)
     {
@@ -154,5 +228,17 @@ public sealed class OpenAiCompatibleAnalystLlmClient : IAnalystLlmClient
             toolCall.Id,
             toolCall.Function.Name,
             toolCall.Function.Arguments);
+    }
+
+    private static AnalystLlmToolCall MapAzureToolCall(AzureResponsesOutputItem toolCall)
+    {
+        if (string.IsNullOrWhiteSpace(toolCall.CallId) ||
+            string.IsNullOrWhiteSpace(toolCall.Name) ||
+            string.IsNullOrWhiteSpace(toolCall.Arguments))
+        {
+            throw new InvalidOperationException("Azure OpenAI returned a malformed tool call.");
+        }
+
+        return new AnalystLlmToolCall(toolCall.CallId, toolCall.Name, toolCall.Arguments);
     }
 }

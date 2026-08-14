@@ -439,6 +439,16 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
     });
   }
 
+  public onAskAnalyst(): void {
+    if (this.editId === null) {
+      return;
+    }
+
+    void this._router.navigate(["/analyst"], {
+      queryParams: { intent: "ExplainStrategyEntry", strategyId: this.editId }
+    });
+  }
+
   public onRequestReview(): void {
     if (!this.canRequestReview || this.editId === null || this._currentRevisionNumber === null) {
       return;

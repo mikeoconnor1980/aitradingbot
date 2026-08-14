@@ -8,6 +8,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTableModule } from "@angular/material/table";
+import { ActivatedRoute } from "@angular/router";
 import { BehaviorSubject, Subject, interval, merge, of, EMPTY } from "rxjs";
 import { catchError, startWith, switchMap } from "rxjs/operators";
 import { Candle } from "../../core/models/candle.model";
@@ -49,6 +50,7 @@ export class MarketDataComponent implements OnInit {
   private readonly _orderService = inject(OrderService);
   private readonly _signalRService = inject(SignalRService);
   private readonly _exchangeContext = inject(ExchangeContextService);
+  private readonly _route = inject(ActivatedRoute);
   private readonly _selectedAsset$ = new BehaviorSubject<string>("BTC-PERP");
   private readonly _manualRefresh$ = new Subject<void>();
   private readonly _candleTrigger$ = new Subject<void>();
@@ -236,6 +238,11 @@ export class MarketDataComponent implements OnInit {
     this._orderService.getAvailableAssets().subscribe({
       next: (assets) => {
         this.assets = assets;
+        const requestedSymbol = this._route.snapshot.queryParamMap.get("symbol");
+        if (requestedSymbol && assets.some((asset) => asset.symbol === requestedSymbol)) {
+          this.onAssetChanged(requestedSymbol);
+          return;
+        }
         if (!assets.some((asset) => asset.symbol === this.selectedAsset) && assets.length > 0) {
           this.onAssetChanged(assets[0].symbol);
         }

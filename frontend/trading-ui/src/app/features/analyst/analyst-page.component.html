@@ -1,0 +1,49 @@
+<main class="analyst-page" aria-labelledby="analyst-title">
+  <header class="analyst-page__header">
+    <div>
+      <p class="analyst-page__eyebrow">Read-only research</p>
+      <h1 id="analyst-title">TradePilot Analyst</h1>
+    </div>
+  </header>
+
+  <section class="analyst-page__suggestions" aria-label="Suggested questions">
+    @for (suggestion of suggestions; track suggestion) {
+      <button mat-stroked-button type="button" (click)="submit(suggestion)" [disabled]="isLoading">{{ suggestion }}</button>
+    }
+  </section>
+
+  <section class="analyst-page__conversation" aria-live="polite" aria-label="Analyst conversation">
+    @for (message of messages; track $index) {
+      <article class="message" [class.message--user]="message.role === 'user'" [class.message--error]="message.role === 'error'">
+        <p>{{ message.content }}</p>
+        @if (message.result && evidence(message.result.toolInvocations).length > 0) {
+          <section class="evidence" aria-label="Structured evidence">
+            <h2>Evidence</h2>
+            @for (invocation of evidence(message.result.toolInvocations); track invocation.toolCallId) {
+              <app-analyst-evidence-card [invocation]="invocation" />
+              @if (hasReference(invocation)) {
+                <div class="evidence__item">
+                @if (hasReference(invocation)) {
+                  <button mat-button type="button" (click)="openReference(invocation)">Open related view</button>
+                }
+                </div>
+              }
+            }
+          </section>
+        }
+      </article>
+    }
+    @if (isLoading) {
+      <div class="analyst-page__progress" role="status"><mat-spinner diameter="20" />{{ progress }}</div>
+    }
+  </section>
+
+  <form class="analyst-page__prompt" (ngSubmit)="submit()">
+    <label for="analyst-prompt">Ask about markets, strategies, trades, or backtests</label>
+    <textarea id="analyst-prompt" name="prompt" [(ngModel)]="prompt" rows="3" [disabled]="isLoading"></textarea>
+    <div>
+      <button mat-flat-button color="primary" type="submit" [disabled]="isLoading || !prompt.trim()">Ask Analyst</button>
+      @if (isLoading) { <button mat-button type="button" (click)="cancel()">Cancel</button> }
+    </div>
+  </form>
+</main>

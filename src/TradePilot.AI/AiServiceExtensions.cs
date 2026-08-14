@@ -41,11 +41,7 @@ public static class AiServiceExtensions
             client.BaseAddress = new Uri(options.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 
-            if (!string.IsNullOrWhiteSpace(options.ApiKey))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", options.ApiKey);
-            }
+            ConfigureAuthentication(client, options.Provider, options.ApiKey);
         });
 
         services.AddHttpClient<IReviewLlmClient, ReviewLlmClient>((serviceProvider, client) =>
@@ -55,11 +51,7 @@ public static class AiServiceExtensions
             client.BaseAddress = new Uri(options.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 
-            if (!string.IsNullOrWhiteSpace(options.ApiKey))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", options.ApiKey);
-            }
+            ConfigureAuthentication(client, options.Provider, options.ApiKey);
         });
 
         services.AddHttpClient<ILlmContextClient, LlmContextClient>((serviceProvider, client) =>
@@ -69,11 +61,7 @@ public static class AiServiceExtensions
             client.BaseAddress = new Uri(options.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 
-            if (!string.IsNullOrWhiteSpace(options.ApiKey))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", options.ApiKey);
-            }
+            ConfigureAuthentication(client, options.Provider, options.ApiKey);
         });
 
         services.AddHttpClient<IAnalystLlmClient, OpenAiCompatibleAnalystLlmClient>((serviceProvider, client) =>
@@ -84,11 +72,7 @@ public static class AiServiceExtensions
             client.BaseAddress = new Uri(options.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
 
-            if (!string.IsNullOrWhiteSpace(options.ApiKey))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", options.ApiKey);
-            }
+            ConfigureAuthentication(client, options.Provider, options.ApiKey);
         });
 
         services.AddScoped<IStrategyInterpreter, StrategyInterpreter>();
@@ -98,5 +82,21 @@ public static class AiServiceExtensions
         services.AddScoped<ITradingAnalyst, TradingAnalyst>();
 
         return services;
+    }
+
+    private static void ConfigureAuthentication(HttpClient client, string provider, string apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            return;
+        }
+
+        if (AzureOpenAiResponsesProtocol.IsAzureOpenAi(provider))
+        {
+            client.DefaultRequestHeaders.Add("api-key", apiKey);
+            return;
+        }
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
     }
 }

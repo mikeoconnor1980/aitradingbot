@@ -173,6 +173,22 @@ public sealed class AnalyseMarketQueryHandlerTests
     }
 
     [TestMethod]
+    public async Task GivenStaleCompletedCandles_WhenAnalysing_ThenRejectsStaleMarketData()
+    {
+        var staleAsOf = DateTimeOffset.UtcNow.AddDays(-10);
+        var candles = CreateTrendFixture(staleAsOf, 200, 100m, 1m);
+        var sender = CreateSender(candles);
+        var sut = new AnalyseMarketQueryHandler(sender.Object);
+
+        var action = () => sut.Handle(
+            new AnalyseMarketQuery("BTC", "4h"),
+            CancellationToken.None);
+
+        await action.Should().ThrowAsync<DomainException>()
+            .WithMessage("The latest completed 4h candle for BTC closed at *, which is stale for analysis as of *.");
+    }
+
+    [TestMethod]
     public async Task GivenCancellation_WhenAnalysing_ThenDoesNotRequestCandles()
     {
         using var cancellationSource = new CancellationTokenSource();

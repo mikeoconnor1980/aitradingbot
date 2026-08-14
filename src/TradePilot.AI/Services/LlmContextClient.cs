@@ -52,6 +52,24 @@ public sealed class LlmContextClient : ILlmContextClient
             _options.Provider,
             _options.ModelName);
 
+        if (AzureOpenAiResponsesProtocol.IsAzureOpenAi(_options.Provider))
+        {
+            var azureResponse = await AzureOpenAiResponsesProtocol.CompleteAsync(
+                _httpClient,
+                _options.BaseUrl,
+                new AzureResponsesRequest
+                {
+                    Model = _options.ModelName,
+                    Input =
+                    [
+                        new AzureResponsesInputItem { Role = "system", Content = systemPrompt },
+                        new AzureResponsesInputItem { Role = "user", Content = userMessage },
+                    ],
+                },
+                cancellationToken);
+            return AzureOpenAiResponsesProtocol.GetText(azureResponse, "Azure OpenAI returned no context output.");
+        }
+
         using var response = await _httpClient.PostAsJsonAsync(
             "chat/completions",
             request,

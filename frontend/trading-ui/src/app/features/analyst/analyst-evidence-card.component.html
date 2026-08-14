@@ -1,0 +1,57 @@
+<article class="evidence-card" [attr.aria-label]="title">
+  <header class="evidence-card__header">
+    <h3>{{ title }}</h3>
+    <span [class.evidence-card__status--failed]="!invocation.succeeded">{{ invocation.succeeded ? "Evidence available" : invocation.errorCode ?? "Unavailable" }}</span>
+  </header>
+
+  @if (invocation.succeeded && isMarketAnalysis) {
+    <dl class="evidence-card__metrics">
+      <div><dt>Symbol</dt><dd>{{ display(result["symbol"] ?? result["asset"]) }}</dd></div>
+      <div><dt>Trend</dt><dd>{{ display(result["trend"]) }}</dd></div>
+      <div><dt>Momentum</dt><dd>{{ display(result["momentum"]) }}</dd></div>
+      <div><dt>Volatility</dt><dd>{{ display(result["volatilityRegime"]) }}</dd></div>
+      <div><dt>Structure</dt><dd>{{ display(result["marketStructure"]) }}</dd></div>
+      <div><dt>Funding</dt><dd>{{ display(result["fundingRate"]) }}</dd></div>
+    </dl>
+  } @else if (invocation.succeeded && isMultiTimeframe) {
+    <dl class="evidence-card__metrics">
+      <div><dt>Primary trend</dt><dd>{{ display(result["primaryTrend"]) }}</dd></div>
+      <div><dt>Short-term trend</dt><dd>{{ display(result["shortTermTrend"]) }}</dd></div>
+      <div><dt>Trend alignment</dt><dd>{{ display(result["trendAlignment"]) }}</dd></div>
+      <div><dt>Momentum alignment</dt><dd>{{ display(result["momentumAlignment"]) }}</dd></div>
+    </dl>
+    <ul class="evidence-card__list">
+      @for (timeframe of timeframeRows; track $index) { <li>{{ display(timeframe["timeframe"]) }}: {{ display(property(timeframe["analysis"], "trend")) }}</li> }
+    </ul>
+  } @else if (invocation.succeeded && isStrategyEvidence) {
+    <dl class="evidence-card__metrics">
+      <div><dt>Decision</dt><dd>{{ display(result["decision"]) }}</dd></div>
+      <div><dt>Rejection reason</dt><dd>{{ display(result["primaryRejectionReason"]) }}</dd></div>
+      <div><dt>Strategy</dt><dd>{{ display(result["strategyName"]) }}</dd></div>
+      <div><dt>Most common block</dt><dd>{{ display(property(result["mostCommonBlockingRule"], "ruleName")) }}</dd></div>
+    </dl>
+    @if (rules.length > 0) {
+      <table class="evidence-card__table"><caption>Rule evaluation evidence</caption><thead><tr><th>Rule</th><th>Result</th><th>Actual</th><th>Expected</th><th>Reason</th></tr></thead><tbody>
+        @for (rule of rules; track rule["id"] ?? $index) { <tr><td>{{ display(rule["name"]) }}</td><td>{{ rule["passed"] ? "Passed" : "Failed" }}</td><td>{{ display(rule["actualValue"]) }}</td><td>{{ display(rule["expectedValue"]) }}</td><td>{{ display(rule["reason"]) }}</td></tr> }
+      </tbody></table>
+    }
+  } @else if (invocation.succeeded && isTradeEvidence) {
+    <dl class="evidence-card__metrics">
+      <div><dt>Net PnL</dt><dd>{{ display(result["netPnl"]) }}</dd></div>
+      <div><dt>Fees</dt><dd>{{ display(result["fees"]) }}</dd></div>
+      <div><dt>Funding</dt><dd>{{ display(result["funding"]) }}</dd></div>
+      <div><dt>Duration</dt><dd>{{ display(result["durationMilliseconds"] ?? result["averageDuration"]) }}</dd></div>
+      <div><dt>MFE</dt><dd>{{ display(result["mfePercent"] ?? result["averageMfePercent"]) }}</dd></div>
+      <div><dt>MAE</dt><dd>{{ display(result["maePercent"] ?? result["averageMaePercent"]) }}</dd></div>
+    </dl>
+  } @else if (invocation.succeeded && isBacktestExperiment) {
+    <table class="evidence-card__table"><caption>Baseline and candidate comparison</caption><thead><tr><th>Candidate</th><th>Return</th><th>Drawdown</th><th>Trades</th><th>Profit factor</th></tr></thead><tbody>
+      <tr><td>Current</td><td>{{ display(property(result["baseline"], "totalPnl")) }}</td><td>{{ display(property(result["baseline"], "maxDrawdownPercent")) }}</td><td>{{ display(property(result["baseline"], "totalTrades")) }}</td><td>{{ display(property(result["baseline"], "profitFactor")) }}</td></tr>
+      @for (candidate of candidates; track candidate["label"] ?? $index) { <tr><td>{{ display(candidate["label"]) }}</td><td>{{ display(property(candidate["metrics"], "totalPnl")) }}</td><td>{{ display(property(candidate["metrics"], "maxDrawdownPercent")) }}</td><td>{{ display(property(candidate["metrics"], "totalTrades")) }}</td><td>{{ display(property(candidate["metrics"], "profitFactor")) }}</td></tr> }
+    </tbody></table>
+  } @else if (invocation.succeeded) {
+    <p class="evidence-card__fallback">Structured evidence is available in the technical details.</p>
+  }
+
+  <details><summary>Technical details</summary><pre>{{ invocation.result | json }}</pre></details>
+</article>
