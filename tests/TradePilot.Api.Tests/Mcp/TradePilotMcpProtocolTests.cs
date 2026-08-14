@@ -96,6 +96,34 @@ public sealed class TradePilotMcpProtocolTests : BaseControllerTests
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [TestMethod]
+    public async Task GivenMalformedCutoff_WhenInvokingAnalysis_ThenInvalidInputIsRejected()
+    {
+        using var httpClient = GetTestClient();
+        await using var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(httpClient.BaseAddress!, "mcp"),
+                EnableStandaloneGetStream = false,
+            },
+            httpClient);
+        await using var client = await McpClient.CreateAsync(transport);
+
+        var result = await client.CallToolAsync(
+            "analyse_market",
+            new Dictionary<string, object?>
+            {
+                ["symbol"] = "BTC",
+                ["timeframe"] = "4h",
+                ["cutoff"] = "not-a-date",
+            });
+
+        result.IsError.Should().BeTrue();
+        _sender.Verify(
+            sender => sender.Send(It.IsAny<AnalyseMarketQuery>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     private static MarketAnalysisResult CreateAnalysis()
     {
         return new MarketAnalysisResult(
