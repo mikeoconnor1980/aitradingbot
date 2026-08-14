@@ -323,11 +323,12 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         }
 
         RequireValue(strategyName, nameof(strategyName));
-        var candidateIds = await _strategyRepository.SearchIdsByNameAsync(strategyName.Trim(), cancellationToken);
+        var exactName = strategyName!.Trim();
+        var candidateIds = await _strategyRepository.SearchIdsByNameAsync(exactName, cancellationToken);
         var strategies = await _strategyRepository.GetByIdsAsync(candidateIds, cancellationToken);
         var matchedStrategy = strategies.FirstOrDefault(strategy =>
             strategy.UserId == userId
-            && string.Equals(strategy.Name, strategyName.Trim(), StringComparison.OrdinalIgnoreCase));
+            && string.Equals(strategy.Name, exactName, StringComparison.OrdinalIgnoreCase));
         if (matchedStrategy is null)
         {
             throw new NotFoundException(nameof(TradePilot.Domain.Entities.Strategy), strategyName!);

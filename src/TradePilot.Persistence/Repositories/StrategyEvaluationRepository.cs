@@ -99,14 +99,22 @@ public sealed class StrategyEvaluationRepository : IStrategyEvaluationRepository
             evaluation => evaluation.Decision == StrategyDecision.RejectedByRisk,
             cancellationToken);
 
-        var failureCounts = await _context.RuleEvaluations
+        var aggregatedFailures = await _context.RuleEvaluations
             .AsNoTracking()
             .Where(rule => evaluationIds.Contains(rule.StrategyEvaluationId) && !rule.Passed && rule.IsBlocking)
             .GroupBy(rule => rule.RuleId)
-            .Select(group => new RuleFailureCount(group.Key, group.Min(rule => rule.Name), group.Count()))
+            .Select(group => new
+            {
+                RuleId = group.Key,
+                RuleName = group.Min(rule => rule.Name),
+                Count = group.Count(),
+            })
+            .ToListAsync(cancellationToken);
+        var failureCounts = aggregatedFailures
+            .Select(count => new RuleFailureCount(count.RuleId, count.RuleName ?? count.RuleId, count.Count))
             .OrderByDescending(count => count.Count)
             .ThenBy(count => count.RuleId)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var summary = new StrategyEvaluationSummary(
             total,
