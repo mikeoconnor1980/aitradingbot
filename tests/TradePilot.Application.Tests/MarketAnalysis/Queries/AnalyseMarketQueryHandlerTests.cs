@@ -66,7 +66,7 @@ public sealed class AnalyseMarketQueryHandlerTests
     public async Task GivenFlatFixture_WhenAnalysing_ThenReturnsNeutralLowVolatilityFacts()
     {
         var asOf = DateTimeOffset.FromUnixTimeMilliseconds(4_000_000_000_000L);
-        var candles = CreateTrendFixture(asOf, 200, 100m, 0m);
+        var candles = CreateTrendFixture(asOf, 200, 100m, 0m, 0.25m);
         var sender = CreateSender(candles);
         var sut = new AnalyseMarketQueryHandler(sender.Object);
 
@@ -78,7 +78,7 @@ public sealed class AnalyseMarketQueryHandlerTests
         result.Momentum.Should().Be(MarketMomentum.Neutral);
         result.VolatilityRegime.Should().Be(VolatilityRegime.Low);
         result.Indicators.Rsi.Should().Be(50m);
-        result.Indicators.Atr.Should().Be(2m);
+        result.Indicators.Atr.Should().Be(0.5m);
         result.MarketStructure.Should().Be(MarketStructure.Unknown);
     }
 
@@ -221,13 +221,15 @@ public sealed class AnalyseMarketQueryHandlerTests
         DateTimeOffset asOf,
         int count,
         decimal initialClose,
-        decimal changePerCandle)
+        decimal changePerCandle,
+        decimal candleRange = 1m)
     {
         var firstOpenTime = asOf.ToUnixTimeMilliseconds() - (count * FourHoursMilliseconds);
         return Enumerable.Range(0, count)
             .Select(index => CreateCandle(
                 firstOpenTime + (index * FourHoursMilliseconds),
-                initialClose + (index * changePerCandle)))
+                initialClose + (index * changePerCandle),
+                candleRange))
             .ToList();
     }
 
@@ -261,14 +263,14 @@ public sealed class AnalyseMarketQueryHandlerTests
         return candles;
     }
 
-    private static CandleDto CreateCandle(long timestamp, decimal close)
+    private static CandleDto CreateCandle(long timestamp, decimal close, decimal candleRange = 1m)
     {
         return new CandleDto
         {
             Timestamp = timestamp,
             Open = close,
-            High = close + 1m,
-            Low = Math.Max(0m, close - 1m),
+            High = close + candleRange,
+            Low = Math.Max(0m, close - candleRange),
             Close = close,
             Volume = 10m,
         };
