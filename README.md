@@ -125,3 +125,19 @@ npx ng lint
 | `GET` | `/api/account` | Account summary (equity, margin, PnL) |
 | `GET` | `/api/account/positions` | Open positions |
 | `GET` | `/api/account/orders` | Open orders |
+
+## Read-only MCP endpoint
+
+TradePilot exposes its existing read-only application capabilities over the official MCP Streamable HTTP transport at `POST /mcp`. The endpoint is enabled by default and can be controlled with `Mcp:Enabled` and `Mcp:Path` (or the corresponding environment variables).
+
+The MCP route requires the same JWT bearer authentication as protected REST account APIs. It is intended for trusted, authenticated clients on the existing TradePilot deployment; configure exact allowed hosts/origins and an appropriate token-distribution flow before broader internet exposure. Account tools return the authenticated user's configured account state. No order placement, cancellation, position closing, strategy deployment, risk change, transfer, withdrawal, generic command, or exchange escape-hatch tool is registered.
+
+The explicitly allow-listed tools are:
+
+- `get_market_snapshot`
+- `analyse_market`
+- `analyse_market_multi_timeframe`
+- `get_account_summary`
+- `get_positions`
+- `get_open_orders`
+- `get_recent_fills`

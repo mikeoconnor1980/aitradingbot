@@ -8,12 +8,15 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using ModelContextProtocol.AspNetCore;
+using ModelContextProtocol.Protocol;
 using Polly;
 using TradePilot.AI;
 using TradePilot.Api.Configuration;
 using TradePilot.Api.Hubs;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Api.Infrastructure.Filters;
+using TradePilot.Api.Mcp;
 using TradePilot.Api.Services;
 using TradePilot.Application.Abstractions.Auth;
 using TradePilot.Application.Abstractions.Configuration;
@@ -107,6 +110,41 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+var mcpOptions = builder.Configuration
+    .GetSection(TradePilotMcpOptions.SectionName)
+    .Get<TradePilotMcpOptions>() ?? new TradePilotMcpOptions();
+if (!mcpOptions.Path.StartsWith("/", StringComparison.Ordinal))
+{
+    throw new InvalidOperationException("Mcp:Path must start with '/'.");
+}
+
+builder.Services.AddOptions<TradePilotMcpOptions>()
+    .Bind(builder.Configuration.GetSection(TradePilotMcpOptions.SectionName));
+
+if (mcpOptions.Enabled)
+{
+    var mcpVersion = builder.Configuration["Deployment:Version"]
+        ?? typeof(Program).Assembly.GetName().Version?.ToString()
+        ?? "1.0.0";
+
+    builder.Services
+        .AddMcpServer(options =>
+        {
+            options.ServerInfo = new Implementation
+            {
+                Name = "TradePilot",
+                Title = "TradePilot",
+                Version = mcpVersion,
+                Description = "Read-only access to deterministic TradePilot market and account capabilities.",
+            };
+        })
+        .WithHttpTransport(options =>
+        {
+            options.SessionMode = HttpServerSessionMode.Stateless;
+        })
+        .WithTools<TradePilotMcpTools>(TradePilotMcpJson.CreateOptions());
+}
 
 // Bind Hyperliquid configuration
 builder.Services.AddOptions<HyperliquidOptions>()
@@ -650,6 +688,10 @@ app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");
 app.MapHealthChecks("/healthz");
+if (mcpOptions.Enabled)
+{
+    app.MapMcp(mcpOptions.Path).RequireAuthorization();
+}
 
 app.Run();
 
