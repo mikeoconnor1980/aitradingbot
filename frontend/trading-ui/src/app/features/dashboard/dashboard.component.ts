@@ -75,9 +75,6 @@ export class DashboardComponent implements OnInit {
   public readonly isMobile = this._layout.isMobile;
   public selectedTabIndex = 0;
 
-  private _touchStartX = 0;
-  private _touchStartY = 0;
-
   @ViewChild(OrdersTableComponent)
   public ordersTable?: OrdersTableComponent;
 
@@ -135,24 +132,16 @@ export class DashboardComponent implements OnInit {
     this._router.navigate(["/order-entry"]);
   }
 
-  public onTouchStart(event: TouchEvent): void {
-    this._touchStartX = event.changedTouches[0].clientX;
-    this._touchStartY = event.changedTouches[0].clientY;
+  public get hasAttention(): boolean {
+    return this.showErrorBanner || this.showSubscriptionBanner || (this.drawdownState?.isCircuitBreakerActive ?? false);
   }
 
-  public onTouchEnd(event: TouchEvent): void {
-    const dx = event.changedTouches[0].clientX - this._touchStartX;
-    const dy = event.changedTouches[0].clientY - this._touchStartY;
-
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) {
-      return;
+  public get freshnessLabel(): string {
+    if (!this.lastUpdated) {
+      return this.isLoading ? "Loading account data" : "Awaiting account data";
     }
 
-    if (dx < 0 && this.selectedTabIndex < 2) {
-      this.selectedTabIndex++;
-    } else if (dx > 0 && this.selectedTabIndex > 0) {
-      this.selectedTabIndex--;
-    }
+    return this.isStale ? `Stale · ${this.secondsAgo}s ago` : `Live · ${this.secondsAgo}s ago`;
   }
 
   public onCancelOrder(order: OpenOrder): void {
@@ -188,7 +177,7 @@ export class DashboardComponent implements OnInit {
         ? (order.orderType === 'trigger'
           ? this._agentService.cancelTriggerOrderViaAgent(agentId, order.orderId, order.asset)
           : this._agentService.cancelOrderViaAgent(agentId, order.orderId, order.asset)
-        ).pipe(map(() => {}))
+        ).pipe(map(() => undefined))
         : (order.orderType === 'trigger'
           ? this._orderService.cancelTriggerOrder(order.orderId)
           : this._orderService.cancelOrder(order.orderId));
@@ -240,7 +229,7 @@ export class DashboardComponent implements OnInit {
       const agentId = this.getAgentRoutingId();
       const cancelRequests = uniqueAssets.map(asset =>
         agentId
-          ? this._agentService.cancelAllOrdersViaAgent(agentId, asset).pipe(map(() => {}))
+          ? this._agentService.cancelAllOrdersViaAgent(agentId, asset).pipe(map(() => undefined))
           : this._orderService.cancelAllOrders(asset)
       );
       forkJoin(cancelRequests).subscribe({
@@ -290,7 +279,7 @@ export class DashboardComponent implements OnInit {
         ? (agentId
           ? this._agentService.modifyTriggerOrderViaAgent(
               agentId, order.orderId, order.asset, order.side,
-              result.price, result.size, order.tpslType ?? 'sl').pipe(map(() => {}))
+              result.price, result.size, order.tpslType ?? 'sl').pipe(map(() => undefined))
           : this._orderService.modifyTriggerOrder(order.orderId, { triggerPrice: result.price, size: result.size }))
         : this._orderService.modifyOrder(order.orderId, result);
 

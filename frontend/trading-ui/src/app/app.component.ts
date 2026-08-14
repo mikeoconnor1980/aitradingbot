@@ -4,9 +4,10 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatMenuModule } from "@angular/material/menu";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { RouterLink, RouterOutlet } from "@angular/router";
 import { HelpPanelComponent } from "./core/components/help-panel.component";
 import { MobileNavComponent } from "./core/components/mobile-nav/mobile-nav.component";
 import { NotificationPanelComponent } from "./core/components/notification-panel/notification-panel.component";
@@ -26,7 +27,7 @@ import { SignalRService } from "./core/services/signalr.service";
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
+  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatMenuModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })

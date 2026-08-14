@@ -1,53 +1,66 @@
-<mat-card class="account-summary" [class.account-summary--collapsed]="isMobile() && !expanded()">
-  <mat-card-header>
-    <mat-card-title>Account Summary</mat-card-title>
+<section class="account-summary" aria-labelledby="account-summary-heading">
+  <h2 id="account-summary-heading" class="account-summary__heading">Account</h2>
+
+  <div class="account-summary__primary">
+    <div class="account-summary__primary-metric">
+      <span class="account-summary__label">Equity</span>
+      <span class="account-summary__primary-value financial-value">
+        <span class="account-summary__currency">$</span>{{ summary.equity | number: "1.2-2" }}
+      </span>
+      <span class="account-summary__unit">USD account value</span>
+    </div>
+
+    <div class="account-summary__primary-metric">
+      <span class="account-summary__label">Unrealised P&amp;L</span>
+      <span class="account-summary__primary-value financial-value" [ngClass]="pnlClass">
+        <span class="account-summary__currency">{{ summary.unrealisedPnl >= 0 ? '+$' : '-$' }}</span>{{ (summary.unrealisedPnl < 0 ? -summary.unrealisedPnl : summary.unrealisedPnl) | number: "1.2-2" }}
+      </span>
+      <span class="account-summary__unit">Open positions · USD</span>
+    </div>
+  </div>
+
+  <div class="account-summary__risk-header">
+    <h3>Risk</h3>
     @if (isMobile()) {
       <button
         class="account-summary__toggle"
         type="button"
-        aria-label="Toggle account details"
+        [attr.aria-expanded]="expanded()"
+        aria-controls="account-risk-metrics"
         (click)="toggleExpanded()">
-        <mat-icon>{{ expanded() ? "expand_less" : "expand_more" }}</mat-icon>
+        {{ expanded() ? 'Less detail' : 'More detail' }}
+        <mat-icon>{{ expanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
       </button>
     }
-  </mat-card-header>
-  <mat-card-content>
-    <div class="account-summary__metrics">
-      <div class="account-summary__metric">
-        <span class="account-summary__label">Equity</span>
-        <span class="account-summary__value">{{ summary.equity | number: "1.2-2" }}</span>
-      </div>
-      <div class="account-summary__metric">
-        <span class="account-summary__label">Unrealised PnL</span>
-        <span class="account-summary__value" [ngClass]="pnlClass">{{ summary.unrealisedPnl | number: "1.2-2" }}</span>
-      </div>
-      @if (!isMobile() || expanded()) {
-        <div class="account-summary__metric">
-          <span class="account-summary__label">Available Margin</span>
-          <span class="account-summary__value">{{ summary.availableMargin | number: "1.2-2" }}</span>
-        </div>
-        <div class="account-summary__metric">
-          <span class="account-summary__label">Cross Margin Ratio</span>
-          <app-margin-ratio-indicator [ratio]="summary.crossMarginRatio" />
-        </div>
-        @if (portfolioHeat) {
-          <div class="account-summary__metric">
-            <span class="account-summary__label">Portfolio Heat</span>
-            <app-portfolio-heat-indicator
-              [heatPercent]="portfolioHeat.heatPercent"
-              [maxHeatPercent]="portfolioHeat.maxHeatPercent"
-              [positions]="portfolioHeat.positions"></app-portfolio-heat-indicator>
-          </div>
-        }
-        <div class="account-summary__metric">
-          <span class="account-summary__label">Drawdown</span>
-          <app-drawdown-indicator [drawdownState]="drawdownState"></app-drawdown-indicator>
-        </div>
-        <div class="account-summary__metric">
-          <span class="account-summary__label">Maintenance Margin</span>
-          <span class="account-summary__value">{{ summary.maintenanceMargin | number: "1.2-2" }}</span>
-        </div>
-      }
+  </div>
+
+  <div id="account-risk-metrics" class="account-summary__risk-grid">
+    <div class="account-summary__risk-metric">
+      <span class="account-summary__label">Available margin</span>
+      <span class="account-summary__value financial-value">${{ summary.availableMargin | number: "1.2-2" }}</span>
     </div>
-  </mat-card-content>
-</mat-card>
+    <div class="account-summary__risk-metric">
+      <span class="account-summary__label">Cross-margin ratio</span>
+      <app-margin-ratio-indicator [ratio]="summary.crossMarginRatio" />
+    </div>
+    @if (portfolioHeat) {
+      <div class="account-summary__risk-metric">
+        <span class="account-summary__label">Portfolio heat</span>
+        <app-portfolio-heat-indicator
+          [heatPercent]="portfolioHeat.heatPercent"
+          [maxHeatPercent]="portfolioHeat.maxHeatPercent"
+          [positions]="portfolioHeat.positions" />
+      </div>
+    }
+    <div class="account-summary__risk-metric">
+      <span class="account-summary__label">Drawdown</span>
+      <app-drawdown-indicator [drawdownState]="drawdownState" />
+    </div>
+    @if (!isMobile() || expanded()) {
+      <div class="account-summary__risk-metric account-summary__risk-metric--secondary">
+        <span class="account-summary__label">Maintenance margin</span>
+        <span class="account-summary__value financial-value">${{ summary.maintenanceMargin | number: "1.2-2" }}</span>
+      </div>
+    }
+  </div>
+</section>

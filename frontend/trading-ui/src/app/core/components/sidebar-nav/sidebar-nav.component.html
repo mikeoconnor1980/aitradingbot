@@ -1,103 +1,53 @@
-<aside
-  class="sidebar"
-  [class.sidebar--expanded]="expanded"
-  aria-label="Main navigation">
-
+<aside class="sidebar" [class.sidebar--expanded]="expanded" aria-label="Primary navigation">
   <div class="sidebar__header">
-    @if (expanded) {
-      <mat-icon class="sidebar__logo-icon">candlestick_chart</mat-icon>
-      <span class="sidebar__brand">TradePilot</span>
-      <button
-        type="button"
-        class="sidebar__collapse-btn"
-        (click)="onToggle()"
-        aria-label="Collapse navigation">
-        <mat-icon>chevron_left</mat-icon>
-      </button>
-    } @else {
-      <button
-        type="button"
-        class="sidebar__expand-btn"
-        (click)="onToggle()"
-        aria-label="Expand navigation"
-        matTooltip="Expand menu"
-        matTooltipPosition="right">
-        <mat-icon>menu</mat-icon>
-      </button>
-    }
+    <mat-icon class="sidebar__logo-icon" aria-hidden="true">candlestick_chart</mat-icon>
+    <span class="sidebar__brand">TradePilot</span>
+    <button
+      type="button"
+      class="sidebar__toggle"
+      (click)="onToggle()"
+      [attr.aria-label]="expanded ? 'Collapse navigation' : 'Expand navigation'"
+      [matTooltip]="expanded ? '' : 'Expand navigation'"
+      matTooltipPosition="right">
+      <mat-icon>{{ expanded ? 'chevron_left' : 'menu' }}</mat-icon>
+    </button>
   </div>
 
   <nav class="sidebar__nav">
-    <div class="sidebar__group">
-      @for (item of navItems; track item.route) {
-        <a
-          class="sidebar__link"
-          [routerLink]="item.route"
-          routerLinkActive="sidebar__link--active"
-          [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-          [matTooltip]="getTooltip(item)"
-          matTooltipPosition="right">
-          <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
-          <span class="sidebar__label">{{ item.label }}</span>
-        </a>
-      }
-    </div>
+    @for (group of navGroups; track group.label) {
+      <section class="sidebar__group" [attr.aria-label]="group.label">
+        <h2 class="sidebar__group-title">{{ group.label }}</h2>
 
-    <div class="sidebar__group sidebar__group--pro">
-      <div class="sidebar__group-header">
-        <span class="sidebar__group-title">Pro</span>
-        @if (hasLockedProItems) {
-          <span class="sidebar__group-badge">Unlock</span>
+        @for (item of group.items; track item.route) {
+          @if (hasFeature(item.feature)) {
+            <a
+              class="sidebar__link"
+              [routerLink]="item.route"
+              routerLinkActive="sidebar__link--active"
+              [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+              [matTooltip]="getTooltip(item)"
+              matTooltipPosition="right">
+              <mat-icon class="sidebar__icon" aria-hidden="true">{{ item.icon }}</mat-icon>
+              <span class="sidebar__label">{{ item.label }}</span>
+              @if (item.feature) {
+                <span class="sidebar__meta">Pro</span>
+              }
+            </a>
+          } @else {
+            <a
+              class="sidebar__link sidebar__link--locked"
+              routerLink="/profile"
+              [queryParams]="getUpgradeQueryParams(item)"
+              [matTooltip]="getTooltip(item)"
+              matTooltipPosition="right"
+              [attr.aria-label]="item.label + ', Pro subscription required'">
+              <mat-icon class="sidebar__icon" aria-hidden="true">lock</mat-icon>
+              <span class="sidebar__label">{{ item.label }}</span>
+              <span class="sidebar__meta">Pro</span>
+            </a>
+          }
         }
-      </div>
-
-      @for (item of proNavItems; track item.route) {
-        @if (hasFeature(item.feature)) {
-          <a
-            class="sidebar__link sidebar__link--pro"
-            [routerLink]="item.route"
-            routerLinkActive="sidebar__link--active"
-            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-            [matTooltip]="getTooltip(item)"
-            matTooltipPosition="right">
-            <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
-            <span class="sidebar__label">{{ item.label }}</span>
-            <span class="sidebar__chip">Pro</span>
-          </a>
-        } @else {
-          <a
-            class="sidebar__link sidebar__link--locked"
-            routerLink="/profile"
-            [queryParams]="getUpgradeQueryParams(item)"
-            [matTooltip]="getTooltip(item)"
-            matTooltipPosition="right">
-            <mat-icon class="sidebar__icon">lock</mat-icon>
-            <span class="sidebar__label">{{ item.label }}</span>
-            <span class="sidebar__meta">Pro</span>
-          </a>
-        }
-      }
-    </div>
-
-    @if (adminNavItems.length > 0) {
-      <div class="sidebar__group sidebar__group--admin">
-        <div class="sidebar__group-header">
-          <span class="sidebar__group-title">Admin</span>
-        </div>
-
-        @for (item of adminNavItems; track item.route) {
-          <a
-            class="sidebar__link"
-            [routerLink]="item.route"
-            routerLinkActive="sidebar__link--active"
-            [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-            [matTooltip]="getTooltip(item)"
-            matTooltipPosition="right">
-            <mat-icon class="sidebar__icon">{{ item.icon }}</mat-icon>
-            <span class="sidebar__label">{{ item.label }}</span>
-          </a>
-        }
-      </div>
+      </section>
     }
   </nav>
 
@@ -108,7 +58,7 @@
       (click)="onLogout()"
       [matTooltip]="expanded ? '' : 'Log out'"
       matTooltipPosition="right">
-      <mat-icon class="sidebar__icon">logout</mat-icon>
+      <mat-icon class="sidebar__icon" aria-hidden="true">logout</mat-icon>
       <span class="sidebar__label">Log out</span>
     </button>
   </div>

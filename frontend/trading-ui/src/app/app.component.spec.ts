@@ -87,13 +87,26 @@ describe("AppComponent", () => {
     expect(app.title).toEqual("TradePilot");
   });
 
-  it("should render title", () => {
+  it("should render the TradePilot brand in navigation", () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector("h1")?.textContent).toContain("TradePilot");
+    expect(compiled.querySelector(".sidebar__brand")?.textContent).toContain("TradePilot");
   });
 
-  it("should not have a Connection nav link", async () => {
+  it("should group navigation by user intent", async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const groupHeadings = Array.from(fixture.nativeElement.querySelectorAll(".sidebar__group-title")) as HTMLElement[];
+    const headingTexts = groupHeadings.map((heading: HTMLElement) =>
+      (heading.textContent ?? "").trim()
+    );
+
+    expect(headingTexts).toEqual(["Monitor", "Build & Research", "Execute & Automate", "Operate"]);
+  });
+
+  it("should keep desktop routes reachable within the intent groups", async () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -103,22 +116,11 @@ describe("AppComponent", () => {
       (link.querySelector(".sidebar__label")?.textContent ?? "").trim()
     );
 
-    expect(linkTexts).not.toContain("Connection");
-  });
-
-  it("should have exactly 10 sidebar nav links including Optimizer and Strategies", async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const navLinks = Array.from(fixture.nativeElement.querySelectorAll(".sidebar__nav .sidebar__link")) as HTMLAnchorElement[];
-    const linkTexts = navLinks.map((link: HTMLAnchorElement) =>
-      (link.querySelector(".sidebar__label")?.textContent ?? "").trim()
-    );
-
-    expect(navLinks.length).toBe(10);
+    expect(navLinks.length).toBe(12);
     expect(linkTexts).toContain("Optimizer");
     expect(linkTexts).toContain("Strategies");
+    expect(linkTexts).toContain("Connection");
+    expect(linkTexts).toContain("Order Entry");
   });
 
   it("should render the status pill as a link to /connection", () => {

@@ -1,21 +1,50 @@
+@if (moreOpen()) {
+  <button class="mobile-nav__backdrop" type="button" aria-label="Close More menu" (click)="closeMore()"></button>
+  <section class="mobile-more" role="dialog" aria-modal="true" aria-labelledby="mobile-more-title">
+    <header class="mobile-more__header">
+      <div>
+        <h2 id="mobile-more-title">More</h2>
+        <p>Account and desktop workspace access</p>
+      </div>
+      <button type="button" class="mobile-more__close" aria-label="Close More menu" (click)="closeMore()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </header>
+
+    <a class="mobile-more__link" routerLink="/profile" (click)="closeMore()">
+      <mat-icon aria-hidden="true">manage_accounts</mat-icon>
+      <span><strong>Profile</strong><small>Subscription and account preferences</small></span>
+      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    </a>
+
+    <div class="mobile-more__desktop-note">
+      <mat-icon aria-hidden="true">desktop_windows</mat-icon>
+      <div>
+        <strong>Continue on desktop</strong>
+        <p>Strategies, backtests, automation, data management and administration use the full desktop workspace.</p>
+      </div>
+    </div>
+  </section>
+}
+
 <nav class="mobile-nav" aria-label="Mobile navigation">
   <a
     class="mobile-nav__tab"
     routerLink="/dashboard"
     routerLinkActive="mobile-nav__tab--active"
     [routerLinkActiveOptions]="{ exact: true }"
-    aria-label="Dashboard">
-    <mat-icon class="mobile-nav__icon">dashboard</mat-icon>
-    <span class="mobile-nav__label">Dashboard</span>
+    aria-label="Overview">
+    <mat-icon class="mobile-nav__icon">space_dashboard</mat-icon>
+    <span class="mobile-nav__label">Overview</span>
   </a>
 
   <a
     class="mobile-nav__tab"
     routerLink="/market-data"
     routerLinkActive="mobile-nav__tab--active"
-    aria-label="Chart">
+    aria-label="Markets">
     <mat-icon class="mobile-nav__icon">candlestick_chart</mat-icon>
-    <span class="mobile-nav__label">Chart</span>
+    <span class="mobile-nav__label">Markets</span>
   </a>
 
   @if (canAccessOrderEntry) {
@@ -23,9 +52,25 @@
       class="mobile-nav__tab"
       routerLink="/order-entry"
       routerLinkActive="mobile-nav__tab--active"
-      aria-label="Order Entry">
+      aria-label="Trade">
       <mat-icon class="mobile-nav__icon">swap_vert</mat-icon>
-      <span class="mobile-nav__label">Order Entry</span>
+      <span class="mobile-nav__label">Trade</span>
+    </a>
+  } @else {
+    <a class="mobile-nav__tab" routerLink="/profile" aria-label="Trade, subscription required">
+      <mat-icon class="mobile-nav__icon">lock</mat-icon>
+      <span class="mobile-nav__label">Trade</span>
     </a>
   }
+
+  <button
+    type="button"
+    class="mobile-nav__tab"
+    [class.mobile-nav__tab--active]="moreOpen()"
+    [attr.aria-expanded]="moreOpen()"
+    aria-controls="mobile-more-title"
+    (click)="toggleMore()">
+    <mat-icon class="mobile-nav__icon">more_horiz</mat-icon>
+    <span class="mobile-nav__label">More</span>
+  </button>
 </nav>

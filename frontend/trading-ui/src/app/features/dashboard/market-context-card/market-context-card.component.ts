@@ -11,6 +11,7 @@ import { interval, of, switchMap, catchError, startWith } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../../core/interceptors/http-context-tokens";
 import { MarketContextService } from "../../../core/services/market-context.service";
 import { LlmContextDto } from "../../../core/models/llm-context.model";
+import { LayoutService } from "../../../core/services/layout.service";
 
 @Component({
   selector: "app-market-context-card",
@@ -29,12 +30,14 @@ import { LlmContextDto } from "../../../core/models/llm-context.model";
 export class MarketContextCardComponent implements OnInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _contextService = inject(MarketContextService);
+  private readonly _layout = inject(LayoutService);
   private readonly _silentContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   public context: LlmContextDto | null = null;
   public isLoading = true;
   public isStale = false;
   public symbol = "BTC";
+  public readonly isMobile = this._layout.isMobile;
 
   public ngOnInit(): void {
     interval(60_000)
@@ -95,6 +98,14 @@ export class MarketContextCardComponent implements OnInit {
 
   public get confidencePercent(): number {
     return Math.round((this.context?.confidence ?? 0) * 100);
+  }
+
+  public get conclusion(): string {
+    if (!this.context) {
+      return "Market context is unavailable";
+    }
+
+    return `${this.context.derivedRegime} regime · ${this.context.marketSentiment} sentiment`;
   }
 
   public get lastUpdatedText(): string {
