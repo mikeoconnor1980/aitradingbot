@@ -1,8 +1,8 @@
 {
-    "remote.extensionKind": {
-        
-        "pub.name": [
-            "ui"
-        ]
+    "chat.tools.terminal.autoApprove": {
+        "/^node --version; npm --version$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
