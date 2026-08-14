@@ -1,11 +1,11 @@
-$sidebar-collapsed: 60px;
-$sidebar-expanded: 220px;
+$sidebar-collapsed: 64px;
+$sidebar-expanded: 232px;
 
 .app-shell {
   min-height: 100vh;
   margin-left: $sidebar-expanded;
-  padding: 1rem;
-  transition: margin-left 0.2s ease;
+  padding: var(--space-4) var(--space-6) var(--space-8);
+  transition: margin-left var(--duration-standard) var(--ease-standard);
 
   &--sidebar-collapsed {
     margin-left: $sidebar-collapsed;
@@ -15,251 +15,204 @@ $sidebar-expanded: 220px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1rem;
-    border: 1px solid var(--colour-border-light);
-    border-radius: 0.75rem;
-    background-color: rgba(8, 20, 22, 0.72);
-    backdrop-filter: blur(8px);
+    min-height: 60px;
+    gap: var(--space-4);
+    max-width: var(--content-max);
+    margin: 0 auto var(--space-4);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
   }
 
-  &__title {
-    margin: 0;
-    color: #f8fafc;
-    font-size: 1.25rem;
-    white-space: nowrap;
-  }
-
+  &__account-context,
   &__header-end {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
+  }
+
+  &__header-end {
     margin-left: auto;
   }
 
   &__exchange-field {
-    width: 150px;
+    width: 168px;
+  }
 
-    ::ng-deep .mdc-notched-outline__leading,
-    ::ng-deep .mdc-notched-outline__notch,
-    ::ng-deep .mdc-notched-outline__trailing {
-      border-color: var(--colour-border-light) !important;
-    }
+  &__mobile-brand {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  &__network-badge,
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 28px;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 650;
   }
 
   &__network-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid var(--colour-accent);
-    background: rgba(0, 230, 118, 0.08);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--colour-accent);
+    color: var(--text-secondary);
+    background: var(--surface-raised);
 
     &--testnet {
-      border-color: #ff9800;
-      background: rgba(255, 152, 0, 0.08);
-      color: #ff9800;
+      color: var(--trade-testnet);
     }
   }
 
-  &__network-dot {
-    width: 0.5rem;
-    height: 0.5rem;
+  &__network-dot,
+  &__status-dot {
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background: currentColor;
   }
 
   &__status {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid var(--colour-border-subtle);
-    background: var(--colour-surface-dark);
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    color: inherit;
+    color: var(--text-muted);
     text-decoration: none;
-    transition: opacity 0.2s ease;
+    transition: color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard);
 
     &:hover {
-      opacity: 0.85;
+      color: var(--text-primary);
+      background: var(--surface-raised);
     }
   }
 
-  &__status-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-  }
-
   &__status-label {
-    color: var(--colour-muted);
+    color: currentColor;
   }
 
   &__content {
-    max-width: 1200px;
+    max-width: var(--content-max);
+    margin-inline: auto;
   }
 
-  &__help-btn {
-    color: var(--colour-muted);
-    transition: color 0.2s ease;
+  &__help-btn,
+  &__notif-btn,
+  &__user-btn {
+    color: var(--text-muted);
 
     &:hover {
-      color: var(--colour-accent);
+      color: var(--accent-primary);
     }
   }
 
   &__notif-btn {
     position: relative;
-    color: var(--colour-muted);
-    transition: color 0.2s ease;
-
-    &:hover {
-      color: var(--colour-accent);
-    }
   }
 
   &__notif-badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    border-radius: 999px;
-    background: var(--colour-loss);
-    color: #fff;
-    font-size: 0.6rem;
-    font-weight: 700;
-    line-height: 16px;
+    top: 3px;
+    right: 3px;
+    min-width: 17px;
+    height: 17px;
+    padding-inline: var(--space-1);
+    border-radius: var(--radius-pill);
+    color: var(--text-inverse);
+    background: var(--state-negative);
+    font-size: 0.6875rem;
+    font-weight: 750;
+    line-height: 17px;
     text-align: center;
     pointer-events: none;
   }
 
-  &__profile-btn {
-    color: var(--colour-muted);
-    transition: color 0.2s ease;
-    text-decoration: none;
+  &__menu-identity {
+    display: grid;
+    gap: 2px;
+    min-width: 220px;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
 
-    &:hover {
-      color: var(--colour-accent);
+    strong {
+      color: var(--text-primary);
+      font-size: 0.875rem;
     }
 
-    &--active {
-      color: var(--colour-accent-strong);
+    span {
+      color: var(--text-muted);
+      font-size: 0.75rem;
     }
   }
 }
 
 .status--connected {
-  .app-shell__status-dot {
-    background-color: var(--colour-profit);
-  }
+  color: var(--text-muted);
 
-  .app-shell__status-label {
-    color: var(--colour-profit);
+  .app-shell__status-dot {
+    background: var(--state-positive);
   }
 }
 
 .status--reconnecting {
-  .app-shell__status-dot {
-    background-color: var(--colour-warning);
-    animation: pulse 1.5s infinite;
-  }
+  color: var(--state-warning);
+  background: var(--state-warning-surface);
 
-  .app-shell__status-label {
-    color: var(--colour-warning);
+  .app-shell__status-dot {
+    animation: pulse 1.5s infinite;
   }
 }
 
 .status--disconnected {
-  .app-shell__status-dot {
-    background-color: var(--colour-loss);
-  }
-
-  .app-shell__status-label {
-    color: var(--colour-loss);
-  }
+  color: var(--state-negative-text);
+  background: var(--state-negative-surface);
 }
 
 @keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.4;
-  }
+  50% { opacity: 0.45; }
 }
 
 @media (max-width: 768px) {
   .app-shell {
-    margin-left: 0;
-    padding: 0.25rem;
-    padding-top: calc(0.25rem + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    height: 100dvh;
-    min-height: 0;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    margin-left: 0;
+    padding: env(safe-area-inset-top, 0) var(--space-2) calc(68px + env(safe-area-inset-bottom, 0));
     overflow-x: hidden;
 
     &__header {
-      padding: 0.35rem 0.5rem;
-      margin-bottom: 0.25rem;
-      border-radius: 0.5rem;
+      width: 100%;
+      min-height: 48px;
+      margin-bottom: var(--space-1);
+      padding: var(--space-1) var(--space-2);
       flex-shrink: 0;
     }
 
-    &__title {
-      font-size: 0.9rem;
-    }
-
     &__content {
-      max-width: 100%;
+      display: flex;
       flex: 1;
       min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
+      width: 100%;
       overflow-x: hidden;
+      overflow-y: auto;
 
       > router-outlet + * {
         flex: 1;
+        min-width: 0;
         min-height: 0;
       }
     }
 
+    &__network-badge,
     &__status {
-      padding: 0.25rem 0.5rem;
+      min-height: 26px;
+      font-size: 0.6875rem;
     }
 
-    &__exchange-field {
-      width: 120px;
-    }
-
-    &__profile-btn {
-      width: 32px;
-      height: 32px;
-
-      .mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-      }
+    &__user-btn {
+      width: 36px;
+      height: 36px;
     }
   }
 }

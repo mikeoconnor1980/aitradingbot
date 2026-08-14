@@ -1,98 +1,117 @@
 @if (isAuthenticated) {
-@if (!isMobile()) {
-  <app-sidebar-nav [isAdmin]="currentUser?.isAdmin ?? false" [features]="subscriptionFeatures" (logoutClicked)="onLogout()" />
-}
+  @if (!isMobile()) {
+    <app-sidebar-nav
+      [isAdmin]="currentUser?.isAdmin ?? false"
+      [features]="subscriptionFeatures"
+      (logoutClicked)="onLogout()" />
+  }
 
-<main class="app-shell"
-  [class.app-shell--sidebar-collapsed]="!isMobile() && sidebar?.expanded === false"
-  [class.app-shell--mobile]="isMobile()">
-  <header class="app-shell__header">
-    <h1 class="app-shell__title">{{ title }}</h1>
-
-    <div class="app-shell__header-end">
-      @if (!isMobile()) {
-        <mat-form-field appearance="outline" class="app-shell__exchange-field">
-          <mat-label>Exchange</mat-label>
-          <mat-select [value]="preferredExchange" [disabled]="exchangeSaving" (selectionChange)="onExchangeChange($event.value)">
-            <mat-option value="Hyperliquid">Hyperliquid</mat-option>
-            <mat-option value="Binance">Binance</mat-option>
-          </mat-select>
-        </mat-form-field>
-      }
-
-      @if (!isMobile() && networkLabel) {
-        <span class="app-shell__network-badge" [class.app-shell__network-badge--testnet]="preferredNetwork === 'testnet'">
-          <span class="app-shell__network-dot"></span>
-          {{ networkLabel }}
-        </span>
-      }
-      <a
-        class="app-shell__status"
-        [ngClass]="statusClass"
-        routerLink="/connection"
-        [attr.aria-label]="'Connection status: ' + statusLabel + '. Click to view details.'"
-      >
-        <span class="app-shell__status-dot"></span>
+  <main
+    class="app-shell"
+    [class.app-shell--sidebar-collapsed]="!isMobile() && sidebar?.expanded === false"
+    [class.app-shell--mobile]="isMobile()">
+    <header class="app-shell__header" aria-label="Account and application controls">
+      <div class="app-shell__account-context">
         @if (!isMobile()) {
-          <span class="app-shell__status-label">{{ statusLabel }}</span>
+          <mat-form-field appearance="outline" class="app-shell__exchange-field" subscriptSizing="dynamic">
+            <mat-label>Trading account</mat-label>
+            <mat-select
+              [value]="preferredExchange"
+              [disabled]="exchangeSaving"
+              (selectionChange)="onExchangeChange($event.value)">
+              <mat-option value="Hyperliquid">Hyperliquid</mat-option>
+              <mat-option value="Binance">Binance</mat-option>
+            </mat-select>
+          </mat-form-field>
+        } @else {
+          <span class="app-shell__mobile-brand">TradePilot</span>
         }
-      </a>
 
-      @if (!isMobile() && currentUser) {
-        <span class="app-shell__user-name">{{ currentUser.displayName }}</span>
-      }
+        @if (networkLabel) {
+          <span
+            class="app-shell__network-badge"
+            [class.app-shell__network-badge--testnet]="preferredNetwork === 'testnet'">
+            <span class="app-shell__network-dot" aria-hidden="true"></span>
+            {{ networkLabel }}
+          </span>
+        }
+      </div>
 
-      <a
-        mat-icon-button
-        class="app-shell__profile-btn"
-        routerLink="/profile"
-        routerLinkActive="app-shell__profile-btn--active"
-        matTooltip="Profile"
-        aria-label="Go to profile"
-      >
-        <mat-icon>account_circle</mat-icon>
-      </a>
-
-      @if (!isMobile()) {
-        <button
-          mat-icon-button
-          class="app-shell__notif-btn"
-          (click)="onToggleNotifications()"
-          matTooltip="Notifications"
-          aria-label="Toggle notification panel"
-        >
-          <mat-icon>{{ unreadCount() > 0 ? 'notifications' : 'notifications_none' }}</mat-icon>
-          @if (unreadCount() > 0) {
-            <span class="app-shell__notif-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+      <div class="app-shell__header-end">
+        <a
+          class="app-shell__status"
+          [ngClass]="statusClass"
+          routerLink="/connection"
+          [attr.aria-label]="'Connection status: ' + statusLabel + '. View connection details.'">
+          <span class="app-shell__status-dot" aria-hidden="true"></span>
+          @if (!isMobile() || statusLabel !== 'Connected') {
+            <span class="app-shell__status-label">{{ statusLabel }}</span>
           }
-        </button>
+        </a>
+
+        @if (!isMobile()) {
+          <button
+            mat-icon-button
+            class="app-shell__notif-btn"
+            (click)="onToggleNotifications()"
+            matTooltip="Notifications"
+            aria-label="Toggle notification panel">
+            <mat-icon>{{ unreadCount() > 0 ? 'notifications' : 'notifications_none' }}</mat-icon>
+            @if (unreadCount() > 0) {
+              <span class="app-shell__notif-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
+            }
+          </button>
+
+          <button
+            mat-icon-button
+            class="app-shell__help-btn"
+            (click)="onToggleHelp()"
+            matTooltip="Help &amp; guide"
+            aria-label="Open help panel">
+            <mat-icon>help_outline</mat-icon>
+          </button>
+        }
 
         <button
           mat-icon-button
-          class="app-shell__help-btn"
-          (click)="onToggleHelp()"
-          matTooltip="Help &amp; Guide"
-          aria-label="Open help panel"
-        >
-          <mat-icon>help_outline</mat-icon>
+          class="app-shell__user-btn"
+          [matMenuTriggerFor]="userMenu"
+          [attr.aria-label]="currentUser ? 'Open user menu for ' + currentUser.displayName : 'Open user menu'">
+          <mat-icon>account_circle</mat-icon>
         </button>
-      }
+
+        <mat-menu #userMenu="matMenu" xPosition="before">
+          @if (currentUser) {
+            <div class="app-shell__menu-identity" aria-hidden="true">
+              <strong>{{ currentUser.displayName }}</strong>
+              <span>{{ currentUser.email }}</span>
+            </div>
+          }
+          <a mat-menu-item routerLink="/profile">
+            <mat-icon>manage_accounts</mat-icon>
+            <span>Profile</span>
+          </a>
+          <button mat-menu-item type="button" (click)="onLogout()">
+            <mat-icon>logout</mat-icon>
+            <span>Log out</span>
+          </button>
+        </mat-menu>
+      </div>
+    </header>
+
+    <div class="app-shell__content">
+      <router-outlet />
     </div>
-  </header>
+  </main>
 
-  <div class="app-shell__content">
-    <router-outlet />
-  </div>
-</main>
+  @if (!isMobile()) {
+    <app-notification-panel [isOpen]="notificationPanelOpen" (closed)="onNotificationPanelClosed()" />
+    <app-help-panel />
+  }
 
-@if (!isMobile()) {
-  <app-notification-panel [isOpen]="notificationPanelOpen" (closed)="onNotificationPanelClosed()" />
-  <app-help-panel />
-}
-
-@if (isMobile()) {
-  <app-mobile-nav />
-}
+  @if (isMobile()) {
+    <app-mobile-nav />
+  }
 } @else {
   <router-outlet />
 }
