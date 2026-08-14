@@ -1,0 +1,91 @@
+:root {
+  color-scheme: dark;
+
+  --surface-canvas: #061012;
+  --surface-base: #0a1719;
+  --surface-raised: #102124;
+  --surface-overlay: #14282c;
+  --surface-selected: #163035;
+  --surface-soft: rgba(231, 241, 239, 0.025);
+
+  --text-primary: #e7f1ef;
+  --text-secondary: #b4c8c4;
+  --text-muted: #829b97;
+  --text-inverse: #061314;
+
+  --border-subtle: rgba(151, 195, 188, 0.12);
+  --border-default: rgba(151, 195, 188, 0.2);
+  --border-strong: rgba(151, 195, 188, 0.34);
+
+  --accent-primary: #79cfc3;
+  --accent-strong: #a6e3da;
+  --accent-surface: rgba(121, 207, 195, 0.11);
+
+  --state-positive: #54c8a7;
+  --state-positive-surface: #10231f;
+  --state-negative: #e58a9c;
+  --state-negative-text: #ffd9e0;
+  --state-negative-surface: #301b21;
+  --state-warning: #d8b56d;
+  --state-warning-surface: #2a2418;
+  --state-information: #8fc7d8;
+  --state-information-surface: #13252a;
+  --state-neutral: #9cb0ac;
+
+  --trade-long: var(--state-positive);
+  --trade-short: var(--state-negative);
+  --trade-active: var(--accent-primary);
+  --trade-paused: var(--state-warning);
+  --trade-testnet: var(--state-warning);
+  --trade-stale: var(--state-warning);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  --radius-1: 4px;
+  --radius-2: 8px;
+  --radius-3: 12px;
+  --radius-pill: 999px;
+
+  --duration-fast: 150ms;
+  --duration-standard: 200ms;
+  --duration-deliberate: 250ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --content-max: 1280px;
+  --page-gutter: var(--space-6);
+
+  // Backwards-compatible aliases keep the migration incremental and safe.
+  --colour-profit: var(--state-positive);
+  --colour-loss: var(--state-negative);
+  --colour-warning: var(--state-warning);
+  --colour-warning-elevated: #bd8f42;
+  --colour-label: var(--text-secondary);
+  --colour-muted: var(--text-muted);
+  --colour-border-subtle: var(--border-subtle);
+  --colour-border-light: var(--border-default);
+  --colour-surface-dark: var(--surface-base);
+  --colour-surface-alt: var(--surface-raised);
+  --colour-surface-soft: var(--surface-soft);
+  --colour-surface-strong: var(--surface-overlay);
+  --colour-accent: var(--accent-primary);
+  --colour-accent-strong: var(--accent-strong);
+  --colour-accent-soft: var(--accent-surface);
+  --colour-accent-text: var(--text-inverse);
+  --colour-info: var(--state-information);
+  --colour-info-soft: rgba(143, 199, 216, 0.12);
+  --colour-profit-soft: rgba(84, 200, 167, 0.12);
+  --colour-loss-soft: rgba(229, 138, 156, 0.12);
+  --colour-warning-soft: rgba(216, 181, 109, 0.12);
+  --colour-error-bg: var(--state-negative-surface);
+  --colour-error-text: var(--state-negative-text);
+  --colour-text-primary: var(--text-primary);
+  --colour-on-profit: var(--text-inverse);
+  --colour-on-loss: #fff4f6;
+  --colour-background: var(--surface-canvas);
+}
