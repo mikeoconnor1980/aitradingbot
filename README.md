@@ -141,3 +141,11 @@ The explicitly allow-listed tools are:
 - `get_positions`
 - `get_open_orders`
 - `get_recent_fills`
+
+## Native TradePilot Analyst
+
+`TradePilot.AI` also provides a request-scoped `ITradingAnalyst`. It uses the same seven read-only application capabilities directly through MediatR; it does not call the MCP adapter and has no exchange or execution dependency. The provider-independent orchestration contract is implemented by the existing OpenAI-compatible HTTP approach, using the general `Llm` provider configuration.
+
+The Analyst supports multiple tool calls and returns inspectable invocation records. An exact request-scoped duplicate reuses its structured result. The loop defaults to at most five tool rounds and ten requested tool calls, configured under `LlmAnalyst:MaxToolRounds` and `LlmAnalyst:MaxToolCalls`. When either limit is reached, tools are disabled for one final completion so the model must answer from facts already gathered or state the remaining data gap.
+
+The Analyst tool policy treats deterministic TradePilot results as authoritative, forbids recalculation of Phase 2 classifications or Phase 3 alignment/conflict facts, separates fact from interpretation, and explicitly denies all execution authority. There is no persistent conversation memory or chat UI in this phase.

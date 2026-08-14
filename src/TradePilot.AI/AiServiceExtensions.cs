@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using TradePilot.AI.Analyst;
 using TradePilot.AI.Services;
 using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Services;
@@ -28,6 +29,10 @@ public static class AiServiceExtensions
             .Bind(configuration.GetSection(LlmContextOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        services.AddOptions<LlmAnalystOptions>()
+            .Bind(configuration.GetSection(LlmAnalystOptions.SectionName))
+            .ValidateDataAnnotations();
 
         services.AddHttpClient<ILlmClient, OpenAiCompatibleLlmClient>((serviceProvider, client) =>
         {
@@ -71,9 +76,26 @@ public static class AiServiceExtensions
             }
         });
 
+        services.AddHttpClient<IAnalystLlmClient, OpenAiCompatibleAnalystLlmClient>((serviceProvider, client) =>
+        {
+            // The Analyst intentionally reuses the existing general LLM provider configuration.
+            var options = serviceProvider.GetRequiredService<IOptions<LlmOptions>>().Value;
+
+            client.BaseAddress = new Uri(options.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+
+            if (!string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", options.ApiKey);
+            }
+        });
+
         services.AddScoped<IStrategyInterpreter, StrategyInterpreter>();
         services.AddScoped<IStrategyReviewer, StrategyReviewer>();
         services.AddSingleton<ILlmContextProvider, LlmContextProvider>();
+        services.AddScoped<IAnalystToolCatalog, TradePilotAnalystToolCatalog>();
+        services.AddScoped<ITradingAnalyst, TradingAnalyst>();
 
         return services;
     }
