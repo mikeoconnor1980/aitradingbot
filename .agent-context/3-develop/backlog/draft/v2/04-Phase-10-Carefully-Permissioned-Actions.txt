@@ -1,0 +1,412 @@
+TradePilot Phase 10 — Carefully Permissioned Actions
+=====================================================
+
+Repository:
+https://github.com/mikeoconnor1980/aitradingbot
+
+Working branch:
+agent/tradepilot-ai-mcp
+
+Do not work directly on main.
+
+PREREQUISITES
+-------------
+Phases 1–9 should be complete.
+
+The read-only Analyst should already be useful and proven.
+
+Do not add execution merely because it is technically possible.
+
+GOAL
+----
+Allow TradePilot Analyst to propose selected actions while preserving:
+- Deterministic execution
+- Explicit authority
+- User control
+- Auditability
+- Risk limits
+- Secret isolation
+- Idempotency
+
+CORE PRINCIPLE
+--------------
+The LLM proposes intent.
+TradePilot validates.
+The user authorises where required.
+Deterministic TradePilot execution performs the action.
+
+The LLM never directly signs exchange actions.
+
+PROPOSAL MODEL
+--------------
+Prefer immutable proposals.
+
+Example:
+
+User:
+"Close my ETH position."
+
+TradePilot creates:
+
+ProposedAction
+- ProposalId
+- ActionType
+- Account/position identifiers
+- Symbol
+- Quantity
+- Order type
+- Current/reference state
+- Estimated deterministic consequences where available
+- Required permission
+- CreatedAt
+- ExpiresAt
+- Confirmation requirement
+
+UI presents an explicit proposal card.
+
+Only confirmation of that exact proposal can authorise execution.
+
+Do not use conversational "yes" as generic authority for a changed action.
+
+ACTION SCOPE
+------------
+Enable actions incrementally.
+
+Possible tiers:
+
+Tier 1:
+- Save candidate strategy config
+- Create draft strategy version
+- Manage research artefacts
+
+Tier 2:
+- Cancel order
+- Reduce/close position
+- Place a bounded order
+
+Tier 3:
+- Start/stop deployed strategy
+- Deploy reviewed immutable strategy version
+- Change selected risk settings
+
+Highest risk / preferably excluded:
+- Withdraw funds
+- Transfer funds
+
+Phase 10 may intentionally implement only a small subset.
+
+PERMISSIONS
+-----------
+Introduce explicit deterministic permissions/scopes, e.g.:
+- ReadMarket
+- ReadAccount
+- RunBacktest
+- ProposeOrder
+- ExecuteConfirmedOrder
+- ProposeStrategyDeployment
+- ExecuteConfirmedDeployment
+- ChangeRisk
+
+Do not use tool existence as the permission model.
+
+CONFIRMATION
+------------
+High-impact actions require explicit confirmation bound to:
+- ProposalId
+- Exact parameters
+- Account
+- Strategy/version
+- Expiry
+- Expected state where relevant
+
+Confirmation must not authorise arbitrary changed parameters.
+
+EXPIRY
+------
+Proposals expire.
+
+Trading state can change quickly.
+
+Use sensible short expiry for market-sensitive actions.
+
+STATE REVALIDATION
+------------------
+Before executing, re-check:
+- Proposal not expired
+- Proposal not already executed
+- Position/order still exists
+- Expected size/state remains valid
+- Strategy version is still expected
+- User still has permission
+- Risk checks still pass
+- Market/account state remains suitable
+
+IDEMPOTENCY
+-----------
+Repeated confirmation must not duplicate execution.
+
+Use:
+- Stable ProposalId / ActionId
+- Existing client-order IDs or idempotency mechanisms where available
+
+AUDIT
+-----
+Persist:
+- Proposal
+- User/request identity
+- Analyst correlation
+- Parameters
+- Created/expiry
+- Required permission
+- Approval
+- Approver/time
+- Revalidation
+- Execution request
+- Exchange/order IDs
+- Result/failure
+- Cancellation
+
+Chat transcript is not the audit trail.
+
+LLM BOUNDARY
+------------
+LLM may:
+- Interpret natural-language intent
+- Select an allow-listed proposal tool
+- Explain proposal/result
+
+LLM may not:
+- Sign
+- Hold private keys
+- Override risk
+- Bypass permission
+- Fabricate confirmation
+- Mutate confirmed proposal parameters
+- Call raw exchange APIs
+
+TOOLS
+-----
+Do not expose raw functions like:
+- call_hyperliquid
+- execute_api
+- sign_transaction
+
+Prefer:
+- propose_close_position
+- propose_cancel_order
+- propose_order
+- propose_strategy_deployment
+
+Deterministic execution happens only after approval.
+
+RISK
+----
+All trading actions pass deterministic TradePilot risk controls.
+
+Potential checks:
+- Max order notional
+- Max position size
+- Max leverage
+- Portfolio exposure
+- Daily loss limit
+- Symbol allow-list
+- Price/slippage sanity
+- Market status
+- Account mode
+
+LLM cannot override them.
+
+PREVIEW
+-------
+Before confirmation, show deterministic preview where possible:
+- Symbol
+- Side
+- Quantity
+- Reference price
+- Order type
+- Limit
+- Estimated notional
+- Estimated fees where available
+- Position impact
+- Remaining position
+- Risk impact
+
+Preview is not a promise of execution price.
+
+STRATEGY DEPLOYMENT
+-------------------
+If implemented:
+- Deploy only immutable explicit candidate/version.
+- Show diff from current deployed version.
+- Show associated backtest results.
+- Require confirmation.
+- Audit deployment.
+- Preserve stop/rollback capability.
+
+Never turn:
+"Improve it and deploy"
+
+directly into mutation + deployment.
+
+RISK CONFIG CHANGES
+-------------------
+Treat as privileged.
+
+Show:
+- Current value
+- Proposed value
+- Scope
+- Impact
+- Persistence/expiry semantics
+
+Require explicit confirmation.
+
+MCP
+---
+Do not automatically expose Phase 10 writes over MCP.
+
+External write-capable MCP requires a separate threat model:
+- OAuth/scopes
+- Trusted clients
+- Approval UX
+- Rate limits
+- Audit
+- Network policy
+
+Keep MCP read-only initially.
+
+ANGULAR
+-------
+Extend Phase 9 with explicit proposal cards.
+
+Example:
+
+PROPOSED ACTION
+Close BTC long
+Size: ...
+Estimated notional: ...
+
+[Confirm] [Cancel]
+
+Pending/confirmed/executed/failed must be visually distinct.
+
+Never rely on conversational prose alone as confirmation UX.
+
+AUTHENTICATION
+--------------
+Confirmed actions must map to an authenticated user.
+
+If existing auth is inadequate, treat that as a blocker.
+
+No anonymous approvals.
+
+SECRETS
+-------
+Never expose to LLM/browser:
+- Exchange private keys
+- Seed phrases
+- Signing keys
+- API secrets
+
+Signing remains inside trusted deterministic Infrastructure.
+
+TESTING
+-------
+This phase needs strong tests:
+1. Proposal creation
+2. Immutable parameters
+3. Expiry
+4. Permission denied
+5. Confirmation required
+6. Wrong proposal confirmation rejected
+7. Double confirmation / idempotency
+8. State changed since proposal
+9. Position/order gone
+10. Risk rejection
+11. Exchange/provider failure
+12. Cancellation
+13. Audit persistence
+14. No secret exposure
+15. LLM cannot execute directly
+16. Only allow-listed proposal tools
+17. UI confirmation/cancel
+18. Testnet integration where appropriate
+
+Do not use mainnet/live funds in automated tests.
+
+ROLLOUT
+-------
+Recommended:
+1. Feature flag off by default
+2. Development/testnet only
+3. Internal manual use
+4. Review audit logs
+5. Enable selected actions only
+6. Mainnet only after separate explicit review
+
+Do not globally enable all actions after merge.
+
+OBSERVABILITY
+-------------
+Track:
+- Proposed
+- Confirmed
+- Rejected
+- Permission failures
+- Risk failures
+- Execution failures
+- Duplicate/idempotent requests
+- State-revalidation failures
+
+DEFINITION OF DONE
+------------------
+Phase 10 is complete only for specifically implemented allow-listed actions when:
+- LLM proposes but cannot directly execute.
+- Proposals are immutable.
+- High-impact actions require confirmation.
+- Confirmation binds to exact ProposalId/parameters.
+- Proposals expire.
+- Current state is revalidated.
+- Risk controls are deterministic/enforced.
+- Execution is idempotent.
+- Audit trail is complete.
+- Authenticated user identity is captured.
+- Secrets never reach LLM/browser.
+- Existing deterministic services perform signing/execution.
+- MCP remains read-only unless separately designed.
+- Feature flags permit staged rollout.
+- Tests cover permissions, confirmation, risk, idempotency, revalidation, audit, and failures.
+- Mainnet is not enabled casually.
+
+HANDOFF
+-------
+Report:
+1. Actions implemented
+2. Actions excluded
+3. Permission model
+4. Proposal model
+5. Confirmation semantics
+6. Expiry/revalidation
+7. Risk checks
+8. Idempotency
+9. Audit
+10. Signing/secret boundary
+11. UI changes
+12. MCP stance
+13. Tests
+14. Testnet validation
+15. Build/test results
+16. Rollout recommendation
+
+POST-PHASE-10 POSSIBILITIES
+---------------------------
+Future explicit phases may include:
+- Proactive monitoring/alerts
+- Scheduled Analyst briefings
+- Deeper statistical research
+- Analyst/evaluation framework
+- Strategy lifecycle governance
+- Multi-exchange support
+- MCP authentication/interoperability hardening
+- Intent/action policy evaluation
+- Carefully constrained autonomous operation

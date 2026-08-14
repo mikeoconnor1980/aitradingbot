@@ -227,6 +227,8 @@ public sealed class BacktestRunnerTests
         result1.FinalEquity.Should().Be(result2.FinalEquity);
         result1.EquityTimeSeries.Should().BeEquivalentTo(result2.EquityTimeSeries, options => options.WithStrictOrdering());
         result1.TradeLog.Should().BeEquivalentTo(result2.TradeLog, options => options.WithStrictOrdering());
+        _contextBuilderMock.Verify(builder => builder.Reset(), Times.Exactly(4));
+        _riskEngineMock.Verify(engine => engine.Reset(), Times.Exactly(4));
     }
 
     [TestMethod]

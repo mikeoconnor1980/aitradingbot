@@ -82,6 +82,7 @@ public sealed class BacktestRunner : IBacktestRunner
     {
         ArgumentNullException.ThrowIfNull(config);
         ValidateConfig(config);
+        ResetRunState();
 
         var auditCollector = config.EnableAuditLog
             ? new BacktestAuditCollector()
@@ -320,9 +321,16 @@ public sealed class BacktestRunner : IBacktestRunner
         }
         finally
         {
+            ResetRunState();
             _executionContextAccessor.CurrentExecutionEngine = null;
             _executionContextAccessor.CurrentTimestampUtc = 0;
         }
+    }
+
+    private void ResetRunState()
+    {
+        _marketContextBuilder.Reset();
+        _riskEngine.Reset();
     }
 
     private static void ValidateConfig(BacktestConfig config)

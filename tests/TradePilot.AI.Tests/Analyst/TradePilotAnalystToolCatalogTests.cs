@@ -6,6 +6,7 @@ using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketAnalysis.Models;
+using TradePilot.Application.Backtesting.Experiments;
 using TradePilot.Application.MarketAnalysis.Queries;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Application.MarketData.Queries;
@@ -28,6 +29,7 @@ public sealed class TradePilotAnalystToolCatalogTests
     private Mock<IUserWalletAddressRepository> _walletRepository = null!;
     private Mock<IUserExchangeCredentialRepository> _credentialRepository = null!;
     private Mock<IStrategyRepository> _strategyRepository = null!;
+    private Mock<IBacktestExperimentService> _backtestExperimentService = null!;
     private Strategy _strategy = null!;
     private TradePilotAnalystToolCatalog _sut = null!;
 
@@ -39,6 +41,7 @@ public sealed class TradePilotAnalystToolCatalogTests
         _walletRepository = new Mock<IUserWalletAddressRepository>();
         _credentialRepository = new Mock<IUserExchangeCredentialRepository>();
         _strategyRepository = new Mock<IStrategyRepository>();
+        _backtestExperimentService = new Mock<IBacktestExperimentService>();
         _strategy = Strategy.Create(UserId.ToString(), "v10.4", "signal", "{}");
         _exchangeResolver
             .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
@@ -67,6 +70,7 @@ public sealed class TradePilotAnalystToolCatalogTests
             _walletRepository.Object,
             _credentialRepository.Object,
             _strategyRepository.Object,
+            _backtestExperimentService.Object,
             NullLogger<TradePilotAnalystToolCatalog>.Instance);
     }
 
@@ -89,6 +93,7 @@ public sealed class TradePilotAnalystToolCatalogTests
             "get_trade",
             "get_trade_analytics",
             "get_strategy_trade_analytics",
+            "run_backtest_experiment",
         ]);
         _sut.Definitions.Select(definition => definition.Name).Should().NotContain(
         ["place_order", "cancel_order", "close_position", "change_risk", "deploy_strategy", "withdraw", "transfer"]);
@@ -229,6 +234,35 @@ public sealed class TradePilotAnalystToolCatalogTests
 
         unknown.Error!.Code.Should().Be("unknown_tool");
         execution.Error!.Code.Should().Be("unknown_tool");
+        _sender.VerifyNoOtherCalls();
+    }
+
+    [TestMethod]
+    public async Task GivenRsiExperimentTool_WhenExecuted_ThenBoundedStructuredRequestIsDelegatedWithoutLiveMutation()
+    {
+        _backtestExperimentService
+            .Setup(service => service.RunAsync(It.IsAny<BacktestExperimentRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new BacktestExperimentResult(
+                _strategy.Id, 1, "BTC", DateTimeOffset.Parse("2026-01-01T00:00:00Z"), DateTimeOffset.Parse("2026-02-01T00:00:00Z"),
+                10_000m, new BacktestExperimentMetrics(100m, 10m, 1m, 4, 50m, 2m, 25m, 1m, 10),
+                [new BacktestCandidateExperimentResult("RSI 65", [new StrategyParameterOverride("rsi.value", "rsi-1", 65m)],
+                    new BacktestExperimentMetrics(120m, 12m, 1.2m, 5, 60m, 2.5m, 24m, 1m, 10),
+                    new BacktestComparison(20m, 2m, 0.2m, 1, 10m, 0.5m, -1m, 0m))]));
+
+        var result = await _sut.ExecuteAsync(
+            "run_backtest_experiment",
+            "{\"strategyName\":\"v10.4\",\"symbol\":\"BTC\",\"start\":\"2026-01-01T00:00:00Z\",\"end\":\"2026-02-01T00:00:00Z\",\"initialCapital\":10000,\"candidates\":[{\"label\":\"RSI 65\",\"rsiConditionId\":\"rsi-1\",\"rsiValue\":65}]}",
+            new AnalystToolContext(UserId),
+            CancellationToken.None);
+
+        result.Succeeded.Should().BeTrue();
+        result.Result!.Value.GetProperty("candidates")[0].GetProperty("comparison").GetProperty("totalPnlDelta").GetDecimal().Should().Be(20m);
+        _backtestExperimentService.Verify(service => service.RunAsync(
+            It.Is<BacktestExperimentRequest>(request =>
+                request.StrategyId == _strategy.Id
+                && request.UserId == UserId.ToString()
+                && request.Candidates.Single().ConfigurationOverrides.Single().Value == 65m),
+            It.IsAny<CancellationToken>()), Times.Once);
         _sender.VerifyNoOtherCalls();
     }
 

@@ -333,6 +333,9 @@ public sealed class TradingAnalyst : ITradingAnalyst
             "get_account_summary" or "get_positions" or "get_open_orders" =>
                 new HashSet<string>(["exchange"], StringComparer.OrdinalIgnoreCase),
             "get_recent_fills" => new HashSet<string>(["symbol", "exchange"], StringComparer.OrdinalIgnoreCase),
+            "run_backtest_experiment" => new HashSet<string>(
+                ["strategyId", "strategyName", "strategyVersion", "symbol", "start", "end", "initialCapital", "candidates"],
+                StringComparer.OrdinalIgnoreCase),
             _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
         };
     }

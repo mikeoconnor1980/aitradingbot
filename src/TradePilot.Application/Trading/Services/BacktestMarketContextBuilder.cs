@@ -55,6 +55,29 @@ public sealed class BacktestMarketContextBuilder : IMarketContextBuilder
         _fearGreedReadings = readings;
     }
 
+    public void Reset()
+    {
+        _candles.Clear();
+        _bars.Clear();
+        _emaFast.Reset();
+        _emaSlow.Reset();
+        _emaTrend.Reset();
+        _rsi14.Reset();
+        _atr14.Reset();
+        _syntheticRegimeProvider.Reset();
+        _dynamicEmas.Clear();
+        _dynamicRsis.Clear();
+        _dynamicSmas.Clear();
+        _dynamicMacds.Clear();
+        _prevEma.Clear();
+        _prevRsi.Clear();
+        _prevSma.Clear();
+        _prevMacd.Clear();
+        _prevSr.Clear();
+        _dynamicInitialized = false;
+        _fearGreedReadings = null;
+    }
+
     public void UpdateIndicators(Candle candle)
     {
         ArgumentNullException.ThrowIfNull(candle);

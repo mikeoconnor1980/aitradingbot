@@ -1,0 +1,351 @@
+TradePilot AI / MCP Implementation Summary — Completed Through Phase 7
+==========================================================================
+
+Repository
+----------
+GitHub: https://github.com/mikeoconnor1980/aitradingbot
+Working branch: agent/tradepilot-ai-mcp
+Do not work directly on main.
+
+Product Direction
+-----------------
+TradePilot is evolving from a Hyperliquid-focused trading bot/dashboard into an AI-native trading intelligence, strategy, research, and execution platform.
+
+Core architectural principle:
+
+TradePilot produces facts.
+AI interprets facts.
+MCP transports capabilities.
+Exchanges execute authorised operations.
+
+TradePilot remains the source of truth for market data, indicators, accounts, positions, orders, trades, strategies, backtesting, risk, execution, market analysis, strategy decisions, and trade analytics.
+
+TradePilot.AI and MCP are sibling consumers of TradePilot.Application. TradePilot.AI must not route through MCP. MCP must not contain trading business logic.
+
+PHASE 1 — CORE CAPABILITY BOUNDARY — COMPLETE
+---------------------------------------------
+Goal:
+Create reusable application-level capabilities consumable by REST, Angular, TradePilot.AI, MCP, and future agents.
+
+Key outcomes:
+- Existing TradePilot feature/application conventions were reused.
+- Strongly typed requests/results were preferred.
+- Hyperliquid-specific behaviour remained in Infrastructure.
+- Application capabilities remained exchange-agnostic where practical.
+- Existing execution, REST, backtesting, AI review flows, and Angular behaviour were preserved.
+- No MCP, market-analysis policy, or AI execution authority was added.
+
+Architectural result:
+REST / Angular / TradePilot.AI / MCP can all consume the same TradePilot.Application capability boundary.
+
+PHASE 2 — DETERMINISTIC MARKET ANALYSIS — COMPLETE
+---------------------------------------------------
+Goal:
+Allow TradePilot to deterministically analyse one symbol/timeframe without an LLM performing calculations or classifications.
+
+Implemented concepts:
+- Price using defined completed-candle semantics
+- EMA20
+- EMA50
+- EMA200
+- RSI
+- ATR
+- ATR percentage
+- Distance from moving averages
+- Trend classification
+- Momentum classification
+- Volatility regime
+- Recent confirmed swing high/low
+- Market structure
+
+TradePilot.Indicators and existing candle retrieval were reused. AI does not calculate or reclassify these values.
+
+Fixture-driven tests cover indicator integration, classification boundaries, market structure, swing behaviour, insufficient data, and related edge cases.
+
+Known Phase 2 concerns — intentionally still open:
+1. RSI 45/55 are initial TradePilot policy thresholds.
+2. ATR% 1%/3% are initial TradePilot policy thresholds.
+3. Range requires exact equality between successive swing levels.
+4. Candle gaps are not rejected when enough completed candles remain.
+5. 250 candles provide about 50 observations of EMA200 warm-up; gaps/duplicates may reduce that.
+6. At exactly 200 candles, EMA200 is at its initial SMA seed.
+7. Result Symbol preserves the exchange-facing requested symbol rather than a canonical market ID.
+
+These must not be silently changed in downstream AI/MCP/UI layers.
+
+PHASE 3 — MULTI-TIMEFRAME MARKET ANALYSIS — COMPLETE
+-----------------------------------------------------
+Goal:
+Compose Phase 2 analyses across multiple timeframes without recalculating or redefining Phase 2 facts.
+
+Typical timeframes:
+15m / 1h / 4h / 1d
+
+Phase 3 preserves complete per-timeframe evidence and adds typed cross-timeframe facts such as:
+- Primary trend
+- Short-term trend
+- Trend alignment
+- Momentum alignment
+- Structure alignment
+- Volatility alignment
+- Direction counts
+- Structured timeframe conflicts
+- Deterministic ordering/failure semantics
+
+Important principle:
+Do not collapse useful disagreement into one generic "market sentiment".
+
+Example:
+1d bullish
+4h bullish
+1h bullish
+15m bearish
+
+is preserved so future AI can explain broader-trend alignment versus short-term conflict.
+
+PHASE 4 — MINIMAL READ-ONLY MCP ADAPTER — COMPLETE
+----------------------------------------------------
+Goal:
+Expose existing TradePilot capabilities externally through MCP without putting business logic into MCP.
+
+Dependency:
+External MCP Client -> TradePilot MCP Adapter -> TradePilot.Application
+
+MCP:
+- Does not route through TradePilot.AI.
+- Does not call Hyperliquid directly.
+- Does not calculate indicators/classifications/alignment.
+- Is explicitly read-only.
+
+Initial MCP tool surface includes existing capabilities such as:
+- get_market_snapshot
+- analyse_market
+- analyse_market_multi_timeframe
+- get_account_summary
+- get_positions
+- get_open_orders
+- get_recent_fills
+
+Check the repository for the exact current tool inventory.
+
+No execution tools were exposed:
+- place_order
+- cancel_order
+- close_position
+- deploy_strategy
+- change_risk
+- transfer
+- withdraw
+
+Known MCP hardening concerns:
+- MCP-compatible OAuth/token discovery
+- Proxy/host/origin/rate-limit policy
+- Interoperability with intended external clients
+- Monitoring current MCP C# SDK maturity
+- Pagination for large fills/orders
+- Generated schema review with target AI clients
+
+These remain separate hardening work.
+
+PHASE 5 — TRADEPILOT ANALYST — COMPLETE
+----------------------------------------
+Goal:
+Create a native AI Analyst that directly consumes TradePilot.Application capabilities.
+
+Architecture:
+TradePilot.Application
+   /            \
+TradePilot.AI    MCP
+   |
+Trading Analyst
+   |
+LLM
+
+The Analyst:
+- Does not call MCP.
+- Does not call exchanges directly.
+- Uses an explicit allow-listed read-only native tool catalogue.
+- Supports bounded multi-step tool calling.
+- Returns structured application results to the model.
+- Keeps TradePilot facts separate from AI interpretation.
+- Has no execution authority.
+
+Initial use cases include:
+- "What is happening with BTC?"
+- "How does BTC look relative to my position?"
+- "What should I pay attention to in my account?"
+- "Is short-term momentum disagreeing with the bigger trend?"
+
+Tests use fake/mock LLM orchestration rather than requiring a live provider.
+
+PHASE 6 — STRATEGY EXPLAINABILITY — COMPLETE
+---------------------------------------------
+Goal:
+Persist deterministic evidence explaining why a strategy did or did not make a decision.
+
+Core model concepts:
+StrategyEvaluation:
+- Strategy identity
+- Strategy version/configuration identity
+- Symbol
+- Evaluation timestamp
+- Final decision
+- Rule evaluations
+- Rejection reason
+- Relevant market context/reference
+- Signal where applicable
+
+RuleEvaluation:
+- Stable rule ID
+- Rule name/category
+- Evaluation/pass/fail state
+- Actual value
+- Expected value
+- Deterministic reason
+- Blocking/informational semantics where relevant
+
+Key principle:
+Evidence is captured at the actual strategy-evaluation point. AI does not later inspect general market conditions and guess why no trade happened.
+
+Historical strategy questions use historical StrategyEvaluation evidence.
+
+Read-only capabilities support:
+- Evaluation retrieval
+- Latest evaluation
+- Deterministic summary/aggregation of rule failures
+
+Analyst tools consume these Application capabilities directly.
+
+Correct:
+"Why didn't v10.4 trade BTC?" -> retrieve strategy evaluation evidence.
+
+Incorrect:
+Analyse current market -> let AI guess.
+
+PHASE 7 — TRADE / JOURNAL ANALYSIS — COMPLETE
+----------------------------------------------
+Goal:
+Link strategy decisions to durable trade/journal records and deterministically analyse what happened after entry.
+
+Phase 6 handoff recommendation was:
+"link entry and exit evaluations to immutable trade/journal records, then add deterministic aggregates for PnL, fees, funding, duration, MFE/MAE, regime, and strategy version."
+
+Phase 7 is now reported complete.
+
+Core concepts implemented/planned in the Phase 7 design:
+- Stable logical TradePilot trade identity
+- Strategy identity/version
+- Symbol and side
+- Entry/exit timestamps
+- Weighted entry/exit pricing where multiple fills exist
+- Position size/leverage where available
+- Explicit PnL/cost semantics
+- Fees
+- Funding where deterministically attributable
+- Duration
+- MFE (Maximum Favorable Excursion)
+- MAE (Maximum Adverse Excursion)
+- Entry StrategyEvaluation link
+- Exit evaluation/context link where applicable
+- Exit reason/source
+- Historical market regime/context
+- Trade lifecycle status
+- Exchange/source identifiers where needed
+
+One logical TradePilot trade is not necessarily one fill or one order. Scale-in/partial-exit semantics must respect the actual existing execution model.
+
+StrategyEvaluation is authoritative for:
+"Why did/didn't the strategy make the decision?"
+
+TradeJournal is authoritative for:
+"What happened after the trade was opened?"
+
+Trade analytics are deterministic TradePilot facts, not LLM calculations.
+
+Analytics include concepts such as:
+- Trade count
+- Winners/losers/breakeven
+- Gross/net PnL
+- Fees/funding
+- Win rate
+- Average win/loss
+- Duration
+- Average MFE/MAE
+- Best/worst trade
+- Profit factor where well-defined
+- Strategy-version grouping
+- Market-regime grouping where historical context exists
+
+Analyst use cases include:
+- "How have I performed this week?"
+- "What are my worst trades?"
+- "What do my losing trades have in common?"
+- "Which strategy version performs best?"
+- "How much have fees/funding cost me?"
+- "What are my MFE/MAE characteristics?"
+- "Which market regimes have performed best?"
+
+CURRENT STATE AFTER PHASE 7
+---------------------------
+TradePilot now has:
+1. Reusable capability boundary
+2. Deterministic single-timeframe analysis
+3. Deterministic multi-timeframe analysis
+4. Read-only MCP adapter
+5. Native TradePilot Analyst
+6. Persisted strategy-decision explainability
+7. Persisted trade/journal analysis
+
+This enables AI to interrogate actual TradePilot evidence across markets, accounts, positions, strategies, and historical trades.
+
+REMAINING AGREED PHASES
+-----------------------
+Phase 8 — AI-Assisted Backtest Experimentation
+Phase 9 — Angular TradePilot Analyst UI
+Phase 10 — Carefully Permissioned Actions
+
+Separate MCP hardening work also remains.
+
+IMPORTANT RULES TO PRESERVE
+---------------------------
+1. TradePilot is the source of truth.
+2. AI explains/orchestrates; C# performs deterministic calculations.
+3. TradePilot.AI calls Application directly, never MCP.
+4. MCP remains a thin adapter.
+5. AI/MCP should not call Hyperliquid directly where an Application capability exists.
+6. Phase 2/3 classifications must not be silently redefined downstream.
+7. Historical questions use historical evidence, not current state.
+8. Strategy explanations use StrategyEvaluation evidence.
+9. Trade analytics are calculated by TradePilot.
+10. Execution permissions remain separate from analytical tools.
+11. Preserve backwards compatibility.
+12. Keep Phase 2 concerns visible until intentionally resolved.
+13. Keep MCP hardening concerns visible and separate.
+
+ENGINEERING / GITHUB WORKFLOW
+-----------------------------
+Repository:
+https://github.com/mikeoconnor1980/aitradingbot
+
+Working branch:
+agent/tradepilot-ai-mcp
+
+Never push this feature work directly to main.
+
+For every new phase:
+- Inspect branch/worktree first.
+- Review the previous implementation before changing anything.
+- Preserve unrelated changes.
+- Follow existing C# and test conventions.
+- Reuse existing architecture.
+- Verify current external SDK/API behaviour from official docs where relevant.
+- Run available validation:
+  dotnet build
+  dotnet test
+  git diff --check
+- Do not claim tests passed if they could not run.
+- Inspect the complete diff before committing.
+- Push the non-main branch without force.
+- Update an existing PR rather than creating duplicates where appropriate.
+
+GitHub remains authoritative for exact implementation details.

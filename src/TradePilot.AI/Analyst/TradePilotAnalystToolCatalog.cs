@@ -6,6 +6,7 @@ using TradePilot.Application.Abstractions.Exceptions;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Analyst.Models;
+using TradePilot.Application.Backtesting.Experiments;
 using TradePilot.Application.MarketAnalysis.Queries;
 using TradePilot.Application.MarketData.Queries;
 using TradePilot.Application.StrategyEvaluations.Queries;
@@ -28,6 +29,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
     private readonly IUserWalletAddressRepository _walletRepository;
     private readonly IUserExchangeCredentialRepository _credentialRepository;
     private readonly IStrategyRepository _strategyRepository;
+    private readonly IBacktestExperimentService _backtestExperimentService;
     private readonly ILogger<TradePilotAnalystToolCatalog> _logger;
 
     /// <summary>Initializes the native TradePilot Analyst tool catalogue.</summary>
@@ -37,6 +39,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         IUserWalletAddressRepository walletRepository,
         IUserExchangeCredentialRepository credentialRepository,
         IStrategyRepository strategyRepository,
+        IBacktestExperimentService backtestExperimentService,
         ILogger<TradePilotAnalystToolCatalog> logger)
     {
         _sender = sender;
@@ -44,6 +47,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         _walletRepository = walletRepository;
         _credentialRepository = credentialRepository;
         _strategyRepository = strategyRepository;
+        _backtestExperimentService = backtestExperimentService;
         _logger = logger;
         Definitions = CreateDefinitions();
     }
@@ -79,6 +83,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
                 "get_trade" => await GetTradeAsync(argumentsJson, context, cancellationToken),
                 "get_trade_analytics" => await GetTradeAnalyticsAsync(argumentsJson, context, cancellationToken),
                 "get_strategy_trade_analytics" => await GetStrategyTradeAnalyticsAsync(argumentsJson, context, cancellationToken),
+                "run_backtest_experiment" => await RunBacktestExperimentAsync(argumentsJson, context, cancellationToken),
                 _ => AnalystToolResult.Failure("unknown_tool", "The requested tool is not available."),
             };
         }
@@ -379,6 +384,36 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         return AnalystToolResult.Success(SerializeResult(result));
     }
 
+    private async Task<AnalystToolResult> RunBacktestExperimentAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<BacktestExperimentArguments>(argumentsJson);
+        var strategyId = await ResolveOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        ArgumentNullException.ThrowIfNull(arguments.Candidates);
+        var candidates = arguments.Candidates.Select(candidate => new BacktestCandidateRequest(
+            candidate.Label,
+            [new StrategyParameterOverride(
+                BacktestExperimentService.RsiValueParameter,
+                candidate.RsiConditionId,
+                candidate.RsiValue)])).ToArray();
+        var result = await _backtestExperimentService.RunAsync(new BacktestExperimentRequest(
+            strategyId,
+            arguments.StrategyVersion,
+            arguments.Symbol,
+            arguments.Start,
+            arguments.End,
+            arguments.InitialCapital,
+            candidates,
+            RequireUserId(context)), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
     private Task<Exchange> ResolveExchangeAsync(Exchange? exchange, CancellationToken cancellationToken)
     {
         return exchange.HasValue
@@ -598,6 +633,38 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
                     to = StringProperty("Optional inclusive ISO-8601 range end."),
                 },
                 []),
+            Define(
+                "run_backtest_experiment",
+                "Run a bounded historical simulation from an owned immutable strategy version. TradePilot calculates all metrics and baseline deltas. This never deploys or changes the strategy.",
+                new
+                {
+                    strategyId = StringProperty("Optional TradePilot strategy GUID; provide this or strategyName."),
+                    strategyName = StringProperty("Optional exact owned strategy name; provide this or strategyId."),
+                    strategyVersion = new { type = "integer", minimum = 1, description = "Optional persisted strategy revision; defaults to the latest revision." },
+                    symbol = StringProperty("Exchange-facing symbol such as BTC."),
+                    start = StringProperty("Inclusive ISO-8601 UTC simulation start."),
+                    end = StringProperty("Exclusive ISO-8601 UTC simulation end, no more than 366 days after start."),
+                    initialCapital = new { type = "number", exclusiveMinimum = 0, description = "Starting simulated capital." },
+                    candidates = new
+                    {
+                        type = "array",
+                        minItems = 1,
+                        maxItems = BacktestExperimentService.MaximumCandidates,
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                label = StringProperty("Candidate label, such as RSI max 65."),
+                                rsiConditionId = StringProperty("The immutable strategy entry-condition ID for the RSI condition."),
+                                rsiValue = new { type = "number", minimum = 0, maximum = 100, description = "Candidate RSI threshold." },
+                            },
+                            required = new[] { "label", "rsiConditionId", "rsiValue" },
+                            additionalProperties = false,
+                        },
+                    },
+                },
+                ["symbol", "start", "end", "initialCapital", "candidates"]),
         ];
     }
 
@@ -734,6 +801,21 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         string? Symbol = null,
         DateTimeOffset? From = null,
         DateTimeOffset? To = null);
+
+    private sealed record BacktestExperimentArguments(
+        Guid? StrategyId = null,
+        string? StrategyName = null,
+        int? StrategyVersion = null,
+        string Symbol = "",
+        DateTimeOffset Start = default,
+        DateTimeOffset End = default,
+        decimal InitialCapital = 0,
+        BacktestExperimentCandidateArguments[]? Candidates = null);
+
+    private sealed record BacktestExperimentCandidateArguments(
+        string Label = "",
+        string RsiConditionId = "",
+        decimal RsiValue = 0);
 
     private sealed record AccountContext(Exchange Exchange, string? WalletAddress);
 }
