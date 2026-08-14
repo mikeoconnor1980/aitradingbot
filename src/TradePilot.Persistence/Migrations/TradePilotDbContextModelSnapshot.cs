@@ -963,6 +963,55 @@ namespace TradePilot.Persistence.Migrations
                     b.ToTable("Strategies", (string)null);
                 });
 
+            modelBuilder.Entity("TradePilot.Domain.Entities.StrategyEvaluation", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConfigurationIdentity").IsRequired().HasMaxLength(64).HasColumnType("nvarchar(64)");
+                    b.Property<string>("Decision").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<long>("EvaluatedAtUtc").HasColumnType("bigint");
+                    b.Property<bool>("EvaluationShortCircuited").HasColumnType("bit");
+                    b.Property<long>("MarketContextTimestampUtc").HasColumnType("bigint");
+                    b.Property<string>("MarketRegime").HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<string>("PrimaryRejectionReason").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<double>("ReferencePrice").HasColumnType("float");
+                    b.Property<string>("SignalReason").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("SignalType").HasMaxLength(50).HasColumnType("nvarchar(50)");
+                    b.Property<bool>("SetupDetected").HasColumnType("bit");
+                    b.Property<Guid?>("StrategyId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("StrategyName").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<int?>("StrategyVersion").HasColumnType("int");
+                    b.Property<string>("Symbol").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                    b.Property<string>("Timeframe").IsRequired().HasMaxLength(10).HasColumnType("nvarchar(10)");
+                    b.HasKey("Id");
+                    b.HasIndex("EvaluatedAtUtc").HasDatabaseName("IX_StrategyEvaluations_EvaluatedAtUtc");
+                    b.HasIndex("StrategyId", "Symbol", "EvaluatedAtUtc").HasDatabaseName("IX_StrategyEvaluations_StrategyId_Symbol_EvaluatedAtUtc");
+                    b.HasIndex("StrategyName", "Symbol", "EvaluatedAtUtc").HasDatabaseName("IX_StrategyEvaluations_StrategyName_Symbol_EvaluatedAtUtc");
+                    b.ToTable("StrategyEvaluations", (string)null);
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.RuleEvaluation", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
+                    b.Property<string>("ActualValue").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<double?>("ActualNumericValue").HasColumnType("float");
+                    b.Property<string>("Category").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<int>("EvaluationOrder").HasColumnType("int");
+                    b.Property<string>("ExpectedValue").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<double?>("ExpectedNumericValue").HasColumnType("float");
+                    b.Property<bool>("IsBlocking").HasColumnType("bit");
+                    b.Property<string>("Kind").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<string>("Name").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<bool>("Passed").HasColumnType("bit");
+                    b.Property<string>("Reason").IsRequired().HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("RuleId").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<Guid>("StrategyEvaluationId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("Unit").HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.HasKey("Id");
+                    b.HasIndex("RuleId", "Passed", "IsBlocking").HasDatabaseName("IX_RuleEvaluations_RuleId_Passed_IsBlocking");
+                    b.HasIndex("StrategyEvaluationId", "EvaluationOrder").IsUnique().HasDatabaseName("IX_RuleEvaluations_StrategyEvaluationId_EvaluationOrder");
+                    b.ToTable("RuleEvaluations", (string)null);
+                });
+
             modelBuilder.Entity("TradePilot.Domain.Entities.StrategyReview", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1381,6 +1430,15 @@ namespace TradePilot.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TradePilot.Domain.Entities.RuleEvaluation", b =>
+                {
+                    b.HasOne("TradePilot.Domain.Entities.StrategyEvaluation", null)
+                        .WithMany("Rules")
+                        .HasForeignKey("StrategyEvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("TradePilot.Domain.Entities.StrategyReview", b =>
                 {
                     b.HasOne("TradePilot.Domain.Entities.Strategy", null)
@@ -1433,6 +1491,11 @@ namespace TradePilot.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.StrategyEvaluation", b =>
+                {
+                    b.Navigation("Rules");
                 });
 #pragma warning restore 612, 618
         }

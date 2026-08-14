@@ -11,6 +11,36 @@ public interface IRiskEngine
         IReadOnlyList<TradingSignal> signals,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Validates signals and returns deterministic evidence for each risk decision.</summary>
+    async Task<RiskValidationResult> ValidateWithEvidenceAsync(
+        IReadOnlyList<TradingSignal> signals,
+        CancellationToken cancellationToken = default)
+    {
+        var approvedSignals = await ValidateAsync(signals, cancellationToken);
+        var passed = approvedSignals.Count == signals.Count;
+        return new RiskValidationResult(
+            approvedSignals,
+            signals.Count == 0
+                ? []
+                :
+                [
+                    new RuleEvaluationResult(
+                        "risk.validation",
+                        "Risk validation",
+                        TradePilot.Domain.Enums.RuleCategory.Risk,
+                        passed,
+                        passed
+                            ? $"Risk engine approved all {signals.Count} signal(s)."
+                            : $"Risk engine approved {approvedSignals.Count} of {signals.Count} signal(s).",
+                        !passed,
+                        TradePilot.Domain.Enums.RuleEvaluationKind.RiskOverride,
+                        ActualValue: approvedSignals.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ActualNumericValue: approvedSignals.Count,
+                        ExpectedValue: signals.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ExpectedNumericValue: signals.Count)
+                ]);
+    }
+
     /// <summary>Record a realized loss for the circuit breaker.</summary>
     void RecordLoss(decimal lossUsd) { }
 

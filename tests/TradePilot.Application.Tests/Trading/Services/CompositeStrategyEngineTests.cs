@@ -3,6 +3,7 @@ using TradePilot.Application.StrategyAuthoring.Services;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Application.Trading.Services;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
 using TradePilot.Domain.Trading;
 
 namespace TradePilot.Application.Tests.Trading.Services;
@@ -118,6 +119,88 @@ public sealed class CompositeStrategyEngineTests
         _conditionEvaluatorMock.Verify(
             evaluator => evaluator.Evaluate(It.IsAny<StrategyConfig>(), It.IsAny<MarketContext>()),
             Times.Never);
+        result.EvaluationShortCircuited.Should().BeTrue();
+        result.Rules.Should().ContainSingle(rule =>
+            rule.RuleId == "trend.emacross" && !rule.Passed && rule.IsBlocking);
+    }
+
+    [TestMethod]
+    public async Task GivenSignalModeWithRsiFailure_WhenEvaluated_ThenDeterministicValuesAndStableRuleIdAreRecorded()
+    {
+        var config = CreateSignalConfig();
+        var context = CreateMarketContext(includeHigherTimeframes: true);
+        _conditionEvaluatorMock
+            .Setup(evaluator => evaluator.Evaluate(config, context))
+            .Returns(new ConditionEvaluationResult
+            {
+                SetupDetected = false,
+                ConditionResults =
+                [
+                    new ConditionResult
+                    {
+                        ConditionId = "rsi-1",
+                        Passed = false,
+                        Reason = "RSI(14) = 67.3 <= 62 - condition not met",
+                        ActualValue = "67.3",
+                        ActualNumericValue = 67.3m,
+                        ExpectedValue = "<= 62",
+                        ExpectedNumericValue = 62m,
+                    }
+                ],
+                OverallReason = "1/1 conditions failed."
+            });
+
+        var result = await _sut.EvaluateAsync(context, config);
+
+        result.SetupDetected.Should().BeFalse();
+        result.Rules.Should().HaveCount(2);
+        var rsi = result.Rules[1];
+        rsi.RuleId.Should().Be("entry.rsi.rsi.1");
+        rsi.Category.Should().Be(RuleCategory.Momentum);
+        rsi.Passed.Should().BeFalse();
+        rsi.IsBlocking.Should().BeTrue();
+        rsi.ActualNumericValue.Should().Be(67.3m);
+        rsi.ExpectedNumericValue.Should().Be(62m);
+    }
+
+    [TestMethod]
+    public async Task GivenAllModeWithTwoFailures_WhenEvaluated_ThenBothBlockingFailuresRemainInEvaluationOrder()
+    {
+        var config = CreateSignalConfig() with
+        {
+            EntryConditions =
+            [
+                CreateSignalConfig().EntryConditions![0],
+                new EntryConditionConfig
+                {
+                    Id = "volatility-minimum",
+                    Enabled = true,
+                    Type = EntryConditionType.Macd,
+                    Label = "Volatility proxy",
+                    Params = new MacdParams(),
+                }
+            ]
+        };
+        var context = CreateMarketContext(includeHigherTimeframes: true);
+        _conditionEvaluatorMock
+            .Setup(evaluator => evaluator.Evaluate(config, context))
+            .Returns(new ConditionEvaluationResult
+            {
+                SetupDetected = false,
+                ConditionResults =
+                [
+                    new ConditionResult { ConditionId = "rsi-1", Passed = false, Reason = "RSI failed." },
+                    new ConditionResult { ConditionId = "volatility-minimum", Passed = false, Reason = "Volatility failed." },
+                ],
+                OverallReason = "2/2 conditions failed."
+            });
+
+        var result = await _sut.EvaluateAsync(context, config);
+
+        result.Rules.Where(rule => !rule.Passed && rule.IsBlocking)
+            .Select(rule => rule.RuleId)
+            .Should().Equal("entry.rsi.rsi.1", "entry.macd.volatility.minimum");
+        result.EvaluationShortCircuited.Should().BeFalse();
     }
 
     [TestMethod]

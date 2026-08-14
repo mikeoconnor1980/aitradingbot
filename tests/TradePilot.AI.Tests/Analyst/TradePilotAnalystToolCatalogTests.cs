@@ -9,6 +9,7 @@ using TradePilot.Application.MarketAnalysis.Models;
 using TradePilot.Application.MarketAnalysis.Queries;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Application.MarketData.Queries;
+using TradePilot.Application.StrategyEvaluations.Queries;
 using TradePilot.Domain.Entities;
 using TradePilot.Domain.Enums;
 
@@ -24,6 +25,8 @@ public sealed class TradePilotAnalystToolCatalogTests
     private Mock<IExchangeResolver> _exchangeResolver = null!;
     private Mock<IUserWalletAddressRepository> _walletRepository = null!;
     private Mock<IUserExchangeCredentialRepository> _credentialRepository = null!;
+    private Mock<IStrategyRepository> _strategyRepository = null!;
+    private Strategy _strategy = null!;
     private TradePilotAnalystToolCatalog _sut = null!;
 
     [TestInitialize]
@@ -33,6 +36,8 @@ public sealed class TradePilotAnalystToolCatalogTests
         _exchangeResolver = new Mock<IExchangeResolver>();
         _walletRepository = new Mock<IUserWalletAddressRepository>();
         _credentialRepository = new Mock<IUserExchangeCredentialRepository>();
+        _strategyRepository = new Mock<IStrategyRepository>();
+        _strategy = Strategy.Create(UserId.ToString(), "v10.4", "signal", "{}");
         _exchangeResolver
             .Setup(resolver => resolver.GetCurrentExchangeAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Exchange.Hyperliquid);
@@ -42,12 +47,24 @@ public sealed class TradePilotAnalystToolCatalogTests
                 Exchange.Hyperliquid,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(UserWalletAddress.Create(UserId, WalletAddress));
+        _strategyRepository
+            .Setup(repository => repository.SearchIdsByNameAsync("v10.4", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([_strategy.Id]);
+        _strategyRepository
+            .Setup(repository => repository.GetByIdsAsync(
+                It.Is<IReadOnlyList<Guid>>(ids => ids.SequenceEqual(new[] { _strategy.Id })),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([_strategy]);
+        _strategyRepository
+            .Setup(repository => repository.GetByIdAsync(_strategy.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(_strategy);
 
         _sut = new TradePilotAnalystToolCatalog(
             _sender.Object,
             _exchangeResolver.Object,
             _walletRepository.Object,
             _credentialRepository.Object,
+            _strategyRepository.Object,
             NullLogger<TradePilotAnalystToolCatalog>.Instance);
     }
 
@@ -63,6 +80,9 @@ public sealed class TradePilotAnalystToolCatalogTests
             "get_positions",
             "get_open_orders",
             "get_recent_fills",
+            "get_strategy_evaluations",
+            "get_latest_strategy_evaluation",
+            "get_strategy_evaluation_summary",
         ]);
         _sut.Definitions.Select(definition => definition.Name).Should().NotContain(
         ["place_order", "cancel_order", "close_position", "change_risk", "deploy_strategy", "withdraw", "transfer"]);
@@ -206,6 +226,50 @@ public sealed class TradePilotAnalystToolCatalogTests
         _sender.Verify(sender => sender.Send(It.IsAny<AnalyseMarketQuery>(), cancellation.Token), Times.Once);
     }
 
+    [TestMethod]
+    public async Task GivenLatestStrategyEvaluationTool_WhenExecuted_ThenExactApplicationCapabilityAndEvidenceArePreserved()
+    {
+        var evaluation = CreateStrategyEvaluation();
+        _sender
+            .Setup(sender => sender.Send(
+                It.Is<GetLatestStrategyEvaluationQuery>(query =>
+                    query.StrategyId == _strategy.Id
+                    && query.StrategyName == null
+                    && query.StrategyVersion == 4
+                    && query.Symbol == "BTC"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(evaluation);
+
+        var result = await _sut.ExecuteAsync(
+            "get_latest_strategy_evaluation",
+            "{\"strategyName\":\"v10.4\",\"strategyVersion\":4,\"symbol\":\"BTC\"}",
+            new AnalystToolContext(UserId),
+            CancellationToken.None);
+
+        result.Succeeded.Should().BeTrue();
+        result.Result!.Value.GetProperty("decision").GetString().Should().Be("no_trade");
+        result.Result.Value.GetProperty("rules")[0].GetProperty("ruleId").GetString().Should().Be("entry.rsi.max");
+        result.Result.Value.GetProperty("rules")[0].GetProperty("actualNumericValue").GetDecimal().Should().Be(67.3m);
+    }
+
+    [TestMethod]
+    public async Task GivenNoRecordedEvaluation_WhenLatestToolExecuted_ThenMissingEvidenceErrorIsReturned()
+    {
+        _sender
+            .Setup(sender => sender.Send(It.IsAny<GetLatestStrategyEvaluationQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((StrategyEvaluation?)null);
+
+        var result = await _sut.ExecuteAsync(
+            "get_latest_strategy_evaluation",
+            "{\"strategyName\":\"v10.4\",\"symbol\":\"BTC\"}",
+            new AnalystToolContext(UserId),
+            CancellationToken.None);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Code.Should().Be("no_evaluation_evidence");
+        result.Error.Message.Should().Contain("No recorded strategy evaluation");
+    }
+
     private static MarketAnalysisResult CreateAnalysis()
     {
         return new MarketAnalysisResult(
@@ -246,5 +310,41 @@ public sealed class TradePilotAnalystToolCatalogTests
                 [],
                 [],
                 []));
+    }
+
+    private static StrategyEvaluation CreateStrategyEvaluation()
+    {
+        return StrategyEvaluation.Create(
+            Guid.NewGuid(),
+            "v10.4",
+            4,
+            new string('a', 64),
+            "BTC",
+            "15m",
+            1_000,
+            StrategyDecision.NoTrade,
+            false,
+            "RSI 67.3 exceeded 62.",
+            1_000,
+            60_000m,
+            "Normal",
+            null,
+            null,
+            false,
+            [
+                RuleEvaluation.Create(
+                    0,
+                    "entry.rsi.max",
+                    "Maximum RSI",
+                    RuleCategory.Momentum,
+                    false,
+                    "RSI 67.3 exceeded 62.",
+                    true,
+                    RuleEvaluationKind.Blocking,
+                    "67.3",
+                    67.3m,
+                    "<= 62",
+                    62m)
+            ]);
     }
 }

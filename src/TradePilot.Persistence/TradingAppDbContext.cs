@@ -18,6 +18,8 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<OptimizationResult> OptimizationResults => Set<OptimizationResult>();
     public DbSet<Strategy> Strategies => Set<Strategy>();
     public DbSet<StrategyRevision> StrategyRevisions => Set<StrategyRevision>();
+    public DbSet<StrategyEvaluation> StrategyEvaluations => Set<StrategyEvaluation>();
+    public DbSet<RuleEvaluation> RuleEvaluations => Set<RuleEvaluation>();
     public DbSet<StrategyReview> StrategyReviews => Set<StrategyReview>();
     public DbSet<MacroEvent> MacroEvents => Set<MacroEvent>();
     public DbSet<MacroSyncRun> MacroSyncRuns => Set<MacroSyncRun>();
@@ -391,6 +393,63 @@ public sealed class TradePilotDbContext : DbContext
             entity.HasIndex(revision => new { revision.StrategyId, revision.RevisionNumber })
                 .IsUnique()
                 .HasDatabaseName("IX_StrategyRevisions_StrategyId_RevisionNumber");
+        });
+
+        modelBuilder.Entity<StrategyEvaluation>(entity =>
+        {
+            entity.ToTable("StrategyEvaluations");
+
+            entity.HasKey(evaluation => evaluation.Id);
+            entity.Property(evaluation => evaluation.Id).ValueGeneratedNever();
+            entity.Property(evaluation => evaluation.StrategyName).HasMaxLength(100).IsRequired();
+            entity.Property(evaluation => evaluation.ConfigurationIdentity).HasMaxLength(64).IsRequired();
+            entity.Property(evaluation => evaluation.Symbol).HasMaxLength(20).IsRequired();
+            entity.Property(evaluation => evaluation.Timeframe).HasMaxLength(10).IsRequired();
+            entity.Property(evaluation => evaluation.Decision).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(evaluation => evaluation.PrimaryRejectionReason).HasMaxLength(1000);
+            entity.Property(evaluation => evaluation.ReferencePrice).HasConversion<double>();
+            entity.Property(evaluation => evaluation.MarketRegime).HasMaxLength(30);
+            entity.Property(evaluation => evaluation.SignalType).HasMaxLength(50);
+            entity.Property(evaluation => evaluation.SignalReason).HasMaxLength(1000);
+
+            entity.HasMany(evaluation => evaluation.Rules)
+                .WithOne()
+                .HasForeignKey(rule => rule.StrategyEvaluationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Navigation(evaluation => evaluation.Rules)
+                .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+            entity.HasIndex(evaluation => new { evaluation.StrategyId, evaluation.Symbol, evaluation.EvaluatedAtUtc })
+                .HasDatabaseName("IX_StrategyEvaluations_StrategyId_Symbol_EvaluatedAtUtc");
+            entity.HasIndex(evaluation => new { evaluation.StrategyName, evaluation.Symbol, evaluation.EvaluatedAtUtc })
+                .HasDatabaseName("IX_StrategyEvaluations_StrategyName_Symbol_EvaluatedAtUtc");
+            entity.HasIndex(evaluation => evaluation.EvaluatedAtUtc)
+                .HasDatabaseName("IX_StrategyEvaluations_EvaluatedAtUtc");
+        });
+
+        modelBuilder.Entity<RuleEvaluation>(entity =>
+        {
+            entity.ToTable("RuleEvaluations");
+
+            entity.HasKey(rule => rule.Id);
+            entity.Property(rule => rule.Id).ValueGeneratedNever();
+            entity.Property(rule => rule.RuleId).HasMaxLength(200).IsRequired();
+            entity.Property(rule => rule.Name).HasMaxLength(200).IsRequired();
+            entity.Property(rule => rule.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(rule => rule.ActualValue).HasMaxLength(500);
+            entity.Property(rule => rule.ActualNumericValue).HasConversion<double?>();
+            entity.Property(rule => rule.ExpectedValue).HasMaxLength(500);
+            entity.Property(rule => rule.ExpectedNumericValue).HasConversion<double?>();
+            entity.Property(rule => rule.Unit).HasMaxLength(30);
+            entity.Property(rule => rule.Reason).HasMaxLength(1000).IsRequired();
+            entity.Property(rule => rule.Kind).HasConversion<string>().HasMaxLength(30).IsRequired();
+
+            entity.HasIndex(rule => new { rule.StrategyEvaluationId, rule.EvaluationOrder })
+                .IsUnique()
+                .HasDatabaseName("IX_RuleEvaluations_StrategyEvaluationId_EvaluationOrder");
+            entity.HasIndex(rule => new { rule.RuleId, rule.Passed, rule.IsBlocking })
+                .HasDatabaseName("IX_RuleEvaluations_RuleId_Passed_IsBlocking");
         });
 
         modelBuilder.Entity<StrategyReview>(entity =>

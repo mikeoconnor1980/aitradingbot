@@ -101,11 +101,11 @@ public sealed class BacktestRunnerTests
 
         _strategyEngineMock
             .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new StrategyEvaluation { SetupDetected = false });
+            .ReturnsAsync(new StrategyEvaluationResult { SetupDetected = false });
 
         _gridControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -114,12 +114,12 @@ public sealed class BacktestRunnerTests
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
         _riskEngineMock
-            .Setup(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<TradingSignal>());
+            .Setup(engine => engine.ValidateWithEvidenceAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RiskValidationResult([], []));
 
         _signalControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -289,7 +289,7 @@ public sealed class BacktestRunnerTests
 
         _gridControllerMock
             .SetupSequence(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),

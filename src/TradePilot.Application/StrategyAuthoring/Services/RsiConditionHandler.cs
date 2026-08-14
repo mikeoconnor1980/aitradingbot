@@ -61,7 +61,11 @@ public sealed class RsiConditionHandler : IConditionHandler
         {
             ConditionId = conditionId,
             Passed = passed,
-            Reason = $"RSI({period}) = {FormatValue(currentRsi)} {operatorSymbol} {FormatValue(threshold)} - {status}"
+            Reason = $"RSI({period}) = {FormatValue(currentRsi)} {operatorSymbol} {FormatValue(threshold)} - {status}",
+            ActualValue = FormatValue(currentRsi),
+            ActualNumericValue = currentRsi,
+            ExpectedValue = $"{operatorSymbol} {FormatValue(threshold)}",
+            ExpectedNumericValue = threshold,
         };
     }
 
@@ -99,7 +103,11 @@ public sealed class RsiConditionHandler : IConditionHandler
         {
             ConditionId = conditionId,
             Passed = passed,
-            Reason = $"RSI({rsi.Period}) prev={FormatValue(previousRsi.Value)} curr={FormatValue(currentRsi.Value)} {direction} {FormatValue(rsi.Value)} - {status}"
+            Reason = $"RSI({rsi.Period}) prev={FormatValue(previousRsi.Value)} curr={FormatValue(currentRsi.Value)} {direction} {FormatValue(rsi.Value)} - {status}",
+            ActualValue = $"previous={FormatValue(previousRsi.Value)}, current={FormatValue(currentRsi.Value)}",
+            ActualNumericValue = currentRsi.Value,
+            ExpectedValue = $"{direction} {FormatValue(rsi.Value)}",
+            ExpectedNumericValue = rsi.Value,
         };
     }
 

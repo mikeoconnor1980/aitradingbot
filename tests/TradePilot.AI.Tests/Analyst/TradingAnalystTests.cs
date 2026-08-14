@@ -16,6 +16,7 @@ public sealed class TradingAnalystTests
         Definition("analyse_market_multi_timeframe"),
         Definition("get_account_summary"),
         Definition("get_positions"),
+        Definition("get_latest_strategy_evaluation"),
     ];
 
     [TestMethod]
@@ -76,6 +77,74 @@ public sealed class TradingAnalystTests
         result.Succeeded.Should().BeTrue();
         order.Should().Equal("get_positions", "analyse_market_multi_timeframe");
         result.ToolInvocations.Should().HaveCount(2);
+    }
+
+    [TestMethod]
+    public async Task GivenWhyStrategyDidNotTrade_WhenLlmRequestsEvidence_ThenLatestEvaluationIsUsedInsteadOfMarketAnalysis()
+    {
+        var llm = new FakeAnalystLlmClient(
+            ToolResponse(Call(
+                "evaluation",
+                "get_latest_strategy_evaluation",
+                "{\"strategyName\":\"v10.4\",\"symbol\":\"BTC\"}")),
+            FinalResponse("The recorded RSI rule blocked the setup."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "get_latest_strategy_evaluation",
+                It.IsAny<string>(),
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Success(new
+            {
+                decision = "no_trade",
+                primaryRejectionReason = "RSI 67.3 exceeded 62.",
+                rules = new[] { new { ruleId = "entry.rsi.max", passed = false } },
+            }));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("Why didn't v10.4 trade BTC?"),
+            CancellationToken.None);
+
+        result.Response.Should().Be("The recorded RSI rule blocked the setup.");
+        result.ToolInvocations.Should().ContainSingle(invocation =>
+            invocation.ToolName == "get_latest_strategy_evaluation" && invocation.Succeeded);
+        catalog.Verify(service => service.ExecuteAsync(
+            "analyse_market_multi_timeframe",
+            It.IsAny<string>(),
+            It.IsAny<AnalystToolContext>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        llm.Requests[1].Messages.Should().Contain(message =>
+            message.Role == "tool" && message.Content!.Contains("entry.rsi.max", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task GivenWhyStrategyDidNotTradeWithoutEvidence_WhenLlmContinues_ThenMissingEvidenceIsReturnedForHonestAnswer()
+    {
+        var llm = new FakeAnalystLlmClient(
+            ToolResponse(Call(
+                "evaluation",
+                "get_latest_strategy_evaluation",
+                "{\"strategyName\":\"v10.4\",\"symbol\":\"BTC\"}")),
+            FinalResponse("No recorded strategy evaluation was available for that period."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "get_latest_strategy_evaluation",
+                It.IsAny<string>(),
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(AnalystToolResult.Failure(
+                "no_evaluation_evidence",
+                "No recorded strategy evaluation was available for the requested strategy and period."));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("Why didn't v10.4 trade BTC last Tuesday?"),
+            CancellationToken.None);
+
+        result.Response.Should().Be("No recorded strategy evaluation was available for that period.");
+        result.ToolInvocations.Should().ContainSingle(invocation =>
+            invocation.ErrorCode == "no_evaluation_evidence");
     }
 
     [TestMethod]

@@ -477,7 +477,7 @@ public sealed class AgentCheckInService : BackgroundService
                 _activeSession = null;
             }
 
-            session = CreateSession(command.StrategyConfig);
+            session = CreateSession(command.StrategyConfig, command.StrategyId, command.StrategyVersion);
             _activeSession = session;
         }
         finally
@@ -1025,7 +1025,10 @@ public sealed class AgentCheckInService : BackgroundService
 
             var strategyToRestart = _activeSession is not null &&
                 ResolveStrategyExchange(_activeSession.StrategyConfig) == Exchange.Hyperliquid
-                ? _activeSession.StrategyConfig
+                ? new RestartStrategy(
+                    _activeSession.StrategyConfig,
+                    _activeSession.StrategyId,
+                    _activeSession.StrategyVersion)
                 : null;
 
             if (strategyToRestart is not null)
@@ -1052,7 +1055,10 @@ public sealed class AgentCheckInService : BackgroundService
 
             if (strategyToRestart is not null)
             {
-                replacementSession = CreateSession(strategyToRestart);
+                replacementSession = CreateSession(
+                    strategyToRestart.Config,
+                    strategyToRestart.StrategyId,
+                    strategyToRestart.StrategyVersion);
                 _activeSession = replacementSession;
             }
         }
@@ -1064,7 +1070,10 @@ public sealed class AgentCheckInService : BackgroundService
         replacementSession?.Start();
     }
 
-    private TradingSession CreateSession(StrategyConfig strategyConfig)
+    private TradingSession CreateSession(
+        StrategyConfig strategyConfig,
+        Guid? strategyId = null,
+        int? strategyVersion = null)
     {
         var exchange = ResolveStrategyExchange(strategyConfig);
         var gridState = new GridState();
@@ -1153,7 +1162,9 @@ public sealed class AgentCheckInService : BackgroundService
             triggerOrderManager,
             _serviceProvider.GetRequiredService<IOptions<RiskLimitsConfig>>(),
             _executionLogger,
-            _serviceProvider.GetRequiredService<IDcaController>());
+            _serviceProvider.GetRequiredService<IDcaController>(),
+            strategyId,
+            strategyVersion);
     }
 
     private async Task<Exchange> ResolveCommandExchangeAsync(CancellationToken cancellationToken = default)
@@ -1184,6 +1195,8 @@ public sealed class AgentCheckInService : BackgroundService
         var version = assembly?.GetName().Version;
         return version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
     }
+
+    private sealed record RestartStrategy(StrategyConfig Config, Guid? StrategyId, int? StrategyVersion);
 
     public override void Dispose()
     {

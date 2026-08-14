@@ -79,7 +79,8 @@ public sealed class ConditionEvaluator : IConditionEvaluator
             {
                 ConditionId = condition.Id,
                 Passed = true,
-                Reason = $"No handler for condition type '{condition.Type}' - skipped."
+                Reason = $"No handler for condition type '{condition.Type}' - skipped.",
+                WasEvaluated = false,
             });
         }
 

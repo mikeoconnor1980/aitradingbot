@@ -9,7 +9,7 @@ namespace TradePilot.Application.Abstractions.Services;
 public interface IGridController
 {
     Task<IReadOnlyList<TradingSignal>> ProcessAsync(
-        StrategyEvaluation evaluation,
+        StrategyEvaluationResult evaluation,
         MarketContext context,
         GridState gridState,
         PositionState positionState,

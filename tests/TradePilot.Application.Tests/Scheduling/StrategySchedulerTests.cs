@@ -8,6 +8,7 @@ using TradePilot.Application.Scheduling;
 using TradePilot.Application.Scheduling.Models;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
 using TradePilot.Domain.Trading;
 
 namespace TradePilot.Application.Tests.Scheduling;
@@ -163,11 +164,11 @@ public sealed class StrategySchedulerTests
 
         _strategyEngineMock
             .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new StrategyEvaluation { SetupDetected = true });
+            .ReturnsAsync(new StrategyEvaluationResult { SetupDetected = true });
 
         _gridControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -176,12 +177,12 @@ public sealed class StrategySchedulerTests
             .ReturnsAsync(Array.Empty<TradingSignal>());
 
         _riskEngineMock
-            .Setup(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<TradingSignal>());
+            .Setup(engine => engine.ValidateWithEvidenceAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RiskValidationResult([], []));
 
         _signalControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -191,7 +192,7 @@ public sealed class StrategySchedulerTests
 
         _dcaControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -215,7 +216,7 @@ public sealed class StrategySchedulerTests
             It.IsAny<CancellationToken>()), Times.Never);
         _strategyEngineMock.Verify(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), It.IsAny<IStrategyConfig>(), It.IsAny<CancellationToken>()), Times.Never);
         _gridControllerMock.Verify(controller => controller.ProcessAsync(
-            It.IsAny<StrategyEvaluation>(),
+            It.IsAny<StrategyEvaluationResult>(),
             It.IsAny<MarketContext>(),
             It.IsAny<GridState>(),
             It.IsAny<PositionState>(),
@@ -244,7 +245,7 @@ public sealed class StrategySchedulerTests
             LatestFourHourCandle = null,
             Indicators = new IndicatorSnapshot()
         };
-        var evaluation = new StrategyEvaluation { SetupDetected = true };
+        var evaluation = new StrategyEvaluationResult { SetupDetected = true };
         IReadOnlyList<TradingSignal> signals =
         [
             new TradingSignal
@@ -281,9 +282,9 @@ public sealed class StrategySchedulerTests
             .ReturnsAsync(signals);
 
         _riskEngineMock
-            .Setup(engine => engine.ValidateAsync(signals, cancellationToken))
+            .Setup(engine => engine.ValidateWithEvidenceAsync(signals, cancellationToken))
             .Callback(() => callOrder.Add("risk"))
-            .ReturnsAsync(signals);
+            .ReturnsAsync(new RiskValidationResult(signals, []));
 
         _positionManagerMock
             .Setup(manager => manager.ExecuteSignalsAsync(signals, cancellationToken))
@@ -311,7 +312,7 @@ public sealed class StrategySchedulerTests
 
         _signalControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -321,7 +322,7 @@ public sealed class StrategySchedulerTests
 
         _gridControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -337,7 +338,7 @@ public sealed class StrategySchedulerTests
 
         _gridControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -347,7 +348,7 @@ public sealed class StrategySchedulerTests
 
         _signalControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -374,7 +375,7 @@ public sealed class StrategySchedulerTests
 
         _dcaControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -384,7 +385,7 @@ public sealed class StrategySchedulerTests
 
         _gridControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -489,7 +490,7 @@ public sealed class StrategySchedulerTests
     {
         _gridControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -499,7 +500,7 @@ public sealed class StrategySchedulerTests
 
         await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
 
-        _riskEngineMock.Verify(engine => engine.ValidateAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
+        _riskEngineMock.Verify(engine => engine.ValidateWithEvidenceAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
         _positionManagerMock.Verify(manager => manager.ExecuteSignalsAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -517,7 +518,7 @@ public sealed class StrategySchedulerTests
 
         _gridControllerMock
             .Setup(controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.IsAny<MarketContext>(),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -526,8 +527,8 @@ public sealed class StrategySchedulerTests
             .ReturnsAsync(signals);
 
         _riskEngineMock
-            .Setup(engine => engine.ValidateAsync(signals, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Array.Empty<TradingSignal>());
+            .Setup(engine => engine.ValidateWithEvidenceAsync(signals, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RiskValidationResult([], []));
 
         await _sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
 
@@ -588,7 +589,7 @@ public sealed class StrategySchedulerTests
         _riskEngineMock.Verify(engine => engine.UpdateDrawdownState(0.50m, false), Times.Once);
         _gridControllerMock.Verify(
             controller => controller.ProcessAsync(
-                It.IsAny<StrategyEvaluation>(),
+                It.IsAny<StrategyEvaluationResult>(),
                 It.Is<MarketContext>(context => context.DrawdownScalingFactor == 0.50m),
                 It.IsAny<GridState>(),
                 It.IsAny<PositionState>(),
@@ -623,6 +624,179 @@ public sealed class StrategySchedulerTests
         strategy.HighWaterMarkUsd.Should().Be(10_500m);
         _strategyRepositoryMock.Verify(
             repository => repository.UpdateAsync(strategy, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenFailedRule_WhenCandleEvaluated_ThenVersionedNoTradeEvidenceIsPersisted()
+    {
+        var strategyId = Guid.NewGuid();
+        var repository = new Mock<IStrategyEvaluationRepository>();
+        TradePilot.Domain.Entities.StrategyEvaluation? persisted = null;
+        repository
+            .Setup(value => value.AddAsync(It.IsAny<TradePilot.Domain.Entities.StrategyEvaluation>(), It.IsAny<CancellationToken>()))
+            .Callback<TradePilot.Domain.Entities.StrategyEvaluation, CancellationToken>((evaluation, _) => persisted = evaluation)
+            .Returns(Task.CompletedTask);
+        _strategyEngineMock
+            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), TestConfig, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StrategyEvaluationResult
+            {
+                SetupDetected = false,
+                Reason = "RSI 67.3 exceeded 62.",
+                Rules =
+                [
+                    new RuleEvaluationResult(
+                        "entry.rsi.max",
+                        "Maximum RSI",
+                        RuleCategory.Momentum,
+                        false,
+                        "RSI 67.3 exceeded 62.",
+                        true,
+                        ActualValue: "67.3",
+                        ActualNumericValue: 67.3m,
+                        ExpectedValue: "<= 62",
+                        ExpectedNumericValue: 62m)
+                ]
+            });
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            TestConfig,
+            strategyEvaluationRepository: repository.Object,
+            strategyId: strategyId,
+            strategyVersion: 4);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        persisted.Should().NotBeNull();
+        persisted!.StrategyId.Should().Be(strategyId);
+        persisted.StrategyVersion.Should().Be(4);
+        persisted.ConfigurationIdentity.Should().HaveLength(64);
+        persisted.Symbol.Should().Be("BTC");
+        persisted.EvaluatedAtUtc.Should().Be(1_000);
+        persisted.MarketContextTimestampUtc.Should().Be(1_000);
+        persisted.Decision.Should().Be(StrategyDecision.NoTrade);
+        persisted.PrimaryRejectionReason.Should().Be("RSI 67.3 exceeded 62.");
+        persisted.Rules.Should().ContainSingle(rule =>
+            rule.RuleId == "entry.rsi.max"
+            && rule.ActualNumericValue == 67.3m
+            && rule.ExpectedNumericValue == 62m);
+    }
+
+    [TestMethod]
+    public async Task GivenSetupPassesButRiskRejects_WhenCandleEvaluated_ThenRejectedByRiskIsPersisted()
+    {
+        var repository = new Mock<IStrategyEvaluationRepository>();
+        TradePilot.Domain.Entities.StrategyEvaluation? persisted = null;
+        repository
+            .Setup(value => value.AddAsync(It.IsAny<TradePilot.Domain.Entities.StrategyEvaluation>(), It.IsAny<CancellationToken>()))
+            .Callback<TradePilot.Domain.Entities.StrategyEvaluation, CancellationToken>((evaluation, _) => persisted = evaluation)
+            .Returns(Task.CompletedTask);
+        IReadOnlyList<TradingSignal> signals =
+        [
+            new TradingSignal { SignalType = "DeployGrid", Symbol = "BTC", Reason = "Setup passed." }
+        ];
+        _gridControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluationResult>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                TestConfig,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(signals);
+        _riskEngineMock
+            .Setup(engine => engine.ValidateWithEvidenceAsync(signals, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RiskValidationResult(
+                [],
+                [
+                    new RuleEvaluationResult(
+                        "risk.portfolio_heat",
+                        "Maximum portfolio heat",
+                        RuleCategory.Risk,
+                        false,
+                        "Projected portfolio heat exceeded 10%.",
+                        true,
+                        RuleEvaluationKind.RiskOverride)
+                ]));
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            TestConfig,
+            strategyEvaluationRepository: repository.Object);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        persisted!.SetupDetected.Should().BeTrue();
+        persisted.Decision.Should().Be(StrategyDecision.RejectedByRisk);
+        persisted.PrimaryRejectionReason.Should().Be("Projected portfolio heat exceeded 10%.");
+        persisted.SignalType.Should().Be("DeployGrid");
+        _positionManagerMock.Verify(
+            manager => manager.ExecuteSignalsAsync(It.IsAny<IReadOnlyList<TradingSignal>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenEntryRulesAndRiskPass_WhenCandleEvaluated_ThenEnterLongEvidenceIsPersistedWithoutChangingSignal()
+    {
+        var repository = new Mock<IStrategyEvaluationRepository>();
+        TradePilot.Domain.Entities.StrategyEvaluation? persisted = null;
+        repository
+            .Setup(value => value.AddAsync(It.IsAny<TradePilot.Domain.Entities.StrategyEvaluation>(), It.IsAny<CancellationToken>()))
+            .Callback<TradePilot.Domain.Entities.StrategyEvaluation, CancellationToken>((evaluation, _) => persisted = evaluation)
+            .Returns(Task.CompletedTask);
+        var entryRules = new[]
+        {
+            new RuleEvaluationResult(
+                "entry.rsi.max",
+                "Maximum RSI",
+                RuleCategory.Momentum,
+                true,
+                "RSI passed.",
+                true),
+        };
+        _strategyEngineMock
+            .Setup(engine => engine.EvaluateAsync(It.IsAny<MarketContext>(), TestConfig, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StrategyEvaluationResult { SetupDetected = true, Rules = entryRules });
+        IReadOnlyList<TradingSignal> signals =
+        [
+            new TradingSignal { SignalType = "DeployGrid", Symbol = "BTC", Reason = "Setup passed." }
+        ];
+        _gridControllerMock
+            .Setup(controller => controller.ProcessAsync(
+                It.IsAny<StrategyEvaluationResult>(),
+                It.IsAny<MarketContext>(),
+                It.IsAny<GridState>(),
+                It.IsAny<PositionState>(),
+                TestConfig,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(signals);
+        _riskEngineMock
+            .Setup(engine => engine.ValidateWithEvidenceAsync(signals, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RiskValidationResult(
+                signals,
+                [new RuleEvaluationResult("risk.validation", "Risk validation", RuleCategory.Risk, true, "Risk passed.", false, RuleEvaluationKind.RiskOverride)]));
+        var sut = new StrategyScheduler(
+            _contextBuilderMock.Object,
+            _strategyEngineMock.Object,
+            _gridControllerMock.Object,
+            _riskEngineMock.Object,
+            _positionManagerMock.Object,
+            TestConfig,
+            strategyEvaluationRepository: repository.Object);
+
+        await sut.HandleCandleClosedAsync(CreateEvent("15m"), null, null);
+
+        persisted!.Decision.Should().Be(StrategyDecision.EnterLong);
+        persisted.Rules.Should().HaveCount(2).And.OnlyContain(rule => rule.Passed);
+        _positionManagerMock.Verify(
+            manager => manager.ExecuteSignalsAsync(signals, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

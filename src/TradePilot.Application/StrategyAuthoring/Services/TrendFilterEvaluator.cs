@@ -174,6 +174,10 @@ public sealed class TrendFilterEvaluator : ITrendFilterEvaluator
         {
             Passed = passed,
             Reason = $"{leftLabel} = {Format(left)} {operatorSymbol} {rightLabel} = {Format(right)} - {status}",
+            ActualValue = Format(left),
+            ActualNumericValue = left,
+            ExpectedValue = $"{operatorSymbol} {rightLabel} ({Format(right)})",
+            ExpectedNumericValue = right,
         };
     }
 
@@ -201,6 +205,10 @@ public sealed class TrendFilterEvaluator : ITrendFilterEvaluator
             Passed = passed,
             Reason =
                 $"{leftLabel} prev={Format(previousLeft.Value)} curr={Format(currentLeft.Value)} {operatorLabel} {rightLabel} prev={Format(previousRight.Value)} curr={Format(currentRight.Value)} - {status}",
+            ActualValue = $"previous={Format(previousLeft.Value)}, current={Format(currentLeft.Value)}",
+            ActualNumericValue = currentLeft.Value,
+            ExpectedValue = $"{operatorLabel} {rightLabel}; previous={Format(previousRight.Value)}, current={Format(currentRight.Value)}",
+            ExpectedNumericValue = currentRight.Value,
         };
     }
 
@@ -237,6 +245,10 @@ public sealed class TrendFilterEvaluator : ITrendFilterEvaluator
             Passed = passed,
             Reason =
                 $"Price prev={Format(previousClose)} curr={Format(currentClose)} {direction} EMA({period}) prev={Format(previousEma.Value)} curr={Format(currentEma.Value)} - {status}",
+            ActualValue = $"previous={Format(previousClose)}, current={Format(currentClose)}",
+            ActualNumericValue = currentClose,
+            ExpectedValue = $"{direction} EMA({period}); previous={Format(previousEma.Value)}, current={Format(currentEma.Value)}",
+            ExpectedNumericValue = currentEma.Value,
         };
     }
 
