@@ -17,6 +17,7 @@ public sealed class FillProcessor : IFillProcessor
     private readonly ILiveFillRepository? _fillRepository;
     private readonly IGridCycleRepository? _gridCycleRepository;
     private readonly IExecutionEngine? _executionEngine;
+    private readonly ITradeJournalService? _tradeJournalService;
     private readonly string _userId;
     private readonly ILogger<FillProcessor> _logger;
 
@@ -35,7 +36,8 @@ public sealed class FillProcessor : IFillProcessor
         ILiveFillRepository? fillRepository = null,
         IGridCycleRepository? gridCycleRepository = null,
         string? userId = null,
-        IExecutionEngine? executionEngine = null)
+        IExecutionEngine? executionEngine = null,
+        ITradeJournalService? tradeJournalService = null)
     {
         _orderTracker = orderTracker ?? throw new ArgumentNullException(nameof(orderTracker));
         _gridState = gridState ?? throw new ArgumentNullException(nameof(gridState));
@@ -45,6 +47,7 @@ public sealed class FillProcessor : IFillProcessor
         _fillRepository = fillRepository;
         _gridCycleRepository = gridCycleRepository;
         _executionEngine = executionEngine;
+        _tradeJournalService = tradeJournalService;
         _userId = userId ?? string.Empty;
     }
 
@@ -55,8 +58,15 @@ public sealed class FillProcessor : IFillProcessor
         // Check if this fill is from an exchange-native protection trigger order
         if (_gridState.ProtectionOrders.IsProtectionOrderId(fill.OrderId))
         {
+            var exitReason = string.Equals(
+                fill.OrderId,
+                _gridState.ProtectionOrders.StopLossOrderId,
+                StringComparison.Ordinal)
+                    ? TradeExitReason.StopLoss
+                    : TradeExitReason.TakeProfit;
+            var sourceLifecycleId = _gridState.GridCycleId ?? "protection";
             ProcessProtectionTriggerFill(fill);
-            await PersistProtectionFillAsync(fill, cancellationToken);
+            await PersistProtectionFillAsync(fill, sourceLifecycleId, exitReason, cancellationToken);
             _riskEngine?.RecordOrdersClosed(1);
             _riskEngine?.RecordPositionClosed(fill.Asset);
             if (fill.ClosedPnl < 0m)
@@ -246,13 +256,17 @@ public sealed class FillProcessor : IFillProcessor
         }
     }
 
-    private async Task PersistProtectionFillAsync(FillEventDto fill, CancellationToken cancellationToken)
+    private async Task PersistProtectionFillAsync(
+        FillEventDto fill,
+        string sourceLifecycleId,
+        TradeExitReason exitReason,
+        CancellationToken cancellationToken)
     {
         try
         {
             if (_fillRepository is not null)
             {
-                await _fillRepository.AddAsync(new LiveFill
+                var liveFill = new LiveFill
                 {
                     Id = Guid.NewGuid(),
                     OrderId = fill.OrderId,
@@ -265,7 +279,20 @@ public sealed class FillProcessor : IFillProcessor
                     ClosedPnl = fill.ClosedPnl,
                     FilledAtUtc = fill.Timestamp,
                     UserId = _userId,
-                }, cancellationToken);
+                    GridCycleId = sourceLifecycleId,
+                    TradeType = TradeType.TakeProfit.ToString(),
+                    IsEntry = false,
+                };
+                await _fillRepository.AddAsync(liveFill, cancellationToken);
+                if (_tradeJournalService is not null)
+                {
+                    await _tradeJournalService.RecordFillAsync(
+                        liveFill,
+                        evidence: null,
+                        isExit: true,
+                        exitReason,
+                        cancellationToken);
+                }
             }
         }
         catch (Exception ex)
@@ -289,7 +316,7 @@ public sealed class FillProcessor : IFillProcessor
         {
             if (_fillRepository is not null)
             {
-                await _fillRepository.AddAsync(new LiveFill
+                var liveFill = new LiveFill
                 {
                     Id = Guid.NewGuid(),
                     OrderId = fill.OrderId,
@@ -302,7 +329,21 @@ public sealed class FillProcessor : IFillProcessor
                     ClosedPnl = fill.ClosedPnl,
                     FilledAtUtc = fill.Timestamp,
                     UserId = _userId,
-                }, cancellationToken);
+                    GridCycleId = tracked.GridCycleId,
+                    TradeType = tracked.TradeType.ToString(),
+                };
+                await _fillRepository.AddAsync(liveFill, cancellationToken);
+                if (_tradeJournalService is not null)
+                {
+                    var isExit = tracked.TradeType is TradeType.TakeProfit or TradeType.HedgeClose
+                        || fill.Direction.Contains("close", StringComparison.OrdinalIgnoreCase);
+                    await _tradeJournalService.RecordFillAsync(
+                        liveFill,
+                        tracked.Evidence,
+                        isExit,
+                        tracked.Evidence?.ExitReason,
+                        cancellationToken);
+                }
             }
 
             if (_orderRepository is not null)

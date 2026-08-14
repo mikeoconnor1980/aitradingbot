@@ -20,6 +20,7 @@ public sealed class TradePilotDbContext : DbContext
     public DbSet<StrategyRevision> StrategyRevisions => Set<StrategyRevision>();
     public DbSet<StrategyEvaluation> StrategyEvaluations => Set<StrategyEvaluation>();
     public DbSet<RuleEvaluation> RuleEvaluations => Set<RuleEvaluation>();
+    public DbSet<TradeJournalRecord> TradeJournalRecords => Set<TradeJournalRecord>();
     public DbSet<StrategyReview> StrategyReviews => Set<StrategyReview>();
     public DbSet<MacroEvent> MacroEvents => Set<MacroEvent>();
     public DbSet<MacroSyncRun> MacroSyncRuns => Set<MacroSyncRun>();
@@ -452,6 +453,53 @@ public sealed class TradePilotDbContext : DbContext
                 .HasDatabaseName("IX_RuleEvaluations_RuleId_Passed_IsBlocking");
         });
 
+        modelBuilder.Entity<TradeJournalRecord>(entity =>
+        {
+            entity.ToTable("TradeJournalRecords");
+            entity.HasKey(trade => trade.Id);
+            entity.Property(trade => trade.Id).ValueGeneratedNever();
+            entity.Property(trade => trade.UserId).HasMaxLength(100).IsRequired();
+            entity.Property(trade => trade.StrategyName).HasMaxLength(100).IsRequired();
+            entity.Property(trade => trade.ConfigurationIdentity).HasMaxLength(64).IsRequired();
+            entity.Property(trade => trade.Symbol).HasMaxLength(20).IsRequired();
+            entity.Property(trade => trade.Side).HasConversion<string>().HasMaxLength(10).IsRequired();
+            entity.Property(trade => trade.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(trade => trade.EntryPrice).HasConversion<double>();
+            entity.Property(trade => trade.ExitPrice).HasConversion<double?>();
+            entity.Property(trade => trade.EntryQuantity).HasConversion<double>();
+            entity.Property(trade => trade.ExitQuantity).HasConversion<double>();
+            entity.Property(trade => trade.Leverage).HasConversion<double?>();
+            entity.Property(trade => trade.GrossPnl).HasConversion<double>();
+            entity.Property(trade => trade.Fees).HasConversion<double>();
+            entity.Property(trade => trade.Funding).HasConversion<double?>();
+            entity.Property(trade => trade.NetPnl).HasConversion<double>();
+            entity.Property(trade => trade.MfeAmount).HasConversion<double?>();
+            entity.Property(trade => trade.MfePercent).HasConversion<double?>();
+            entity.Property(trade => trade.MaeAmount).HasConversion<double?>();
+            entity.Property(trade => trade.MaePercent).HasConversion<double?>();
+            entity.Property(trade => trade.ExitReason).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(trade => trade.EntryMarketRegime).HasMaxLength(30);
+            entity.Property(trade => trade.Timeframe).HasMaxLength(10).IsRequired();
+            entity.Property(trade => trade.SourceExchange).HasMaxLength(30).IsRequired();
+            entity.Property(trade => trade.SourceLifecycleId).HasMaxLength(100).IsRequired();
+
+            entity.HasOne(trade => trade.EntryStrategyEvaluation)
+                .WithMany()
+                .HasForeignKey(trade => trade.EntryStrategyEvaluationId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(trade => trade.ExitStrategyEvaluation)
+                .WithMany()
+                .HasForeignKey(trade => trade.ExitStrategyEvaluationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(trade => new { trade.UserId, trade.Status, trade.EntryTimeUtc })
+                .HasDatabaseName("IX_TradeJournalRecords_User_Status_EntryTimeUtc");
+            entity.HasIndex(trade => new { trade.StrategyId, trade.StrategyVersion, trade.ExitTimeUtc })
+                .HasDatabaseName("IX_TradeJournalRecords_Strategy_Version_ExitTimeUtc");
+            entity.HasIndex(trade => new { trade.UserId, trade.Symbol, trade.ExitTimeUtc })
+                .HasDatabaseName("IX_TradeJournalRecords_User_Symbol_ExitTimeUtc");
+        });
+
         modelBuilder.Entity<StrategyReview>(entity =>
         {
             entity.ToTable("StrategyReviews");
@@ -671,6 +719,19 @@ public sealed class TradePilotDbContext : DbContext
             entity.Property(e => e.UserId)
                 .HasMaxLength(100)
                 .IsRequired();
+
+            entity.Property(e => e.GridCycleId)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.Property(e => e.TradeType)
+                .HasMaxLength(30)
+                .IsRequired();
+
+            entity.HasOne<TradeJournalRecord>()
+                .WithMany()
+                .HasForeignKey(e => e.TradeJournalRecordId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(e => e.OrderId)
                 .HasDatabaseName("IX_LiveFills_OrderId");

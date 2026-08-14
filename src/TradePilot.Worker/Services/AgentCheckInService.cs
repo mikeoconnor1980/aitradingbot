@@ -477,7 +477,7 @@ public sealed class AgentCheckInService : BackgroundService
                 _activeSession = null;
             }
 
-            session = CreateSession(command.StrategyConfig, command.StrategyId, command.StrategyVersion);
+            session = CreateSessionWithEvidence(command.StrategyConfig, command.StrategyId, command.StrategyVersion);
             _activeSession = session;
         }
         finally
@@ -1055,7 +1055,7 @@ public sealed class AgentCheckInService : BackgroundService
 
             if (strategyToRestart is not null)
             {
-                replacementSession = CreateSession(
+                replacementSession = CreateSessionWithEvidence(
                     strategyToRestart.Config,
                     strategyToRestart.StrategyId,
                     strategyToRestart.StrategyVersion);
@@ -1070,10 +1070,15 @@ public sealed class AgentCheckInService : BackgroundService
         replacementSession?.Start();
     }
 
-    private TradingSession CreateSession(
+    private TradingSession CreateSession(StrategyConfig strategyConfig)
+    {
+        return CreateSessionWithEvidence(strategyConfig, null, null);
+    }
+
+    private TradingSession CreateSessionWithEvidence(
         StrategyConfig strategyConfig,
-        Guid? strategyId = null,
-        int? strategyVersion = null)
+        Guid? strategyId,
+        int? strategyVersion)
     {
         var exchange = ResolveStrategyExchange(strategyConfig);
         var gridState = new GridState();
@@ -1125,7 +1130,8 @@ public sealed class AgentCheckInService : BackgroundService
             scope.ServiceProvider.GetService<ILiveFillRepository>(),
             scope.ServiceProvider.GetService<IGridCycleRepository>(),
             userId,
-            executionEngine);
+            executionEngine,
+            scope.ServiceProvider.GetService<ITradeJournalService>());
 
         positionManager.ConfigureRepositories(
             scope.ServiceProvider.GetService<IGridCycleRepository>(),

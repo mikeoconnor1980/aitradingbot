@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Persistence.Repositories;
 using TradePilot.Persistence.Seeding;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.TradeJournal.Services;
 
 namespace TradePilot.Persistence;
 
@@ -29,6 +31,8 @@ public static class PersistenceServiceExtensions
         services.AddScoped<IStrategyRepository, StrategyRepository>();
         services.AddScoped<IStrategyRevisionRepository, StrategyRevisionRepository>();
         services.AddScoped<IStrategyEvaluationRepository, StrategyEvaluationRepository>();
+        services.AddScoped<ITradeJournalRepository, TradeJournalRepository>();
+        services.AddScoped<ITradeJournalService, TradeJournalService>();
         services.AddScoped<IStrategyReviewRepository, StrategyReviewRepository>();
         services.AddScoped<IStrategyTemplateRepository, StrategyTemplateRepository>();
         services.AddScoped<ILiveOrderRepository, LiveOrderRepository>();

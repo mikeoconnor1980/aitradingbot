@@ -17,6 +17,9 @@ public sealed class TradingAnalystTests
         Definition("get_account_summary"),
         Definition("get_positions"),
         Definition("get_latest_strategy_evaluation"),
+        Definition("get_recent_trades"),
+        Definition("get_trade_analytics"),
+        Definition("get_strategy_trade_analytics"),
     ];
 
     [TestMethod]
@@ -145,6 +148,79 @@ public sealed class TradingAnalystTests
         result.Response.Should().Be("No recorded strategy evaluation was available for that period.");
         result.ToolInvocations.Should().ContainSingle(invocation =>
             invocation.ErrorCode == "no_evaluation_evidence");
+    }
+
+    [TestMethod]
+    public async Task GivenWeeklyPerformanceQuestion_WhenLlmRequestsTradeAnalytics_ThenServerCalculatedFactsAreUsed()
+    {
+        var llm = new FakeAnalystLlmClient(
+            ToolResponse(Call("analytics", "get_trade_analytics", "{\"from\":\"2026-08-10T00:00:00Z\"}")),
+            FinalResponse("You made $42 net across five completed trades."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "get_trade_analytics",
+                It.IsAny<string>(),
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Success(new { tradeCount = 5, netPnl = 42m, winRate = 60m }));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("How did I perform this week?", Guid.NewGuid()),
+            CancellationToken.None);
+
+        result.ToolInvocations.Should().ContainSingle(invocation =>
+            invocation.ToolName == "get_trade_analytics" && invocation.Succeeded);
+        result.Response.Should().Contain("$42");
+    }
+
+    [TestMethod]
+    public async Task GivenWorstBtcTradeQuestion_WhenLlmRequestsLosingTrades_ThenBoundedJournalToolIsUsed()
+    {
+        var llm = new FakeAnalystLlmClient(
+            ToolResponse(Call("loss", "get_recent_trades", "{\"symbol\":\"BTC\",\"outcome\":\"loser\",\"limit\":1}")),
+            FinalResponse("Your worst recorded BTC trade lost $25 net."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "get_recent_trades",
+                It.IsAny<string>(),
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Success(new { trades = new[] { new { symbol = "BTC", netPnl = -25m } } }));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("Show me my worst BTC trade.", Guid.NewGuid()),
+            CancellationToken.None);
+
+        result.ToolInvocations.Should().ContainSingle(invocation => invocation.ToolName == "get_recent_trades");
+    }
+
+    [TestMethod]
+    public async Task GivenVersionComparisonQuestion_WhenLlmRequestsGroupedAnalytics_ThenNoTradeListArithmeticIsNeeded()
+    {
+        var llm = new FakeAnalystLlmClient(
+            ToolResponse(Call("versions", "get_strategy_trade_analytics", "{\"strategyName\":\"v10.4\"}")),
+            FinalResponse("Version 5 has the stronger recorded profit factor."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "get_strategy_trade_analytics",
+                It.IsAny<string>(),
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Success(new { byStrategyVersion = new[] { new { key = "5", profitFactor = 2m } } }));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("Which strategy version performs best?", Guid.NewGuid()),
+            CancellationToken.None);
+
+        result.ToolInvocations.Should().ContainSingle(invocation => invocation.ToolName == "get_strategy_trade_analytics");
+        catalog.Verify(service => service.ExecuteAsync(
+            "get_recent_trades",
+            It.IsAny<string>(),
+            It.IsAny<AnalystToolContext>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [TestMethod]

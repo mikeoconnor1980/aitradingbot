@@ -9,7 +9,8 @@ public sealed class InMemoryOrderTracker : IOrderTracker
     private readonly ConcurrentDictionary<string, TrackedOrder> _orders = new();
 
     public void TrackOrder(string orderId, string gridCycleId, int level, string symbol,
-        OrderSide side, decimal price, decimal size, TradeType tradeType)
+        OrderSide side, decimal price, decimal size, TradeType tradeType,
+        TradeExecutionEvidence? evidence = null)
     {
         if (string.IsNullOrEmpty(orderId)) return;
 
@@ -23,6 +24,7 @@ public sealed class InMemoryOrderTracker : IOrderTracker
             Price = price,
             Size = size,
             TradeType = tradeType,
+            Evidence = evidence,
         };
     }
 

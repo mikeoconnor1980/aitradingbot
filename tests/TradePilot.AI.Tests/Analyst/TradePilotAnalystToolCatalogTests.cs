@@ -10,6 +10,8 @@ using TradePilot.Application.MarketAnalysis.Queries;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Application.MarketData.Queries;
 using TradePilot.Application.StrategyEvaluations.Queries;
+using TradePilot.Application.TradeJournal.Models;
+using TradePilot.Application.TradeJournal.Queries;
 using TradePilot.Domain.Entities;
 using TradePilot.Domain.Enums;
 
@@ -83,6 +85,10 @@ public sealed class TradePilotAnalystToolCatalogTests
             "get_strategy_evaluations",
             "get_latest_strategy_evaluation",
             "get_strategy_evaluation_summary",
+            "get_recent_trades",
+            "get_trade",
+            "get_trade_analytics",
+            "get_strategy_trade_analytics",
         ]);
         _sut.Definitions.Select(definition => definition.Name).Should().NotContain(
         ["place_order", "cancel_order", "close_position", "change_risk", "deploy_strategy", "withdraw", "transfer"]);
@@ -172,6 +178,46 @@ public sealed class TradePilotAnalystToolCatalogTests
             It.IsAny<CancellationToken>()), Times.Once);
         _sender.Verify(sender => sender.Send(
             It.Is<GetRecentFillsQuery>(query => query.Exchange == Exchange.Hyperliquid && query.WalletAddress == WalletAddress && query.Asset == "BTC"),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GivenTradeAnalyticsTools_WhenExecuted_ThenApplicationCalculatesHistoryAndGroups()
+    {
+        var analytics = new TradeAnalytics(
+            2, 1, 1, 0, 20m, 16m, 4m, null, false, 50m, 20m, -4m, 8m,
+            5m, false, TimeSpan.FromHours(2), 30m, 10m, -12m, -4m, null, null);
+        var grouped = new StrategyTradeAnalytics(
+            [new TradeAnalyticsGroup("4", analytics)],
+            [new TradeAnalyticsGroup("Bullish", analytics)]);
+        _sender.Setup(sender => sender.Send(It.IsAny<GetTradeAnalyticsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(analytics);
+        _sender.Setup(sender => sender.Send(It.IsAny<GetStrategyTradeAnalyticsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(grouped);
+
+        var totals = await _sut.ExecuteAsync(
+            "get_trade_analytics",
+            "{\"symbol\":\"BTC\",\"outcome\":\"loser\"}",
+            new AnalystToolContext(UserId),
+            CancellationToken.None);
+        var versions = await _sut.ExecuteAsync(
+            "get_strategy_trade_analytics",
+            "{\"strategyName\":\"v10.4\"}",
+            new AnalystToolContext(UserId),
+            CancellationToken.None);
+
+        totals.Result!.Value.GetProperty("winRate").GetDecimal().Should().Be(50m);
+        versions.Result!.Value.GetProperty("byStrategyVersion")[0].GetProperty("key").GetString().Should().Be("4");
+        _sender.Verify(sender => sender.Send(
+            It.Is<GetTradeAnalyticsQuery>(query =>
+                query.UserId == UserId.ToString()
+                && query.Symbol == "BTC"
+                && query.Outcome == TradeOutcome.Loser),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _sender.Verify(sender => sender.Send(
+            It.Is<GetStrategyTradeAnalyticsQuery>(query =>
+                query.UserId == UserId.ToString()
+                && query.StrategyId == _strategy.Id),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 

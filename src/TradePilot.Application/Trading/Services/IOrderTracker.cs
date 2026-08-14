@@ -6,7 +6,8 @@ using TradePilot.Domain.Enums;
 public interface IOrderTracker
 {
     void TrackOrder(string orderId, string gridCycleId, int level, string symbol,
-        OrderSide side, decimal price, decimal size, TradeType tradeType);
+        OrderSide side, decimal price, decimal size, TradeType tradeType,
+        TradeExecutionEvidence? evidence = null);
 
     TrackedOrder? GetOrder(string orderId);
 

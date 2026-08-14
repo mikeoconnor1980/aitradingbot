@@ -127,6 +127,7 @@ public sealed class LivePositionManager : IPositionManager
         var notionalPerLevel = Math.Abs(GetDecimal(signal.Parameters, "notionalUsd"));
         var gridCycleId = GetGridCycleId(signal.Parameters);
         var entryMode = GetOptionalString(signal.Parameters, "entryMode") ?? EntryModes.AutoFromSignalCandle;
+        var evidence = ResolveExecutionEvidence(signal);
 
         _logger.LogInformation(
             "Deploying grid: Symbol={Symbol}, AnchorPrice={AnchorPrice}, Levels={Levels}, Spacing={Spacing}%, Notional={Notional}, EntryMode={EntryMode}",
@@ -155,7 +156,7 @@ public sealed class LivePositionManager : IPositionManager
                     cancellationToken);
 
                 _orderTracker.TrackOrder(orderId, gridCycleId, 1, signal.Symbol,
-                    OrderSide.Buy, anchorPrice, marketSize, TradeType.GridFill);
+                    OrderSide.Buy, anchorPrice, marketSize, TradeType.GridFill, evidence);
 
                 placedOrders.Add((orderId, 1, anchorPrice, marketSize));
             }
@@ -195,7 +196,7 @@ public sealed class LivePositionManager : IPositionManager
                 cancellationToken);
 
             _orderTracker.TrackOrder(orderId, gridCycleId, level, signal.Symbol,
-                OrderSide.Buy, price, size, TradeType.GridFill);
+                OrderSide.Buy, price, size, TradeType.GridFill, evidence);
 
             placedOrders.Add((orderId, level, price, size));
         }
@@ -213,6 +214,7 @@ public sealed class LivePositionManager : IPositionManager
         var tradeType = ResolveTradeType(signal.Parameters);
         var gridCycleId = GetOptionalString(signal.Parameters, "gridCycleId")
             ?? (tradeType == TradeType.DcaBuy ? "dca" : "signal");
+        var evidence = ResolveExecutionEvidence(signal);
 
         if (size <= 0m)
         {
@@ -239,7 +241,7 @@ public sealed class LivePositionManager : IPositionManager
             cancellationToken);
 
         _orderTracker.TrackOrder(orderId, gridCycleId, 0, symbol,
-            OrderSide.Buy, entryPrice, size, tradeType);
+            OrderSide.Buy, entryPrice, size, tradeType, evidence);
     }
 
     private async Task PlaceTakeProfitAsync(TradingSignal signal, CancellationToken cancellationToken)
@@ -258,6 +260,7 @@ public sealed class LivePositionManager : IPositionManager
 
         var orderType = Enum.Parse<OrderType>(GetString(signal.Parameters, "orderType"), ignoreCase: true);
         var gridCycleId = GetGridCycleId(signal.Parameters);
+        var evidence = ResolveExecutionEvidence(signal);
 
         await _executionEngine.CancelAllOrdersAsync(signal.Symbol, cancellationToken);
 
@@ -285,7 +288,7 @@ public sealed class LivePositionManager : IPositionManager
             cancellationToken);
 
         _orderTracker.TrackOrder(orderId, gridCycleId, 0, signal.Symbol,
-            OrderSide.Sell, targetPrice, size, TradeType.TakeProfit);
+            OrderSide.Sell, targetPrice, size, TradeType.TakeProfit, evidence);
     }
 
     private async Task PersistGridDeploymentAsync(
@@ -487,6 +490,76 @@ public sealed class LivePositionManager : IPositionManager
         return trimmed.Contains('-')
             ? trimmed.ToUpperInvariant()
             : $"{trimmed.ToUpperInvariant()}-USD";
+    }
+
+    private static TradeExecutionEvidence? ResolveExecutionEvidence(TradingSignal signal)
+    {
+        if (signal.ExecutionEvidence is not null)
+        {
+            return signal.ExecutionEvidence;
+        }
+
+        var parameters = signal.Parameters;
+        var strategyName = GetOptionalString(parameters, "strategyName");
+        var configurationIdentity = GetOptionalString(parameters, "configurationIdentity");
+        var timeframe = GetOptionalString(parameters, "timeframe");
+        var sourceExchange = GetOptionalString(parameters, "sourceExchange");
+        if (string.IsNullOrWhiteSpace(strategyName)
+            || string.IsNullOrWhiteSpace(configurationIdentity)
+            || string.IsNullOrWhiteSpace(timeframe)
+            || string.IsNullOrWhiteSpace(sourceExchange))
+        {
+            return null;
+        }
+
+        var strategyId = Guid.TryParse(GetOptionalString(parameters, "strategyId"), out var parsedStrategyId)
+            ? parsedStrategyId
+            : (Guid?)null;
+        var evaluationId = Guid.TryParse(GetOptionalString(parameters, "strategyEvaluationId"), out var parsedEvaluationId)
+            ? parsedEvaluationId
+            : (Guid?)null;
+        var strategyVersion = GetOptionalInt(parameters, "strategyVersion");
+        var side = Enum.TryParse<TradeSide>(GetOptionalString(parameters, "tradeSide"), true, out var parsedSide)
+            ? parsedSide
+            : TradeSide.Long;
+        var exitReason = Enum.TryParse<TradeExitReason>(GetOptionalString(parameters, "tradeExitReason"), true, out var parsedExitReason)
+            ? parsedExitReason
+            : (TradeExitReason?)null;
+        var leverage = GetOptionalDecimal(parameters, "leverage");
+
+        return new TradeExecutionEvidence(
+            strategyId,
+            strategyName,
+            strategyVersion,
+            configurationIdentity,
+            evaluationId,
+            GetOptionalString(parameters, "marketRegime"),
+            timeframe,
+            side,
+            leverage,
+            sourceExchange,
+            exitReason);
+    }
+
+    private static decimal? GetOptionalDecimal(
+        IReadOnlyDictionary<string, object>? parameters,
+        string key)
+    {
+        if (parameters is null || !parameters.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            decimal decimalValue => decimalValue,
+            double doubleValue => Convert.ToDecimal(doubleValue),
+            float floatValue => Convert.ToDecimal(floatValue),
+            int intValue => intValue,
+            long longValue => longValue,
+            string stringValue when decimal.TryParse(stringValue, out var parsedDecimal) => parsedDecimal,
+            _ => Convert.ToDecimal(value),
+        };
     }
 
     private static object GetRequiredValue(IReadOnlyDictionary<string, object>? parameters, string key)

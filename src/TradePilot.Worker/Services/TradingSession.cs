@@ -311,7 +311,8 @@ public sealed class TradingSession : IAsyncDisposable
                 drawdownTiers: _drawdownTiers,
                 strategyEvaluationRepository: _serviceScope?.ServiceProvider.GetService<IStrategyEvaluationRepository>(),
                 strategyId: StrategyId,
-                strategyVersion: StrategyVersion);
+                strategyVersion: StrategyVersion,
+                sourceExchange: _exchange.ToString());
 
         // Wire fill callback to update PositionState on the scheduler
         if (_fillProcessor is FillProcessor concreteProcessor)
