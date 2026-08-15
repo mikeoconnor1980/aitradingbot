@@ -34,6 +34,7 @@ import {
   Time,
   UTCTimestamp
 } from "lightweight-charts";
+import { AnalystChartContext, ChartIndicatorId } from "../../../core/models/analyst.model";
 import { Candle } from "../../../core/models/candle.model";
 import { ChartIndicatorValues } from "../../../core/models/chart-indicator.model";
 import { FillEvent } from "../../../core/models/fill-event.model";
@@ -103,6 +104,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   public tooltipVisible = false;
   public tooltipLeft = 0;
   public tooltipTop = 0;
+  public selectedCandleOpenTimeUtc: string | null = null;
 
   public get timeWindowLabel(): string {
     if (!this._candles.length) return "";
@@ -150,6 +152,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
   private _isLoadingHistory = false;
   private _oldestTimestamp: number | null = null;
   private _crosshairHandler: ((param: MouseEventParams<Time>) => void) | null = null;
+  private _clickHandler: ((param: MouseEventParams<Time>) => void) | null = null;
   private _emaFastSeries: ISeriesApi<"Line"> | null = null;
   private _emaSlowSeries: ISeriesApi<"Line"> | null = null;
   private _emaTrendSeries: ISeriesApi<"Line"> | null = null;
@@ -172,6 +175,7 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     this._subscribeToUpdates();
     this._subscribeToVisibleRangeChange();
     this._subscribeCrosshairMove();
+    this._subscribeClick();
     this._refreshMarkers();
     this._refreshIndicatorSeries();
   }
@@ -191,6 +195,9 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     }
 
     if (changes["seedCandles"] || changes["selectedTimeframe"] || changes["selectedAsset"]) {
+      if (changes["selectedTimeframe"] || changes["selectedAsset"]) {
+        this.clearSelectedCandle();
+      }
       this._liveCandle = null;
       this._isLoadingHistory = false;
       this._oldestTimestamp = null;
@@ -209,7 +216,12 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
       chart?.unsubscribeCrosshairMove(this._crosshairHandler);
     }
 
+    if (this._clickHandler) {
+      chart?.unsubscribeClick(this._clickHandler);
+    }
+
     this._crosshairHandler = null;
+    this._clickHandler = null;
     this._resizeObserver = null;
     this._markersApi = null;
     this._emaFastSeries = null;
@@ -241,6 +253,40 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     };
 
     this._refreshIndicatorSeries();
+  }
+
+  public captureAnalystContext(): AnalystChartContext | null {
+    const range = this._chart?.timeScale().getVisibleLogicalRange();
+    if (!range || this._candles.length === 0) {
+      return null;
+    }
+
+    const fromIndex = Math.max(0, Math.min(this._candles.length - 1, Math.floor(range.from)));
+    const toIndex = Math.max(0, Math.min(this._candles.length - 1, Math.ceil(range.to)));
+    if (fromIndex > toIndex) {
+      return null;
+    }
+
+    const visibleFromOpenTimeUtc = this._toUtcIso(this._candles[fromIndex].time as number);
+    const visibleToOpenTimeUtc = this._toUtcIso(this._candles[toIndex].time as number);
+    const selectedCandleOpenTimeUtc = this.selectedCandleOpenTimeUtc &&
+      this.selectedCandleOpenTimeUtc >= visibleFromOpenTimeUtc && this.selectedCandleOpenTimeUtc <= visibleToOpenTimeUtc
+      ? this.selectedCandleOpenTimeUtc
+      : undefined;
+    return {
+      symbol: this.selectedAsset,
+      timeframe: this.selectedTimeframe,
+      visibleFromOpenTimeUtc,
+      visibleToOpenTimeUtc,
+      selectedCandleOpenTimeUtc,
+      activeIndicators: this._activeIndicators(),
+      visibleOverlays: this.showTradeMarkers ? ["TRADE_MARKERS"] : [],
+      capturedAtUtc: new Date().toISOString()
+    };
+  }
+
+  public clearSelectedCandle(): void {
+    this.selectedCandleOpenTimeUtc = null;
   }
 
   public prependCandles(candles: Candle[]): void {
@@ -651,6 +697,24 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
     this._chart.subscribeCrosshairMove(this._crosshairHandler);
   }
 
+  private _subscribeClick(): void {
+    if (!this._chart) {
+      return;
+    }
+
+    this._clickHandler = (param: MouseEventParams<Time>) => {
+      if (!param.time) {
+        return;
+      }
+
+      const timestamp = this._toUtcIso(param.time as number);
+      if (this._candles.some(candle => this._toUtcIso(candle.time as number) === timestamp)) {
+        this.selectedCandleOpenTimeUtc = timestamp;
+      }
+    };
+    this._chart.subscribeClick(this._clickHandler);
+  }
+
   private _showFillTooltip(groups: ConsolidatedFillGroup[], x: number, y: number): void {
     const container = this._chartContainer.nativeElement;
     const estimatedTooltipWidth = 260;
@@ -719,6 +783,21 @@ export class PriceChartComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   private _normalizeAsset(asset: string): string {
     return asset.replace(/-PERP$/i, "").toUpperCase();
+  }
+
+  private _toUtcIso(timeSeconds: number): string {
+    return new Date(timeSeconds * 1000).toISOString();
+  }
+
+  private _activeIndicators(): ChartIndicatorId[] {
+    const active: ChartIndicatorId[] = [];
+    if (this.indicatorToggles.emaFast) active.push("EMA20");
+    if (this.indicatorToggles.emaSlow) active.push("EMA50");
+    if (this.indicatorToggles.emaTrend) active.push("EMA200");
+    if (this.indicatorToggles.bollinger) active.push("BOLLINGER20_2");
+    if (this.indicatorToggles.rsi) active.push("RSI14");
+    if (this.indicatorToggles.macd) active.push("MACD12_26_9");
+    return active;
   }
 
   private _refreshIndicatorSeries(): void {

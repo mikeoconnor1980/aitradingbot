@@ -17,7 +17,21 @@ public sealed record TradingAnalystContext(
     TradingAnalystIntent Intent,
     Guid? StrategyId = null,
     int? StrategyVersion = null,
-    Guid? BacktestRunId = null);
+    Guid? BacktestRunId = null,
+    TradingAnalystChartContext? Chart = null);
+
+/// <summary>Represents the validated immutable chart snapshot attached to one Analyst request.</summary>
+public sealed record TradingAnalystChartContext(
+    string Symbol,
+    string Timeframe,
+    Exchange Exchange,
+    DateTimeOffset VisibleFromOpenTimeUtc,
+    DateTimeOffset VisibleToOpenTimeUtc,
+    DateTimeOffset? SelectedCandleOpenTimeUtc,
+    IReadOnlyList<ChartIndicatorId> ActiveIndicators,
+    IReadOnlyList<ChartOverlayId> VisibleOverlays,
+    DateTimeOffset CapturedAtUtc,
+    DateTimeOffset ReceivedAtUtc);
 
 /// <summary>Defines the fixed contextual questions the product can ask the Analyst.</summary>
 public enum TradingAnalystIntent
@@ -25,7 +39,25 @@ public enum TradingAnalystIntent
     ExplainStrategyEntry,
     SummariseStrategyBlockingRules,
     AnalyseBacktestRun,
-    CompareBacktestRuns
+    CompareBacktestRuns,
+    AnalyseChart
+}
+
+/// <summary>Defines the fixed chart indicators which can appear in a chart snapshot.</summary>
+public enum ChartIndicatorId
+{
+    EMA20,
+    EMA50,
+    EMA200,
+    BOLLINGER20_2,
+    RSI14,
+    MACD12_26_9
+}
+
+/// <summary>Defines the fixed chart overlays which can appear in a chart snapshot.</summary>
+public enum ChartOverlayId
+{
+    TRADE_MARKERS
 }
 
 /// <summary>Represents the outcome of one request-scoped Analyst run.</summary>

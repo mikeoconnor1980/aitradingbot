@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { ActivatedRoute, Router } from "@angular/router";
 import { Subscription } from "rxjs";
 import { AnalystIntent, AnalystRequestContext, AnalystToolInvocation, TradingAnalystResult } from "../../core/models/analyst.model";
+import { AnalystChartContextService } from "../../core/services/analyst-chart-context.service";
 import { AnalystService } from "../../core/services/analyst.service";
 import { AnalystEvidenceCardComponent } from "./analyst-evidence-card.component";
 
@@ -28,6 +29,7 @@ export class AnalystPageComponent implements OnInit {
   private readonly _analystService = inject(AnalystService);
   private readonly _router = inject(Router);
   private readonly _route = inject(ActivatedRoute);
+  private readonly _chartContext = inject(AnalystChartContextService);
   private _request?: Subscription;
 
   public readonly suggestions = [
@@ -44,6 +46,12 @@ export class AnalystPageComponent implements OnInit {
     const context = this.getRouteContext();
     if (context) {
       this.submit(this.getContextQuestion(context), context);
+      return;
+    }
+
+    const chart = this._chartContext.captureCurrent();
+    if (chart) {
+      this.submit("Explain the visible range.", { intent: "AnalyseChart", chart });
     }
   }
 
