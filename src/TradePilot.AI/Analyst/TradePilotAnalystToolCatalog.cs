@@ -72,6 +72,7 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
                 "get_market_snapshot" => await GetMarketSnapshotAsync(argumentsJson, cancellationToken),
                 "analyse_market" => await AnalyseMarketAsync(argumentsJson, cancellationToken),
                 "analyse_market_multi_timeframe" => await AnalyseMarketMultiTimeframeAsync(argumentsJson, cancellationToken),
+                "analyse_chart_context" => await AnalyseChartContextAsync(argumentsJson, context, cancellationToken),
                 "get_account_summary" => await GetAccountSummaryAsync(argumentsJson, context, cancellationToken),
                 "get_positions" => await GetPositionsAsync(argumentsJson, context, cancellationToken),
                 "get_open_orders" => await GetOpenOrdersAsync(argumentsJson, context, cancellationToken),
@@ -177,6 +178,32 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         var result = await _sender.Send(
             new AnalyseMarketMultiTimeframeQuery(arguments.Symbol, timeframes, exchange),
             cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> AnalyseChartContextAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        _ = Parse<ChartContextArguments>(argumentsJson);
+        var chart = context.TradingContext?.Intent == TradingAnalystIntent.AnalyseChart
+            ? context.TradingContext.Chart
+            : null;
+        if (chart is null)
+        {
+            return AnalystToolResult.Failure(
+                context.TradingContext is null ? "context_required" : "context_mismatch",
+                "A validated chart context is required for this tool.");
+        }
+
+        var result = await _sender.Send(new AnalyseChartContextQuery(
+            chart.Symbol,
+            chart.Timeframe,
+            chart.Exchange,
+            chart.VisibleFromOpenTimeUtc,
+            chart.VisibleToOpenTimeUtc,
+            chart.SelectedCandleOpenTimeUtc), cancellationToken);
         return AnalystToolResult.Success(SerializeResult(result));
     }
 
@@ -563,6 +590,11 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
                 },
                 ["symbol"]),
             Define(
+                "analyse_chart_context",
+                "Get TradePilot's bounded deterministic analysis for the chart context attached to this Analyst request, including range statistics, end-of-range market analysis, and an optional selected candle. Never infer chart facts from pixels.",
+                new { },
+                []),
+            Define(
                 "get_account_summary",
                 "Get the authenticated user's current TradePilot account summary. Read-only.",
                 new { exchange = ExchangeProperty() },
@@ -757,6 +789,8 @@ public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
         string Symbol = "",
         string[]? Timeframes = null,
         Exchange? Exchange = null);
+
+    private sealed record ChartContextArguments();
 
     private sealed record AccountArguments(Exchange? Exchange = null);
 

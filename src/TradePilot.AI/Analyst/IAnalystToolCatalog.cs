@@ -16,5 +16,5 @@ public interface IAnalystToolCatalog
         CancellationToken cancellationToken);
 }
 
-/// <summary>Contains request-scoped identity required by account tools.</summary>
-public sealed record AnalystToolContext(Guid? UserId);
+/// <summary>Contains request-scoped identity and trusted product context required by Analyst tools.</summary>
+public sealed record AnalystToolContext(Guid? UserId, TradingAnalystContext? TradingContext = null);

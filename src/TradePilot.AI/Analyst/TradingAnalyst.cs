@@ -53,14 +53,19 @@ public sealed class TradingAnalyst : ITradingAnalyst
         var messages = new List<AnalystLlmMessage>
         {
             new("system", TradingAnalystPrompt.SystemPrompt),
-            new("user", request.Question),
         };
+        if (request.Context is not null)
+        {
+            messages.Add(new AnalystLlmMessage("system", TradingAnalystPrompt.CreateContextMessage(request.Context)));
+        }
+
+        messages.Add(new AnalystLlmMessage("user", request.Question));
         var invocations = new List<AnalystToolInvocation>();
         var resultCache = new Dictionary<string, AnalystToolResult>(StringComparer.Ordinal);
         var allowedToolNames = _toolCatalog.Definitions
             .Select(definition => definition.Name)
             .ToHashSet(StringComparer.Ordinal);
-        var context = new AnalystToolContext(request.UserId);
+        var context = new AnalystToolContext(request.UserId, request.Context);
         var toolRounds = 0;
         var requestedToolCalls = 0;
         AnalystTokenUsage? usage = null;
@@ -336,6 +341,7 @@ public sealed class TradingAnalyst : ITradingAnalyst
             "run_backtest_experiment" => new HashSet<string>(
                 ["strategyId", "strategyName", "strategyVersion", "symbol", "start", "end", "initialCapital", "candidates"],
                 StringComparer.OrdinalIgnoreCase),
+            "analyse_chart_context" => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
             _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase),
         };
     }

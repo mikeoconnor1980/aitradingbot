@@ -82,6 +82,7 @@ public sealed class TradePilotAnalystToolCatalogTests
             "get_market_snapshot",
             "analyse_market",
             "analyse_market_multi_timeframe",
+            "analyse_chart_context",
             "get_account_summary",
             "get_positions",
             "get_open_orders",
@@ -233,6 +234,20 @@ public sealed class TradePilotAnalystToolCatalogTests
 
         unknown.Error!.Code.Should().Be("unknown_tool");
         execution.Error!.Code.Should().Be("unknown_tool");
+        _sender.VerifyNoOtherCalls();
+    }
+
+    [TestMethod]
+    public async Task GivenChartToolWithoutValidatedChartContext_WhenExecuted_ThenItIsRejectedWithoutSendingAQuery()
+    {
+        var result = await _sut.ExecuteAsync(
+            "analyse_chart_context",
+            "{}",
+            new AnalystToolContext(UserId),
+            CancellationToken.None);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.Code.Should().Be("context_required");
         _sender.VerifyNoOtherCalls();
     }
 
