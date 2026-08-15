@@ -4,7 +4,8 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { RouterLink, RouterLinkActive } from "@angular/router";
 
 export interface NavItem {
-  route: string;
+  route?: string;
+  action?: "analyst";
   icon: string;
   label: string;
   exact?: boolean;
@@ -34,6 +35,7 @@ export class SidebarNavComponent {
   public expanded = true;
 
   public readonly logoutClicked = output();
+  public readonly analystOpened = output();
 
   public get navGroups(): NavGroup[] {
     const operateItems: NavItem[] = [
@@ -54,7 +56,7 @@ export class SidebarNavComponent {
         items: [
           { route: "/dashboard", icon: "space_dashboard", label: "Overview", exact: true },
           { route: "/market-data", icon: "candlestick_chart", label: "Markets" },
-          { route: "/analyst", icon: "psychology", label: "Analyst" },
+          { action: "analyst", icon: "psychology", label: "Analyst" },
           { route: "/macro-calendar", icon: "event_note", label: "Macro Calendar", feature: "macrocalendar", upgradePrompt: "macro-calendar" }
         ]
       },
@@ -101,6 +103,10 @@ export class SidebarNavComponent {
 
   public onToggle(): void {
     this.expanded = !this.expanded;
+  }
+
+  public onOpenAnalyst(): void {
+    this.analystOpened.emit();
   }
 
   public onLogout(): void {

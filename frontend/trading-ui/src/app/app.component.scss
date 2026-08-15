@@ -11,6 +11,10 @@ $sidebar-expanded: 232px;
     margin-left: $sidebar-collapsed;
   }
 
+  &--analyst-docked {
+    margin-right: var(--analyst-panel-width, 400px);
+  }
+
   &__header {
     display: flex;
     align-items: center;
@@ -94,6 +98,7 @@ $sidebar-expanded: 232px;
     margin-inline: auto;
   }
 
+  &__analyst-btn,
   &__help-btn,
   &__notif-btn,
   &__user-btn {

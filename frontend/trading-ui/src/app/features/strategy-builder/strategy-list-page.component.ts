@@ -11,6 +11,8 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { Router } from "@angular/router";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { NotificationFacade } from "../../core/services/notification-facade.service";
+import { AnalystSessionService } from "../../core/services/analyst-session.service";
+import { RightPanelService } from "../../core/services/right-panel.service";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
 import { StrategySummaryDto } from "./models/strategy.model";
 import { StrategyApiService } from "./services/strategy-api.service";
@@ -27,6 +29,8 @@ export class StrategyListPageComponent implements OnInit {
   private readonly _dialog = inject(MatDialog);
   private readonly _strategyApi = inject(StrategyApiService);
   private readonly _notifications = inject(NotificationFacade);
+  private readonly _analystSession = inject(AnalystSessionService);
+  private readonly _rightPanels = inject(RightPanelService);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   public readonly displayedColumns = ["name", "market", "timeframe", "direction", "strategyMode", "createdAt", "updatedAt", "actions"];
@@ -52,9 +56,12 @@ export class StrategyListPageComponent implements OnInit {
   }
 
   public onAskAnalyst(strategy: StrategySummaryDto): void {
-    void this._router.navigate(["/analyst"], {
-      queryParams: { intent: "ExplainStrategyEntry", strategyId: strategy.id }
-    });
+    this._analystSession.beginContextualInvestigation(
+      { intent: "ExplainStrategyEntry", strategyId: strategy.id },
+      "Why did this strategy not enter?",
+      this._router.url
+    );
+    this._rightPanels.open("analyst");
   }
 
   public onDuplicate(strategy: StrategySummaryDto): void {

@@ -18,11 +18,22 @@
       <section class="sidebar__group" [attr.aria-label]="group.label">
         <h2 class="sidebar__group-title">{{ group.label }}</h2>
 
-        @for (item of group.items; track item.route) {
+        @for (item of group.items; track item.route ?? item.action) {
           @if (hasFeature(item.feature)) {
+            @if (item.action === "analyst") {
+              <button
+                type="button"
+                class="sidebar__link"
+                (click)="onOpenAnalyst()"
+                [matTooltip]="getTooltip(item)"
+                matTooltipPosition="right">
+                <mat-icon class="sidebar__icon" aria-hidden="true">{{ item.icon }}</mat-icon>
+                <span class="sidebar__label">{{ item.label }}</span>
+              </button>
+            } @else {
             <a
               class="sidebar__link"
-              [routerLink]="item.route"
+              [routerLink]="item.route!"
               routerLinkActive="sidebar__link--active"
               [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
               [matTooltip]="getTooltip(item)"
@@ -33,6 +44,7 @@
                 <span class="sidebar__meta">Pro</span>
               }
             </a>
+            }
           } @else {
             <a
               class="sidebar__link sidebar__link--locked"

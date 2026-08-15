@@ -1,0 +1,15 @@
+.analyst-panel { bottom: 0; display: block; position: fixed; right: 0; top: 0; width: var(--analyst-panel-width, 400px); z-index: 1000; }
+.analyst-panel__surface { background: var(--surface-base); border-left: 1px solid var(--border-default); display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; position: relative; }
+.analyst-panel__header { align-items: center; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; min-height: 56px; padding: var(--space-2) var(--space-3); }
+.analyst-panel__header > div:first-child { align-items: baseline; display: flex; gap: var(--space-2); min-width: 0; }
+.analyst-panel__header strong { color: var(--text-primary); font-size: .875rem; white-space: nowrap; }
+.analyst-panel__header span { color: var(--state-information); font-size: .75rem; font-weight: 700; white-space: nowrap; }
+.analyst-panel__actions { display: flex; gap: 0; }
+.analyst-panel__actions button { color: var(--text-muted); }
+.analyst-panel__resize-handle { cursor: col-resize; height: 100%; left: -4px; position: absolute; top: 0; width: 8px; z-index: 2; }
+.analyst-panel__width-controls { display: none; }
+.analyst-panel__backdrop { display: none; }
+@media (min-width: 1280px) { .analyst-panel__width-controls { display: flex; gap: 0; justify-content: flex-end; padding: 0 var(--space-3); position: absolute; right: 120px; top: 12px; z-index: 3; } .analyst-panel__width-controls button { height: 28px; width: 28px; } }
+@media (max-width: 1279px) { .analyst-panel { left: 0; width: auto; z-index: 1100; } .analyst-panel__backdrop { background: rgba(0, 0, 0, .42); border: 0; display: block; height: 100%; inset: 0; position: absolute; width: 100%; } .analyst-panel__surface { box-shadow: -12px 0 24px rgba(0, 0, 0, .28); margin-left: auto; max-width: 92vw; width: min(420px, 92vw); z-index: 1; } .analyst-panel__resize-handle { display: none; } }
+@media (max-width: 768px) { .analyst-panel__surface { max-width: none; padding-top: env(safe-area-inset-top, 0); width: 100%; } .analyst-panel__header { min-height: 52px; } }
+@media (prefers-reduced-motion: reduce) { .analyst-panel { transition: none; } }

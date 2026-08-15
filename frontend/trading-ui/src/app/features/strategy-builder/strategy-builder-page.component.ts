@@ -13,6 +13,8 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { debounceTime, map, of, startWith, switchMap, tap } from "rxjs";
 import { SKIP_ERROR_NOTIFICATION } from "../../core/interceptors/http-context-tokens";
 import { NotificationFacade } from "../../core/services/notification-facade.service";
+import { AnalystSessionService } from "../../core/services/analyst-session.service";
+import { RightPanelService } from "../../core/services/right-panel.service";
 import { SubscriptionService } from "../../core/services/subscription.service";
 import { formatErrorPayload } from "../../core/utils/error-utils";
 import { ConfirmDialogComponent, ConfirmDialogData } from "../order-entry/confirm-dialog/confirm-dialog.component";
@@ -89,6 +91,8 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
   private readonly _strategyValidator = inject(StrategyValidationService);
   private readonly _conditionFactory = inject(ConditionFactoryService);
   private readonly _notifications = inject(NotificationFacade);
+  private readonly _analystSession = inject(AnalystSessionService);
+  private readonly _rightPanels = inject(RightPanelService);
   private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
@@ -444,9 +448,12 @@ export class StrategyBuilderPageComponent implements OnInit, HasUnsavedChanges {
       return;
     }
 
-    void this._router.navigate(["/analyst"], {
-      queryParams: { intent: "ExplainStrategyEntry", strategyId: this.editId }
-    });
+    this._analystSession.beginContextualInvestigation(
+      { intent: "ExplainStrategyEntry", strategyId: this.editId },
+      "Why did this strategy not enter?",
+      this._router.url
+    );
+    this._rightPanels.open("analyst");
   }
 
   public onRequestReview(): void {

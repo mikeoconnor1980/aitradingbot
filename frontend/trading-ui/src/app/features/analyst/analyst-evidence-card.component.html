@@ -1,4 +1,4 @@
-<article class="evidence-card" [attr.aria-label]="title">
+<article class="evidence-card" [class.evidence-card--compact]="compact" [attr.aria-label]="title">
   <header class="evidence-card__header">
     <h3>{{ title }}</h3>
     <span [class.evidence-card__status--failed]="!invocation.succeeded">{{ invocation.succeeded ? "Evidence available" : invocation.errorCode ?? "Unavailable" }}</span>
@@ -30,11 +30,11 @@
       <div><dt>Strategy</dt><dd>{{ display(result["strategyName"]) }}</dd></div>
       <div><dt>Most common block</dt><dd>{{ display(property(result["mostCommonBlockingRule"], "ruleName")) }}</dd></div>
     </dl>
-    @if (rules.length > 0) {
+    @if (rules.length > 0 && !compact) {
       <table class="evidence-card__table"><caption>Rule evaluation evidence</caption><thead><tr><th>Rule</th><th>Result</th><th>Actual</th><th>Expected</th><th>Reason</th></tr></thead><tbody>
         @for (rule of rules; track rule["id"] ?? $index) { <tr><td>{{ display(rule["name"]) }}</td><td>{{ rule["passed"] ? "Passed" : "Failed" }}</td><td>{{ display(rule["actualValue"]) }}</td><td>{{ display(rule["expectedValue"]) }}</td><td>{{ display(rule["reason"]) }}</td></tr> }
       </tbody></table>
-    }
+    } @else if (rules.length > 0) { <p class="evidence-card__fallback">Rule evidence is available in the expanded investigation.</p> }
   } @else if (invocation.succeeded && isTradeEvidence) {
     <dl class="evidence-card__metrics">
       <div><dt>Net PnL</dt><dd>{{ display(result["netPnl"]) }}</dd></div>
@@ -44,7 +44,7 @@
       <div><dt>MFE</dt><dd>{{ display(result["mfePercent"] ?? result["averageMfePercent"]) }}</dd></div>
       <div><dt>MAE</dt><dd>{{ display(result["maePercent"] ?? result["averageMaePercent"]) }}</dd></div>
     </dl>
-  } @else if (invocation.succeeded && isBacktestExperiment) {
+  } @else if (invocation.succeeded && isBacktestExperiment && !compact) {
     <table class="evidence-card__table"><caption>Baseline and candidate comparison</caption><thead><tr><th>Candidate</th><th>Return</th><th>Drawdown</th><th>Trades</th><th>Profit factor</th></tr></thead><tbody>
       <tr><td>Current</td><td>{{ display(property(result["baseline"], "totalPnl")) }}</td><td>{{ display(property(result["baseline"], "maxDrawdownPercent")) }}</td><td>{{ display(property(result["baseline"], "totalTrades")) }}</td><td>{{ display(property(result["baseline"], "profitFactor")) }}</td></tr>
       @for (candidate of candidates; track candidate["label"] ?? $index) { <tr><td>{{ display(candidate["label"]) }}</td><td>{{ display(property(candidate["metrics"], "totalPnl")) }}</td><td>{{ display(property(candidate["metrics"], "maxDrawdownPercent")) }}</td><td>{{ display(property(candidate["metrics"], "totalTrades")) }}</td><td>{{ display(property(candidate["metrics"], "profitFactor")) }}</td></tr> }

@@ -3,12 +3,14 @@
     <app-sidebar-nav
       [isAdmin]="currentUser?.isAdmin ?? false"
       [features]="subscriptionFeatures"
+      (analystOpened)="onToggleAnalyst()"
       (logoutClicked)="onLogout()" />
   }
 
   <main
     class="app-shell"
     [class.app-shell--sidebar-collapsed]="!isMobile() && sidebar?.expanded === false"
+    [class.app-shell--analyst-docked]="activeRightPanel() === 'analyst'"
     [class.app-shell--mobile]="isMobile()">
     <header class="app-shell__header" aria-label="Account and application controls">
       <div class="app-shell__account-context">
@@ -50,6 +52,15 @@
         </a>
 
         @if (!isMobile()) {
+          <button
+            mat-icon-button
+            class="app-shell__analyst-btn"
+            (click)="onToggleAnalyst()"
+            matTooltip="TradePilot Analyst"
+            aria-label="Toggle TradePilot Analyst companion">
+            <mat-icon>psychology</mat-icon>
+          </button>
+
           <button
             mat-icon-button
             class="app-shell__notif-btn"
@@ -105,8 +116,12 @@
   </main>
 
   @if (!isMobile()) {
-    <app-notification-panel [isOpen]="notificationPanelOpen" (closed)="onNotificationPanelClosed()" />
+    <app-notification-panel [isOpen]="activeRightPanel() === 'notifications'" (closed)="onNotificationPanelClosed()" />
     <app-help-panel />
+  }
+
+  @if (activeRightPanel() === 'analyst' && analystPanelComponent(); as analystPanel) {
+    <ng-container *ngComponentOutlet="analystPanel" />
   }
 
   @if (isMobile()) {

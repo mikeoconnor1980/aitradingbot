@@ -14,6 +14,9 @@ export class AnalystEvidenceCardComponent {
   @Input({ required: true })
   public invocation!: AnalystToolInvocation;
 
+  @Input()
+  public compact = false;
+
   public get result(): Record<string, unknown> {
     return this.invocation.result ?? {};
   }

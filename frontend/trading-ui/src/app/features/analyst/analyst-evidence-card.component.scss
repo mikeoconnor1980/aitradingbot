@@ -15,4 +15,7 @@
 .evidence-card__fallback { color: var(--text-muted); }
 .evidence-card details { border-top: 1px solid var(--border-subtle); color: var(--text-secondary); padding-top: var(--space-2); }
 .evidence-card pre { background: var(--surface-canvas); color: var(--text-secondary); max-height: 220px; overflow: auto; padding: var(--space-2); white-space: pre-wrap; }
+.evidence-card--compact { padding: var(--space-3); }
+.evidence-card--compact .evidence-card__metrics { gap: var(--space-2); grid-template-columns: repeat(2, minmax(0, 1fr)); margin: var(--space-3) 0; }
+.evidence-card--compact .evidence-card__metrics div { min-width: 0; }
 @media (max-width: 600px) { .evidence-card__table { display: block; overflow-x: auto; } }

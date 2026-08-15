@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, DestroyRef, OnInit, ViewChild, inject } from "@angular/core";
+import { Component, DestroyRef, OnInit, Type, ViewChild, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -23,6 +23,7 @@ import { NotificationStoreService } from "./core/services/notification-store.ser
 import { ProfileService } from "./core/services/profile.service";
 import { SubscriptionService } from "./core/services/subscription.service";
 import { SignalRService } from "./core/services/signalr.service";
+import { RightPanelService } from "./core/services/right-panel.service";
 
 @Component({
   selector: "app-root",
@@ -40,6 +41,7 @@ export class AppComponent implements OnInit {
   private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _layoutService = inject(LayoutService);
   private readonly _notificationStore = inject(NotificationStoreService);
+  private readonly _rightPanels = inject(RightPanelService);
   private readonly _destroyRef = inject(DestroyRef);
 
   public title = "TradePilot";
@@ -61,8 +63,9 @@ export class AppComponent implements OnInit {
   public preferredExchange = "Hyperliquid";
   public exchangeSaving = false;
   public subscriptionFeatures: string[] = [];
-  public notificationPanelOpen = false;
   public readonly unreadCount = this._notificationStore.unreadCount;
+  public readonly activeRightPanel = this._rightPanels.activePanel;
+  public readonly analystPanelComponent = signal<Type<unknown> | null>(null);
 
   public ngOnInit(): void {
     this._signalRService.connectionStatus$
@@ -158,20 +161,29 @@ export class AppComponent implements OnInit {
   }
 
   public onToggleHelp(): void {
-    this.notificationPanelOpen = false;
-    this._helpService.toggle();
+    this._rightPanels.toggle("help");
+    if (this._rightPanels.activePanel() === "help") {
+      this._helpService.toggle();
+    }
   }
 
   public onToggleNotifications(): void {
-    this._helpService.close();
-    this.notificationPanelOpen = !this.notificationPanelOpen;
-    if (this.notificationPanelOpen) {
+    this._rightPanels.toggle("notifications");
+    if (this._rightPanels.activePanel() === "notifications") {
       this._notificationStore.markAllRead();
     }
   }
 
   public onNotificationPanelClosed(): void {
-    this.notificationPanelOpen = false;
+    this._rightPanels.close("notifications");
+  }
+
+  public onToggleAnalyst(): void {
+    this._helpService.close();
+    this._rightPanels.toggle("analyst");
+    if (this._rightPanels.activePanel() === "analyst" && !this.analystPanelComponent()) {
+      void import("./features/analyst/analyst-panel.component").then((module) => this.analystPanelComponent.set(module.AnalystPanelComponent));
+    }
   }
 
   public onLogout(): void {
