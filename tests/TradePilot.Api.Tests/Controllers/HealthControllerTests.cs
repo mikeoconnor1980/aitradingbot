@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Health.Models;
@@ -72,6 +74,7 @@ public sealed class HealthControllerTests : BaseControllerTests
         _localFactory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureLogging(logging => logging.ClearProviders());
                 builder.UseInMemoryTradePilotPersistence($"health-controller-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");

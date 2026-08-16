@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using TradePilot.Persistence;
 
@@ -53,6 +54,7 @@ public abstract class BaseControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureLogging(logging => logging.ClearProviders());
                 builder.UseSetting("Jwt:SecretKey", TestJwtSecretKey);
                 builder.UseSetting("Jwt:Issuer", "TradePilot");
                 builder.UseSetting("Jwt:Audience", "TradePilot");

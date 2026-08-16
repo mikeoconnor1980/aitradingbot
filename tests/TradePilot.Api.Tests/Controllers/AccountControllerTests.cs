@@ -4,9 +4,11 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using TradePilot.Api.Models;
 using TradePilot.Api.Tests.Infrastructure;
@@ -59,6 +61,7 @@ public sealed class AccountControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureLogging(logging => logging.ClearProviders());
                 builder.UseInMemoryTradePilotPersistence($"account-controller-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Jwt:SecretKey", BaseControllerTests.TestJwtSecretKey);
                 builder.UseSetting("Jwt:Issuer", "TradePilot");
