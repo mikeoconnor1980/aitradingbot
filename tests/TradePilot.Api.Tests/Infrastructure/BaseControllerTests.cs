@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using TradePilot.Persistence;
 
@@ -53,14 +54,25 @@ public abstract class BaseControllerTests
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureLogging(logging => logging.ClearProviders());
                 builder.UseSetting("Jwt:SecretKey", TestJwtSecretKey);
                 builder.UseSetting("Jwt:Issuer", "TradePilot");
                 builder.UseSetting("Jwt:Audience", "TradePilot");
+                builder.UseSetting("Llm:Provider", "Gemini");
+                builder.UseSetting("Llm:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("Llm:ModelName", "test-model");
+                builder.UseSetting("Llm:ApiKey", "test-api-key");
+                builder.UseSetting("Llm:TimeoutSeconds", "30");
                 builder.UseSetting("LlmReview:Provider", "Gemini");
                 builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
                 builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
                 builder.UseSetting("LlmReview:TimeoutSeconds", "30");
+                builder.UseSetting("LlmContext:Provider", "Gemini");
+                builder.UseSetting("LlmContext:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmContext:ModelName", "test-context-model");
+                builder.UseSetting("LlmContext:ApiKey", "test-context-api-key");
+                builder.UseSetting("LlmContext:TimeoutSeconds", "30");
                 builder.UseSetting("ConnectionStrings:DefaultConnection", "Server=fake;Database=fake;");
                 ConfigureWebHost(builder);
                 builder.ConfigureServices(services =>

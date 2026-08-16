@@ -31,7 +31,7 @@ public sealed class GetAllCandleCoverageQueryHandler
             foreach (var interval in request.Intervals)
             {
                 var (fromTs, toTs, count) = await _candleRepository.GetCoverageAsync(
-                    symbol, interval, cancellationToken: cancellationToken);
+                    symbol, interval, source: "Binance", cancellationToken);
 
                 intervals.Add(new IntervalCoverageDetail
                 {

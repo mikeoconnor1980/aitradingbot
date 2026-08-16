@@ -4,8 +4,10 @@ import { Component, DestroyRef, OnInit, inject } from "@angular/core";
 import { MatButtonModule } from "@angular/material/button";
 import { MatCardModule } from "@angular/material/card";
 import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
+import { MatSelectModule } from "@angular/material/select";
 import { MatTableModule } from "@angular/material/table";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import {
@@ -31,8 +33,10 @@ interface IngestionState {
     MatButtonModule,
     MatCardModule,
     MatDialogModule,
+    MatFormFieldModule,
     MatIconModule,
     MatProgressBarModule,
+    MatSelectModule,
     MatTableModule,
     MatTooltipModule
   ],
@@ -42,6 +46,13 @@ interface IngestionState {
 export class CandleManagementComponent implements OnInit {
   private static readonly BACKTEST_INTERVALS = ["15m", "1h", "4h"];
   private static readonly SLOW_INTERVALS = ["5m", "1d"];
+  private static readonly INTERVAL_MS: Record<string, number> = {
+    "5m": 300_000,
+    "15m": 900_000,
+    "1h": 3_600_000,
+    "4h": 14_400_000,
+    "1d": 86_400_000
+  };
 
   private readonly _candleService = inject(CandleManagementService);
   private readonly _notificationService = inject(NotificationFacade);
@@ -50,6 +61,10 @@ export class CandleManagementComponent implements OnInit {
   private readonly _localErrorContext = new HttpContext().set(SKIP_ERROR_NOTIFICATION, true);
 
   public coverage: AllCandleCoverageResponse | null = null;
+  public readonly symbols = ["BTC", "ETH", "SOL", "DOGE", "AVAX", "ARB", "LINK", "OP"];
+  public readonly intervals = ["5m", "15m", "1h", "4h", "1d"];
+  public selectedSymbol = "BTC";
+  public selectedInterval = "1h";
   public isLoading = true;
   public loadError: string | null = null;
   public ingestionStates = new Map<string, IngestionState>();
@@ -127,6 +142,16 @@ export class CandleManagementComponent implements OnInit {
     this._loadCoverage();
   }
 
+  public onSymbolChange(symbol: string): void {
+    this.selectedSymbol = symbol;
+    this._loadCoverage();
+  }
+
+  public onIntervalChange(interval: string): void {
+    this.selectedInterval = interval;
+    this._loadCoverage();
+  }
+
   public formatDate(isoDate: string | null): string {
     if (!isoDate) {
       return "—";
@@ -147,6 +172,16 @@ export class CandleManagementComponent implements OnInit {
     return CandleManagementComponent.BACKTEST_INTERVALS.includes(interval);
   }
 
+  public getDataStatus(to: string | null, interval: string, candleCount: number): "up-to-date" | "stale" | "missing" {
+    if (candleCount === 0 || !to) {
+      return "missing";
+    }
+
+    const intervalMs = CandleManagementComponent.INTERVAL_MS[interval];
+    const lastCandleTimestamp = new Date(to).getTime();
+    return Date.now() - lastCandleTimestamp <= intervalMs * 2 ? "up-to-date" : "stale";
+  }
+
   public getMissingSymbolCount(): number {
     if (!this.coverage) {
       return 0;
@@ -163,7 +198,7 @@ export class CandleManagementComponent implements OnInit {
     this.isLoading = true;
     this.loadError = null;
 
-    this._candleService.getCoverage().subscribe({
+    this._candleService.getCoverage([this.selectedSymbol], [this.selectedInterval]).subscribe({
       next: (response: AllCandleCoverageResponse) => {
         this.coverage = response;
         this.isLoading = false;
@@ -181,7 +216,7 @@ export class CandleManagementComponent implements OnInit {
     this._candleService.ingestBinanceCandles({
       symbol,
       intervals: CandleManagementComponent.BACKTEST_INTERVALS,
-      includeMarkPrice: true
+      includeMarkPrice: false
     }).subscribe({
       next: (result: IngestionResult) => {
         this.ingestionStates.set(symbol, { isIngesting: false, result, error: null });
@@ -205,7 +240,7 @@ export class CandleManagementComponent implements OnInit {
     this._candleService.ingestBinanceCandles({
       symbol,
       intervals: [interval],
-      includeMarkPrice: true
+      includeMarkPrice: false
     }).subscribe({
       next: (result: IngestionResult) => {
         this.intervalIngestionStates.set(key, { isIngesting: false, result, error: null });

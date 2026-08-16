@@ -1,25 +1,25 @@
 .wizard-review {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-6);
 
   &__preview {
     ::ng-deep .mat-mdc-card {
       box-shadow: none;
-      border: 1px solid var(--colour-border-subtle, #333);
+      border: 1px solid var(--border-subtle);
     }
   }
 
   &__tags {
-    padding: 1rem;
-    border: 1px solid var(--colour-border-subtle, #333);
-    border-radius: 12px;
-    background: var(--colour-surface-dark, #111827);
+    padding: var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-3);
+    background: var(--surface-raised);
   }
 
   &__actions {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-4);
     justify-content: flex-end;
     flex-wrap: wrap;
   }

@@ -1,261 +1,155 @@
-name: Build and Deploy
+name: Validate and Deploy Azure Hosting
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Azure environment to deploy
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
 
 permissions:
   contents: read
-  packages: write
 
 env:
   DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '24'
-  REGISTRY: ghcr.io
   API_IMAGE: ghcr.io/${{ github.repository_owner }}/tradepilot-api
 
 jobs:
-  build-and-test:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Restore
+      - name: Restore, build, and test .NET
         run: |
           dotnet sln TradePilot.sln remove src/TradePilot.Worker/TradePilot.Worker.csproj || true
           dotnet sln TradePilot.sln remove tests/TradePilot.Worker.Tests/TradePilot.Worker.Tests.csproj || true
-          dotnet restore
-
-      - name: Build
-        run: dotnet build --no-restore -c Release
-
-      - name: Test
-        run: dotnet test --no-build -c Release --logger "trx;LogFileName=test-results.trx"
-
+          dotnet restore TradePilot.sln
+          dotnet build TradePilot.sln -c Release --no-restore
+          dotnet test TradePilot.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: '**/TestResults/*.trx'
-
-      - name: Setup Node.js (for Snyk)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/trading-ui/package-lock.json
+      - name: Build and lint Angular
+        working-directory: frontend/trading-ui
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+      - name: Validate Bicep
+        run: az bicep build --file infrastructure/main.bicep
 
-      - name: Snyk security scan (.NET)
-        uses: snyk/actions/dotnet@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high
-
-      - name: Snyk security scan (npm)
-        uses: snyk/actions/node@master
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high --file=frontend/trading-ui/package-lock.json
-
-  build-api-image:
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  publish-api-image:
+    needs: validate
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
+      image-tag: sha-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.API_IMAGE }}
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest
-
-      - name: Build and push API image
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: .
           file: src/TradePilot.Api/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.API_IMAGE }}:sha-${{ github.sha }}
 
-  build-frontend:
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  deploy:
+    needs: publish-api-image
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      DEPLOYMENT_ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+      SQL_ADMIN_LOGIN: ${{ secrets.SQL_ADMIN_LOGIN }}
+      SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+      VPS_WORKER_PUBLIC_IP: ${{ vars.VPS_WORKER_PUBLIC_IP }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/trading-ui/package-lock.json
-
-      - name: Install dependencies
-        working-directory: frontend/trading-ui
-        run: npm ci
-
-      - name: Set Azure environment
-        working-directory: frontend/trading-ui
-        run: |
-          cp src/environments/environment.azure.ts src/environments/environment.ts
-          sed -i "s|CONTAINER_APP_FQDN|${{ secrets.API_FQDN }}|g" src/environments/environment.ts
-
-      - name: Build Angular app
-        working-directory: frontend/trading-ui
-        run: npx ng build --configuration production
-
-      - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/trading-ui/dist/trading-ui/browser
-
-  deploy-api:
-    needs: build-api-image
-    runs-on: ubuntu-latest
-    environment: dev
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Azure Login
-        uses: azure/login@v2
+      - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy to Container Apps
+      - name: Provision infrastructure and API identity
         uses: azure/cli@v2
         with:
           inlineScript: |
-            az containerapp registry set \
-              --name tradepilot-dev-api \
-              --resource-group rg-tradepilot-dev \
-              --server ghcr.io \
-              --username ${{ github.actor }} \
-              --password ${{ secrets.GHCR_PAT }}
-            az containerapp secret set \
-              --name tradepilot-dev-api \
-              --resource-group rg-tradepilot-dev \
-              --secrets "telegram-bot-token=${{ secrets.TELEGRAM_BOT_TOKEN }}"
-            az containerapp update \
-              --name tradepilot-dev-api \
-              --resource-group rg-tradepilot-dev \
-              --image ${{ env.API_IMAGE }}:${{ needs.build-api-image.outputs.image-tag }} \
-              --set-env-vars \
-                "Deployment__Version=${{ needs.build-api-image.outputs.image-tag }}" \
-                "Deployment__CommitSha=${{ github.sha }}" \
-                "Deployment__BuildTimeUtc=${{ github.event.head_commit.timestamp }}" \
-                "Deployment__RunId=${{ github.run_id }}" \
-                "Telegram__BotToken=secretref:telegram-bot-token" \
-                "Telegram__BotUsername=${{ secrets.TELEGRAM_BOT_USERNAME }}"
-
-      - name: Verify deployed API is healthy
-        run: |
-          version_url="https://${{ secrets.API_FQDN }}/api/version?expectedVersion=${{ needs.build-api-image.outputs.image-tag }}"
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            response=$(curl --silent --show-error --fail "$version_url") && break
-            sleep 10
-          done
-          echo "$response"
-          echo "$response" | grep '"matchesExpectedVersion":true'
-
-  upload-installers:
-    needs: build-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: dev
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Upload installer artifacts to Blob Storage
+            resource_group="rg-tradepilot-${DEPLOYMENT_ENVIRONMENT}"
+            az group create --name "$resource_group" --location uksouth
+            az deployment group create --name "bootstrap-${GITHUB_SHA}" --resource-group "$resource_group" \
+              --template-file infrastructure/main.bicep \
+              --parameters environmentName="$DEPLOYMENT_ENVIRONMENT" location=uksouth appName=tradepilot \
+                containerImage="${{ env.API_IMAGE }}:${{ needs.publish-api-image.outputs.image-tag }}" \
+                sqlAdminLogin="$SQL_ADMIN_LOGIN" sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
+                workerPublicIpAddress="$VPS_WORKER_PUBLIC_IP" deployApi=false
+      - name: Populate Key Vault secrets
         uses: azure/cli@v2
         with:
           inlineScript: |
-            STORAGE_ACCOUNT="${{ secrets.INSTALLER_STORAGE_ACCOUNT }}"
-            CONTAINER_NAME="installers"
-            INSTALLER_DIR="artifacts/installer"
-
-            if [ ! -d "$INSTALLER_DIR" ]; then
-              echo "No installer directory found — skipping upload"
-              exit 0
-            fi
-
-            for file in "$INSTALLER_DIR"/TradePilot-ExecutionAgent-*; do
-              [ -f "$file" ] || continue
-              filename=$(basename "$file")
-              echo "Uploading $filename..."
-              az storage blob upload \
-                --account-name "$STORAGE_ACCOUNT" \
-                --container-name "$CONTAINER_NAME" \
-                --file "$file" \
-                --name "$filename" \
-                --overwrite true \
-                --auth-mode login
-            done
-
-  deploy-frontend:
-    needs: build-frontend
-    runs-on: ubuntu-latest
-    environment: dev
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
+            vault="tradepilot-${DEPLOYMENT_ENVIRONMENT}-kv"
+            signalr="tradepilot-${DEPLOYMENT_ENVIRONMENT}-signalr"
+            storage="tradepilot${DEPLOYMENT_ENVIRONMENT}sa"
+            signalr_connection=$(az signalr key list --name "$signalr" --resource-group "rg-tradepilot-${DEPLOYMENT_ENVIRONMENT}" --query primaryConnectionString --output tsv)
+            storage_connection=$(az storage account show-connection-string --name "$storage" --resource-group "rg-tradepilot-${DEPLOYMENT_ENVIRONMENT}" --query connectionString --output tsv)
+            az keyvault secret set --vault-name "$vault" --name jwt-secret-key --value "$JWT_SECRET_KEY" --only-show-errors
+            az keyvault secret set --vault-name "$vault" --name llm-api-key --value "$LLM_API_KEY" --only-show-errors
+            az keyvault secret set --vault-name "$vault" --name signalr-connection-string --value "$signalr_connection" --only-show-errors
+            az keyvault secret set --vault-name "$vault" --name installer-blob-connection --value "$storage_connection" --only-show-errors
+      - name: Deploy API configuration
+        id: deploy-api
+        uses: azure/cli@v2
         with:
-          name: frontend-dist
-          path: dist
-
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy to Static Web Apps
-        uses: azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOYMENT_TOKEN }}
-          action: upload
-          app_location: dist
-          skip_app_build: true
-          skip_api_build: true
+          inlineScript: |
+            resource_group="rg-tradepilot-${DEPLOYMENT_ENVIRONMENT}"
+            swa_host=$(az staticwebapp show --name "tradepilot-${DEPLOYMENT_ENVIRONMENT}-ui" --resource-group "$resource_group" --query defaultHostname --output tsv)
+            az deployment group create --name "api-${GITHUB_SHA}" --resource-group "$resource_group" \
+              --template-file infrastructure/main.bicep \
+              --parameters environmentName="$DEPLOYMENT_ENVIRONMENT" location=uksouth appName=tradepilot \
+                containerImage="${{ env.API_IMAGE }}:${{ needs.publish-api-image.outputs.image-tag }}" \
+                sqlAdminLogin="$SQL_ADMIN_LOGIN" sqlAdminPassword="$SQL_ADMIN_PASSWORD" \
+                corsAllowedOrigin="https://${swa_host}" workerPublicIpAddress="$VPS_WORKER_PUBLIC_IP" deployApi=true
+            api_host=$(az containerapp show --name "tradepilot-${DEPLOYMENT_ENVIRONMENT}-api" --resource-group "$resource_group" --query properties.configuration.ingress.fqdn --output tsv)
+            echo "api_host=$api_host" >> "$GITHUB_OUTPUT"
+      - name: Deploy Angular frontend
+        working-directory: frontend/trading-ui
+        env:
+          API_HOST: ${{ steps.deploy-api.outputs.api_host }}
+          SWA_DEPLOYMENT_TOKEN: ${{ secrets.SWA_DEPLOYMENT_TOKEN }}
+        run: |
+          npm ci
+          sed "s|CONTAINER_APP_FQDN|${API_HOST}|g" src/environments/environment.azure.ts > src/environments/environment.ts
+          npm run build
+          npx swa deploy dist/trading-ui/browser --deployment-token "$SWA_DEPLOYMENT_TOKEN" --env production
+      - name: Verify API readiness
+        run: curl --fail --retry 12 --retry-delay 10 "https://${{ steps.deploy-api.outputs.api_host }}/health/ready"

@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-14T17:20:00Z",
+  "title": "Design System: TradePilot",
+  "extensions": {
+    "colorMeta": {
+      "canvas": { "role": "neutral", "displayName": "Night Canvas", "canonical": "#061012" },
+      "surface-base": { "role": "neutral", "displayName": "Work Surface", "canonical": "#0a1719" },
+      "surface-raised": { "role": "neutral", "displayName": "Raised Surface", "canonical": "#102124" },
+      "surface-selected": { "role": "primary", "displayName": "Selected Teal", "canonical": "#163035" },
+      "accent": { "role": "primary", "displayName": "Pilot Teal", "canonical": "#79cfc3" },
+      "positive": { "role": "semantic", "displayName": "Positive", "canonical": "#54c8a7" },
+      "negative": { "role": "semantic", "displayName": "Negative", "canonical": "#e58a9c" },
+      "warning": { "role": "semantic", "displayName": "Warning", "canonical": "#d8b56d" }
+    },
+    "typographyMeta": {
+      "title": { "displayName": "Page Title", "purpose": "Route and workspace headings." },
+      "body": { "displayName": "Operational Body", "purpose": "Instructions, evidence and status language." },
+      "label": { "displayName": "Data Label", "purpose": "Short metric and control labels." }
+    },
+    "shadows": [
+      { "name": "overlay", "value": "0 18px 44px rgba(0, 0, 0, 0.45)", "purpose": "Mobile sheets and true overlays only." }
+    ],
+    "motion": [
+      { "name": "fast", "value": "150ms cubic-bezier(0.2, 0, 0, 1)", "purpose": "Hover and focus state changes." },
+      { "name": "standard", "value": "200ms cubic-bezier(0.2, 0, 0, 1)", "purpose": "Navigation and control transitions." },
+      { "name": "deliberate", "value": "250ms cubic-bezier(0.2, 0, 0, 1)", "purpose": "Overlay and disclosure transitions." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "640px" },
+      { "name": "shell", "value": "768px" },
+      { "name": "compact-desktop", "value": "900px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Selected navigation item",
+      "kind": "nav",
+      "refersTo": "nav-selected",
+      "description": "Current destination within the intent-grouped side navigation.",
+      "html": "<a class=\"ds-nav-selected\">Overview</a>",
+      "css": ".ds-nav-selected { display:block; padding:10px 12px; border-radius:8px; color:#e7f1ef; background:#163035; font:600 14px Roboto,sans-serif; text-decoration:none; border-left:1px solid #79cfc3; } .ds-nav-selected:focus-visible { outline:2px solid #79cfc3; outline-offset:2px; }"
+    },
+    {
+      "name": "Freshness badge",
+      "kind": "chip",
+      "description": "Explicit readable freshness for live or stale account data.",
+      "html": "<span class=\"ds-freshness\">Live · 2s ago</span>",
+      "css": ".ds-freshness { display:inline-flex; padding:4px 8px; border-radius:999px; color:#829b97; background:#102124; font:650 12px Roboto,sans-serif; font-variant-numeric:tabular-nums; }"
+    },
+    {
+      "name": "Primary account value",
+      "kind": "custom",
+      "description": "Equity or P&L value with stable financial numerals.",
+      "html": "<div class=\"ds-metric\"><span>Equity</span><strong>$12,500.50</strong></div>",
+      "css": ".ds-metric { display:grid; gap:4px; color:#829b97; font:650 12px Roboto,sans-serif; text-transform:uppercase; letter-spacing:.045em; } .ds-metric strong { color:#e7f1ef; font-size:32px; line-height:1.1; letter-spacing:-.025em; text-transform:none; font-variant-numeric:tabular-nums; }"
+    },
+    {
+      "name": "Attention state",
+      "kind": "card",
+      "description": "Actionable risk or account issue; healthy states do not use this treatment.",
+      "html": "<div class=\"ds-attention\"><strong>Account data is temporarily unavailable</strong><span>TradePilot is retrying the connection.</span></div>",
+      "css": ".ds-attention { display:grid; gap:2px; padding:12px; border-radius:8px; color:#ffd9e0; background:#301b21; font:400 13px/1.5 Roboto,sans-serif; } .ds-attention strong { color:#e7f1ef; font-size:14px; }"
+    },
+    {
+      "name": "Quiet surface",
+      "kind": "card",
+      "refersTo": "surface",
+      "description": "Primary content region using tonal depth rather than glass or decorative shadow.",
+      "html": "<section class=\"ds-surface\">Operational content</section>",
+      "css": ".ds-surface { padding:16px; border:1px solid rgba(151,195,188,.2); border-radius:12px; color:#e7f1ef; background:#0a1719; font:400 14px/1.5 Roboto,sans-serif; }"
+    },
+    {
+      "name": "Operational page header",
+      "kind": "header",
+      "refersTo": "page-header",
+      "description": "A compact route heading that establishes the active workspace without a marketing hero treatment.",
+      "html": "<header class=\"ds-page-header\"><div><p>Connections</p><h1>Connection Health</h1><span>Current exchange and transport state.</span></div><button>Refresh</button></header>",
+      "css": ".ds-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid rgba(151,195,188,.12); color:#e7f1ef; font:400 14px/1.5 Roboto,sans-serif; } .ds-page-header p { margin:0 0 4px; color:#829b97; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; } .ds-page-header h1 { margin:0; font-size:24px; line-height:1.2; } .ds-page-header span { color:#829b97; }"
+    },
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "action-primary",
+      "description": "The single next action for a local workflow. Destructive actions use the negative semantic state instead.",
+      "html": "<button class=\"ds-action-primary\">Save strategy</button>",
+      "css": ".ds-action-primary { min-height:40px; padding:0 16px; border:0; border-radius:8px; color:#061314; background:#79cfc3; font:650 14px Roboto,sans-serif; } .ds-action-primary:hover { background:#a6e3da; } .ds-action-primary:focus-visible { outline:2px solid #79cfc3; outline-offset:2px; }"
+    },
+    {
+      "name": "Operational field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A form field for configuration and account settings. Focus is explicit and uses the teal accent without a glow.",
+      "html": "<label class=\"ds-field\"><span>Strategy name</span><input value=\"BTC mean reversion\" /></label>",
+      "css": ".ds-field { display:grid; gap:6px; color:#b4c8c4; font:650 12px Roboto,sans-serif; } .ds-field input { min-height:40px; padding:0 12px; border:1px solid rgba(151,195,188,.2); border-radius:8px; color:#e7f1ef; background:#0a1719; font:400 14px Roboto,sans-serif; } .ds-field input:focus { border-color:#79cfc3; outline:2px solid #79cfc3; outline-offset:2px; }"
+    },
+    {
+      "name": "Data table",
+      "kind": "table",
+      "refersTo": "data-table",
+      "description": "Dense operational evidence. Numeric columns use tabular figures and status has a readable text label.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Market</th><th>Equity</th><th>Status</th></tr></thead><tbody><tr><td>BTC-PERP</td><td>$12,500.50</td><td>Live</td></tr></tbody></table>",
+      "css": ".ds-table { width:100%; border-collapse:collapse; color:#e7f1ef; background:#0a1719; font:400 14px Roboto,sans-serif; font-variant-numeric:tabular-nums; } .ds-table th { padding:10px 12px; border-bottom:1px solid rgba(151,195,188,.12); color:#829b97; font-size:12px; font-weight:700; letter-spacing:.045em; text-align:left; text-transform:uppercase; } .ds-table td { padding:12px; border-bottom:1px solid rgba(151,195,188,.12); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Watch",
+    "overview": "TradePilot is a restrained, high-signal workstation for monitoring live account and market state. Its visual authority comes from composure: a quiet dark-teal canvas, precise tonal layering, explicit freshness, legible risk language and financial numerals that remain stable while data changes. The system is refined rather than replaced. Brand appears through disciplined teal accents and surface temperature, not glow or novelty. Hierarchy answers account health and required attention before secondary detail.",
+    "keyCharacteristics": ["calm", "evidence-led", "compact when healthy", "explicit when degraded", "structurally responsive"],
+    "rules": [
+      { "name": "The Evidence Rule", "body": "Colour may reinforce a state but never carry its meaning alone.", "section": "colors" }
+    ],
+    "dos": [
+      "Do lead with account health, risk and required attention.",
+      "Do keep healthy system state compact.",
+      "Do use semantic tokens and tabular numerals on changed surfaces.",
+      "Do preserve loading, partial, empty, error and stale data readability."
+    ],
+    "donts": [
+      "Don't use neon, glowing borders, decorative gradients or glass as a visual shortcut.",
+      "Don't fade an entire surface to communicate stale data.",
+      "Don't create same-weight card grids that hide priority.",
+      "Don't present AI interpretation without provenance and freshness.",
+      "Don't alter business logic or execution semantics through visual work."
+    ]
+  }
+}

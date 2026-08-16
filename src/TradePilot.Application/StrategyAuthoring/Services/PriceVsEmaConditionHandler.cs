@@ -65,6 +65,8 @@ public sealed class PriceVsEmaConditionHandler : IConditionHandler
         var absoluteDistance = Math.Abs(closePrice - emaValue);
         bool passed;
         string description;
+        decimal actualDistance;
+        string? unit;
 
         switch (distanceType)
         {
@@ -72,11 +74,15 @@ public sealed class PriceVsEmaConditionHandler : IConditionHandler
                 var percentDistance = absoluteDistance / emaValue * 100m;
                 passed = percentDistance <= distanceValue;
                 description = $"distance {Format(percentDistance)}% vs threshold {Format(distanceValue)}%";
+                actualDistance = percentDistance;
+                unit = "%";
                 break;
 
             case "absolute":
                 passed = absoluteDistance <= distanceValue;
                 description = $"distance {Format(absoluteDistance)} vs threshold {Format(distanceValue)}";
+                actualDistance = absoluteDistance;
+                unit = null;
                 break;
 
             case "atr_multiple":
@@ -96,6 +102,11 @@ public sealed class PriceVsEmaConditionHandler : IConditionHandler
             Passed = passed,
             Reason =
                 $"Price {Format(closePrice)} near EMA({emaParams.Period}) = {Format(emaValue)} - {description} - {status}",
+            ActualValue = Format(actualDistance),
+            ActualNumericValue = actualDistance,
+            ExpectedValue = $"<= {Format(distanceValue)}",
+            ExpectedNumericValue = distanceValue,
+            Unit = unit,
         };
     }
 
@@ -115,6 +126,10 @@ public sealed class PriceVsEmaConditionHandler : IConditionHandler
             ConditionId = conditionId,
             Passed = passed,
             Reason = $"Price {Format(closePrice)} {operatorSymbol} EMA({period}) = {Format(emaValue)} - {status}",
+            ActualValue = Format(closePrice),
+            ActualNumericValue = closePrice,
+            ExpectedValue = $"{operatorSymbol} EMA({period}) ({Format(emaValue)})",
+            ExpectedNumericValue = emaValue,
         };
     }
 

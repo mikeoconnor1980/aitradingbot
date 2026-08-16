@@ -1,0 +1,24 @@
+<aside class="analyst-panel" [class.analyst-panel--modal]="isModal()" [attr.role]="isModal() ? 'dialog' : 'complementary'" aria-label="TradePilot Analyst companion" [attr.aria-modal]="isModal() ? 'true' : null">
+  @if (isModal()) { <button class="analyst-panel__backdrop" type="button" aria-label="Close Analyst companion" (click)="close()"></button> }
+  <div class="analyst-panel__surface" [cdkTrapFocus]="isModal()" [cdkTrapFocusAutoCapture]="isModal()">
+    <div class="analyst-panel__resize-handle" (mousedown)="startResize($event)" aria-hidden="true"></div>
+    <header class="analyst-panel__header">
+      <div>
+        <strong>TradePilot Analyst</strong>
+        <span>Read-only</span>
+      </div>
+      <div class="analyst-panel__actions">
+        <button mat-icon-button type="button" aria-label="Start new Analyst investigation" matTooltip="New investigation" (click)="newInvestigation()"><mat-icon>add_comment</mat-icon></button>
+        <button mat-icon-button type="button" aria-label="Expand Analyst investigation" matTooltip="Expand" (click)="expand()"><mat-icon>open_in_full</mat-icon></button>
+        <button mat-icon-button type="button" aria-label="Close Analyst companion" matTooltip="Close" (click)="close()"><mat-icon>close</mat-icon></button>
+      </div>
+    </header>
+    @if (isDocked()) {
+      <div class="analyst-panel__width-controls" aria-label="Analyst panel width">
+        <button mat-icon-button type="button" aria-label="Decrease Analyst panel width" matTooltip="Decrease width" (click)="adjustWidth(-20)"><mat-icon>remove</mat-icon></button>
+        <button mat-icon-button type="button" aria-label="Increase Analyst panel width" matTooltip="Increase width" (click)="adjustWidth(20)"><mat-icon>add</mat-icon></button>
+      </div>
+    }
+    <app-analyst-conversation [compact]="true" />
+  </div>
+</aside>

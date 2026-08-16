@@ -1,4 +1,7 @@
 {
+    "telemetry.telemetryLevel": "off",
+    "github.copilot.telemetry.enabled": false,
+    "github.copilot.chat.otel.enabled": false,
     "chat.tools.terminal.autoApprove": {
         "/^node --version; npm --version$/": {
             "approve": true,

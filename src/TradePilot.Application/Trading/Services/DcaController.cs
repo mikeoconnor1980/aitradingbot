@@ -13,7 +13,7 @@ namespace TradePilot.Application.Trading.Services;
 public sealed class DcaController : IDcaController
 {
     public Task<IReadOnlyList<TradingSignal>> ProcessAsync(
-        StrategyEvaluation evaluation,
+        StrategyEvaluationResult evaluation,
         MarketContext context,
         GridState gridState,
         PositionState positionState,

@@ -46,6 +46,24 @@ public sealed class OpenAiCompatibleLlmClient : ILlmClient
             _options.Provider,
             _options.ModelName);
 
+        if (AzureOpenAiResponsesProtocol.IsAzureOpenAi(_options.Provider))
+        {
+            var azureResponse = await AzureOpenAiResponsesProtocol.CompleteAsync(
+                _httpClient,
+                _options.BaseUrl,
+                new AzureResponsesRequest
+                {
+                    Model = _options.ModelName,
+                    Input =
+                    [
+                        new AzureResponsesInputItem { Role = "system", Content = systemPrompt },
+                        new AzureResponsesInputItem { Role = "user", Content = userMessage },
+                    ],
+                },
+                cancellationToken);
+            return AzureOpenAiResponsesProtocol.GetText(azureResponse, "Azure OpenAI returned no text output.");
+        }
+
         using var response = await _httpClient.PostAsJsonAsync(
             "chat/completions",
             request,

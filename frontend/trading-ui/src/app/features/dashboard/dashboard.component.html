@@ -1,40 +1,70 @@
-<section class="dashboard" [class.dashboard--stale]="isStale">
-  @if (showSubscriptionBanner) {
-    <div class="dashboard__subscription-banner" [class.dashboard__subscription-banner--warning]="needsSubscriptionWarning" role="alert">
-      <mat-icon>info</mat-icon>
-      <span>
-        @if (needsSubscriptionWarning) {
-          An active subscription is required to access trading features.
-        } @else {
-          Activate your free subscription to access trading features.
-        }
-      </span>
-      <a mat-stroked-button routerLink="/profile">Go to Profile</a>
-    </div>
-  }
-
-  @if (showErrorBanner) {
-    <div class="dashboard__error-banner" role="alert">
-      <mat-icon>error</mat-icon>
-      <span>{{ errorMessage }}</span>
-    </div>
-  }
-
+<section class="dashboard">
   <header class="dashboard__header">
-    <h1 class="dashboard__title">Account Dashboard</h1>
+    <div>
+      <h1 class="dashboard__title">Overview</h1>
+      <p class="dashboard__subtitle">{{ selectedExchange }} account health, market conditions and active work.</p>
+    </div>
     <div class="dashboard__controls">
-      @if (lastUpdated) {
-        <span class="dashboard__timestamp">Last updated: {{ secondsAgo }}s ago</span>
-      }
-      <button mat-icon-button type="button" [disabled]="isLoading" aria-label="Refresh dashboard" (click)="onManualRefresh()">
+      <span
+        class="dashboard__freshness"
+        [class.dashboard__freshness--stale]="isStale"
+        [class.dashboard__freshness--loading]="isLoading"
+        role="status">
+        <mat-icon aria-hidden="true">{{ isStale ? 'schedule' : isLoading ? 'sync' : 'check_circle' }}</mat-icon>
+        {{ freshnessLabel }}
+      </span>
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="isLoading"
+        aria-label="Refresh account data"
+        (click)="onManualRefresh()">
         <mat-icon>refresh</mat-icon>
       </button>
     </div>
   </header>
 
+  @if (hasAttention) {
+    <section class="dashboard__attention" aria-labelledby="attention-heading">
+      <h2 id="attention-heading">Requires attention</h2>
+
+      @if (drawdownState?.isCircuitBreakerActive) {
+        <div class="dashboard__attention-item dashboard__attention-item--critical" role="alert">
+          <mat-icon aria-hidden="true">report</mat-icon>
+          <div>
+            <strong>Trading is halted by the drawdown circuit breaker</strong>
+            <span>Review risk state before attempting further execution.</span>
+          </div>
+        </div>
+      }
+
+      @if (showErrorBanner) {
+        <div class="dashboard__attention-item dashboard__attention-item--critical" role="alert">
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <div>
+            <strong>Account data is temporarily unavailable</strong>
+            <span>{{ errorMessage }}</span>
+          </div>
+        </div>
+      }
+
+      @if (showSubscriptionBanner) {
+        <div class="dashboard__attention-item" [class.dashboard__attention-item--warning]="needsSubscriptionWarning">
+          <mat-icon aria-hidden="true">workspace_premium</mat-icon>
+          <div>
+            <strong>{{ needsSubscriptionWarning ? 'Trading access needs an active subscription' : 'Activate your free subscription' }}</strong>
+            <span>Manage subscription access from your profile.</span>
+          </div>
+          <a mat-stroked-button routerLink="/profile">Open profile</a>
+        </div>
+      }
+    </section>
+  }
+
   @if (isLoading && !accountSummary) {
-    <div class="dashboard__loading">
-      <mat-spinner diameter="44" aria-label="Loading dashboard"></mat-spinner>
+    <div class="dashboard__loading" role="status">
+      <mat-spinner diameter="36" aria-label="Loading account overview"></mat-spinner>
+      <span>Loading account overview…</span>
     </div>
   }
 
@@ -42,40 +72,42 @@
     <app-account-summary
       [summary]="accountSummary"
       [drawdownState]="drawdownState"
-      [portfolioHeat]="portfolioHeat"></app-account-summary>
+      [portfolioHeat]="portfolioHeat" />
   }
 
-  <div class="dashboard__context">
-    <app-market-context-card></app-market-context-card>
-  </div>
+  <section class="dashboard__context" aria-label="Market context">
+    <app-market-context-card />
+  </section>
 
-  <mat-tab-group
-    class="dashboard__tabs"
-    [selectedIndex]="selectedTabIndex"
-    (selectedIndexChange)="selectedTabIndex = $event"
-    (touchstart)="onTouchStart($event)"
-    (touchend)="onTouchEnd($event)">
-    <mat-tab label="Positions">
-      <app-positions-table
-        [positions]="positions"
-        [equity]="accountSummary?.equity ?? 0"
-        (closeAllPositions)="onCloseAllPositions()"
-        (closePosition)="onClosePosition($event)"
-        (setSlTp)="onSetSlTp($event)"
-        (editSlTp)="onEditSlTp($event)"
-        (removeSlTp)="onRemoveSlTp($event)"></app-positions-table>
-    </mat-tab>
-    <mat-tab label="Orders">
-      <app-orders-table
-        [orders]="orders"
-        (cancelOrder)="onCancelOrder($event)"
-        (cancelAllOrders)="onCancelAllOrders()"
-        (modifyOrder)="onModifyOrder($event)"></app-orders-table>
-    </mat-tab>
-    <mat-tab label="Activity">
-      <app-activity-feed></app-activity-feed>
-    </mat-tab>
-  </mat-tab-group>
+  <section class="dashboard__workspace" aria-label="Positions, orders and activity">
+    <mat-tab-group
+      class="dashboard__tabs"
+      [selectedIndex]="selectedTabIndex"
+      (selectedIndexChange)="selectedTabIndex = $event">
+      <mat-tab>
+        <ng-template mat-tab-label>Positions <span class="dashboard__tab-count">{{ positions.length }}</span></ng-template>
+        <app-positions-table
+          [positions]="positions"
+          [equity]="accountSummary?.equity ?? 0"
+          (closeAllPositions)="onCloseAllPositions()"
+          (closePosition)="onClosePosition($event)"
+          (setSlTp)="onSetSlTp($event)"
+          (editSlTp)="onEditSlTp($event)"
+          (removeSlTp)="onRemoveSlTp($event)" />
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>Orders <span class="dashboard__tab-count">{{ orders.length }}</span></ng-template>
+        <app-orders-table
+          [orders]="orders"
+          (cancelOrder)="onCancelOrder($event)"
+          (cancelAllOrders)="onCancelAllOrders()"
+          (modifyOrder)="onModifyOrder($event)" />
+      </mat-tab>
+      <mat-tab label="Activity">
+        <app-activity-feed />
+      </mat-tab>
+    </mat-tab-group>
+  </section>
 
   @if (isMobile()) {
     <button

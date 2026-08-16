@@ -1,14 +1,14 @@
 .confidence-badge {
   display: grid;
-  gap: 0.65rem;
+  gap: var(--space-3);
 
   &__pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: var(--space-2);
     width: fit-content;
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-pill);
     font-size: 0.9rem;
     font-weight: 600;
   }
@@ -16,39 +16,39 @@
   &__message {
     display: flex;
     align-items: flex-start;
-    gap: 0.45rem;
-    padding: 0.8rem 0.95rem;
-    border-radius: 0.75rem;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-2);
     font-size: 0.9rem;
   }
 
   &--high &__pill {
-    background: rgba(74, 222, 128, 0.14);
-    color: var(--colour-profit);
-    border: 1px solid rgba(74, 222, 128, 0.2);
+    background: var(--state-positive-surface);
+    color: var(--state-positive);
+    border: 1px solid var(--state-positive);
   }
 
   &--medium &__pill {
-    background: rgba(251, 191, 36, 0.15);
-    color: var(--colour-warning);
-    border: 1px solid rgba(251, 191, 36, 0.24);
+    background: var(--state-warning-surface);
+    color: var(--state-warning);
+    border: 1px solid var(--state-warning);
   }
 
   &--low &__pill {
-    background: rgba(248, 113, 113, 0.14);
-    color: var(--colour-loss);
-    border: 1px solid rgba(248, 113, 113, 0.24);
+    background: var(--state-negative-surface);
+    color: var(--state-negative);
+    border: 1px solid var(--state-negative);
   }
 
   &__message--warning {
-    background: rgba(248, 113, 113, 0.08);
-    color: var(--colour-loss);
-    border: 1px solid rgba(248, 113, 113, 0.16);
+    background: var(--state-negative-surface);
+    color: var(--state-negative-text);
+    border: 1px solid var(--state-negative);
   }
 
   &__message--clarification {
-    background: rgba(251, 191, 36, 0.08);
-    color: var(--colour-warning);
-    border: 1px solid rgba(251, 191, 36, 0.16);
+    background: var(--state-warning-surface);
+    color: var(--state-warning);
+    border: 1px solid var(--state-warning);
   }
 }

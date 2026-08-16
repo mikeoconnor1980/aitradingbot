@@ -13,5 +13,17 @@ public sealed class ConditionResult
 
     public decimal? Score { get; init; }
 
+    public string? ActualValue { get; init; }
+
+    public decimal? ActualNumericValue { get; init; }
+
+    public string? ExpectedValue { get; init; }
+
+    public decimal? ExpectedNumericValue { get; init; }
+
+    public string? Unit { get; init; }
+
+    public bool WasEvaluated { get; init; } = true;
+
     public IReadOnlyDictionary<string, object?>? Metadata { get; init; }
 }

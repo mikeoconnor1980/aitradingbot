@@ -10,7 +10,11 @@ using TradePilot.Application.StrategyAuthoring.Services;
 using TradePilot.Application.Trading.Models;
 using TradePilot.Application.Trading.Services;
 using TradePilot.Domain.Entities;
+using TradePilot.Domain.Enums;
 using TradePilot.Domain.Trading;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 namespace TradePilot.Application.Scheduling;
 
@@ -36,6 +40,11 @@ public sealed class StrategyScheduler
     private readonly IReadOnlyList<DrawdownTier> _drawdownTiers;
     private readonly IStrategyRepository? _strategyRepository;
     private readonly Strategy? _strategy;
+    private readonly IStrategyEvaluationRepository? _strategyEvaluationRepository;
+    private readonly Guid? _strategyId;
+    private readonly int? _strategyVersion;
+    private readonly string _configurationIdentity;
+    private readonly string _sourceExchange;
 
     private readonly GridState _gridState;
     private PositionState _positionState = new();
@@ -59,7 +68,11 @@ public sealed class StrategyScheduler
         GridState? gridState = null,
         IReadOnlyList<DrawdownTier>? drawdownTiers = null,
         Strategy? strategy = null,
-        IStrategyRepository? strategyRepository = null)
+        IStrategyRepository? strategyRepository = null,
+        IStrategyEvaluationRepository? strategyEvaluationRepository = null,
+        Guid? strategyId = null,
+        int? strategyVersion = null,
+        string sourceExchange = "Unknown")
     {
         _contextBuilder = contextBuilder ?? throw new ArgumentNullException(nameof(contextBuilder));
         _strategyEngine = strategyEngine ?? throw new ArgumentNullException(nameof(strategyEngine));
@@ -81,6 +94,11 @@ public sealed class StrategyScheduler
         _drawdownTiers = drawdownTiers ?? [];
         _strategy = strategy;
         _strategyRepository = strategyRepository;
+        _strategyEvaluationRepository = strategyEvaluationRepository;
+        _strategyId = strategy?.Id ?? strategyId;
+        _strategyVersion = strategy?.Version ?? strategyVersion;
+        _configurationIdentity = ComputeConfigurationIdentity(strategyConfig);
+        _sourceExchange = sourceExchange;
         _highWaterMarkUsd = strategy?.HighWaterMarkUsd;
     }
 
@@ -188,6 +206,27 @@ public sealed class StrategyScheduler
 
         if (signals.Count == 0)
         {
+            var decision = _positionState.IsOpen ? StrategyDecision.Hold : StrategyDecision.NoTrade;
+            var rules = evaluation.Rules.ToList();
+            if (evaluation.SetupDetected)
+            {
+                rules.Add(new RuleEvaluationResult(
+                    _positionState.IsOpen ? "exit.signal_emission" : "entry.signal_emission",
+                    _positionState.IsOpen ? "Exit signal emission" : "Entry signal emission",
+                    _positionState.IsOpen ? RuleCategory.Exit : RuleCategory.Entry,
+                    false,
+                    _positionState.IsOpen
+                        ? "No exit signal was emitted for the open position."
+                        : "The setup passed, but the strategy controller emitted no entry signal.",
+                    !_positionState.IsOpen,
+                    _positionState.IsOpen ? RuleEvaluationKind.Informational : RuleEvaluationKind.Blocking,
+                    ActualValue: "0 signals",
+                    ActualNumericValue: 0m,
+                    ExpectedValue: _positionState.IsOpen ? "exit optional" : ">= 1 entry signal",
+                    ExpectedNumericValue: _positionState.IsOpen ? null : 1m));
+            }
+
+            await PersistEvaluationAsync(evaluation, context, signals, decision, rules, cancellationToken);
             _executionLogger.LogSummary(
                 ExecutionLogCategory.Signal,
                 $"No signals emitted. Grid={_gridState.Lifecycle}, Position={(_positionState.IsOpen ? $"open ({_positionState.Size:F4})" : "flat")}");
@@ -198,9 +237,18 @@ public sealed class StrategyScheduler
             ExecutionLogCategory.Signal,
             $"{signals.Count} signal(s) emitted: {string.Join(", ", signals.Select(s => s.SignalType))}");
 
-        var approvedSignals = await _riskEngine.ValidateAsync(signals, cancellationToken);
+        var riskValidation = await _riskEngine.ValidateWithEvidenceAsync(signals, cancellationToken);
+        var approvedSignals = riskValidation.ApprovedSignals;
+        var completeRules = evaluation.Rules.Concat(riskValidation.Rules).ToList();
         if (approvedSignals.Count == 0)
         {
+            await PersistEvaluationAsync(
+                evaluation,
+                context,
+                signals,
+                StrategyDecision.RejectedByRisk,
+                completeRules,
+                cancellationToken);
             _executionLogger.LogSummary(
                 ExecutionLogCategory.RiskEngine,
                 "All signals REJECTED by risk engine.");
@@ -211,7 +259,21 @@ public sealed class StrategyScheduler
             ExecutionLogCategory.RiskEngine,
             $"Risk engine approved {approvedSignals.Count}/{signals.Count} signal(s).");
 
-        await _positionManager.ExecuteSignalsAsync(approvedSignals, cancellationToken);
+        var evaluationId = await PersistEvaluationAsync(
+            evaluation,
+            context,
+            approvedSignals,
+            DetermineSignalDecision(approvedSignals[0]),
+            completeRules,
+            cancellationToken);
+
+        var evidencedSignals = DecorateSignalsWithEvaluationEvidence(
+            approvedSignals,
+            evaluationId,
+            evaluation,
+            context);
+
+        await _positionManager.ExecuteSignalsAsync(evidencedSignals, cancellationToken);
 
         _executionLogger.LogSummary(
             ExecutionLogCategory.Signal,
@@ -262,7 +324,7 @@ public sealed class StrategyScheduler
     }
 
     private Task<IReadOnlyList<TradingSignal>> ProcessEvaluationAsync(
-        StrategyEvaluation evaluation,
+        StrategyEvaluationResult evaluation,
         MarketContext context,
         CancellationToken cancellationToken)
     {
@@ -302,6 +364,154 @@ public sealed class StrategyScheduler
             _positionState,
             _strategyConfig,
             cancellationToken);
+    }
+
+    private async Task<Guid?> PersistEvaluationAsync(
+        StrategyEvaluationResult result,
+        MarketContext context,
+        IReadOnlyList<TradingSignal> signals,
+        StrategyDecision decision,
+        IReadOnlyList<RuleEvaluationResult> ruleResults,
+        CancellationToken cancellationToken)
+    {
+        if (_strategyEvaluationRepository is null)
+        {
+            return null;
+        }
+
+        var rules = ruleResults
+            .Select((rule, index) => RuleEvaluation.Create(
+                index,
+                rule.RuleId,
+                rule.Name,
+                rule.Category,
+                rule.Passed,
+                rule.Reason,
+                rule.IsBlocking,
+                rule.Kind,
+                rule.ActualValue,
+                rule.ActualNumericValue,
+                rule.ExpectedValue,
+                rule.ExpectedNumericValue,
+                rule.Unit))
+            .ToList();
+        var primaryRejectionReason = rules
+            .FirstOrDefault(rule => !rule.Passed && rule.IsBlocking)
+            ?.Reason;
+
+        if ((decision is StrategyDecision.NoTrade or StrategyDecision.RejectedByRisk)
+            && string.IsNullOrWhiteSpace(primaryRejectionReason))
+        {
+            primaryRejectionReason = result.Reason ?? "No trading signal was emitted.";
+        }
+
+        var signal = signals.FirstOrDefault();
+        var evaluation = TradePilot.Domain.Entities.StrategyEvaluation.Create(
+            _strategyId,
+            (_strategyConfig as StrategyConfig)?.StrategyName ?? "Unnamed strategy",
+            _strategyVersion,
+            _configurationIdentity,
+            context.Symbol,
+            _triggerTimeframe,
+            context.TimestampUtc,
+            decision,
+            result.SetupDetected,
+            primaryRejectionReason,
+            context.CurrentCandle.Timestamp,
+            context.CurrentCandle.Close,
+            result.Regime?.ToString() ?? context.LlmContext?.DerivedRegime.ToString(),
+            signal?.SignalType,
+            signal?.Reason,
+            result.EvaluationShortCircuited,
+            rules);
+
+        try
+        {
+            await _strategyEvaluationRepository.AddAsync(evaluation, cancellationToken);
+            return evaluation.Id;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Evidence persistence must be observable without changing the strategy's trading decision.
+            _executionLogger.LogSummary(
+                ExecutionLogCategory.EntryGate,
+                $"Strategy evaluation persistence failed: {exception.GetType().Name}",
+                new Dictionary<string, object>
+                {
+                    ["strategy"] = evaluation.StrategyName,
+                    ["symbol"] = evaluation.Symbol,
+                    ["decision"] = evaluation.Decision.ToString(),
+                });
+            return null;
+        }
+    }
+
+    private IReadOnlyList<TradingSignal> DecorateSignalsWithEvaluationEvidence(
+        IReadOnlyList<TradingSignal> signals,
+        Guid? evaluationId,
+        StrategyEvaluationResult evaluation,
+        MarketContext context)
+    {
+        var side = _strategyConfig is StrategyConfig { Direction: Direction.Short }
+            ? TradeSide.Short
+            : TradeSide.Long;
+        foreach (var signal in signals)
+        {
+            signal.ExecutionEvidence = new TradeExecutionEvidence(
+                _strategyId,
+                (_strategyConfig as StrategyConfig)?.StrategyName ?? "Unnamed strategy",
+                _strategyVersion,
+                _configurationIdentity,
+                evaluationId,
+                evaluation.Regime?.ToString() ?? context.LlmContext?.DerivedRegime.ToString(),
+                _triggerTimeframe,
+                side,
+                (_strategyConfig as StrategyConfig)?.Risk.Leverage,
+                _sourceExchange,
+                ResolveTradeExitReason(signal.Parameters));
+        }
+
+        return signals;
+    }
+
+    private static TradeExitReason? ResolveTradeExitReason(IReadOnlyDictionary<string, object>? parameters)
+    {
+        if (parameters is null
+            || !parameters.TryGetValue("cancellationReason", out var value)
+            || value is null)
+        {
+            return null;
+        }
+
+        return value.ToString() switch
+        {
+            nameof(CancellationReason.TakeProfitTriggered) => TradeExitReason.TakeProfit,
+            nameof(CancellationReason.StopLossTriggered) => TradeExitReason.StopLoss,
+            nameof(CancellationReason.TrailingStopTriggered) => TradeExitReason.TrailingStop,
+            _ => TradeExitReason.Unknown,
+        };
+    }
+
+    private StrategyDecision DetermineSignalDecision(TradingSignal signal)
+    {
+        if (signal.SignalType is "TakeProfit" or "CancelGrid" or "FlattenPosition" or "CloseHedge")
+        {
+            return StrategyDecision.Exit;
+        }
+
+        return _strategyConfig is StrategyConfig { Direction: Direction.Short }
+            ? StrategyDecision.EnterShort
+            : StrategyDecision.EnterLong;
+    }
+
+    private static string ComputeConfigurationIdentity(IStrategyConfig strategyConfig)
+    {
+        var json = JsonSerializer.Serialize(strategyConfig, strategyConfig.GetType());
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json))).ToLowerInvariant();
     }
 
     private async Task ApplyDrawdownStateAsync(MarketContext context, CancellationToken cancellationToken)

@@ -51,6 +51,12 @@ export class StrategyListPageComponent implements OnInit {
     });
   }
 
+  public onAskAnalyst(strategy: StrategySummaryDto): void {
+    void this._router.navigate(["/analyst"], {
+      queryParams: { intent: "ExplainStrategyEntry", strategyId: strategy.id }
+    });
+  }
+
   public onDuplicate(strategy: StrategySummaryDto): void {
     void this._router.navigate(["/strategies/new"], {
       queryParams: { duplicateFrom: strategy.id }

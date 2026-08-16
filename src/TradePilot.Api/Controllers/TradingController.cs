@@ -123,6 +123,7 @@ public sealed class TradingController : ControllerBase
             AgentId = agentId,
             Type = AgentCommandType.Start,
             StrategyId = strategy.Id,
+            StrategyVersion = strategy.Version,
             StrategyConfig = strategyConfig,
             CreatedAtUtc = DateTimeOffset.UtcNow,
         };

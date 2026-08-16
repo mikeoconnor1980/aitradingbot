@@ -14,6 +14,9 @@ param adminLogin string
 @description('SQL admin password')
 param adminPassword string
 
+@description('Fixed public IPv4 address of the VPS-hosted Worker')
+param workerPublicIpAddress string = ''
+
 resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   name: serverName
   location: location
@@ -31,6 +34,15 @@ resource firewallRule 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' =
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'
+  }
+}
+
+resource workerFirewallRule 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = if (!empty(workerPublicIpAddress)) {
+  parent: sqlServer
+  name: 'AllowWorkerVps'
+  properties: {
+    startIpAddress: workerPublicIpAddress
+    endIpAddress: workerPublicIpAddress
   }
 }
 

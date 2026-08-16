@@ -429,6 +429,14 @@ namespace TradePilot.Persistence.Migrations
                     b.Property<DateTime>("FilledAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("GridCycleId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool?>("IsEntry")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OrderId")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -450,6 +458,14 @@ namespace TradePilot.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<Guid?>("TradeJournalRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TradeType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -462,6 +478,8 @@ namespace TradePilot.Persistence.Migrations
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("IX_LiveFills_UserId");
+
+                    b.HasIndex("TradeJournalRecordId");
 
                     b.HasIndex("Symbol", "FilledAtUtc")
                         .HasDatabaseName("IX_LiveFills_Symbol_FilledAtUtc");
@@ -963,6 +981,99 @@ namespace TradePilot.Persistence.Migrations
                     b.ToTable("Strategies", (string)null);
                 });
 
+            modelBuilder.Entity("TradePilot.Domain.Entities.StrategyEvaluation", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConfigurationIdentity").IsRequired().HasMaxLength(64).HasColumnType("nvarchar(64)");
+                    b.Property<string>("Decision").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<long>("EvaluatedAtUtc").HasColumnType("bigint");
+                    b.Property<bool>("EvaluationShortCircuited").HasColumnType("bit");
+                    b.Property<long>("MarketContextTimestampUtc").HasColumnType("bigint");
+                    b.Property<string>("MarketRegime").HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<string>("PrimaryRejectionReason").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<double>("ReferencePrice").HasColumnType("float");
+                    b.Property<string>("SignalReason").HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("SignalType").HasMaxLength(50).HasColumnType("nvarchar(50)");
+                    b.Property<bool>("SetupDetected").HasColumnType("bit");
+                    b.Property<Guid?>("StrategyId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("StrategyName").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<int?>("StrategyVersion").HasColumnType("int");
+                    b.Property<string>("Symbol").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                    b.Property<string>("Timeframe").IsRequired().HasMaxLength(10).HasColumnType("nvarchar(10)");
+                    b.HasKey("Id");
+                    b.HasIndex("EvaluatedAtUtc").HasDatabaseName("IX_StrategyEvaluations_EvaluatedAtUtc");
+                    b.HasIndex("StrategyId", "Symbol", "EvaluatedAtUtc").HasDatabaseName("IX_StrategyEvaluations_StrategyId_Symbol_EvaluatedAtUtc");
+                    b.HasIndex("StrategyName", "Symbol", "EvaluatedAtUtc").HasDatabaseName("IX_StrategyEvaluations_StrategyName_Symbol_EvaluatedAtUtc");
+                    b.ToTable("StrategyEvaluations", (string)null);
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.RuleEvaluation", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
+                    b.Property<string>("ActualValue").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<double?>("ActualNumericValue").HasColumnType("float");
+                    b.Property<string>("Category").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<int>("EvaluationOrder").HasColumnType("int");
+                    b.Property<string>("ExpectedValue").HasMaxLength(500).HasColumnType("nvarchar(500)");
+                    b.Property<double?>("ExpectedNumericValue").HasColumnType("float");
+                    b.Property<bool>("IsBlocking").HasColumnType("bit");
+                    b.Property<string>("Kind").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<string>("Name").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<bool>("Passed").HasColumnType("bit");
+                    b.Property<string>("Reason").IsRequired().HasMaxLength(1000).HasColumnType("nvarchar(1000)");
+                    b.Property<string>("RuleId").IsRequired().HasMaxLength(200).HasColumnType("nvarchar(200)");
+                    b.Property<Guid>("StrategyEvaluationId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("Unit").HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.HasKey("Id");
+                    b.HasIndex("RuleId", "Passed", "IsBlocking").HasDatabaseName("IX_RuleEvaluations_RuleId_Passed_IsBlocking");
+                    b.HasIndex("StrategyEvaluationId", "EvaluationOrder").IsUnique().HasDatabaseName("IX_RuleEvaluations_StrategyEvaluationId_EvaluationOrder");
+                    b.ToTable("RuleEvaluations", (string)null);
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.TradeJournalRecord", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConfigurationIdentity").IsRequired().HasMaxLength(64).HasColumnType("nvarchar(64)");
+                    b.Property<DateTime>("CreatedAtUtc").HasColumnType("datetime2");
+                    b.Property<long?>("DurationMilliseconds").HasColumnType("bigint");
+                    b.Property<string>("EntryMarketRegime").HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<double>("EntryPrice").HasColumnType("float");
+                    b.Property<double>("EntryQuantity").HasColumnType("float");
+                    b.Property<Guid?>("EntryStrategyEvaluationId").HasColumnType("uniqueidentifier");
+                    b.Property<DateTime>("EntryTimeUtc").HasColumnType("datetime2");
+                    b.Property<string>("ExitReason").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<double?>("ExitPrice").HasColumnType("float");
+                    b.Property<double>("ExitQuantity").HasColumnType("float");
+                    b.Property<Guid?>("ExitStrategyEvaluationId").HasColumnType("uniqueidentifier");
+                    b.Property<DateTime?>("ExitTimeUtc").HasColumnType("datetime2");
+                    b.Property<double>("Fees").HasColumnType("float");
+                    b.Property<double?>("Funding").HasColumnType("float");
+                    b.Property<double>("GrossPnl").HasColumnType("float");
+                    b.Property<double?>("Leverage").HasColumnType("float");
+                    b.Property<double?>("MaeAmount").HasColumnType("float");
+                    b.Property<double?>("MaePercent").HasColumnType("float");
+                    b.Property<double?>("MfeAmount").HasColumnType("float");
+                    b.Property<double?>("MfePercent").HasColumnType("float");
+                    b.Property<double>("NetPnl").HasColumnType("float");
+                    b.Property<string>("Side").IsRequired().HasMaxLength(10).HasColumnType("nvarchar(10)");
+                    b.Property<string>("SourceExchange").IsRequired().HasMaxLength(30).HasColumnType("nvarchar(30)");
+                    b.Property<string>("SourceLifecycleId").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<string>("Status").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                    b.Property<Guid?>("StrategyId").HasColumnType("uniqueidentifier");
+                    b.Property<string>("StrategyName").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.Property<int?>("StrategyVersion").HasColumnType("int");
+                    b.Property<string>("Symbol").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                    b.Property<string>("Timeframe").IsRequired().HasMaxLength(10).HasColumnType("nvarchar(10)");
+                    b.Property<string>("UserId").IsRequired().HasMaxLength(100).HasColumnType("nvarchar(100)");
+                    b.HasKey("Id");
+                    b.HasIndex("EntryStrategyEvaluationId");
+                    b.HasIndex("ExitStrategyEvaluationId");
+                    b.HasIndex("StrategyId", "StrategyVersion", "ExitTimeUtc").HasDatabaseName("IX_TradeJournalRecords_Strategy_Version_ExitTimeUtc");
+                    b.HasIndex("UserId", "Status", "EntryTimeUtc").HasDatabaseName("IX_TradeJournalRecords_User_Status_EntryTimeUtc");
+                    b.HasIndex("UserId", "Symbol", "ExitTimeUtc").HasDatabaseName("IX_TradeJournalRecords_User_Symbol_ExitTimeUtc");
+                    b.ToTable("TradeJournalRecords", (string)null);
+                });
+
             modelBuilder.Entity("TradePilot.Domain.Entities.StrategyReview", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1381,6 +1492,37 @@ namespace TradePilot.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("TradePilot.Domain.Entities.RuleEvaluation", b =>
+                {
+                    b.HasOne("TradePilot.Domain.Entities.StrategyEvaluation", null)
+                        .WithMany("Rules")
+                        .HasForeignKey("StrategyEvaluationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.LiveFill", b =>
+                {
+                    b.HasOne("TradePilot.Domain.Entities.TradeJournalRecord", null)
+                        .WithMany()
+                        .HasForeignKey("TradeJournalRecordId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.TradeJournalRecord", b =>
+                {
+                    b.HasOne("TradePilot.Domain.Entities.StrategyEvaluation", "EntryStrategyEvaluation")
+                        .WithMany()
+                        .HasForeignKey("EntryStrategyEvaluationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                    b.HasOne("TradePilot.Domain.Entities.StrategyEvaluation", "ExitStrategyEvaluation")
+                        .WithMany()
+                        .HasForeignKey("ExitStrategyEvaluationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                    b.Navigation("EntryStrategyEvaluation");
+                    b.Navigation("ExitStrategyEvaluation");
+                });
+
             modelBuilder.Entity("TradePilot.Domain.Entities.StrategyReview", b =>
                 {
                     b.HasOne("TradePilot.Domain.Entities.Strategy", null)
@@ -1433,6 +1575,11 @@ namespace TradePilot.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("TradePilot.Domain.Entities.StrategyEvaluation", b =>
+                {
+                    b.Navigation("Rules");
                 });
 #pragma warning restore 612, 618
         }

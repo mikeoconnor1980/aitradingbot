@@ -699,9 +699,9 @@ public sealed class GridControllerTests
         deployGrid.Parameters["leverage"].Should().Be(3);
     }
 
-    private static StrategyEvaluation CreateEvaluation(bool setupDetected = true)
+    private static StrategyEvaluationResult CreateEvaluation(bool setupDetected = true)
     {
-        return new StrategyEvaluation
+        return new StrategyEvaluationResult
         {
             SetupDetected = setupDetected,
             Reason = "Test setup"

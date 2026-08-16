@@ -1,0 +1,851 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using TradePilot.Application.Abstractions.Exceptions;
+using TradePilot.Application.Abstractions.Repositories;
+using TradePilot.Application.Abstractions.Services;
+using TradePilot.Application.Analyst.Models;
+using TradePilot.Application.Backtesting.Experiments;
+using TradePilot.Application.MarketAnalysis.Queries;
+using TradePilot.Application.MarketData.Queries;
+using TradePilot.Application.StrategyEvaluations.Queries;
+using TradePilot.Application.TradeJournal.Queries;
+using TradePilot.Domain.Enums;
+
+namespace TradePilot.AI.Analyst;
+
+/// <summary>
+/// Maps the Analyst's fixed read-only tool set directly to existing application queries.
+/// No MCP or exchange client is reachable from this catalogue.
+/// </summary>
+public sealed class TradePilotAnalystToolCatalog : IAnalystToolCatalog
+{
+    private static readonly string[] DefaultTimeframes = ["15m", "1h", "4h", "1d"];
+    private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+
+    private readonly ISender _sender;
+    private readonly IExchangeResolver _exchangeResolver;
+    private readonly IUserWalletAddressRepository _walletRepository;
+    private readonly IUserExchangeCredentialRepository _credentialRepository;
+    private readonly IStrategyRepository _strategyRepository;
+    private readonly IBacktestExperimentService _backtestExperimentService;
+    private readonly ILogger<TradePilotAnalystToolCatalog> _logger;
+
+    /// <summary>Initializes the native TradePilot Analyst tool catalogue.</summary>
+    public TradePilotAnalystToolCatalog(
+        ISender sender,
+        IExchangeResolver exchangeResolver,
+        IUserWalletAddressRepository walletRepository,
+        IUserExchangeCredentialRepository credentialRepository,
+        IStrategyRepository strategyRepository,
+        IBacktestExperimentService backtestExperimentService,
+        ILogger<TradePilotAnalystToolCatalog> logger)
+    {
+        _sender = sender;
+        _exchangeResolver = exchangeResolver;
+        _walletRepository = walletRepository;
+        _credentialRepository = credentialRepository;
+        _strategyRepository = strategyRepository;
+        _backtestExperimentService = backtestExperimentService;
+        _logger = logger;
+        Definitions = CreateDefinitions();
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AnalystToolDefinition> Definitions { get; }
+
+    /// <inheritdoc />
+    public async Task<AnalystToolResult> ExecuteAsync(
+        string toolName,
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(toolName);
+        ArgumentNullException.ThrowIfNull(context);
+
+        try
+        {
+            return toolName switch
+            {
+                "get_market_snapshot" => await GetMarketSnapshotAsync(argumentsJson, cancellationToken),
+                "analyse_market" => await AnalyseMarketAsync(argumentsJson, cancellationToken),
+                "analyse_market_multi_timeframe" => await AnalyseMarketMultiTimeframeAsync(argumentsJson, cancellationToken),
+                "analyse_chart_context" => await AnalyseChartContextAsync(argumentsJson, context, cancellationToken),
+                "get_account_summary" => await GetAccountSummaryAsync(argumentsJson, context, cancellationToken),
+                "get_positions" => await GetPositionsAsync(argumentsJson, context, cancellationToken),
+                "get_open_orders" => await GetOpenOrdersAsync(argumentsJson, context, cancellationToken),
+                "get_recent_fills" => await GetRecentFillsAsync(argumentsJson, context, cancellationToken),
+                "get_strategy_evaluations" => await GetStrategyEvaluationsAsync(argumentsJson, context, cancellationToken),
+                "get_latest_strategy_evaluation" => await GetLatestStrategyEvaluationAsync(argumentsJson, context, cancellationToken),
+                "get_strategy_evaluation_summary" => await GetStrategyEvaluationSummaryAsync(argumentsJson, context, cancellationToken),
+                "get_recent_trades" => await GetRecentTradesAsync(argumentsJson, context, cancellationToken),
+                "get_trade" => await GetTradeAsync(argumentsJson, context, cancellationToken),
+                "get_trade_analytics" => await GetTradeAnalyticsAsync(argumentsJson, context, cancellationToken),
+                "get_strategy_trade_analytics" => await GetStrategyTradeAnalyticsAsync(argumentsJson, context, cancellationToken),
+                "run_backtest_experiment" => await RunBacktestExperimentAsync(argumentsJson, context, cancellationToken),
+                _ => AnalystToolResult.Failure("unknown_tool", "The requested tool is not available."),
+            };
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (JsonException)
+        {
+            return AnalystToolResult.Failure("invalid_arguments", "The tool arguments were not valid JSON for this tool.");
+        }
+        catch (ArgumentException)
+        {
+            return AnalystToolResult.Failure("invalid_arguments", "One or more required tool arguments were missing or invalid.");
+        }
+        catch (DomainException exception)
+        {
+            _logger.LogWarning("Analyst tool {ToolName} was rejected by TradePilot", toolName);
+            return AnalystToolResult.Failure("request_rejected", exception.Message);
+        }
+        catch (NotFoundException)
+        {
+            _logger.LogWarning("Analyst tool {ToolName} could not find the requested data", toolName);
+            return AnalystToolResult.Failure("not_found", "TradePilot could not find the requested data.");
+        }
+        catch (ExchangeApiException exception)
+        {
+            _logger.LogWarning(
+                "Analyst tool {ToolName} failed in upstream category {FailureCategory}",
+                toolName,
+                exception.ErrorCategory);
+            return AnalystToolResult.Failure("data_unavailable", "Current TradePilot data is temporarily unavailable.");
+        }
+        catch (InvalidOperationException exception)
+        {
+            _logger.LogError(
+                "Analyst tool {ToolName} is unavailable due to configuration ({ExceptionType})",
+                toolName,
+                exception.GetType().Name);
+            return AnalystToolResult.Failure("capability_unavailable", "TradePilot is not configured for this capability.");
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(
+                "Analyst tool {ToolName} failed unexpectedly ({ExceptionType})",
+                toolName,
+                exception.GetType().Name);
+            return AnalystToolResult.Failure("tool_failure", "TradePilot could not complete the requested capability.");
+        }
+    }
+
+    /// <summary>Serializes structured results for the provider without flattening evidence.</summary>
+    public static JsonElement SerializeResult<T>(T result)
+    {
+        return JsonSerializer.SerializeToElement(result, JsonOptions);
+    }
+
+    private async Task<AnalystToolResult> GetMarketSnapshotAsync(
+        string argumentsJson,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<MarketSnapshotArguments>(argumentsJson);
+        RequireValue(arguments.Symbol, nameof(arguments.Symbol));
+        var exchange = await ResolveExchangeAsync(arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(new GetMarketInfoQuery(arguments.Symbol, exchange), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> AnalyseMarketAsync(
+        string argumentsJson,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<AnalyseMarketArguments>(argumentsJson);
+        RequireValue(arguments.Symbol, nameof(arguments.Symbol));
+        RequireValue(arguments.Timeframe, nameof(arguments.Timeframe));
+        var exchange = await ResolveExchangeAsync(arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(
+            new AnalyseMarketQuery(arguments.Symbol, arguments.Timeframe, exchange),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> AnalyseMarketMultiTimeframeAsync(
+        string argumentsJson,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<AnalyseMarketMultiTimeframeArguments>(argumentsJson);
+        RequireValue(arguments.Symbol, nameof(arguments.Symbol));
+        var timeframes = arguments.Timeframes ?? DefaultTimeframes;
+        var exchange = await ResolveExchangeAsync(arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(
+            new AnalyseMarketMultiTimeframeQuery(arguments.Symbol, timeframes, exchange),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> AnalyseChartContextAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        _ = Parse<ChartContextArguments>(argumentsJson);
+        var chart = context.TradingContext?.Intent == TradingAnalystIntent.AnalyseChart
+            ? context.TradingContext.Chart
+            : null;
+        if (chart is null)
+        {
+            return AnalystToolResult.Failure(
+                context.TradingContext is null ? "context_required" : "context_mismatch",
+                "A validated chart context is required for this tool.");
+        }
+
+        var result = await _sender.Send(new AnalyseChartContextQuery(
+            chart.Symbol,
+            chart.Timeframe,
+            chart.Exchange,
+            chart.VisibleFromOpenTimeUtc,
+            chart.VisibleToOpenTimeUtc,
+            chart.SelectedCandleOpenTimeUtc), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetAccountSummaryAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<AccountArguments>(argumentsJson);
+        var account = await ResolveAccountContextAsync(context, arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(
+            new GetAccountSummaryQuery(account.Exchange, account.WalletAddress),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetPositionsAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<AccountArguments>(argumentsJson);
+        var account = await ResolveAccountContextAsync(context, arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(
+            new GetOpenPositionsQuery(account.Exchange, account.WalletAddress),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetOpenOrdersAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<AccountArguments>(argumentsJson);
+        var account = await ResolveAccountContextAsync(context, arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(
+            new GetOpenOrdersQuery(account.Exchange, account.WalletAddress),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetRecentFillsAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<RecentFillsArguments>(argumentsJson);
+        var account = await ResolveAccountContextAsync(context, arguments.Exchange, cancellationToken);
+        var result = await _sender.Send(
+            new GetRecentFillsQuery(account.Exchange, arguments.Symbol, account.WalletAddress),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetStrategyEvaluationsAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<StrategyEvaluationArguments>(argumentsJson);
+        var strategyId = await ResolveOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        var result = await _sender.Send(
+            new GetStrategyEvaluationsQuery(
+                StrategyId: strategyId,
+                StrategyVersion: arguments.StrategyVersion,
+                Symbol: arguments.Symbol,
+                From: arguments.From,
+                To: arguments.To,
+                Limit: arguments.Limit ?? 100),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetLatestStrategyEvaluationAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<LatestStrategyEvaluationArguments>(argumentsJson);
+        var strategyId = await ResolveOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        var result = await _sender.Send(
+            new GetLatestStrategyEvaluationQuery(
+                StrategyId: strategyId,
+                StrategyVersion: arguments.StrategyVersion,
+                Symbol: arguments.Symbol,
+                AtOrBefore: arguments.AtOrBefore),
+            cancellationToken);
+        return result is null
+            ? AnalystToolResult.Failure(
+                "no_evaluation_evidence",
+                "No recorded strategy evaluation was available for the requested strategy and period.")
+            : AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetStrategyEvaluationSummaryAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<StrategyEvaluationArguments>(argumentsJson);
+        var strategyId = await ResolveOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        var result = await _sender.Send(
+            new GetStrategyEvaluationSummaryQuery(
+                StrategyId: strategyId,
+                StrategyVersion: arguments.StrategyVersion,
+                Symbol: arguments.Symbol,
+                From: arguments.From,
+                To: arguments.To),
+            cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetRecentTradesAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<TradeArguments>(argumentsJson);
+        var userId = RequireUserId(context);
+        var strategyId = await ResolveOptionalOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        var result = await _sender.Send(new GetTradesQuery(
+            userId,
+            strategyId,
+            arguments.StrategyVersion,
+            arguments.Symbol,
+            arguments.Side,
+            arguments.From,
+            arguments.To,
+            arguments.Outcome,
+            arguments.Limit ?? 50), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetTradeAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<SingleTradeArguments>(argumentsJson);
+        var result = await _sender.Send(
+            new GetTradeQuery(arguments.TradeId, RequireUserId(context)),
+            cancellationToken);
+        return result is null
+            ? AnalystToolResult.Failure("trade_not_found", "No owned trade journal record matched that trade ID.")
+            : AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetTradeAnalyticsAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<TradeArguments>(argumentsJson);
+        var strategyId = await ResolveOptionalOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        var result = await _sender.Send(new GetTradeAnalyticsQuery(
+            RequireUserId(context),
+            strategyId,
+            arguments.StrategyVersion,
+            arguments.Symbol,
+            arguments.Side,
+            arguments.From,
+            arguments.To,
+            arguments.Outcome), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> GetStrategyTradeAnalyticsAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<StrategyTradeAnalyticsArguments>(argumentsJson);
+        var strategyId = await ResolveOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        var result = await _sender.Send(new GetStrategyTradeAnalyticsQuery(
+            RequireUserId(context),
+            strategyId,
+            arguments.Symbol,
+            arguments.From,
+            arguments.To), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private async Task<AnalystToolResult> RunBacktestExperimentAsync(
+        string argumentsJson,
+        AnalystToolContext context,
+        CancellationToken cancellationToken)
+    {
+        var arguments = Parse<BacktestExperimentArguments>(argumentsJson);
+        var strategyId = await ResolveOwnedStrategyIdAsync(
+            context,
+            arguments.StrategyId,
+            arguments.StrategyName,
+            cancellationToken);
+        ArgumentNullException.ThrowIfNull(arguments.Candidates);
+        var candidates = arguments.Candidates.Select(candidate => new BacktestCandidateRequest(
+            candidate.Label,
+            [new StrategyParameterOverride(
+                BacktestExperimentService.RsiValueParameter,
+                candidate.RsiConditionId,
+                candidate.RsiValue)])).ToArray();
+        var result = await _backtestExperimentService.RunAsync(new BacktestExperimentRequest(
+            strategyId,
+            arguments.StrategyVersion,
+            arguments.Symbol,
+            arguments.Start,
+            arguments.End,
+            arguments.InitialCapital,
+            candidates,
+            RequireUserId(context)), cancellationToken);
+        return AnalystToolResult.Success(SerializeResult(result));
+    }
+
+    private Task<Exchange> ResolveExchangeAsync(Exchange? exchange, CancellationToken cancellationToken)
+    {
+        return exchange.HasValue
+            ? Task.FromResult(exchange.Value)
+            : _exchangeResolver.GetCurrentExchangeAsync(cancellationToken);
+    }
+
+    private async Task<Guid> ResolveOwnedStrategyIdAsync(
+        AnalystToolContext context,
+        Guid? strategyId,
+        string? strategyName,
+        CancellationToken cancellationToken)
+    {
+        if (!context.UserId.HasValue)
+        {
+            throw new InvalidOperationException("An authenticated TradePilot user is required for strategy tools.");
+        }
+
+        var userId = context.UserId.Value.ToString();
+        if (strategyId.HasValue)
+        {
+            var strategy = await _strategyRepository.GetByIdAsync(strategyId.Value, cancellationToken);
+            if (strategy is null || strategy.UserId != userId)
+            {
+                throw new NotFoundException(nameof(TradePilot.Domain.Entities.Strategy), strategyId.Value);
+            }
+
+            return strategy.Id;
+        }
+
+        RequireValue(strategyName, nameof(strategyName));
+        var exactName = strategyName!.Trim();
+        var candidateIds = await _strategyRepository.SearchIdsByNameAsync(exactName, cancellationToken);
+        var strategies = await _strategyRepository.GetByIdsAsync(candidateIds, cancellationToken);
+        var matchedStrategy = strategies.FirstOrDefault(strategy =>
+            strategy.UserId == userId
+            && string.Equals(strategy.Name, exactName, StringComparison.OrdinalIgnoreCase));
+        if (matchedStrategy is null)
+        {
+            throw new NotFoundException(nameof(TradePilot.Domain.Entities.Strategy), strategyName!);
+        }
+
+        return matchedStrategy.Id;
+    }
+
+    private async Task<Guid?> ResolveOptionalOwnedStrategyIdAsync(
+        AnalystToolContext context,
+        Guid? strategyId,
+        string? strategyName,
+        CancellationToken cancellationToken)
+    {
+        return !strategyId.HasValue && string.IsNullOrWhiteSpace(strategyName)
+            ? null
+            : await ResolveOwnedStrategyIdAsync(context, strategyId, strategyName, cancellationToken);
+    }
+
+    private static string RequireUserId(AnalystToolContext context)
+    {
+        return context.UserId?.ToString()
+            ?? throw new InvalidOperationException("An authenticated TradePilot user is required for trade tools.");
+    }
+
+    private async Task<AccountContext> ResolveAccountContextAsync(
+        AnalystToolContext context,
+        Exchange? requestedExchange,
+        CancellationToken cancellationToken)
+    {
+        if (!context.UserId.HasValue)
+        {
+            throw new InvalidOperationException("An authenticated TradePilot user is required for account tools.");
+        }
+
+        var exchange = await ResolveExchangeAsync(requestedExchange, cancellationToken);
+        if (exchange == Exchange.Hyperliquid)
+        {
+            var wallet = await _walletRepository.GetActiveByUserIdAndExchangeAsync(
+                context.UserId.Value,
+                exchange,
+                cancellationToken);
+            if (string.IsNullOrWhiteSpace(wallet?.WalletAddress))
+            {
+                throw new InvalidOperationException("No active Hyperliquid wallet is configured.");
+            }
+
+            return new AccountContext(exchange, wallet.WalletAddress);
+        }
+
+        if (exchange == Exchange.Binance)
+        {
+            var credentials = await _credentialRepository.GetActiveByUserIdAndExchangeAsync(
+                context.UserId.Value,
+                exchange,
+                cancellationToken);
+            if (credentials is null)
+            {
+                throw new InvalidOperationException("No active Binance credentials are configured.");
+            }
+
+            return new AccountContext(exchange, null);
+        }
+
+        throw new InvalidOperationException($"Exchange '{exchange}' is unsupported.");
+    }
+
+    private static T Parse<T>(string argumentsJson)
+    {
+        var json = string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson;
+        return JsonSerializer.Deserialize<T>(json, JsonOptions)
+            ?? throw new JsonException("Tool arguments deserialized to null.");
+    }
+
+    private static void RequireValue(string? value, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("A required tool argument was missing.", parameterName);
+        }
+    }
+
+    private static IReadOnlyList<AnalystToolDefinition> CreateDefinitions()
+    {
+        return
+        [
+            Define(
+                "get_market_snapshot",
+                "Get TradePilot's current structured market snapshot for one symbol.",
+                new { symbol = StringProperty("Exchange-facing symbol such as BTC."), exchange = ExchangeProperty() },
+                ["symbol"]),
+            Define(
+                "analyse_market",
+                "Get TradePilot's deterministic Phase 2 market analysis. Never recalculate its classifications.",
+                new
+                {
+                    symbol = StringProperty("Exchange-facing symbol such as BTC."),
+                    timeframe = StringProperty("TradePilot-supported timeframe such as 15m, 1h, 4h, or 1d."),
+                    exchange = ExchangeProperty(),
+                },
+                ["symbol", "timeframe"]),
+            Define(
+                "analyse_market_multi_timeframe",
+                "Get TradePilot's deterministic Phase 3 multi-timeframe evidence, alignment, and conflict facts.",
+                new
+                {
+                    symbol = StringProperty("Exchange-facing symbol such as BTC."),
+                    timeframes = new { type = "array", items = new { type = "string" }, description = "Optional timeframes; defaults to 15m, 1h, 4h, and 1d." },
+                    exchange = ExchangeProperty(),
+                },
+                ["symbol"]),
+            Define(
+                "analyse_chart_context",
+                "Get TradePilot's bounded deterministic analysis for the chart context attached to this Analyst request, including range statistics, end-of-range market analysis, and an optional selected candle. Never infer chart facts from pixels.",
+                new { },
+                []),
+            Define(
+                "get_account_summary",
+                "Get the authenticated user's current TradePilot account summary. Read-only.",
+                new { exchange = ExchangeProperty() },
+                []),
+            Define(
+                "get_positions",
+                "Get the authenticated user's current open positions. Read-only.",
+                new { exchange = ExchangeProperty() },
+                []),
+            Define(
+                "get_open_orders",
+                "Get the authenticated user's current open orders. Read-only; cannot place or cancel orders.",
+                new { exchange = ExchangeProperty() },
+                []),
+            Define(
+                "get_recent_fills",
+                "Get the authenticated user's recent fills, optionally filtered by symbol. Read-only.",
+                new { symbol = StringProperty("Optional exchange-facing symbol."), exchange = ExchangeProperty() },
+                []),
+            Define(
+                "get_strategy_evaluations",
+                "Get bounded historical deterministic strategy-evaluation evidence. Use strategyId or strategyName; never infer decisions from market analysis.",
+                StrategyEvaluationProperties(includeRange: true, includeLimit: true),
+                []),
+            Define(
+                "get_latest_strategy_evaluation",
+                "Get the latest recorded deterministic evaluation for why a strategy did or did not act. This is authoritative for strategy-decision explanations.",
+                new
+                {
+                    strategyId = StringProperty("Optional TradePilot strategy GUID; provide this or strategyName."),
+                    strategyName = StringProperty("Optional exact strategy name, such as v10.4; provide this or strategyId."),
+                    strategyVersion = new { type = "integer", description = "Optional persisted strategy version." },
+                    symbol = StringProperty("Optional exchange-facing symbol such as BTC."),
+                    atOrBefore = StringProperty("Optional ISO-8601 historical cutoff."),
+                },
+                []),
+            Define(
+                "get_strategy_evaluation_summary",
+                "Get deterministic counts and blocking-rule frequencies calculated by TradePilot for a bounded period.",
+                StrategyEvaluationProperties(includeRange: true, includeLimit: false),
+                []),
+            Define(
+                "get_recent_trades",
+                "Get bounded completed logical trades. Use outcome=loser and ordering to inspect worst or recent losses; do not calculate aggregates from this list.",
+                TradeProperties(includeLimit: true),
+                []),
+            Define(
+                "get_trade",
+                "Get one full owned trade journal record with linked entry and exit strategy-evaluation evidence where available.",
+                new { tradeId = StringProperty("Required TradePilot logical trade GUID.") },
+                ["tradeId"]),
+            Define(
+                "get_trade_analytics",
+                "Get deterministic completed-trade totals, win rate, costs, duration, profit factor, and MFE/MAE calculated by TradePilot.",
+                TradeProperties(includeLimit: false),
+                []),
+            Define(
+                "get_strategy_trade_analytics",
+                "Compare deterministic completed-trade performance by persisted strategy version and recorded entry market regime.",
+                new
+                {
+                    strategyId = StringProperty("Optional TradePilot strategy GUID; provide this or strategyName."),
+                    strategyName = StringProperty("Optional exact owned strategy name; provide this or strategyId."),
+                    symbol = StringProperty("Optional exchange-facing symbol."),
+                    from = StringProperty("Optional inclusive ISO-8601 range start."),
+                    to = StringProperty("Optional inclusive ISO-8601 range end."),
+                },
+                []),
+            Define(
+                "run_backtest_experiment",
+                "Run a bounded historical simulation from an owned immutable strategy version. TradePilot calculates all metrics and baseline deltas. This never deploys or changes the strategy.",
+                new
+                {
+                    strategyId = StringProperty("Optional TradePilot strategy GUID; provide this or strategyName."),
+                    strategyName = StringProperty("Optional exact owned strategy name; provide this or strategyId."),
+                    strategyVersion = new { type = "integer", minimum = 1, description = "Optional persisted strategy revision; defaults to the latest revision." },
+                    symbol = StringProperty("Exchange-facing symbol such as BTC."),
+                    start = StringProperty("Inclusive ISO-8601 UTC simulation start."),
+                    end = StringProperty("Exclusive ISO-8601 UTC simulation end, no more than 366 days after start."),
+                    initialCapital = new { type = "number", exclusiveMinimum = 0, description = "Starting simulated capital." },
+                    candidates = new
+                    {
+                        type = "array",
+                        minItems = 1,
+                        maxItems = BacktestExperimentService.MaximumCandidates,
+                        items = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                label = StringProperty("Candidate label, such as RSI max 65."),
+                                rsiConditionId = StringProperty("The immutable strategy entry-condition ID for the RSI condition."),
+                                rsiValue = new { type = "number", minimum = 0, maximum = 100, description = "Candidate RSI threshold." },
+                            },
+                            required = new[] { "label", "rsiConditionId", "rsiValue" },
+                            additionalProperties = false,
+                        },
+                    },
+                },
+                ["symbol", "start", "end", "initialCapital", "candidates"]),
+        ];
+    }
+
+    private static object TradeProperties(bool includeLimit)
+    {
+        var properties = new Dictionary<string, object>
+        {
+            ["strategyId"] = StringProperty("Optional TradePilot strategy GUID."),
+            ["strategyName"] = StringProperty("Optional exact owned strategy name."),
+            ["strategyVersion"] = new { type = "integer", description = "Optional persisted strategy version." },
+            ["symbol"] = StringProperty("Optional exchange-facing symbol."),
+            ["side"] = new { type = "string", @enum = new[] { "long", "short" } },
+            ["from"] = StringProperty("Optional inclusive ISO-8601 entry-time range start."),
+            ["to"] = StringProperty("Optional inclusive ISO-8601 entry-time range end."),
+            ["outcome"] = new { type = "string", @enum = new[] { "winner", "loser", "breakeven" } },
+        };
+        if (includeLimit)
+        {
+            properties["limit"] = new { type = "integer", minimum = 1, maximum = 500, description = "Maximum records; defaults to 50." };
+        }
+
+        return properties;
+    }
+
+    private static object StrategyEvaluationProperties(bool includeRange, bool includeLimit)
+    {
+        var properties = new Dictionary<string, object>
+        {
+            ["strategyId"] = StringProperty("Optional TradePilot strategy GUID; provide this or strategyName."),
+            ["strategyName"] = StringProperty("Optional exact strategy name, such as v10.4; provide this or strategyId."),
+            ["strategyVersion"] = new { type = "integer", description = "Optional persisted strategy version." },
+            ["symbol"] = StringProperty("Optional exchange-facing symbol such as BTC."),
+        };
+
+        if (includeRange)
+        {
+            properties["from"] = StringProperty("Optional inclusive ISO-8601 range start.");
+            properties["to"] = StringProperty("Optional inclusive ISO-8601 range end.");
+        }
+
+        if (includeLimit)
+        {
+            properties["limit"] = new { type = "integer", minimum = 1, maximum = 500, description = "Maximum records; defaults to 100." };
+        }
+
+        return properties;
+    }
+
+    private static AnalystToolDefinition Define(
+        string name,
+        string description,
+        object properties,
+        string[] required)
+    {
+        var schema = JsonSerializer.SerializeToElement(new
+        {
+            type = "object",
+            properties,
+            required,
+            additionalProperties = false,
+        });
+        return new AnalystToolDefinition(name, description, schema);
+    }
+
+    private static object StringProperty(string description) => new { type = "string", description };
+
+    private static object ExchangeProperty() => new
+    {
+        type = "string",
+        @enum = new[] { "Hyperliquid", "Binance" },
+        description = "Optional exchange; omit to use the current TradePilot selection.",
+    };
+
+    private static JsonSerializerOptions CreateJsonOptions()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web)
+        {
+            UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        };
+        options.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false));
+        return options;
+    }
+
+    private sealed record MarketSnapshotArguments(string Symbol = "", Exchange? Exchange = null);
+
+    private sealed record AnalyseMarketArguments(
+        string Symbol = "",
+        string Timeframe = "",
+        Exchange? Exchange = null);
+
+    private sealed record AnalyseMarketMultiTimeframeArguments(
+        string Symbol = "",
+        string[]? Timeframes = null,
+        Exchange? Exchange = null);
+
+    private sealed record ChartContextArguments();
+
+    private sealed record AccountArguments(Exchange? Exchange = null);
+
+    private sealed record RecentFillsArguments(string? Symbol = null, Exchange? Exchange = null);
+
+    private sealed record StrategyEvaluationArguments(
+        Guid? StrategyId = null,
+        string? StrategyName = null,
+        int? StrategyVersion = null,
+        string? Symbol = null,
+        DateTimeOffset? From = null,
+        DateTimeOffset? To = null,
+        int? Limit = null);
+
+    private sealed record LatestStrategyEvaluationArguments(
+        Guid? StrategyId = null,
+        string? StrategyName = null,
+        int? StrategyVersion = null,
+        string? Symbol = null,
+        DateTimeOffset? AtOrBefore = null);
+
+    private sealed record TradeArguments(
+        Guid? StrategyId = null,
+        string? StrategyName = null,
+        int? StrategyVersion = null,
+        string? Symbol = null,
+        TradeSide? Side = null,
+        DateTimeOffset? From = null,
+        DateTimeOffset? To = null,
+        TradeOutcome? Outcome = null,
+        int? Limit = null);
+
+    private sealed record SingleTradeArguments(Guid TradeId);
+
+    private sealed record StrategyTradeAnalyticsArguments(
+        Guid? StrategyId = null,
+        string? StrategyName = null,
+        string? Symbol = null,
+        DateTimeOffset? From = null,
+        DateTimeOffset? To = null);
+
+    private sealed record BacktestExperimentArguments(
+        Guid? StrategyId = null,
+        string? StrategyName = null,
+        int? StrategyVersion = null,
+        string Symbol = "",
+        DateTimeOffset Start = default,
+        DateTimeOffset End = default,
+        decimal InitialCapital = 0,
+        BacktestExperimentCandidateArguments[]? Candidates = null);
+
+    private sealed record BacktestExperimentCandidateArguments(
+        string Label = "",
+        string RsiConditionId = "",
+        decimal RsiValue = 0);
+
+    private sealed record AccountContext(Exchange Exchange, string? WalletAddress);
+}

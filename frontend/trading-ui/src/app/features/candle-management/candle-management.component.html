@@ -6,10 +6,28 @@
     </div>
 
     <div class="controls">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Asset</mat-label>
+        <mat-select [value]="selectedSymbol" (selectionChange)="onSymbolChange($event.value)">
+          @for (symbol of symbols; track symbol) {
+            <mat-option [value]="symbol">{{ symbol }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Interval</mat-label>
+        <mat-select [value]="selectedInterval" (selectionChange)="onIntervalChange($event.value)">
+          @for (interval of intervals; track interval) {
+            <mat-option [value]="interval">{{ interval }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
       @if (getMissingSymbolCount() > 0 && !isAnyIngesting()) {
         <button mat-raised-button color="accent" type="button" (click)="onIngestAll()">
           <mat-icon>cloud_download</mat-icon>
-          Ingest All Missing ({{ getMissingSymbolCount() }} symbols)
+          Ingest Missing {{ selectedSymbol }}
         </button>
       }
 
@@ -137,10 +155,15 @@
                     <mat-icon class="status-chip__icon">sync</mat-icon>
                     Ingesting…
                   </span>
-                } @else if (row.candleCount > 0) {
+                } @else if (getDataStatus(row.to, row.interval, row.candleCount) === "up-to-date") {
                   <span class="status-chip status-chip--ok">
                     <mat-icon class="status-chip__icon">check_circle</mat-icon>
-                    Available
+                    Up to date
+                  </span>
+                } @else if (getDataStatus(row.to, row.interval, row.candleCount) === "stale") {
+                  <span class="status-chip status-chip--stale">
+                    <mat-icon class="status-chip__icon">schedule</mat-icon>
+                    Stale
                   </span>
                 } @else {
                   <span class="status-chip status-chip--missing">

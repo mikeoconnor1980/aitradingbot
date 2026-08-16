@@ -8,6 +8,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTableModule } from "@angular/material/table";
+import { ActivatedRoute } from "@angular/router";
 import { BehaviorSubject, Subject, interval, merge, of, EMPTY } from "rxjs";
 import { catchError, startWith, switchMap } from "rxjs/operators";
 import { Candle } from "../../core/models/candle.model";
@@ -19,6 +20,9 @@ import { MarketDataService } from "../../core/services/market-data.service";
 import { OrderService } from "../../core/services/order.service";
 import { SignalRService } from "../../core/services/signalr.service";
 import { ExchangeContextService } from "../../core/services/exchange-context.service";
+import { AnalystChartContextService } from "../../core/services/analyst-chart-context.service";
+import { AnalystSessionService } from "../../core/services/analyst-session.service";
+import { RightPanelService } from "../../core/services/right-panel.service";
 import { PriceChartComponent } from "./price-chart/price-chart.component";
 import { PriceTickerComponent } from "./price-ticker/price-ticker.component";
 
@@ -49,6 +53,10 @@ export class MarketDataComponent implements OnInit {
   private readonly _orderService = inject(OrderService);
   private readonly _signalRService = inject(SignalRService);
   private readonly _exchangeContext = inject(ExchangeContextService);
+  private readonly _route = inject(ActivatedRoute);
+  private readonly _analystChartContext = inject(AnalystChartContextService);
+  private readonly _analystSession = inject(AnalystSessionService);
+  private readonly _rightPanels = inject(RightPanelService);
   private readonly _selectedAsset$ = new BehaviorSubject<string>("BTC-PERP");
   private readonly _manualRefresh$ = new Subject<void>();
   private readonly _candleTrigger$ = new Subject<void>();
@@ -128,6 +136,13 @@ export class MarketDataComponent implements OnInit {
 
   public onToggleFills(): void {
     this.showFills = !this.showFills;
+  }
+
+  public askAnalyst(): void {
+    this._analystChartContext.register(() => this._priceChart?.captureAnalystContext() ?? null);
+    const chart = this._analystChartContext.captureCurrent();
+    this._analystSession.start(chart ? { intent: "AnalyseChart", chart } : undefined);
+    this._rightPanels.open("analyst");
   }
 
   private _startMarketInfoPolling(): void {
@@ -236,6 +251,11 @@ export class MarketDataComponent implements OnInit {
     this._orderService.getAvailableAssets().subscribe({
       next: (assets) => {
         this.assets = assets;
+        const requestedSymbol = this._route.snapshot.queryParamMap.get("symbol");
+        if (requestedSymbol && assets.some((asset) => asset.symbol === requestedSymbol)) {
+          this.onAssetChanged(requestedSymbol);
+          return;
+        }
         if (!assets.some((asset) => asset.symbol === this.selectedAsset) && assets.length > 0) {
           this.onAssetChanged(assets[0].symbol);
         }

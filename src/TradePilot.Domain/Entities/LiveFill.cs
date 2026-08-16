@@ -15,4 +15,8 @@ public sealed class LiveFill
     public decimal ClosedPnl { get; set; }
     public DateTime FilledAtUtc { get; set; }
     public string UserId { get; set; } = string.Empty;
+    public Guid? TradeJournalRecordId { get; set; }
+    public string GridCycleId { get; set; } = string.Empty;
+    public string TradeType { get; set; } = string.Empty;
+    public bool? IsEntry { get; set; }
 }

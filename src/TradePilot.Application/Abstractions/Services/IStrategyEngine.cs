@@ -8,5 +8,5 @@ namespace TradePilot.Application.Abstractions.Services;
 /// </summary>
 public interface IStrategyEngine
 {
-    Task<StrategyEvaluation> EvaluateAsync(MarketContext context, IStrategyConfig strategyConfig, CancellationToken cancellationToken = default);
+    Task<StrategyEvaluationResult> EvaluateAsync(MarketContext context, IStrategyConfig strategyConfig, CancellationToken cancellationToken = default);
 }

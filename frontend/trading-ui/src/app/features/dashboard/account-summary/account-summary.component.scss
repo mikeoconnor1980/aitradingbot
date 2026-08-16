@@ -1,95 +1,164 @@
 .account-summary {
-  border: 1px solid var(--colour-border-light);
-  background: linear-gradient(145deg, var(--colour-surface-dark), var(--colour-surface-alt));
+  padding: var(--space-4);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-3);
+  background: var(--surface-base);
 
-  &__metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    gap: 1rem;
-    margin-top: 0.5rem;
+  &__heading {
+    margin: 0 0 var(--space-3);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 700;
   }
 
-  &__metric {
+  &__primary {
     display: grid;
-    gap: 0.35rem;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    padding-bottom: var(--space-4);
+  }
+
+  &__primary-metric,
+  &__risk-metric {
+    display: grid;
+    align-content: start;
+    gap: var(--space-1);
+    min-width: 0;
   }
 
   &__label {
-    color: var(--colour-label);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 650;
+    letter-spacing: 0.045em;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.72rem;
+  }
+
+  &__primary-value {
+    color: var(--text-primary);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 650;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  &__currency {
+    margin-right: 2px;
+    color: var(--text-secondary);
+    font-size: 0.58em;
+    font-weight: 600;
+    vertical-align: 0.32em;
+  }
+
+  &__unit {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  &__risk-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+
+    h3 {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+  }
+
+  &__risk-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  &__risk-metric {
+    min-height: 64px;
+    padding-right: var(--space-3);
+    border-right: 1px solid var(--border-subtle);
+
+    &:last-child { border-right: 0; }
   }
 
   &__value {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: var(--colour-text-primary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 650;
+  }
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 32px;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-radius: var(--radius-2);
+    color: var(--accent-primary);
+    background: transparent;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 650;
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
   }
 }
 
-.pnl--profit {
-  color: var(--colour-profit);
-}
+.pnl--profit { color: var(--state-positive); }
+.pnl--loss { color: var(--state-negative); }
 
-.pnl--loss {
-  color: var(--colour-loss);
+@media (max-width: 900px) {
+  .account-summary__risk-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
   .account-summary {
-    margin-bottom: 0;
+    padding: var(--space-3);
 
-    ::ng-deep .mat-mdc-card-header {
-      padding: 8px 12px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    &__heading { margin-bottom: var(--space-2); }
+
+    &__primary {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-3);
+      padding-bottom: var(--space-3);
     }
 
-    ::ng-deep .mat-mdc-card-content {
-      padding: 0 12px 8px;
+    &__primary-value {
+      font-size: 1.35rem;
     }
 
-    &--collapsed {
-      ::ng-deep .mat-mdc-card-content {
-        padding-bottom: 4px;
+    &__unit { display: none; }
+
+    &__risk-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    &__risk-metric {
+      min-height: 58px;
+      padding: var(--space-2);
+      border: 0;
+      border-radius: var(--radius-2);
+      background: var(--surface-raised);
+
+      &--secondary {
+        grid-column: 1 / -1;
       }
     }
-  }
 
-  .account-summary__toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--colour-label);
-    padding: 2px;
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-
-    .mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-    }
-  }
-
-  .account-summary__metrics {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.4rem;
-    margin-top: 0.25rem;
-  }
-
-  .account-summary--collapsed .account-summary__metrics {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .account-summary__label {
-    font-size: 0.6rem;
-  }
-
-  .account-summary__value {
-    font-size: 0.85rem;
+    &__label { font-size: 0.6875rem; }
   }
 }

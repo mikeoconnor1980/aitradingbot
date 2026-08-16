@@ -1,12 +1,12 @@
 .tag-selector {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 
   &__header {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--space-4);
     align-items: flex-start;
     flex-wrap: wrap;
   }
@@ -19,7 +19,7 @@
 
   &__subtitle {
     margin: 0.3rem 0 0;
-    color: var(--colour-muted);
+    color: var(--text-muted);
     font-size: 0.85rem;
     line-height: 1.5;
   }
@@ -30,7 +30,7 @@
 
   &__list {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-3);
     flex-wrap: wrap;
   }
 
@@ -38,15 +38,15 @@
     text-transform: none;
 
     &--selected {
-      background: rgba(var(--colour-primary-rgb, 25, 118, 210), 0.14);
-      border-color: var(--colour-primary, #1976d2);
-      color: var(--colour-primary, #1976d2);
+      background: var(--accent-surface);
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
     }
   }
 
   &__empty {
     margin: 0;
-    color: var(--colour-muted);
+    color: var(--text-muted);
     font-size: 0.85rem;
   }
 }

@@ -41,7 +41,7 @@ public sealed class DcaControllerTests
         context.DrawdownScalingFactor = 0.50m;
 
         var signals = await _sut.ProcessAsync(
-            new StrategyEvaluation { SetupDetected = true },
+            new StrategyEvaluationResult { SetupDetected = true },
             context,
             new GridState(),
             new PositionState(),
@@ -77,7 +77,7 @@ public sealed class DcaControllerTests
         }, AssetType.Perp, "BTC-PERP");
 
         var signals = await _sut.ProcessAsync(
-            new StrategyEvaluation { SetupDetected = true },
+            new StrategyEvaluationResult { SetupDetected = true },
             CreateContext("BTC-PERP", 95m, new DateTimeOffset(2026, 1, 5, 12, 0, 0, TimeSpan.Zero)),
             new GridState(),
             new PositionState(),
@@ -106,7 +106,7 @@ public sealed class DcaControllerTests
         });
 
         var signals = await _sut.ProcessAsync(
-            new StrategyEvaluation { SetupDetected = true },
+            new StrategyEvaluationResult { SetupDetected = true },
             CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 0, 0, TimeSpan.Zero)),
             new GridState(),
             new PositionState(),
@@ -134,7 +134,7 @@ public sealed class DcaControllerTests
         });
 
         var signals = await _sut.ProcessAsync(
-            new StrategyEvaluation { SetupDetected = true },
+            new StrategyEvaluationResult { SetupDetected = true },
             CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 5, 0, TimeSpan.Zero), "5m"),
             new GridState(),
             new PositionState(),
@@ -163,7 +163,7 @@ public sealed class DcaControllerTests
         });
 
         var signals = await _sut.ProcessAsync(
-            new StrategyEvaluation { SetupDetected = true },
+            new StrategyEvaluationResult { SetupDetected = true },
             CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 45, 0, TimeSpan.Zero), "5m"),
             new GridState(),
             new PositionState(),
@@ -191,7 +191,7 @@ public sealed class DcaControllerTests
         });
 
         var signals = await _sut.ProcessAsync(
-            new StrategyEvaluation { SetupDetected = true },
+            new StrategyEvaluationResult { SetupDetected = true },
             CreateContext("BTC", 95m, new DateTimeOffset(2026, 1, 5, 11, 7, 0, TimeSpan.Zero), "5m"),
             new GridState(),
             new PositionState(),

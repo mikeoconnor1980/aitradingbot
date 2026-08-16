@@ -1,0 +1,295 @@
+TradePilot Phase 9 — Angular TradePilot Analyst UI
+==================================================
+
+Repository:
+https://github.com/mikeoconnor1980/aitradingbot
+
+Working branch:
+agent/tradepilot-ai-mcp
+
+Do not work directly on main.
+
+PREREQUISITES
+-------------
+Phases 1–8 should be complete.
+
+Backend should already support:
+- Market analysis
+- Multi-timeframe analysis
+- Account/positions
+- Native Analyst orchestration
+- Strategy explainability
+- Trade/journal analytics
+- AI-assisted backtest experimentation
+
+GOAL
+----
+Make TradePilot Analyst a first-class Angular product experience.
+
+The user should be able to ask:
+- What is happening with BTC?
+- How do my positions look?
+- Why didn't v10.4 trade?
+- Which rule is blocking most setups?
+- How have I performed this week?
+- What do my losing trades have in common?
+- Compare v10.4 with RSI 64.
+
+Angular presents results.
+It does not recalculate trading facts.
+
+ARCHITECTURE
+------------
+Angular Analyst UI
+ -> TradePilot API / Analyst endpoint
+ -> TradePilot.AI
+ -> TradePilot.Application
+
+Do not put LLM/exchange secrets in the browser.
+Do not move orchestration/calculation into Angular.
+Do not make the browser an MCP client without a separate explicit architectural reason.
+
+CORE UI
+-------
+Add a first-class navigation destination such as:
+
+Dashboard | Markets | Strategies | Trades | Analyst
+
+Analyst page:
+- Prompt input
+- Conversation/result stream
+- Useful high-level progress
+- Structured evidence
+- Suggested questions
+- Contextual navigation to markets/strategies/trades/backtests
+- Robust loading/error/cancellation states
+
+CONVERSATION
+------------
+Use the current backend conversation semantics.
+
+If backend is request-scoped, the frontend may retain visible session conversation.
+
+Do not introduce durable long-term chat memory unless deliberately scoped.
+
+Clearly distinguish:
+- User messages
+- Analyst responses
+- Evidence/tool-derived facts
+- Errors/status
+
+EVIDENCE UX
+-----------
+Present structured evidence appropriately.
+
+Market:
+- Primary/short-term trend
+- Alignment/conflicts
+- Relevant timeframe facts
+
+Strategy:
+- Decision
+- Rule pass/fail
+- Actual/expected values
+- Rejection reason
+
+Trade:
+- PnL
+- Fees
+- Funding
+- Duration
+- MFE/MAE
+- Linked strategy context
+
+Backtest:
+- Baseline/candidate metrics
+- Configuration diff
+- Metric deltas
+
+Do not make raw JSON the normal experience.
+
+A developer/debug expander may expose more technical detail.
+
+CONTEXTUAL NAVIGATION
+---------------------
+Use structured backend IDs/references.
+
+Examples:
+- Open BTC
+- Open v10.4
+- Open trade
+- Open backtest result
+
+Do not parse arbitrary LLM-generated URLs/routes as trusted navigation commands.
+
+SUGGESTED QUESTIONS
+-------------------
+Product-defined suggestions can include:
+
+Analyst home:
+- What is happening with BTC?
+- What should I pay attention to in my account?
+- Why haven't my strategies traded?
+
+Strategy:
+- Why didn't this strategy enter?
+- Which rules block it most often?
+- Compare performance by version.
+
+Trade:
+- Why did this trade enter?
+- What were its MFE and MAE?
+- Did it give back much of its MFE?
+
+Do not call the LLM simply to render suggestions.
+
+BACKTEST EXPERIMENT UI
+----------------------
+Present Phase 8 comparisons clearly.
+
+Example:
+
+Candidate | Return | Drawdown | Trades | Profit Factor
+Current
+RSI 63
+RSI 64
+RSI 65
+
+Show deltas.
+
+Do not claim an objective winner unless deterministic objective criteria exist.
+
+PROGRESS
+--------
+Convert tool execution into safe high-level states:
+- Checking positions...
+- Analysing BTC...
+- Reviewing strategy decisions...
+- Comparing backtests...
+
+Never expose hidden chain-of-thought.
+
+ERRORS
+------
+Handle:
+- Model unavailable
+- Market data unavailable
+- Account data unavailable
+- Missing strategy evidence
+- No matching trades
+- Backtest failure
+- Cancellation
+
+Do not map every problem to "Something went wrong."
+
+READ-ONLY SAFETY
+----------------
+Phase 9 remains read-only.
+
+If user asks:
+"Close BTC"
+
+the system should clearly state execution is not enabled.
+
+Do not create visual controls implying chat has live execution authority.
+
+SECURITY
+--------
+- No provider keys in Angular.
+- No exchange keys/private keys.
+- No MCP credentials.
+- Reuse existing API auth/session model.
+- Treat account/trade data as sensitive.
+- Avoid unnecessary persistent browser storage of sensitive payloads.
+
+STREAMING
+---------
+Optional if the backend/provider stack supports it cleanly.
+
+If implemented:
+- Support cancellation.
+- Preserve final response reliability.
+- Do not blindly stream sensitive internal tool payloads.
+
+ACCESSIBILITY
+-------------
+Follow Angular/project conventions:
+- Keyboard access
+- Focus management
+- Semantic headings
+- Accessible status/loading announcements
+- Meaningful button names
+- Sufficient contrast
+
+RESPONSIVE UX
+-------------
+Desktop-first is acceptable if consistent with TradePilot, but tablet/mobile should remain usable.
+
+TESTS
+-----
+Use mocked backend responses. No live LLM required.
+
+Cover:
+1. Analyst route renders
+2. Prompt submission
+3. Loading
+4. Successful response
+5. Evidence cards
+6. Tool-progress mapping
+7. Error states
+8. Cancellation where supported
+9. Strategy explanation
+10. Trade analytics
+11. Backtest comparisons
+12. Safe structured navigation
+13. No accidental execution UX
+14. Accessibility basics
+15. Angular build/lint/tests
+
+BACKEND CONTRACT
+----------------
+If Phase 5 did not expose a suitable Angular-facing Analyst endpoint, add the smallest transport needed.
+
+Endpoint/controller delegates to TradePilot.AI.
+
+Do not place orchestration in controllers.
+
+KNOWN CONCERNS
+--------------
+Phase 2 policy concerns remain separate.
+MCP hardening remains separate.
+Do not turn UI work into unrelated backend-policy refactoring.
+
+DEFINITION OF DONE
+------------------
+Phase 9 is complete when:
+- Analyst is a first-class Angular feature.
+- Users can ask natural-language trading questions.
+- UI uses existing backend Analyst.
+- Browser does not calculate market/strategy/trade facts.
+- Strategy/trade evidence is clearly presented.
+- Backtest comparisons are usable.
+- Navigation uses trusted structured references.
+- Loading/error/cancellation UX is robust.
+- No secrets are exposed client-side.
+- No execution capability exists.
+- Frontend validation passes where executable.
+- Existing UI areas remain functional.
+
+HANDOFF
+-------
+Report:
+1. UX architecture
+2. Routes/components/services
+3. Backend contract changes
+4. Session/conversation behaviour
+5. Evidence UI
+6. Backtest UI
+7. Security
+8. Accessibility
+9. Tests/build
+10. Files changed
+11. Remaining UX concerns
+12. Recommendation for Phase 10
+
+Do not implement Phase 10 automatically.

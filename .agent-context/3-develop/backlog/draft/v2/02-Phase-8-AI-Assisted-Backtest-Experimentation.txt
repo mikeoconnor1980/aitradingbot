@@ -1,0 +1,277 @@
+TradePilot Phase 8 — AI-Assisted Backtest Experimentation
+===========================================================
+
+Repository:
+https://github.com/mikeoconnor1980/aitradingbot
+
+Working branch:
+agent/tradepilot-ai-mcp
+
+Do not work directly on main.
+
+PREREQUISITES
+-------------
+Phases 1–7 are complete.
+
+Before implementation:
+1. Inspect branch/worktree.
+2. Review Backtesting and Optimization areas.
+3. Review Phase 5 Analyst/tool orchestration.
+4. Review Phase 6 StrategyEvaluation.
+5. Review Phase 7 TradeJournal/analytics.
+6. Inspect strategy configuration/version models.
+7. Inspect existing backtest request/result models.
+8. Determine how safe configuration overrides are currently represented.
+9. Preserve live strategy/execution behaviour.
+
+GOAL
+----
+Enable natural-language research such as:
+
+- Why is v10.4 trading so rarely?
+- What happens if RSI max changes from 62 to 65?
+- Try 63, 64 and 65.
+- Compare those candidates with the deployed version.
+- Which candidate improves return without materially increasing drawdown?
+- How does the strategy perform only during bullish higher-timeframe regimes?
+
+Core principle:
+
+AI constructs/proposes research requests.
+TradePilot executes deterministic backtests.
+AI explains deterministic results.
+
+ARCHITECTURE
+------------
+User
+ -> TradePilot Analyst
+ -> native research tool
+ -> structured BacktestExperimentRequest
+ -> TradePilot.Application
+ -> deterministic backtest/optimisation engine
+ -> strongly typed result/comparison
+ -> Analyst explanation
+
+The LLM does not calculate backtest metrics.
+
+SCOPE
+-----
+Implement:
+- Structured backtest experiment requests
+- Candidate configuration overrides
+- Bounded multi-candidate experiments
+- Deterministic comparison metrics/deltas
+- Persistence/reproducibility where existing architecture supports it
+- Native Analyst tools
+
+Do not implement:
+- Live deployment
+- Live strategy mutation
+- Trade execution
+- Angular product UI
+- Generic code generation as the normal experiment mechanism
+
+CANDIDATE SAFETY
+----------------
+A request such as:
+
+"Try RSI max 65"
+
+must create an immutable candidate derived from a known base strategy/version.
+
+It must never mutate the deployed strategy.
+
+Preserve:
+- Base StrategyId
+- Base StrategyVersion
+- Candidate label/version
+- Exact configuration overrides
+- Backtest period/market/settings
+
+Prefer copy-on-write/immutable candidate semantics.
+
+STRUCTURED REQUEST
+------------------
+Conceptually:
+
+BacktestExperimentRequest
+- BaseStrategyId
+- BaseStrategyVersion
+- Symbol / universe
+- Start/end
+- ConfigurationOverrides
+- Optional deterministic regime filters
+- Backtest settings
+- Candidate label
+
+Use existing strongly typed configuration metadata if available.
+
+Do not expose arbitrary unknown property mutation.
+
+PARAMETER VALIDATION
+--------------------
+Only allow:
+- Known strategy parameters
+- Explicitly configurable parameters
+- Correct typed values
+- Existing valid ranges where defined
+
+Reject:
+- Unknown parameters
+- Invalid types
+- Non-configurable internals
+
+BOUNDED EXPERIMENTS
+-------------------
+Protect against:
+- Huge parameter sweeps
+- Cartesian explosions
+- Excessive symbols
+- Excessive date ranges
+- Duplicate experiments
+- Tool-call storms
+
+Set small explicit limits.
+
+Example:
+"Try RSI 63, 64 and 65" is reasonable.
+"Try every combination of 25 parameters" should be rejected/bounded.
+
+COMPARISON
+----------
+TradePilot calculates comparison facts.
+
+Use existing metrics where available, potentially:
+- Return / Net PnL
+- Max drawdown
+- Trade count
+- Win rate
+- Profit factor
+- Average win/loss
+- Fees
+- Funding
+- MFE/MAE if supported
+- Exposure/time in market
+- Existing risk-adjusted metrics
+
+Return deterministic baseline vs candidate deltas.
+
+Do not invent one universal "winner" unless there is an explicit deterministic objective function.
+
+AI may explain trade-offs.
+
+REGIME FILTERS
+--------------
+Where supported, reuse Phase 2/3 deterministic classifications.
+
+Examples:
+- Only when 4h/primary trend is bullish
+- Only high-volatility regime
+- Only aligned higher timeframes
+
+Do not recreate trend/regime classification inside Phase 8.
+
+If the backtester cannot apply these filters cleanly, explicitly defer.
+
+ANALYST TOOLS
+-------------
+Potential tools:
+- run_backtest
+- run_backtest_experiment
+- compare_backtests
+- get_backtest_result
+- compare_strategy_candidates
+
+TradePilot.AI calls Application directly.
+Do not route through MCP.
+
+ANALYST POLICY
+--------------
+- Never say a backtest ran unless TradePilot returned a result.
+- Never fabricate metrics.
+- Never present a candidate as deployed.
+- Clearly describe historical simulation as simulation.
+- Do not imply future-performance guarantees.
+- Never mutate/deploy live strategy state.
+- Use deterministic comparison facts.
+
+PERSISTENCE / REPRODUCIBILITY
+-----------------------------
+Where persisted, preserve:
+- Base strategy/version
+- Candidate configuration
+- Period
+- Market
+- Backtest engine/settings version where possible
+- Result metrics
+- Timestamp
+- Experiment group/relationship
+
+Do not overwrite historical experiment results.
+
+TESTS
+-----
+Automated tests require no live LLM/exchange.
+
+Cover:
+1. Override validation
+2. Candidate does not mutate baseline
+3. Single backtest delegation
+4. Bounded multi-candidate experiment
+5. Duplicate handling
+6. Invalid parameter rejection
+7. Experiment limits
+8. Comparison calculations
+9. Zero-trade candidate
+10. Zero-loss profit-factor semantics
+11. Cancellation/failure
+12. Mock Analyst orchestration for "Try RSI 65"
+13. Forbidden deployment/live mutation
+
+BACKWARDS COMPATIBILITY
+-----------------------
+Do not break:
+- Existing backtesting/optimisation
+- Live strategies
+- Phase 5 Analyst
+- Phase 6 StrategyEvaluation
+- Phase 7 TradeJournal
+- Phase 4 MCP
+- REST / Angular / Worker
+
+Known Phase 2 concerns remain unchanged.
+MCP hardening remains separate.
+
+DEFINITION OF DONE
+------------------
+Phase 8 is complete when:
+- Analyst can construct bounded structured research requests.
+- TradePilot executes deterministic backtests.
+- Candidate configs cannot mutate deployed strategy state.
+- Multiple bounded candidates can be tested.
+- Deterministic comparisons/deltas are returned.
+- AI explains rather than calculates results.
+- Experiments preserve enough information for reproducibility.
+- No deployment/execution authority exists.
+- No Angular product UI is introduced.
+- Tests do not require live LLM/exchange access.
+- Existing behaviour remains intact.
+- Build/tests pass where executable.
+
+HANDOFF
+-------
+Report:
+1. Existing backtest architecture
+2. Experiment request model
+3. Candidate semantics
+4. Experiment limits
+5. Comparison formulas/metrics
+6. Analyst tools
+7. Persistence/reproducibility
+8. Tests
+9. Build/test results
+10. Files changed
+11. Known limitations
+12. Recommendation for Phase 9
+
+Do not implement Phase 9 automatically.

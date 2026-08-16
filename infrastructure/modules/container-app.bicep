@@ -10,35 +10,26 @@ param environmentId string
 @description('Container image reference')
 param containerImage string
 
-@secure()
-@description('Azure SQL connection string')
-param sqlConnectionString string
+@description('Key Vault URI containing production secrets')
+param keyVaultUri string
 
-@secure()
-@description('Azure SignalR connection string')
-param signalRConnectionString string
+@description('User-assigned managed identity resource ID')
+param apiIdentityResourceId string
 
-@secure()
-@description('JWT signing key')
-param jwtSecretKey string
+@description('User-assigned managed identity client ID')
+param apiIdentityClientId string
 
-@secure()
-@description('LLM API key (Gemini)')
-param llmApiKey string = ''
+@description('Azure SQL server fully qualified domain name')
+param sqlServerFqdn string
+
+@description('Azure SQL database name')
+param databaseName string
+
+@description('Application Insights connection string')
+param applicationInsightsConnectionString string
 
 @description('Allowed CORS origin')
 param corsAllowedOrigin string = ''
-
-@description('GitHub Container Registry username (GitHub actor)')
-param registryUsername string
-
-@secure()
-@description('GitHub Container Registry password (PAT or GITHUB_TOKEN)')
-param registryPassword string
-
-@secure()
-@description('Azure Blob Storage connection string for installer artifacts')
-param installerBlobConnectionString string = ''
 
 @description('Blob container name for installer artifacts')
 param installerBlobContainerName string = 'installers'
@@ -46,17 +37,16 @@ param installerBlobContainerName string = 'installers'
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${apiIdentityResourceId}': {}
+    }
+  }
   properties: {
     managedEnvironmentId: environmentId
     configuration: {
       activeRevisionsMode: 'Single'
-      registries: [
-        {
-          server: 'ghcr.io'
-          username: registryUsername
-          passwordSecretRef: 'ghcr-password'
-        }
-      ]
       ingress: {
         external: true
         targetPort: 8080
@@ -69,12 +59,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       }
       secrets: [
-        { name: 'sql-connection-string', value: sqlConnectionString }
-        { name: 'signalr-connection-string', value: signalRConnectionString }
-        { name: 'jwt-secret-key', value: jwtSecretKey }
-        { name: 'llm-api-key', value: empty(llmApiKey) ? 'placeholder' : llmApiKey }
-        { name: 'ghcr-password', value: registryPassword }
-        { name: 'installer-blob-connection', value: empty(installerBlobConnectionString) ? 'placeholder' : installerBlobConnectionString }
+        { name: 'jwt-secret-key', keyVaultUrl: '${keyVaultUri}secrets/jwt-secret-key', identity: apiIdentityResourceId }
+        { name: 'llm-api-key', keyVaultUrl: '${keyVaultUri}secrets/llm-api-key', identity: apiIdentityResourceId }
+        { name: 'signalr-connection-string', keyVaultUrl: '${keyVaultUri}secrets/signalr-connection-string', identity: apiIdentityResourceId }
+        { name: 'installer-blob-connection', keyVaultUrl: '${keyVaultUri}secrets/installer-blob-connection', identity: apiIdentityResourceId }
       ]
     }
     template: {
@@ -88,9 +76,13 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
           env: [
             { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
-            { name: 'ConnectionStrings__DefaultConnection', secretRef: 'sql-connection-string' }
+            { name: 'ConnectionStrings__DefaultConnection', value: 'Server=tcp:${sqlServerFqdn},1433;Initial Catalog=${databaseName};Authentication=Active Directory Managed Identity;User Id=${apiIdentityClientId};Encrypt=True;TrustServerCertificate=False;' }
+            { name: 'AZURE_CLIENT_ID', value: apiIdentityClientId }
+            { name: 'KeyVault__Uri', value: keyVaultUri }
+            { name: 'ApplicationInsights__ConnectionString', value: applicationInsightsConnectionString }
             { name: 'Azure__SignalR__ConnectionString', secretRef: 'signalr-connection-string' }
             { name: 'Jwt__SecretKey', secretRef: 'jwt-secret-key' }
+            { name: 'Llm__ApiKey', secretRef: 'llm-api-key' }
             { name: 'LlmContext__ApiKey', secretRef: 'llm-api-key' }
             { name: 'LlmReview__ApiKey', secretRef: 'llm-api-key' }
             { name: 'Cors__AllowedOrigins__0', value: corsAllowedOrigin }
@@ -101,7 +93,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               type: 'Liveness'
               httpGet: {
-                path: '/healthz'
+                path: '/health/live'
                 port: 8080
               }
               initialDelaySeconds: 30
@@ -110,7 +102,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               type: 'Readiness'
               httpGet: {
-                path: '/healthz'
+                path: '/health/ready'
                 port: 8080
               }
               initialDelaySeconds: 10
@@ -120,7 +112,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 2
         rules: [
           {
@@ -138,3 +130,4 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 output fqdn string = containerApp.properties.configuration.ingress.fqdn
+output principalId string = containerApp.identity.principalId

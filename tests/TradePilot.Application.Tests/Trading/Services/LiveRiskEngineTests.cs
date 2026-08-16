@@ -121,6 +121,28 @@ public sealed class LiveRiskEngineTests
     }
 
     [TestMethod]
+    public async Task GivenOrderSizeExceedsMax_WhenValidatedWithEvidence_ThenDeterministicRiskRuleIsReturned()
+    {
+        var result = await _sut.ValidateWithEvidenceAsync(
+        [
+            new TradingSignal
+            {
+                SignalType = "OpenPosition",
+                Symbol = "BTC-PERP",
+                Parameters = new Dictionary<string, object> { ["notionalUsd"] = 10_000m }
+            }
+        ]);
+
+        result.ApprovedSignals.Should().BeEmpty();
+        result.Rules.Should().ContainSingle(rule =>
+            rule.RuleId == "risk.max_order_size"
+            && !rule.Passed
+            && rule.IsBlocking
+            && rule.ActualNumericValue == 10_000m
+            && rule.ExpectedNumericValue == 5_000m);
+    }
+
+    [TestMethod]
     public async Task GivenOrderSizeWithinLimit_WhenValidateAsync_ThenPasses()
     {
         var signals = new List<TradingSignal>

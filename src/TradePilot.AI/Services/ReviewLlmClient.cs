@@ -47,6 +47,24 @@ public sealed class ReviewLlmClient : IReviewLlmClient
             ResponseFormat = new ResponseFormat { Type = "text" },
         };
 
+        if (AzureOpenAiResponsesProtocol.IsAzureOpenAi(_options.Provider))
+        {
+            var azureResponse = await AzureOpenAiResponsesProtocol.CompleteAsync(
+                _httpClient,
+                _options.BaseUrl,
+                new AzureResponsesRequest
+                {
+                    Model = _options.ModelName,
+                    Input =
+                    [
+                        new AzureResponsesInputItem { Role = "system", Content = systemPrompt },
+                        new AzureResponsesInputItem { Role = "user", Content = userMessage },
+                    ],
+                },
+                cancellationToken);
+            return AzureOpenAiResponsesProtocol.GetText(azureResponse, "Azure OpenAI returned no review output.");
+        }
+
         using var response = await _httpClient.PostAsJsonAsync(
             "chat/completions",
             request,

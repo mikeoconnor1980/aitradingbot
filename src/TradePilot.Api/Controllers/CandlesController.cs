@@ -21,13 +21,38 @@ public sealed class CandlesController : ApiController
 
     [HttpGet("coverage")]
     [ProducesResponseType(typeof(AllCandleCoverageResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetCoverageAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCoverageAsync(
+        [FromQuery] string[]? symbols,
+        [FromQuery] string[]? intervals,
+        CancellationToken cancellationToken)
     {
-        var symbols = BinanceAssetMapper.ValidSymbols.ToList();
-        var intervals = BinanceAssetMapper.ValidIntervals.ToList();
+        var requestedSymbols = symbols is { Length: > 0 }
+            ? symbols
+            : BinanceAssetMapper.ValidSymbols.ToArray();
+        var requestedIntervals = intervals is { Length: > 0 }
+            ? intervals
+            : BinanceAssetMapper.ValidIntervals.ToArray();
+
+        foreach (var symbol in requestedSymbols)
+        {
+            if (!BinanceAssetMapper.IsValidSymbol(symbol))
+            {
+                throw new DomainException(
+                    $"Invalid symbol: '{symbol}'. Valid Binance symbols: {string.Join(", ", BinanceAssetMapper.ValidSymbols)}");
+            }
+        }
+
+        foreach (var interval in requestedIntervals)
+        {
+            if (!BinanceAssetMapper.IsValidInterval(interval))
+            {
+                throw new DomainException(
+                    $"Invalid interval: '{interval}'. Valid Binance intervals: {string.Join(", ", BinanceAssetMapper.ValidIntervals)}");
+            }
+        }
 
         var result = await Mediator.Send(
-            new GetAllCandleCoverageQuery(symbols, intervals),
+            new GetAllCandleCoverageQuery(requestedSymbols, requestedIntervals),
             cancellationToken);
 
         return Ok(result);

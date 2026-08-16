@@ -8,6 +8,12 @@
     <label class="price-chart__toggle"><input #rsiToggle type="checkbox" [checked]="indicatorToggles.rsi" (change)="onIndicatorToggleChanged('rsi', rsiToggle.checked)" /> RSI</label>
     <label class="price-chart__toggle"><input #macdToggle type="checkbox" [checked]="indicatorToggles.macd" (change)="onIndicatorToggleChanged('macd', macdToggle.checked)" /> MACD</label>
   </div>
+  @if (selectedCandleOpenTimeUtc) {
+    <div class="price-chart__selected-candle">
+      Selected · {{ selectedCandleOpenTimeUtc | date: "d MMM HH:mm 'UTC'": "UTC" }}
+      <button type="button" (click)="clearSelectedCandle()">Clear</button>
+    </div>
+  }
   <div class="price-chart__surface">
     <div #chartContainer class="price-chart__container"></div>
 

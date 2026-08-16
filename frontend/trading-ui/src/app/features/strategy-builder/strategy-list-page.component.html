@@ -89,6 +89,14 @@
                   (click)="onBacktestStrategy(strategy.id); $event.stopPropagation()">
                   <mat-icon>science</mat-icon>
                 </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Ask Analyst why this strategy did not enter"
+                  matTooltip="Ask Analyst"
+                  (click)="onAskAnalyst(strategy); $event.stopPropagation()">
+                  <mat-icon>psychology</mat-icon>
+                </button>
                 <button mat-icon-button type="button" color="warn" aria-label="Delete strategy" (click)="onDelete(strategy)">
                   <mat-icon>delete</mat-icon>
                 </button>

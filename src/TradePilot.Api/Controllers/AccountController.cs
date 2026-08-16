@@ -1,12 +1,13 @@
 using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
+using TradePilot.Application.MarketData.Queries;
 using TradePilot.Domain.Enums;
-using TradePilot.Domain.ValueObjects;
 
 namespace TradePilot.Api.Controllers;
 
@@ -16,21 +17,18 @@ namespace TradePilot.Api.Controllers;
 [Authorize]
 public sealed class AccountController : ControllerBase
 {
-    private readonly IEnumerable<IExchangeAccountClient> _accountClients;
-    private readonly IEnumerable<IExchangeSymbolMapper> _symbolMappers;
+    private readonly IMediator _mediator;
     private readonly IExchangeResolver _exchangeResolver;
     private readonly IUserWalletAddressRepository _walletRepo;
     private readonly IUserExchangeCredentialRepository _credentialRepository;
 
     public AccountController(
-        IEnumerable<IExchangeAccountClient> accountClients,
-        IEnumerable<IExchangeSymbolMapper> symbolMappers,
+        IMediator mediator,
         IExchangeResolver exchangeResolver,
         IUserWalletAddressRepository walletRepo,
         IUserExchangeCredentialRepository credentialRepository)
     {
-        _accountClients = accountClients;
-        _symbolMappers = symbolMappers;
+        _mediator = mediator;
         _exchangeResolver = exchangeResolver;
         _walletRepo = walletRepo;
         _credentialRepository = credentialRepository;
@@ -46,8 +44,9 @@ public sealed class AccountController : ControllerBase
         if (!await HasConfiguredAccessAsync(exchange, cancellationToken))
             return Ok(new AccountSummaryDto());
 
-        var summary = await ResolveAccountClient(exchange)
-            .GetAccountSummaryAsync(await GetWalletAddressAsync(exchange, cancellationToken), cancellationToken);
+        var summary = await _mediator.Send(
+            new GetAccountSummaryQuery(exchange, await GetWalletAddressAsync(exchange, cancellationToken)),
+            cancellationToken);
         return Ok(summary);
     }
 
@@ -61,8 +60,9 @@ public sealed class AccountController : ControllerBase
         if (!await HasConfiguredAccessAsync(exchange, cancellationToken))
             return Ok(Array.Empty<PositionDto>());
 
-        var positions = await ResolveAccountClient(exchange)
-            .GetPositionsAsync(await GetWalletAddressAsync(exchange, cancellationToken), cancellationToken);
+        var positions = await _mediator.Send(
+            new GetOpenPositionsQuery(exchange, await GetWalletAddressAsync(exchange, cancellationToken)),
+            cancellationToken);
         return Ok(positions);
     }
 
@@ -76,8 +76,9 @@ public sealed class AccountController : ControllerBase
         if (!await HasConfiguredAccessAsync(exchange, cancellationToken))
             return Ok(Array.Empty<OpenOrderDto>());
 
-        var orders = await ResolveAccountClient(exchange)
-            .GetOpenOrdersAsync(await GetWalletAddressAsync(exchange, cancellationToken), cancellationToken);
+        var orders = await _mediator.Send(
+            new GetOpenOrdersQuery(exchange, await GetWalletAddressAsync(exchange, cancellationToken)),
+            cancellationToken);
         return Ok(orders);
     }
 
@@ -93,9 +94,9 @@ public sealed class AccountController : ControllerBase
         if (!await HasConfiguredAccessAsync(exchange, cancellationToken))
             return Ok(Array.Empty<FillEventDto>());
 
-        var pair = ResolveTradingPair(exchange, asset);
-        var fills = await ResolveAccountClient(exchange)
-            .GetRecentFillsAsync(pair, await GetWalletAddressAsync(exchange, cancellationToken), cancellationToken);
+        var fills = await _mediator.Send(
+            new GetRecentFillsQuery(exchange, asset, await GetWalletAddressAsync(exchange, cancellationToken)),
+            cancellationToken);
         return Ok(fills);
     }
 
@@ -128,22 +129,4 @@ public sealed class AccountController : ControllerBase
         return wallet?.WalletAddress;
     }
 
-    private IExchangeAccountClient ResolveAccountClient(Exchange exchange)
-    {
-        return _accountClients.FirstOrDefault(client => client.Exchange == exchange)
-            ?? throw new InvalidOperationException($"No account client is registered for exchange '{exchange}'.");
-    }
-
-    private TradingPair? ResolveTradingPair(Exchange exchange, string? asset)
-    {
-        if (string.IsNullOrWhiteSpace(asset))
-        {
-            return null;
-        }
-
-        var mapper = _symbolMappers.FirstOrDefault(candidate => candidate.Exchange == exchange)
-            ?? throw new InvalidOperationException($"No symbol mapper is registered for exchange '{exchange}'.");
-
-        return mapper.FromExchangeSymbol(asset);
-    }
 }

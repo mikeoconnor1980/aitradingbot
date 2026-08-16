@@ -12,6 +12,7 @@ public sealed class TrackedOrder
     public required decimal Price { get; init; }
     public required decimal Size { get; init; }
     public required TradeType TradeType { get; init; }
+    public TradeExecutionEvidence? Evidence { get; init; }
     public DateTimeOffset PlacedAtUtc { get; init; } = DateTimeOffset.UtcNow;
     public TrackedOrderStatus Status { get; set; } = TrackedOrderStatus.Resting;
 }

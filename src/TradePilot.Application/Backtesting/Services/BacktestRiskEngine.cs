@@ -77,6 +77,47 @@ public sealed class BacktestRiskEngine : IRiskEngine
         return Task.FromResult<IReadOnlyList<TradingSignal>>(approvedSignals);
     }
 
+    /// <inheritdoc />
+    public async Task<RiskValidationResult> ValidateWithEvidenceAsync(
+        IReadOnlyList<TradingSignal> signals,
+        CancellationToken cancellationToken = default)
+    {
+        var drawdownBlocked = _drawdownCircuitBreakerTripped && signals.Any(signal => !IsRiskReducing(signal));
+        var heatBlocked = !drawdownBlocked
+            && signals.Any(signal => !IsRiskReducing(signal) && _limits.MaxPortfolioHeatPercent > 0m && !CheckPortfolioHeat(signal));
+        var approved = await ValidateAsync(signals, cancellationToken);
+
+        if (drawdownBlocked)
+        {
+            return new RiskValidationResult(
+                approved,
+                [RiskFailure("risk.drawdown", "Drawdown circuit breaker", "Drawdown circuit breaker blocked the signal.")]);
+        }
+
+        if (heatBlocked)
+        {
+            return new RiskValidationResult(
+                approved,
+                [RiskFailure("risk.portfolio_heat", "Maximum portfolio heat", "Projected portfolio heat exceeded the configured maximum.")]);
+        }
+
+        return new RiskValidationResult(
+            approved,
+            signals.Count == 0
+                ? []
+                :
+                [
+                    new RuleEvaluationResult(
+                        "risk.validation",
+                        "Risk validation",
+                        TradePilot.Domain.Enums.RuleCategory.Risk,
+                        approved.Count == signals.Count,
+                        $"Risk engine approved {approved.Count} of {signals.Count} signal(s).",
+                        approved.Count != signals.Count,
+                        TradePilot.Domain.Enums.RuleEvaluationKind.RiskOverride)
+                ]);
+    }
+
     public void UpdatePortfolioState(decimal accountEquity)
     {
         _accountEquity = Math.Max(0m, accountEquity);
@@ -188,5 +229,17 @@ public sealed class BacktestRiskEngine : IRiskEngine
         {
             return false;
         }
+    }
+
+    private static RuleEvaluationResult RiskFailure(string ruleId, string name, string reason)
+    {
+        return new RuleEvaluationResult(
+            ruleId,
+            name,
+            TradePilot.Domain.Enums.RuleCategory.Risk,
+            false,
+            reason,
+            true,
+            TradePilot.Domain.Enums.RuleEvaluationKind.RiskOverride);
     }
 }

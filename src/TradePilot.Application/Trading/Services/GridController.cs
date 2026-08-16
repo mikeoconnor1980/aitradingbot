@@ -17,7 +17,7 @@ public sealed class GridController : IGridController
     }
 
     public Task<IReadOnlyList<TradingSignal>> ProcessAsync(
-        StrategyEvaluation evaluation,
+        StrategyEvaluationResult evaluation,
         MarketContext context,
         GridState gridState,
         PositionState positionState,

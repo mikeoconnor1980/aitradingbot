@@ -4,9 +4,10 @@ import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { MatButtonModule } from "@angular/material/button";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
+import { MatMenuModule } from "@angular/material/menu";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { RouterLink, RouterOutlet } from "@angular/router";
 import { HelpPanelComponent } from "./core/components/help-panel.component";
 import { MobileNavComponent } from "./core/components/mobile-nav/mobile-nav.component";
 import { NotificationPanelComponent } from "./core/components/notification-panel/notification-panel.component";
@@ -20,13 +21,15 @@ import { HelpService } from "./core/services/help.service";
 import { LayoutService } from "./core/services/layout.service";
 import { NotificationStoreService } from "./core/services/notification-store.service";
 import { ProfileService } from "./core/services/profile.service";
+import { RightPanelService } from "./core/services/right-panel.service";
 import { SubscriptionService } from "./core/services/subscription.service";
 import { SignalRService } from "./core/services/signalr.service";
+import { AnalystPanelComponent } from "./features/analyst/analyst-panel.component";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
+  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatMenuModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent, AnalystPanelComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })
@@ -38,6 +41,7 @@ export class AppComponent implements OnInit {
   private readonly _profileService = inject(ProfileService);
   private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _layoutService = inject(LayoutService);
+  private readonly _rightPanels = inject(RightPanelService);
   private readonly _notificationStore = inject(NotificationStoreService);
   private readonly _destroyRef = inject(DestroyRef);
 
@@ -45,6 +49,7 @@ export class AppComponent implements OnInit {
   public currentUser: AuthUser | null = null;
   public isAuthenticated = false;
   public readonly isMobile = this._layoutService.isMobile;
+  public readonly activeRightPanel = this._rightPanels.activePanel;
 
   @ViewChild(SidebarNavComponent)
   public sidebar?: SidebarNavComponent;

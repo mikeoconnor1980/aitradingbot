@@ -10,4 +10,7 @@ public sealed class TradingSignal
     public required string Symbol { get; init; }
     public string? Reason { get; init; }
     public IReadOnlyDictionary<string, object>? Parameters { get; init; }
+
+    /// <summary>Non-execution metadata projected into tracked orders and fills for historical evidence.</summary>
+    public TradeExecutionEvidence? ExecutionEvidence { get; set; }
 }

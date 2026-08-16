@@ -484,6 +484,7 @@ public sealed class AgentController : ControllerBase
             AgentId = heartbeat.AgentId,
             Type = AgentCommandType.Start,
             StrategyId = strategy.Id,
+            StrategyVersion = strategy.Version,
             StrategyConfig = strategyConfig,
             CreatedAtUtc = DateTimeOffset.UtcNow,
         });

@@ -154,6 +154,50 @@ public sealed class LiveRiskEngine : IRiskEngine
         return Task.FromResult<IReadOnlyList<TradingSignal>>(approved);
     }
 
+    /// <inheritdoc />
+    public async Task<RiskValidationResult> ValidateWithEvidenceAsync(
+        IReadOnlyList<TradingSignal> signals,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(signals);
+        CheckCircuitBreakerReset();
+
+        var failedRules = signals
+            .Where(signal => !IsRiskReducing(signal))
+            .Select(DescribeBlockingRule)
+            .Where(rule => rule is not null)
+            .Cast<RuleEvaluationResult>()
+            .GroupBy(rule => rule.RuleId, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+        var approved = await ValidateAsync(signals, cancellationToken);
+
+        if (failedRules.Count > 0)
+        {
+            return new RiskValidationResult(approved, failedRules);
+        }
+
+        return new RiskValidationResult(
+            approved,
+            signals.Count == 0
+                ? []
+                :
+                [
+                    new RuleEvaluationResult(
+                        "risk.validation",
+                        "Risk validation",
+                        TradePilot.Domain.Enums.RuleCategory.Risk,
+                        approved.Count == signals.Count,
+                        $"Risk engine approved {approved.Count} of {signals.Count} signal(s).",
+                        approved.Count != signals.Count,
+                        TradePilot.Domain.Enums.RuleEvaluationKind.RiskOverride,
+                        ActualValue: approved.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ActualNumericValue: approved.Count,
+                        ExpectedValue: signals.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ExpectedNumericValue: signals.Count)
+                ]);
+    }
+
     /// <summary>
     /// Record a realized loss. Called by the position manager after a losing trade closes.
     /// Trips the circuit breaker when rolling 24h losses exceed the daily limit.
@@ -351,6 +395,122 @@ public sealed class LiveRiskEngine : IRiskEngine
             "RISK: Signal BLOCKED by portfolio heat - CurrentHeat={CurrentHeatPct:N2}%, NewTrade={NewTradePct:N2}%, MaxHeat={MaxHeatPct:N2}%, Type={SignalType}, Symbol={Symbol}",
             currentHeatPct, newTradePct, _limits.MaxPortfolioHeatPercent, signal.SignalType, signal.Symbol);
         return false;
+    }
+
+    private RuleEvaluationResult? DescribeBlockingRule(TradingSignal signal)
+    {
+        if (_circuitBreakerTripped)
+        {
+            var rollingLoss = GetRollingDailyLoss();
+            return RiskFailure(
+                "risk.daily_loss",
+                "Daily loss circuit breaker",
+                $"Rolling 24-hour loss {rollingLoss} reached the configured limit {_limits.MaxDailyLossUsd}.",
+                rollingLoss,
+                $"< {_limits.MaxDailyLossUsd}",
+                _limits.MaxDailyLossUsd,
+                "USD");
+        }
+
+        if (_drawdownCircuitBreakerTripped)
+        {
+            return RiskFailure(
+                "risk.drawdown",
+                "Drawdown circuit breaker",
+                "Drawdown circuit breaker blocked the signal.",
+                _drawdownScalingFactor,
+                "> 0",
+                0m);
+        }
+
+        if (signal.Parameters is not null
+            && signal.Parameters.TryGetValue("notionalUsd", out var notionalObject)
+            && notionalObject is decimal notional
+            && notional > _limits.MaxOrderSizeUsd)
+        {
+            return RiskFailure(
+                "risk.max_order_size",
+                "Maximum order size",
+                $"Order notional {notional} exceeded the configured maximum {_limits.MaxOrderSizeUsd}.",
+                notional,
+                $"<= {_limits.MaxOrderSizeUsd}",
+                _limits.MaxOrderSizeUsd,
+                "USD");
+        }
+
+        if (signal.SignalType == "DeployGrid"
+            && signal.Parameters is not null
+            && signal.Parameters.TryGetValue("gridLevels", out var levelsObject)
+            && levelsObject is int levels)
+        {
+            int projectedOrders;
+            lock (_lock)
+            {
+                projectedOrders = _activeOrderCount + levels;
+            }
+
+            if (projectedOrders > _limits.MaxOpenOrders)
+            {
+                return RiskFailure(
+                    "risk.max_open_orders",
+                    "Maximum open orders",
+                    $"Deploying the grid would create {projectedOrders} open orders, above the configured maximum {_limits.MaxOpenOrders}.",
+                    projectedOrders,
+                    $"<= {_limits.MaxOpenOrders}",
+                    _limits.MaxOpenOrders);
+            }
+        }
+
+        decimal equity;
+        lock (_lock)
+        {
+            equity = _accountEquity;
+        }
+
+        if (_limits.MaxPortfolioHeatPercent > 0m
+            && equity > 0m
+            && TryGetEstimatedRisk(signal, out var newTradeRiskUsd))
+        {
+            var currentHeatUsd = _positionRisks.Values.Sum();
+            var projectedHeatPercent = ((currentHeatUsd + newTradeRiskUsd) / equity) * 100m;
+            if (projectedHeatPercent > _limits.MaxPortfolioHeatPercent)
+            {
+                return RiskFailure(
+                    "risk.portfolio_heat",
+                    "Maximum portfolio heat",
+                    $"Projected portfolio heat {projectedHeatPercent:0.##}% exceeded the configured maximum {_limits.MaxPortfolioHeatPercent:0.##}%.",
+                    projectedHeatPercent,
+                    $"<= {_limits.MaxPortfolioHeatPercent:0.##}%",
+                    _limits.MaxPortfolioHeatPercent,
+                    "%");
+            }
+        }
+
+        return null;
+    }
+
+    private static RuleEvaluationResult RiskFailure(
+        string ruleId,
+        string name,
+        string reason,
+        decimal actual,
+        string expected,
+        decimal expectedNumeric,
+        string? unit = null)
+    {
+        return new RuleEvaluationResult(
+            ruleId,
+            name,
+            TradePilot.Domain.Enums.RuleCategory.Risk,
+            false,
+            reason,
+            true,
+            TradePilot.Domain.Enums.RuleEvaluationKind.RiskOverride,
+            actual.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            actual,
+            expected,
+            expectedNumeric,
+            unit);
     }
 
     private bool CheckOrderSize(TradingSignal signal)

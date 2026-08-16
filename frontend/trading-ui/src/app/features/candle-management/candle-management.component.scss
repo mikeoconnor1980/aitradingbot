@@ -109,6 +109,10 @@ $color-negative: var(--colour-loss);
     color: $color-negative;
   }
 
+  &--stale {
+    color: #f59e0b;
+  }
+
   &--ingesting {
     color: #f59e0b;
   }

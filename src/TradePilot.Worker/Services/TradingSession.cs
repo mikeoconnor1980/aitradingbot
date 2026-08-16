@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using TradePilot.Application.Abstractions.Repositories;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
 using TradePilot.Application.Scheduling;
@@ -69,6 +70,8 @@ public sealed class TradingSession : IAsyncDisposable
     private Func<OrderUpdateDto, Task>? _orderUpdateHandler;
 
     public StrategyConfig StrategyConfig { get; }
+    public Guid? StrategyId { get; }
+    public int? StrategyVersion { get; }
     public GridState GridState { get; }
     public DateTimeOffset StartedAtUtc { get; } = DateTimeOffset.UtcNow;
     public bool IsRunning => _runTask is not null && !_runTask.IsCompleted;
@@ -102,9 +105,13 @@ public sealed class TradingSession : IAsyncDisposable
         ITriggerOrderManager? triggerOrderManager = null,
         IOptions<RiskLimitsConfig>? riskLimits = null,
         IExecutionLogger? executionLogger = null,
-        IDcaController? dcaController = null)
+        IDcaController? dcaController = null,
+        Guid? strategyId = null,
+        int? strategyVersion = null)
     {
         StrategyConfig = strategyConfig;
+        StrategyId = strategyId;
+        StrategyVersion = strategyVersion;
         _exchange = exchange;
         _wsClient = wsClient;
         _userEventClient = userEventClient;
@@ -301,7 +308,11 @@ public sealed class TradingSession : IAsyncDisposable
                 executionLogger: _executionLogger,
                 initialCapital: initialCapital,
                 gridState: GridState,
-                drawdownTiers: _drawdownTiers);
+                drawdownTiers: _drawdownTiers,
+                strategyEvaluationRepository: _serviceScope?.ServiceProvider.GetService<IStrategyEvaluationRepository>(),
+                strategyId: StrategyId,
+                strategyVersion: StrategyVersion,
+                sourceExchange: _exchange.ToString());
 
         // Wire fill callback to update PositionState on the scheduler
         if (_fillProcessor is FillProcessor concreteProcessor)

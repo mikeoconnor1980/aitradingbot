@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using TradePilot.Api.Tests.Infrastructure;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.MarketData.Models;
@@ -49,16 +50,27 @@ public sealed class MarketDataHubTests
         await using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureLogging(logging => logging.ClearProviders());
                 builder.UseInMemoryTradePilotPersistence($"market-data-hub-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");
                 builder.UseSetting("Hyperliquid:Network", "testnet");
+                builder.UseSetting("Llm:Provider", "Gemini");
+                builder.UseSetting("Llm:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("Llm:ModelName", "test-model");
+                builder.UseSetting("Llm:ApiKey", "test-api-key");
+                builder.UseSetting("Llm:TimeoutSeconds", "30");
                 builder.UseSetting("LlmReview:Provider", "Gemini");
                 builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
                 builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
                 builder.UseSetting("LlmReview:TimeoutSeconds", "30");
+                builder.UseSetting("LlmContext:Provider", "Gemini");
+                builder.UseSetting("LlmContext:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmContext:ModelName", "test-context-model");
+                builder.UseSetting("LlmContext:ApiKey", "test-context-api-key");
+                builder.UseSetting("LlmContext:TimeoutSeconds", "30");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<IHyperliquidWebSocketClient>();
@@ -130,16 +142,27 @@ public sealed class MarketDataHubTests
         await using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureLogging(logging => logging.ClearProviders());
                 builder.UseInMemoryTradePilotPersistence($"market-data-hub-tests-{Guid.NewGuid():N}");
                 builder.UseSetting("Hyperliquid:PrivateKey", TestPrivateKey);
                 builder.UseSetting("Hyperliquid:BaseUrl", "https://api.hyperliquid-testnet.xyz");
                 builder.UseSetting("Hyperliquid:WsBaseUrl", "wss://api.hyperliquid-testnet.xyz/ws");
                 builder.UseSetting("Hyperliquid:Network", "testnet");
+                builder.UseSetting("Llm:Provider", "Gemini");
+                builder.UseSetting("Llm:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("Llm:ModelName", "test-model");
+                builder.UseSetting("Llm:ApiKey", "test-api-key");
+                builder.UseSetting("Llm:TimeoutSeconds", "30");
                 builder.UseSetting("LlmReview:Provider", "Gemini");
                 builder.UseSetting("LlmReview:BaseUrl", "https://example.test/openai/");
                 builder.UseSetting("LlmReview:ModelName", "test-review-model");
                 builder.UseSetting("LlmReview:ApiKey", "test-review-api-key");
                 builder.UseSetting("LlmReview:TimeoutSeconds", "30");
+                builder.UseSetting("LlmContext:Provider", "Gemini");
+                builder.UseSetting("LlmContext:BaseUrl", "https://example.test/openai/");
+                builder.UseSetting("LlmContext:ModelName", "test-context-model");
+                builder.UseSetting("LlmContext:ApiKey", "test-context-api-key");
+                builder.UseSetting("LlmContext:TimeoutSeconds", "30");
                 builder.ConfigureServices(services =>
                 {
                     services.RemoveAll<IHyperliquidWebSocketClient>();

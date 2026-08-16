@@ -1,6 +1,6 @@
 .risk-card {
-  background: var(--colour-surface-dark);
-  border: 1px solid var(--colour-border-subtle);
+  background: var(--surface-base);
+  border: 1px solid var(--border-subtle);
 
   .mat-mdc-card-header {
     padding: 1.1rem 1rem 0.45rem;
@@ -39,10 +39,10 @@
   &__warning {
     margin-top: 0.75rem;
     padding: 0.6rem 0.85rem;
-    border-radius: 4px;
-    background: var(--colour-warning-surface, rgba(255, 152, 0, 0.1));
-    border: 1px solid var(--colour-warning-border, rgba(255, 152, 0, 0.3));
-    color: var(--colour-warning-text, #ffb74d);
+    border-radius: var(--radius-1);
+    background: var(--state-warning-surface);
+    border: 1px solid var(--state-warning);
+    color: var(--state-warning);
     font-size: 0.85rem;
     line-height: 1.4;
   }
@@ -50,10 +50,10 @@
   &__error {
     margin-top: 0.75rem;
     padding: 0.6rem 0.85rem;
-    border-radius: 4px;
-    background: var(--colour-error-surface, rgba(244, 67, 54, 0.1));
-    border: 1px solid var(--colour-error-border, rgba(244, 67, 54, 0.3));
-    color: var(--colour-error-text, #ef5350);
+    border-radius: var(--radius-1);
+    background: var(--state-negative-surface);
+    border: 1px solid var(--state-negative);
+    color: var(--state-negative-text);
     font-size: 0.85rem;
     line-height: 1.4;
   }
@@ -61,9 +61,9 @@
   &__preview {
     margin-top: 1rem;
     padding: 0.85rem;
-    border-radius: 4px;
-    background: var(--colour-surface-darker, rgba(0, 0, 0, 0.15));
-    border: 1px solid var(--colour-border-subtle);
+    border-radius: var(--radius-1);
+    background: var(--surface-raised);
+    border: 1px solid var(--border-subtle);
   }
 
   &__preview-header {
@@ -71,13 +71,13 @@
     align-items: center;
     gap: 0.3rem;
     margin-bottom: 0.65rem;
-    color: var(--colour-text-secondary);
+    color: var(--text-secondary);
     font-size: 0.9rem;
     font-weight: 500;
   }
 
   &__preview-message {
-    color: var(--colour-text-muted, rgba(255, 255, 255, 0.5));
+    color: var(--text-muted);
     font-size: 0.85rem;
     font-style: italic;
   }
@@ -95,14 +95,14 @@
   }
 
   &__preview-label {
-    color: var(--colour-text-muted, rgba(255, 255, 255, 0.5));
+    color: var(--text-muted);
     font-size: 0.75rem;
     letter-spacing: 0.03em;
     text-transform: uppercase;
   }
 
   &__preview-value {
-    color: var(--colour-text-primary);
+    color: var(--text-primary);
     font-size: 0.95rem;
     font-weight: 500;
   }

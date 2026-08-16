@@ -1,0 +1,131 @@
+<section class="analyst-conversation" [class.analyst-conversation--compact]="compact" aria-label="Analyst conversation">
+  <section #transcript class="analyst-conversation__transcript" aria-live="polite">
+    @if (session.messages().length === 0) { <section class="analyst-conversation__empty"><p>TradePilot facts stay in view while the Analyst interprets their context.</p><div>@for (suggestion of suggestions; track suggestion) { <button mat-stroked-button type="button" (click)="onSuggestion(suggestion)" [disabled]="session.isLoading()">{{ suggestion }}</button> }</div></section> }
+    @for (message of session.messages(); track $index) { <article class="analyst-message" [class.analyst-message--user]="message.role === 'user'" [class.analyst-message--error]="message.role === 'error'"><span class="analyst-message__role">{{ message.role === "user" ? "You" : "TradePilot Analyst" }}</span><p>{{ message.content }}</p>@if (message.result && evidence(message.result.toolInvocations).length > 0) { <details class="analyst-message__evidence"><summary>Evidence</summary><div>@for (invocation of evidence(message.result.toolInvocations); track invocation.toolCallId) { <app-analyst-evidence-card [invocation]="invocation" [compact]="compact" /> }</div></details> }</article> }
+    @if (session.isLoading()) { <div class="analyst-conversation__progress" role="status"><mat-spinner diameter="18" />{{ session.progress() }}</div> }
+  </section>
+  <form class="analyst-conversation__composer" (ngSubmit)="onSubmit()">
+    @if (session.context()) { <div class="analyst-conversation__context-chip"><span>{{ contextLabel() }}</span><button mat-icon-button type="button" aria-label="Remove attached context" (click)="session.clearContext()"><mat-icon>close</mat-icon></button></div> }
+    <label for="analyst-prompt">Ask TradePilot Analyst</label><textarea #composer id="analyst-prompt" name="prompt" rows="2" [ngModel]="session.prompt()" (ngModelChange)="onPromptChange($event)" (keydown)="onKeydown($event)" [disabled]="session.isLoading()"></textarea><div class="analyst-conversation__composer-actions"><button mat-icon-button color="primary" type="submit" aria-label="Send Analyst question" [disabled]="session.isLoading() || !session.prompt().trim()"><mat-icon>send</mat-icon></button></div>
+  </form>
+</section><section class="analyst-conversation" [class.analyst-conversation--compact]="compact" aria-label="Analyst conversation">
+  <section #transcript class="analyst-conversation__transcript" aria-live="polite" aria-label="Conversation transcript">
+    @if (session.messages().length === 0) { <section class="analyst-conversation__empty"><p>TradePilot facts stay in view while the Analyst interprets their context.</p><div>@for (suggestion of suggestions; track suggestion) { <button mat-stroked-button type="button" (click)="onSuggestion(suggestion)" [disabled]="session.isLoading()">{{ suggestion }}</button> }</div></section> }
+    @for (message of session.messages(); track $index) { <article class="analyst-message" [class.analyst-message--user]="message.role === 'user'" [class.analyst-message--error]="message.role === 'error'"><span class="analyst-message__role">{{ message.role === "user" ? "You" : "TradePilot Analyst" }}</span><p>{{ message.content }}</p>@if (message.result && evidence(message.result.toolInvocations).length > 0) { <details class="analyst-message__evidence"><summary>Evidence</summary><div>@for (invocation of evidence(message.result.toolInvocations); track invocation.toolCallId) { <app-analyst-evidence-card [invocation]="invocation" [compact]="compact" /> }</div></details> }</article> }
+    @if (session.isLoading()) { <div class="analyst-conversation__progress" role="status"><mat-spinner diameter="18" />{{ session.progress() }}</div> }
+  </section>
+  <form class="analyst-conversation__composer" (ngSubmit)="onSubmit()">
+    @if (session.context()) { <div class="analyst-conversation__context-chip"><span>{{ contextLabel() }}</span><button mat-icon-button type="button" aria-label="Remove attached context" (click)="session.clearContext()"><mat-icon>close</mat-icon></button></div> }
+    <label for="analyst-prompt">Ask TradePilot Analyst</label><textarea #composer id="analyst-prompt" name="prompt" rows="2" [ngModel]="session.prompt()" (ngModelChange)="onPromptChange($event)" (keydown)="onKeydown($event)" [disabled]="session.isLoading()"></textarea><div class="analyst-conversation__composer-actions"><button mat-icon-button color="primary" type="submit" aria-label="Send Analyst question" [disabled]="session.isLoading() || !session.prompt().trim()"><mat-icon>send</mat-icon></button></div>
+  </form>
+</section><section class="analyst-conversation" [class.analyst-conversation--compact]="compact" aria-label="Analyst conversation">
+  <section #transcript class="analyst-conversation__transcript" aria-live="polite" aria-label="Conversation transcript">
+    @if (session.messages().length === 0) {
+      <section class="analyst-conversation__empty" aria-label="Suggested Analyst questions">
+        <p>TradePilot facts stay in view while the Analyst interprets their context.</p>
+        <div>
+          @for (suggestion of suggestions; track suggestion) {
+            <button mat-stroked-button type="button" (click)="onSuggestion(suggestion)" [disabled]="session.isLoading()">{{ suggestion }}</button>
+          }
+        </div>
+      </section>
+    }
+
+    @for (message of session.messages(); track $index) {
+      <article class="analyst-message" [class.analyst-message--user]="message.role === 'user'" [class.analyst-message--error]="message.role === 'error'">
+        <span class="analyst-message__role">{{ message.role === "user" ? "You" : message.role === "error" ? "Analyst status" : "TradePilot Analyst" }}</span>
+        <p>{{ message.content }}</p>
+        @if (message.role === "error" && !session.isLoading()) {
+          <button mat-button type="button" (click)="session.retry()" [disabled]="!session.lastQuestion()">Retry</button>
+        }
+        @if (message.result && evidence(message.result.toolInvocations).length > 0) {
+          <details class="analyst-message__evidence" [open]="shouldExpandEvidence(message.content)">
+            <summary>Evidence</summary>
+            <div>
+              @for (invocation of evidence(message.result.toolInvocations); track invocation.toolCallId) {
+                <app-analyst-evidence-card [invocation]="invocation" [compact]="compact" />
+                @if (hasReference(invocation)) {
+                  <button mat-button type="button" (click)="openReference(invocation)">Open related view</button>
+                }
+              }
+            </div>
+          </details>
+        }
+      </article>
+    }
+    @if (session.isLoading()) {
+      <div class="analyst-conversation__progress" role="status"><mat-spinner diameter="18" />{{ session.progress() }}</div>
+    }
+  </section>
+
+  <form class="analyst-conversation__composer" (ngSubmit)="onSubmit()">
+    @if (session.context()) {
+      <div class="analyst-conversation__context-chip">
+        <span>{{ contextLabel() }}</span>
+        <button mat-icon-button type="button" aria-label="Remove attached context" (click)="session.clearContext()"><mat-icon>close</mat-icon></button>
+      </div>
+    }
+    <label for="analyst-prompt">Ask TradePilot Analyst</label>
+    <textarea #composer id="analyst-prompt" name="prompt" rows="1" [ngModel]="session.prompt()" (ngModelChange)="onPromptChange($event)" (keydown)="onKeydown($event)" [placeholder]="session.context() ? 'Ask about this view...' : 'Ask TradePilot Analyst...'" [disabled]="session.isLoading()"></textarea>
+    <div class="analyst-conversation__composer-actions">
+      @if (session.isLoading()) { <button mat-button type="button" (click)="session.cancel()">Cancel</button> }
+      <button mat-icon-button color="primary" type="submit" aria-label="Send Analyst question" [disabled]="session.isLoading() || !session.prompt().trim()"><mat-icon>send</mat-icon></button>
+    </div>
+  </form>
+</section><section class="analyst-conversation" [class.analyst-conversation--compact]="compact" aria-label="Analyst conversation">
+  <section #transcript class="analyst-conversation__transcript" aria-live="polite" aria-label="Conversation transcript">
+    @if (session.messages().length === 0) {
+      <section class="analyst-conversation__empty" aria-label="Suggested Analyst questions">
+        <p>TradePilot facts stay in view while the Analyst interprets their context.</p>
+        <div>
+          @for (suggestion of suggestions; track suggestion) {
+            <button mat-stroked-button type="button" (click)="onSuggestion(suggestion)" [disabled]="session.isLoading()">{{ suggestion }}</button>
+          }
+        </div>
+      </section>
+    }
+
+    @for (message of session.messages(); track $index) {
+      <article class="analyst-message" [class.analyst-message--user]="message.role === 'user'" [class.analyst-message--error]="message.role === 'error'">
+        <span class="analyst-message__role">{{ message.role === "user" ? "You" : message.role === "error" ? "Analyst status" : "TradePilot Analyst" }}</span>
+        <p>{{ message.content }}</p>
+        @if (message.role === "error" && !session.isLoading()) {
+          <button mat-button type="button" (click)="session.retry()" [disabled]="!session.lastQuestion()">Retry</button>
+        }
+        @if (message.result && evidence(message.result.toolInvocations).length > 0) {
+          <details class="analyst-message__evidence" [open]="shouldExpandEvidence(message.content)">
+            <summary>Evidence</summary>
+            <div>
+              @for (invocation of evidence(message.result.toolInvocations); track invocation.toolCallId) {
+                <app-analyst-evidence-card [invocation]="invocation" [compact]="compact" />
+                @if (hasReference(invocation)) {
+                  <button mat-button type="button" (click)="openReference(invocation)">Open related view</button>
+                }
+              }
+            </div>
+          </details>
+        }
+      </article>
+    }
+    @if (session.isLoading()) {
+      <div class="analyst-conversation__progress" role="status"><mat-spinner diameter="18" />{{ session.progress() }}</div>
+    }
+  </section>
+
+  <form class="analyst-conversation__composer" (ngSubmit)="onSubmit()">
+    @if (session.context()) {
+      <div class="analyst-conversation__context-chip">
+        <span>{{ contextLabel() }}</span>
+        <button mat-icon-button type="button" aria-label="Remove attached context" matTooltip="Remove attached context" (click)="session.clearContext()"><mat-icon>close</mat-icon></button>
+      </div>
+    }
+    <label for="analyst-prompt">Ask TradePilot Analyst</label>
+    <textarea #composer id="analyst-prompt" name="prompt" rows="1" [ngModel]="session.prompt()" (ngModelChange)="onPromptChange($event)" (keydown)="onKeydown($event)" [placeholder]="session.context() ? 'Ask about this view...' : 'Ask TradePilot Analyst...'" [disabled]="session.isLoading()"></textarea>
+    <div class="analyst-conversation__composer-actions">
+      @if (session.isLoading()) {
+        <button mat-button type="button" (click)="session.cancel()">Cancel</button>
+      }
+      <button mat-icon-button color="primary" type="submit" aria-label="Send Analyst question" matTooltip="Send" [disabled]="session.isLoading() || !session.prompt().trim()"><mat-icon>send</mat-icon></button>
+    </div>
+  </form>
+</section>

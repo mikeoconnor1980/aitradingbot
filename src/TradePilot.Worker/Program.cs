@@ -26,6 +26,16 @@ using TradePilot.Persistence.Services;
 using TradePilot.Worker.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
+var applyMigrations = builder.Configuration.GetValue("Database:ApplyMigrations", false);
+
+var applicationInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetryWorkerService(options =>
+    {
+        options.ConnectionString = applicationInsightsConnectionString;
+    });
+}
 
 // When running as a Windows Service, the working directory is System32.
 // Set the content root to the exe directory so appsettings.json is found.
@@ -373,6 +383,9 @@ if (!string.IsNullOrWhiteSpace(privateKey))
     app.Services.GetRequiredService<MutableSignerProvider>().Configure(privateKey);
 }
 
-await app.Services.MigrateDatabaseAsync();
+if (applyMigrations)
+{
+    await app.Services.MigrateDatabaseAsync();
+}
 
 app.Run();

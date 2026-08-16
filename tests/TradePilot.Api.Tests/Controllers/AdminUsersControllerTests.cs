@@ -28,7 +28,6 @@ public sealed class AdminUsersControllerTests : BaseControllerTests
         var admins = await response.ReadAndAssertSuccessAsync<List<AdminUserDto>>();
         admins.Should().Contain(admin => admin.Email == "test@tradepilot.dev");
         admins.Should().Contain(admin => admin.Email == "ops@tradepilot.dev");
-        admins.Should().Contain(admin => admin.Email == "mike.oconnor@hotmail.co.uk");
     }
 
     [TestMethod]

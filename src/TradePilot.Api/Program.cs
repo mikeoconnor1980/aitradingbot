@@ -2,18 +2,22 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using ModelContextProtocol.AspNetCore;
+using ModelContextProtocol.Protocol;
 using Polly;
 using TradePilot.AI;
 using TradePilot.Api.Configuration;
 using TradePilot.Api.Hubs;
 using TradePilot.Api.Infrastructure;
 using TradePilot.Api.Infrastructure.Filters;
+using TradePilot.Api.Mcp;
 using TradePilot.Api.Services;
 using TradePilot.Application.Abstractions.Auth;
 using TradePilot.Application.Abstractions.Configuration;
@@ -22,6 +26,7 @@ using TradePilot.Application.Agent.Services;
 using TradePilot.Application.Agent;
 using TradePilot.Application.Agent.Models;
 using TradePilot.Application.Backtesting;
+using TradePilot.Application.Backtesting.Experiments;
 using TradePilot.Application.Backtesting.Services;
 using TradePilot.Application.MacroCalendar.Configuration;
 using TradePilot.Application.MacroCalendar.Services;
@@ -47,6 +52,26 @@ using TradePilot.Persistence;
 using TradePilot.Persistence.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsProduction())
+{
+    var keyVaultUri = builder.Configuration["KeyVault:Uri"];
+    if (!Uri.TryCreate(keyVaultUri, UriKind.Absolute, out var keyVaultEndpoint))
+    {
+        throw new InvalidOperationException("KeyVault:Uri must be configured with a valid absolute URI in production.");
+    }
+
+    builder.Configuration.AddAzureKeyVault(keyVaultEndpoint, new DefaultAzureCredential());
+}
+
+var applicationInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = applicationInsightsConnectionString;
+    });
+}
 
 // MediatR - scan Application assembly for handlers
 builder.Services.AddMediatR(cfg =>
@@ -107,6 +132,41 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+var mcpOptions = builder.Configuration
+    .GetSection(TradePilotMcpOptions.SectionName)
+    .Get<TradePilotMcpOptions>() ?? new TradePilotMcpOptions();
+if (!mcpOptions.Path.StartsWith("/", StringComparison.Ordinal))
+{
+    throw new InvalidOperationException("Mcp:Path must start with '/'.");
+}
+
+builder.Services.AddOptions<TradePilotMcpOptions>()
+    .Bind(builder.Configuration.GetSection(TradePilotMcpOptions.SectionName));
+
+if (mcpOptions.Enabled)
+{
+    var mcpVersion = builder.Configuration["Deployment:Version"]
+        ?? typeof(Program).Assembly.GetName().Version?.ToString()
+        ?? "1.0.0";
+
+    builder.Services
+        .AddMcpServer(options =>
+        {
+            options.ServerInfo = new Implementation
+            {
+                Name = "TradePilot",
+                Title = "TradePilot",
+                Version = mcpVersion,
+                Description = "Read-only access to deterministic TradePilot market and account capabilities.",
+            };
+        })
+        .WithHttpTransport(options =>
+        {
+            options.SessionMode = HttpServerSessionMode.Stateless;
+        })
+        .WithTools<TradePilotMcpTools>(TradePilotMcpJson.CreateOptions());
+}
 
 // Bind Hyperliquid configuration
 builder.Services.AddOptions<HyperliquidOptions>()
@@ -280,6 +340,7 @@ builder.Services.AddScoped<IDcaController, DcaController>();
 builder.Services.AddScoped<IRiskEngine, BacktestRiskEngine>();
 builder.Services.AddScoped<IPositionManager, BacktestPositionManager>();
 builder.Services.AddScoped<IBacktestRunner, BacktestRunner>();
+builder.Services.AddScoped<IBacktestExperimentService, BacktestExperimentService>();
 builder.Services.AddScoped<IStrategyConfigGenerator, StrategyConfigGenerator>();
 builder.Services.AddScoped<IFitnessScorer, FitnessScorer>();
 builder.Services.AddScoped<ISweepRunner, SweepRunner>();
@@ -581,7 +642,10 @@ builder.Services.AddControllers(options =>
 
 var app = builder.Build();
 
-await app.Services.MigrateDatabaseAsync();
+if (app.Configuration.GetValue("Database:ApplyMigrations", false))
+{
+    await app.Services.MigrateDatabaseAsync();
+}
 
 // Refresh LLM context snapshot on every startup (development only)
 if (app.Environment.IsDevelopment())
@@ -649,7 +713,16 @@ app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false,
+});
+app.MapHealthChecks("/health/ready");
 app.MapHealthChecks("/healthz");
+if (mcpOptions.Enabled)
+{
+    app.MapMcp(mcpOptions.Path).RequireAuthorization();
+}
 
 app.Run();
 
