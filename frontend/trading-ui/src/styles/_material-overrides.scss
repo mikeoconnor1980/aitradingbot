@@ -1,0 +1,71 @@
+:root {
+  --mat-sys-primary: var(--accent-primary);
+  --mat-sys-on-primary: var(--text-inverse);
+  --mat-sys-primary-container: var(--accent-surface);
+  --mat-sys-on-primary-container: var(--accent-strong);
+  --mat-sys-secondary: var(--text-secondary);
+  --mat-sys-on-secondary: var(--text-inverse);
+  --mat-sys-surface: var(--surface-base);
+  --mat-sys-surface-container: var(--surface-raised);
+  --mat-sys-surface-container-high: var(--surface-overlay);
+  --mat-sys-surface-container-highest: var(--surface-selected);
+  --mat-sys-on-surface: var(--text-primary);
+  --mat-sys-on-surface-variant: var(--text-secondary);
+  --mat-sys-outline: var(--border-strong);
+  --mat-sys-outline-variant: var(--border-default);
+  --mat-sys-error: var(--state-negative);
+  --mat-sys-on-error: var(--text-inverse);
+  --mat-sys-error-container: var(--state-negative-surface);
+  --mat-sys-on-error-container: var(--state-negative-text);
+}
+
+.mat-mdc-button,
+.mat-mdc-unelevated-button,
+.mat-mdc-raised-button,
+.mat-mdc-outlined-button {
+  --mdc-text-button-label-text-color: var(--accent-primary);
+  --mdc-filled-button-container-color: var(--accent-primary);
+  --mdc-filled-button-label-text-color: var(--text-inverse);
+  --mdc-outlined-button-label-text-color: var(--accent-primary);
+  --mdc-outlined-button-outline-color: var(--border-strong);
+}
+
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-outline-color: var(--border-default);
+  --mdc-outlined-text-field-hover-outline-color: var(--border-strong);
+  --mdc-outlined-text-field-focus-outline-color: var(--accent-primary);
+  --mdc-outlined-text-field-input-text-color: var(--text-primary);
+  --mdc-outlined-text-field-label-text-color: var(--text-secondary);
+  --mdc-outlined-text-field-focus-label-text-color: var(--accent-primary);
+  --mat-select-enabled-trigger-text-color: var(--text-primary);
+  --mat-select-enabled-arrow-color: var(--text-secondary);
+}
+
+.mat-mdc-table {
+  --mat-table-background-color: transparent;
+  --mat-table-row-item-label-text-color: var(--text-primary);
+  --mat-table-header-headline-color: var(--text-muted);
+  --mat-table-row-item-outline-color: var(--border-subtle);
+}
+
+.mat-mdc-dialog-container .mdc-dialog__surface,
+.mat-mdc-menu-panel,
+.mat-bottom-sheet-container {
+  border: 1px solid var(--border-default);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.mat-stepper-horizontal,
+.mat-stepper-vertical {
+  --mat-stepper-container-color: transparent;
+  --mat-stepper-header-label-text-color: var(--text-muted);
+  --mat-stepper-header-optional-label-text-color: var(--text-muted);
+  --mat-stepper-header-edit-state-icon-background-color: var(--accent-primary);
+  --mat-stepper-header-done-state-icon-background-color: var(--state-positive);
+}
+
+.mat-mdc-progress-bar {
+  --mdc-linear-progress-active-indicator-color: var(--accent-primary);
+  --mdc-linear-progress-track-color: var(--surface-selected);
+}

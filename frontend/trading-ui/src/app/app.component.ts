@@ -21,13 +21,15 @@ import { HelpService } from "./core/services/help.service";
 import { LayoutService } from "./core/services/layout.service";
 import { NotificationStoreService } from "./core/services/notification-store.service";
 import { ProfileService } from "./core/services/profile.service";
+import { RightPanelService } from "./core/services/right-panel.service";
 import { SubscriptionService } from "./core/services/subscription.service";
 import { SignalRService } from "./core/services/signalr.service";
+import { AnalystPanelComponent } from "./features/analyst/analyst-panel.component";
 
 @Component({
   selector: "app-root",
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatMenuModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent],
+  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatButtonModule, MatTooltipModule, MatFormFieldModule, MatMenuModule, MatSelectModule, HelpPanelComponent, NotificationPanelComponent, SidebarNavComponent, MobileNavComponent, AnalystPanelComponent],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss"
 })
@@ -39,6 +41,7 @@ export class AppComponent implements OnInit {
   private readonly _profileService = inject(ProfileService);
   private readonly _subscriptionService = inject(SubscriptionService);
   private readonly _layoutService = inject(LayoutService);
+  private readonly _rightPanels = inject(RightPanelService);
   private readonly _notificationStore = inject(NotificationStoreService);
   private readonly _destroyRef = inject(DestroyRef);
 
@@ -46,6 +49,7 @@ export class AppComponent implements OnInit {
   public currentUser: AuthUser | null = null;
   public isAuthenticated = false;
   public readonly isMobile = this._layoutService.isMobile;
+  public readonly activeRightPanel = this._rightPanels.activePanel;
 
   @ViewChild(SidebarNavComponent)
   public sidebar?: SidebarNavComponent;

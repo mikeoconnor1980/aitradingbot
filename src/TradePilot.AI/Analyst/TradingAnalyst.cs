@@ -70,6 +70,26 @@ public sealed class TradingAnalyst : ITradingAnalyst
         var requestedToolCalls = 0;
         AnalystTokenUsage? usage = null;
 
+        if (request.Context?.Intent == TradingAnalystIntent.AnalyseChart)
+        {
+            var chartEvidence = await _toolCatalog.ExecuteAsync(
+                "analyse_chart_context",
+                "{}",
+                context,
+                cancellationToken);
+            messages.Add(new AnalystLlmMessage(
+                "system",
+                $"Deterministic chart evidence for this request: {JsonSerializer.Serialize(chartEvidence, JsonOptions)}"));
+            invocations.Add(new AnalystToolInvocation(
+                "prefetched-chart-context",
+                "analyse_chart_context",
+                "{}",
+                chartEvidence.Succeeded,
+                TimeSpan.Zero,
+                chartEvidence.Error?.Code,
+                Result: chartEvidence.Result));
+        }
+
         _logger.LogInformation(
             "TradePilot Analyst {CorrelationId} started with provider {Provider} model {Model}",
             correlationId,

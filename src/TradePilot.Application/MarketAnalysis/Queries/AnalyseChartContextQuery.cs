@@ -21,7 +21,7 @@ public sealed record AnalyseChartContextQuery(
 /// <summary>Builds compact chart evidence through existing candle and market-analysis capabilities.</summary>
 public sealed class AnalyseChartContextQueryHandler : QueryHandler<AnalyseChartContextQuery, AnalyseChartContextResult>
 {
-    public const int MaximumCandleCount = 500;
+    public const int MaximumCandleCount = 5000;
 
     private readonly ISender _sender;
 
@@ -56,13 +56,11 @@ public sealed class AnalyseChartContextQueryHandler : QueryHandler<AnalyseChartC
 
         cancellationToken.ThrowIfCancellationRequested();
         var endTime = checked(request.VisibleToOpenTimeUtc.ToUnixTimeMilliseconds() + intervalMilliseconds);
-        var fetched = await _sender.Send(new GetCandlesQuery(
+        var fetched = await _sender.Send(new GetHistoricalCandlesQuery(
             request.Symbol,
             request.Timeframe,
-            request.Exchange,
             endTime,
-            (int)requestedCount,
-            IncludeIndicators: true), cancellationToken);
+            (int)requestedCount), cancellationToken);
         var candles = fetched
             .Where(candle => candle.Timestamp >= request.VisibleFromOpenTimeUtc.ToUnixTimeMilliseconds()
                 && candle.Timestamp <= request.VisibleToOpenTimeUtc.ToUnixTimeMilliseconds())

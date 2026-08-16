@@ -1,6 +1,6 @@
 ﻿.backtest-form {
-  border: 1px solid var(--colour-border-subtle);
-  background: linear-gradient(145deg, var(--colour-surface-dark), var(--colour-surface-alt));
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-base);
 
   &__grid {
     display: flex;
@@ -22,7 +22,7 @@
   &__section-title {
     grid-column: 1 / -1;
     margin: 0;
-    color: var(--colour-label);
+    color: var(--text-secondary);
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -42,7 +42,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
-    color: var(--colour-label);
+    color: var(--text-secondary);
   }
 
   &__preview {
@@ -50,14 +50,14 @@
     display: grid;
     gap: 1rem;
     padding: 1rem;
-    border: 1px solid var(--colour-border-subtle);
-    border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-2);
+    background: var(--surface-raised);
   }
 
   &__preview--warning {
-    border-color: rgba(242, 201, 76, 0.35);
-    background: rgba(242, 201, 76, 0.08);
+    border-color: var(--state-warning);
+    background: var(--state-warning-surface);
   }
 
   &__preview-header {
@@ -70,7 +70,7 @@
     }
 
     p {
-      color: var(--colour-label);
+      color: var(--text-secondary);
       font-size: 0.85rem;
     }
   }
@@ -85,8 +85,8 @@
     display: grid;
     gap: 0.2rem;
     padding: 0.75rem;
-    border-radius: 0.8rem;
-    background: rgba(0, 0, 0, 0.18);
+    border-radius: var(--radius-2);
+    background: var(--surface-overlay);
   }
 
   &__preview-item--wide {
@@ -94,14 +94,14 @@
   }
 
   &__preview-label {
-    color: var(--colour-label);
+    color: var(--text-muted);
     font-size: 0.75rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
   &__preview-value {
-    color: var(--colour-text-primary);
+    color: var(--text-primary);
     font-weight: 600;
   }
 

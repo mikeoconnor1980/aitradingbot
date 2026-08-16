@@ -3,6 +3,8 @@
 @use "styles/typography";
 @use "styles/layout";
 @use "styles/motion";
+@use "styles/material-overrides";
+@use "styles/auth";
 
 // Asset selector dropdown panel — wider with comfortable spacing.
 .asset-select-panel {

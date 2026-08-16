@@ -12,7 +12,7 @@ import {
   ViewChild,
   inject
 } from "@angular/core";
-import { DecimalPipe } from "@angular/common";
+import { DatePipe, DecimalPipe } from "@angular/common";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import {
   CandlestickData,
@@ -82,7 +82,7 @@ const PRICE_CHART_THEME = {
 @Component({
   selector: "app-price-chart",
   standalone: true,
-  imports: [DecimalPipe],
+  imports: [DatePipe, DecimalPipe],
   templateUrl: "./price-chart.component.html",
   styleUrl: "./price-chart.component.scss"
 })

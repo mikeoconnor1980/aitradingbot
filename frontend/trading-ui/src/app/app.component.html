@@ -109,6 +109,10 @@
     <app-help-panel />
   }
 
+  @if (activeRightPanel() === "analyst") {
+    <app-analyst-panel />
+  }
+
   @if (isMobile()) {
     <app-mobile-nav />
   }

@@ -13,14 +13,14 @@
   &__hint {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    background: var(--colour-surface-dark, #1a1a2e);
-    border: 1px solid var(--colour-warn, #ff9800);
-    color: var(--colour-warn, #ff9800);
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--state-warning);
+    border-radius: var(--radius-2);
+    background: var(--state-warning-surface);
+    color: var(--state-warning);
     font-size: 0.875rem;
-    margin-top: 0.5rem;
+    margin-top: var(--space-2);
   }
 
   &__hint-icon {

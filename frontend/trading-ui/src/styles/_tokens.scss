@@ -88,4 +88,22 @@
   --colour-on-profit: var(--text-inverse);
   --colour-on-loss: #fff4f6;
   --colour-background: var(--surface-canvas);
+
+  // Temporary compatibility aliases for legacy feature styles. New styles use canonical tokens above.
+  --colour-primary: var(--accent-primary);
+  --colour-primary-rgb: 121, 207, 195;
+  --colour-success: var(--state-positive);
+  --colour-profit-rgb: 84, 200, 167;
+  --colour-loss-rgb: 229, 138, 156;
+  --colour-text: var(--text-primary);
+  --colour-text-secondary: var(--text-secondary);
+  --colour-text-muted: var(--text-muted);
+  --colour-surface: var(--surface-raised);
+  --colour-surface-darker: var(--surface-canvas);
+  --colour-warn: var(--state-warning);
+  --colour-warning-surface: var(--state-warning-surface);
+  --colour-warning-border: rgba(216, 181, 109, 0.3);
+  --colour-warning-text: var(--state-warning);
+  --colour-error-surface: var(--state-negative-surface);
+  --colour-error-border: rgba(229, 138, 156, 0.3);
 }

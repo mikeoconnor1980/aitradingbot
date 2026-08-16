@@ -45,7 +45,7 @@ internal static class TradingAnalystPrompt
         var chart = context.Chart;
         return $"""
             A validated TradePilot chart context is attached: {chart.Symbol} {chart.Timeframe}, visible from {chart.VisibleFromOpenTimeUtc:O} through {chart.VisibleToOpenTimeUtc:O}, captured {chart.CapturedAtUtc:O}.
-            Use analyse_chart_context for claims about this visible range or selected candle. Active indicators are presentation state, not authoritative values. Do not infer shapes, levels, or patterns from pixels. Do not substitute current market state for this historical snapshot. Cite returned timestamps and state when bounded evidence is incomplete.
+            Deterministic chart evidence is attached before the question. Use it for claims about this visible range or selected candle. Active indicators are presentation state, not authoritative values. Do not infer shapes, levels, or patterns from pixels. Do not substitute current market state for this historical snapshot. Cite returned timestamps and state when bounded evidence is incomplete.
             """;
     }
 

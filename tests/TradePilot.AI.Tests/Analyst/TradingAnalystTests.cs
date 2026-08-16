@@ -5,6 +5,7 @@ using TradePilot.AI.Analyst;
 using TradePilot.Application.Abstractions.Configuration;
 using TradePilot.Application.Abstractions.Services;
 using TradePilot.Application.Analyst.Models;
+using TradePilot.Domain.Enums;
 
 namespace TradePilot.AI.Tests.Analyst;
 
@@ -49,6 +50,44 @@ public sealed class TradingAnalystTests
         llm.Requests.Should().HaveCount(2);
         llm.Requests[1].Messages.Should().Contain(message =>
             message.Role == "tool" && message.Content!.Contains("primaryTrend", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public async Task GivenChartContext_WhenAnalysed_ThenDeterministicEvidenceIsPrefetchedBeforeTheFirstLlmCall()
+    {
+        var llm = new FakeAnalystLlmClient(FinalResponse("ETH has a bounded range analysis."));
+        var catalog = CreateCatalog();
+        catalog.Setup(service => service.ExecuteAsync(
+                "analyse_chart_context",
+                "{}",
+                It.IsAny<AnalystToolContext>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Success(new { symbol = "ETH-PERP", candleCount = 961, percentChange = 2.4m }));
+        var context = new TradingAnalystContext(
+            TradingAnalystIntent.AnalyseChart,
+            Chart: new TradingAnalystChartContext(
+                "ETH-PERP",
+                "15m",
+                Exchange.Hyperliquid,
+                DateTimeOffset.Parse("2026-08-06T00:00:00Z"),
+                DateTimeOffset.Parse("2026-08-16T00:00:00Z"),
+                null,
+                [],
+                [],
+                DateTimeOffset.Parse("2026-08-16T00:00:00Z"),
+                DateTimeOffset.Parse("2026-08-16T00:00:00Z")));
+        var sut = CreateSut(llm, catalog.Object);
+
+        var result = await sut.AnalyseAsync(
+            new TradingAnalystRequest("What is happening in this chart?", Context: context),
+            CancellationToken.None);
+
+        result.Succeeded.Should().BeTrue();
+        result.ToolInvocations.Should().ContainSingle(invocation =>
+            invocation.ToolName == "analyse_chart_context" && invocation.Succeeded);
+        llm.Requests.Should().ContainSingle();
+        llm.Requests[0].Messages.Should().Contain(message =>
+            message.Role == "system" && message.Content!.Contains("candleCount", StringComparison.Ordinal));
     }
 
     [TestMethod]

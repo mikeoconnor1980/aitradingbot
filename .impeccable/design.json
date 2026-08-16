@@ -69,6 +69,38 @@
       "description": "Primary content region using tonal depth rather than glass or decorative shadow.",
       "html": "<section class=\"ds-surface\">Operational content</section>",
       "css": ".ds-surface { padding:16px; border:1px solid rgba(151,195,188,.2); border-radius:12px; color:#e7f1ef; background:#0a1719; font:400 14px/1.5 Roboto,sans-serif; }"
+    },
+    {
+      "name": "Operational page header",
+      "kind": "header",
+      "refersTo": "page-header",
+      "description": "A compact route heading that establishes the active workspace without a marketing hero treatment.",
+      "html": "<header class=\"ds-page-header\"><div><p>Connections</p><h1>Connection Health</h1><span>Current exchange and transport state.</span></div><button>Refresh</button></header>",
+      "css": ".ds-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid rgba(151,195,188,.12); color:#e7f1ef; font:400 14px/1.5 Roboto,sans-serif; } .ds-page-header p { margin:0 0 4px; color:#829b97; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; } .ds-page-header h1 { margin:0; font-size:24px; line-height:1.2; } .ds-page-header span { color:#829b97; }"
+    },
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "refersTo": "action-primary",
+      "description": "The single next action for a local workflow. Destructive actions use the negative semantic state instead.",
+      "html": "<button class=\"ds-action-primary\">Save strategy</button>",
+      "css": ".ds-action-primary { min-height:40px; padding:0 16px; border:0; border-radius:8px; color:#061314; background:#79cfc3; font:650 14px Roboto,sans-serif; } .ds-action-primary:hover { background:#a6e3da; } .ds-action-primary:focus-visible { outline:2px solid #79cfc3; outline-offset:2px; }"
+    },
+    {
+      "name": "Operational field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "A form field for configuration and account settings. Focus is explicit and uses the teal accent without a glow.",
+      "html": "<label class=\"ds-field\"><span>Strategy name</span><input value=\"BTC mean reversion\" /></label>",
+      "css": ".ds-field { display:grid; gap:6px; color:#b4c8c4; font:650 12px Roboto,sans-serif; } .ds-field input { min-height:40px; padding:0 12px; border:1px solid rgba(151,195,188,.2); border-radius:8px; color:#e7f1ef; background:#0a1719; font:400 14px Roboto,sans-serif; } .ds-field input:focus { border-color:#79cfc3; outline:2px solid #79cfc3; outline-offset:2px; }"
+    },
+    {
+      "name": "Data table",
+      "kind": "table",
+      "refersTo": "data-table",
+      "description": "Dense operational evidence. Numeric columns use tabular figures and status has a readable text label.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Market</th><th>Equity</th><th>Status</th></tr></thead><tbody><tr><td>BTC-PERP</td><td>$12,500.50</td><td>Live</td></tr></tbody></table>",
+      "css": ".ds-table { width:100%; border-collapse:collapse; color:#e7f1ef; background:#0a1719; font:400 14px Roboto,sans-serif; font-variant-numeric:tabular-nums; } .ds-table th { padding:10px 12px; border-bottom:1px solid rgba(151,195,188,.12); color:#829b97; font-size:12px; font-weight:700; letter-spacing:.045em; text-align:left; text-transform:uppercase; } .ds-table td { padding:12px; border-bottom:1px solid rgba(151,195,188,.12); }"
     }
   ],
   "narrative": {
