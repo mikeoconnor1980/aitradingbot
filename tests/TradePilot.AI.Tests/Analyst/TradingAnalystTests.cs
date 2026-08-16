@@ -14,6 +14,7 @@ public sealed class TradingAnalystTests
 {
     private static readonly IReadOnlyList<AnalystToolDefinition> Definitions =
     [
+        Definition("analyse_market"),
         Definition("analyse_market_multi_timeframe"),
         Definition("get_account_summary"),
         Definition("get_positions"),
@@ -370,6 +371,8 @@ public sealed class TradingAnalystTests
             new TradingAnalystRequest("What is BTC doing now?"),
             CancellationToken.None);
 
+        var execution = catalog.Invocations.Single(invocation => invocation.Method.Name == "ExecuteAsync");
+        execution.Arguments[1].Should().Be("{\"symbol\":\"BTC\",\"timeframe\":\"1h\"}");
         result.ToolInvocations.Should().ContainSingle(invocation =>
             invocation.Arguments == "{\"symbol\":\"BTC\",\"timeframe\":\"1h\"}" &&
             invocation.ErrorCode == "data_unavailable");

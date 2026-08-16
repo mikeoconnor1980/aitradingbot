@@ -131,6 +131,9 @@ public sealed class TradingAnalyst : ITradingAnalyst
             foreach (var toolCall in completion.ToolCalls)
             {
                 var canonicalArguments = SanitizeArguments(toolCall.Name, toolCall.ArgumentsJson);
+                var executableArguments = canonicalArguments == "<invalid-json>"
+                    ? toolCall.ArgumentsJson
+                    : canonicalArguments;
                 var cacheKey = $"{toolCall.Name}\n{canonicalArguments}";
                 var stopwatch = Stopwatch.StartNew();
                 AnalystToolResult toolResult;
@@ -155,7 +158,7 @@ public sealed class TradingAnalyst : ITradingAnalyst
                         canonicalArguments);
                     toolResult = await _toolCatalog.ExecuteAsync(
                         toolCall.Name,
-                        toolCall.ArgumentsJson,
+                        executableArguments,
                         context,
                         cancellationToken);
                     if (toolResult.Succeeded)
