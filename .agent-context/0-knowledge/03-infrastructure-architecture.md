@@ -13,8 +13,8 @@ The repo does not contain a top-level `docker-compose.yml`. The only Docker arti
 
 | Environment | Runtime Shape | Primary Storage | Real-Time Push |
 |-------------|---------------|-----------------|----------------|
-| Local development | `TradePilot.Api` + `TradePilot.Worker` + Angular dev server | SQLite | In-process SignalR from the API |
-| Azure deployment | Azure Container App for API, Azure Static Web App for UI, client-side execution agent for order signing | Azure SQL for API-side data, local agent config for private key | Azure SignalR Service |
+| Local development | `TradePilot.Api` + `TradePilot.Worker` + Angular dev server | SQL Server-compatible database | In-process SignalR from the API |
+| Azure deployment | Azure Container App for API, Azure Static Web App for UI, VPS execution agent for order signing | Azure SQL | Azure SignalR Service |
 
 ## Control Plane and Execution Split
 
@@ -42,18 +42,16 @@ Development runs directly from the repo:
 - Worker: `src/TradePilot.Worker`
 - UI: `frontend/trading-ui`
 
-SQLite remains the default local database option. The current file locations are host-specific rather than a shared `/data/sqlite` mount:
-
-| Host | Typical SQLite Path |
-|------|---------------------|
-| API | Host-local SQLite file used by `src/TradePilot.Api` when SQLite is enabled |
-| Worker | Host-local SQLite file used by `src/TradePilot.Worker` when SQLite is enabled |
+TradePilot uses SQL Server-compatible persistence in every environment. Local connection strings are supplied through user secrets or environment variables; they are not committed to application settings.
 
 ## Azure Deployment
 
 `infrastructure/main.bicep` is the source of truth for the production Azure footprint. It provisions:
 
 - Log Analytics workspace
+- Application Insights
+- Azure Key Vault
+- user-assigned managed identity for the API
 - Azure SignalR Service
 - Azure SQL Server and database
 - Azure Container Apps environment
@@ -113,17 +111,10 @@ This allows different users to operate against different Hyperliquid environment
 
 ## Secrets and Configuration
 
-Current secret handling is mixed:
-
-- worker private keys are expected through local config or environment variables on the execution agent
-- JWT secret, SQL credentials, and registry credentials are currently passed as Bicep parameters for Azure deployment
-- Google OAuth and other app settings are configuration-bound in the API host
-
-Azure Key Vault is not yet wired into the deployment path. That gap is important because cloud secret material is still injected directly through deployment configuration.
+Production API secrets are stored in Azure Key Vault and loaded through the API managed identity. The API uses Azure SQL managed identity authentication. The Worker stays on the VPS, retains its Hyperliquid private key locally, and uses a separate SQL identity. GitHub Actions uses OIDC for Azure deployment and seeds Key Vault from GitHub environment secrets rather than Bicep parameters.
 
 ## Future Recommendations
 
-- Add Azure Key Vault integration for API secrets and deployment-time secret references.
 - Add Redis Cache or another shared state layer only if horizontal real-time fan-out needs exceed Azure SignalR alone.
 - Add horizontal worker execution through Azure Container Apps Jobs or equivalent for server-side processing that does not require private keys.
-- Add Application Insights and distributed tracing across API, background services, and agent check-in flows.
+- Extend distributed tracing across API, VPS Worker, and agent check-in flows.

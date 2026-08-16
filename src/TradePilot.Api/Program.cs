@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
+using Azure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -51,6 +52,26 @@ using TradePilot.Persistence;
 using TradePilot.Persistence.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsProduction())
+{
+    var keyVaultUri = builder.Configuration["KeyVault:Uri"];
+    if (!Uri.TryCreate(keyVaultUri, UriKind.Absolute, out var keyVaultEndpoint))
+    {
+        throw new InvalidOperationException("KeyVault:Uri must be configured with a valid absolute URI in production.");
+    }
+
+    builder.Configuration.AddAzureKeyVault(keyVaultEndpoint, new DefaultAzureCredential());
+}
+
+var applicationInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = applicationInsightsConnectionString;
+    });
+}
 
 // MediatR - scan Application assembly for handlers
 builder.Services.AddMediatR(cfg =>
@@ -621,7 +642,10 @@ builder.Services.AddControllers(options =>
 
 var app = builder.Build();
 
-await app.Services.MigrateDatabaseAsync();
+if (app.Configuration.GetValue("Database:ApplyMigrations", false))
+{
+    await app.Services.MigrateDatabaseAsync();
+}
 
 // Refresh LLM context snapshot on every startup (development only)
 if (app.Environment.IsDevelopment())
@@ -689,6 +713,11 @@ app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
 app.MapHub<MarketDataHub>("/hubs/marketdata");
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false,
+});
+app.MapHealthChecks("/health/ready");
 app.MapHealthChecks("/healthz");
 if (mcpOptions.Enabled)
 {

@@ -21,7 +21,7 @@ public static class PersistenceServiceExtensions
 
         services.AddDbContext<TradePilotDbContext>(options =>
         {
-            options.UseSqlServer(connectionString);
+            options.UseSqlServer(connectionString, sqlServer => sqlServer.EnableRetryOnFailure());
         });
 
         services.AddScoped<IBacktestRunRepository, BacktestRunRepository>();
@@ -55,7 +55,7 @@ public static class PersistenceServiceExtensions
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<TradePilotDbContext>();
 
-        // InMemory provider (used in tests) doesn't support migrations
+        // InMemory provider used by tests does not support migrations.
         if (db.Database.ProviderName?.Contains("InMemory", StringComparison.OrdinalIgnoreCase) == true)
         {
             await db.Database.EnsureCreatedAsync();

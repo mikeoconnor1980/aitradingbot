@@ -49,6 +49,7 @@ Project knowledge files for TradingApp. These documents are the source of truth 
 | 08 | [Development Plan](08-development-plan.md) | Build roadmap versus delivered features and remaining gaps |
 | 10 | [Architecture Decisions](10-architecture-decisions.md) | ADRs for the implemented system, including post-build ADRs |
 | 38 | [Exchange Abstraction Architecture](38-exchange-abstraction-architecture.md) | Canonical market model, exchange-neutral service seams, Hyperliquid adapters, and extension guidance for additional venues |
+| 39 | [Azure Deployment](39-azure-deployment.md) | Azure control-plane hosting, Key Vault, Azure SQL identities, CI/CD, and VPS Worker integration |
 
 ## Business Model
 

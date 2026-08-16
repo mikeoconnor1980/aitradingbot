@@ -19,23 +19,14 @@ param sqlAdminLogin string = 'tradepilotadmin'
 @description('Azure SQL administrator password')
 param sqlAdminPassword string
 
-@secure()
-@description('JWT signing key for API authentication')
-param jwtSecretKey string
-
-@secure()
-@description('Gemini API key for LLM context provider')
-param llmApiKey string = ''
-
 @description('Allowed CORS origin (Azure Static Web App URL)')
 param corsAllowedOrigin string = ''
 
-@description('GitHub Container Registry username')
-param registryUsername string
+@description('Fixed public IPv4 address of the VPS-hosted Worker. Leave empty until available.')
+param workerPublicIpAddress string = ''
 
-@secure()
-@description('GitHub Container Registry password (PAT)')
-param registryPassword string
+@description('Deploy the API Container App after Key Vault secrets have been populated.')
+param deployApi bool = true
 
 // ---------- Modules ----------
 
@@ -55,6 +46,33 @@ module signalr 'modules/signalr.bicep' = {
   }
 }
 
+module monitoring 'modules/monitoring.bicep' = {
+  name: 'monitoring'
+  params: {
+    name: '${appName}-${environmentName}-insights'
+    location: location
+    workspaceId: logAnalytics.outputs.workspaceId
+  }
+}
+
+module apiIdentity 'modules/managed-identity.bicep' = {
+  name: 'api-identity'
+  params: {
+    name: '${appName}-${environmentName}-api-id'
+    location: location
+  }
+}
+
+module keyVault 'modules/key-vault.bicep' = {
+  name: 'key-vault'
+  params: {
+    name: '${appName}-${environmentName}-kv'
+    location: location
+    apiIdentityResourceId: apiIdentity.outputs.resourceId
+    apiIdentityPrincipalId: apiIdentity.outputs.principalId
+  }
+}
+
 module sql 'modules/sql-server.bicep' = {
   name: 'sql'
   params: {
@@ -63,6 +81,7 @@ module sql 'modules/sql-server.bicep' = {
     location: location
     adminLogin: sqlAdminLogin
     adminPassword: sqlAdminPassword
+    workerPublicIpAddress: workerPublicIpAddress
   }
 }
 
@@ -85,21 +104,20 @@ module containerAppEnv 'modules/container-app-environment.bicep' = {
 
 // Reference the deployed storage account to build connection string without exposing keys in module outputs
 
-module containerApp 'modules/container-app.bicep' = {
+module containerApp 'modules/container-app.bicep' = if (deployApi) {
   name: 'container-app'
   params: {
     name: '${appName}-${environmentName}-api'
     location: location
     environmentId: containerAppEnv.outputs.environmentId
     containerImage: containerImage
-    sqlConnectionString: 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${appName}-db;User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
-    signalRConnectionString: signalr.outputs.connectionString
-    jwtSecretKey: jwtSecretKey
-    llmApiKey: llmApiKey
+    sqlServerFqdn: sql.outputs.serverFqdn
+    databaseName: '${appName}-db'
+    keyVaultUri: keyVault.outputs.vaultUri
+    apiIdentityResourceId: apiIdentity.outputs.resourceId
+    apiIdentityClientId: apiIdentity.outputs.clientId
+    applicationInsightsConnectionString: monitoring.outputs.connectionString
     corsAllowedOrigin: corsAllowedOrigin
-    registryUsername: registryUsername
-    registryPassword: registryPassword
-    installerBlobConnectionString: storage.outputs.connectionString
     installerBlobContainerName: storage.outputs.containerName
   }
 }
@@ -114,8 +132,11 @@ module staticWebApp 'modules/static-web-app.bicep' = {
 
 // ---------- Outputs ----------
 
-output apiUrl string = containerApp.outputs.fqdn
+output apiUrl string = deployApi ? containerApp!.outputs.fqdn : ''
 output staticWebAppUrl string = staticWebApp.outputs.defaultHostname
 output signalRHostName string = signalr.outputs.hostName
 output sqlServerFqdn string = sql.outputs.serverFqdn
 output storageAccountName string = storage.outputs.storageAccountName
+output keyVaultUri string = keyVault.outputs.vaultUri
+output applicationInsightsConnectionString string = monitoring.outputs.connectionString
+output apiIdentityClientId string = apiIdentity.outputs.clientId
